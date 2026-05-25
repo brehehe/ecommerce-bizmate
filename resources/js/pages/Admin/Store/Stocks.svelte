@@ -503,6 +503,10 @@
                         </div>
                     {/each}
 
+                    <div>
+                        <Pagination paginator={products} />
+                    </div>
+
                     <!-- Sticky Submit Panel -->
                     <div
                         class="fixed bottom-0 left-0 lg:left-64 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 flex items-center justify-between z-40 px-6 sm:px-8 shadow-lg"
@@ -528,7 +532,6 @@
                         </button>
                     </div>
                 </form>
-                <Pagination paginator={products} />
             {/if}
         </main>
     </div>

@@ -8,6 +8,7 @@ use App\Models\Promotion;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -64,6 +65,21 @@ class StorefrontController extends Controller
             ->latest()
             ->first();
 
+        // Retrieve active store promotions (excluding flash sale as it is handled separately)
+        $activePromotions = Promotion::with(['items'])
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->get();
+
+        foreach ($featuredProducts as $p) {
+            $this->applyPromotionsToProduct($p, $activePromotions);
+        }
+
+        foreach ($newProducts as $p) {
+            $this->applyPromotionsToProduct($p, $activePromotions);
+        }
+
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
@@ -93,12 +109,24 @@ class StorefrontController extends Controller
             'variants.options',
         ]);
 
-        $relatedProducts = Product::with(['productPrice', 'images'])
+        $relatedProducts = Product::with(['productPrice', 'images', 'category'])
             ->where('active', true)
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->take(8)
             ->get();
+
+        $activePromotions = Promotion::with(['items'])
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->get();
+
+        $this->applyPromotionsToProduct($product, $activePromotions);
+
+        foreach ($relatedProducts as $rp) {
+            $this->applyPromotionsToProduct($rp, $activePromotions);
+        }
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
 
@@ -106,6 +134,361 @@ class StorefrontController extends Controller
             'product' => $product,
             'relatedProducts' => $relatedProducts,
             'storeName' => $storeName,
+        ]);
+    }
+
+    /**
+     * Helper to apply active promotions on a product and its variants.
+     */
+    private function applyPromotionsToProduct(Product $product, $activePromotions)
+    {
+        $basePrice = $product->productPrice?->price ?? 0;
+        $appliedPromo = null;
+        $appliedItem = null;
+
+        // Search for matching promotions
+        foreach ($activePromotions as $promo) {
+            if ($promo->items->isEmpty()) {
+                // Scope: all store products
+                if (! $appliedPromo) {
+                    $appliedPromo = $promo;
+                }
+            } else {
+                // Scope: specific products
+                $item = $promo->items->first(function ($i) use ($product) {
+                    return $i->product_id === $product->id && is_null($i->product_variant_id);
+                });
+                if ($item) {
+                    $appliedPromo = $promo;
+                    $appliedItem = $item;
+                    break;
+                }
+            }
+        }
+
+        if ($appliedPromo) {
+            $discountType = $appliedItem ? ($appliedItem->discount_type ?? $appliedPromo->discount_type) : $appliedPromo->discount_type;
+            $discountValue = $appliedItem ? ($appliedItem->discount_value ?? $appliedPromo->discount_value) : $appliedPromo->discount_value;
+            $promoPrice = $appliedItem?->promo_price;
+
+            if ($promoPrice && $promoPrice > 0) {
+                $finalPrice = (float) $promoPrice;
+            } else {
+                if ($discountType === 'percentage') {
+                    $finalPrice = $basePrice - ($basePrice * ($discountValue / 100));
+                } elseif ($discountType === 'fixed') {
+                    $finalPrice = $basePrice - $discountValue;
+                } else {
+                    $finalPrice = $basePrice;
+                }
+            }
+
+            $finalPrice = max(0, $finalPrice);
+
+            if ($finalPrice < $basePrice) {
+                $product->is_promo = true;
+                $product->promo_price = $finalPrice;
+                $product->original_price = $basePrice;
+                if ($basePrice > 0) {
+                    $product->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
+                } else {
+                    $product->discount_percentage = 0;
+                }
+            } else {
+                $product->is_promo = false;
+                $product->promo_price = $basePrice;
+                $product->original_price = $basePrice;
+                $product->discount_percentage = 0;
+            }
+        } else {
+            $product->is_promo = false;
+            $product->promo_price = $basePrice;
+            $product->original_price = $basePrice;
+            $product->discount_percentage = 0;
+        }
+
+        // Apply to variants if loaded
+        if ($product->relationLoaded('variants')) {
+            foreach ($product->variants as $variant) {
+                $vPrice = $variant->productPrice?->price ?? 0;
+                $vAppliedPromo = null;
+                $vAppliedItem = null;
+
+                foreach ($activePromotions as $promo) {
+                    if ($promo->items->isEmpty()) {
+                        if (! $vAppliedPromo) {
+                            $vAppliedPromo = $promo;
+                        }
+                    } else {
+                        // Check if specific variant matches
+                        $item = $promo->items->first(function ($i) use ($product, $variant) {
+                            return $i->product_id === $product->id && $i->product_variant_id === $variant->id;
+                        });
+                        if (! $item) {
+                            $item = $promo->items->first(function ($i) use ($product) {
+                                return $i->product_id === $product->id && is_null($i->product_variant_id);
+                            });
+                        }
+                        if ($item) {
+                            $vAppliedPromo = $promo;
+                            $vAppliedItem = $item;
+                            break;
+                        }
+                    }
+                }
+
+                if ($vAppliedPromo) {
+                    $vDiscountType = $vAppliedItem ? ($vAppliedItem->discount_type ?? $vAppliedPromo->discount_type) : $vAppliedPromo->discount_type;
+                    $vDiscountValue = $vAppliedItem ? ($vAppliedItem->discount_value ?? $vAppliedPromo->discount_value) : $vAppliedPromo->discount_value;
+                    $vPromoPrice = $vAppliedItem?->promo_price;
+
+                    if ($vPromoPrice && $vPromoPrice > 0) {
+                        $vFinalPrice = (float) $vPromoPrice;
+                    } else {
+                        if ($vDiscountType === 'percentage') {
+                            $vFinalPrice = $vPrice - ($vPrice * ($vDiscountValue / 100));
+                        } elseif ($vDiscountType === 'fixed') {
+                            $vFinalPrice = $vPrice - $vDiscountValue;
+                        } else {
+                            $vFinalPrice = $vPrice;
+                        }
+                    }
+
+                    $vFinalPrice = max(0, $vFinalPrice);
+
+                    if ($vFinalPrice < $vPrice) {
+                        $variant->is_promo = true;
+                        $variant->promo_price = $vFinalPrice;
+                        $variant->original_price = $vPrice;
+                        if ($vPrice > 0) {
+                            $variant->discount_percentage = round((($vPrice - $vFinalPrice) / $vPrice) * 100);
+                        } else {
+                            $variant->discount_percentage = 0;
+                        }
+                    } else {
+                        $variant->is_promo = false;
+                        $variant->promo_price = $vPrice;
+                        $variant->original_price = $vPrice;
+                        $variant->discount_percentage = 0;
+                    }
+                } else {
+                    $variant->is_promo = false;
+                    $variant->promo_price = $vPrice;
+                    $variant->original_price = $vPrice;
+                    $variant->discount_percentage = 0;
+                }
+            }
+
+            // Aggregate: find the cheapest variant to display on the base product card
+            if ($product->variants->isNotEmpty()) {
+                $promoVariants = $product->variants->filter(function ($v) {
+                    return $v->is_promo;
+                });
+
+                if ($promoVariants->isNotEmpty()) {
+                    // Find the cheapest promo variant by promo_price
+                    $cheapestPromoVariant = $promoVariants->sortBy('promo_price')->first();
+
+                    $product->is_promo = true;
+                    $product->promo_price = $cheapestPromoVariant->promo_price;
+                    $product->original_price = $cheapestPromoVariant->original_price;
+                    $product->discount_percentage = $cheapestPromoVariant->discount_percentage;
+                } elseif ($product->is_promo) {
+                    // Keep base promo details (it's already calculated and variants are not on promo)
+                } else {
+                    // Find the cheapest variant overall
+                    $cheapestVariant = $product->variants->sortBy(function ($v) {
+                        return $v->productPrice?->price ?? 0;
+                    })->first();
+
+                    if ($cheapestVariant) {
+                        $vPrice = $cheapestVariant->productPrice?->price ?? $basePrice;
+                        $product->is_promo = false;
+                        $product->promo_price = $vPrice;
+                        $product->original_price = $vPrice;
+                        $product->discount_percentage = 0;
+                    }
+                }
+            }
+        }
+
+        return $product;
+    }
+
+    /**
+     * Display the storefront search/catalog listing page.
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('q');
+        $categoryId = $request->input('category');
+        $sort = $request->input('sort', 'relevance');
+        $minPrice = $request->input('min_price');
+        $maxPrice = $request->input('max_price');
+        $promoOnly = $request->boolean('promo');
+
+        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
+            ->orderBy('order')
+            ->get();
+
+        // Build product query
+        $productsQuery = Product::with([
+            'category',
+            'productPrice',
+            'productStock',
+            'images',
+            'variants.productPrice',
+            'variants.options',
+            'variants.productStock',
+        ])
+            ->where('active', true);
+
+        // Filter by keyword
+        if ($query) {
+            $productsQuery->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                    ->orWhere('description', 'like', "%{$query}%")
+                    ->orWhereHas('category', function ($qc) use ($query) {
+                        $qc->where('name', 'like', "%{$query}%");
+                    });
+            });
+        }
+
+        // Filter by category
+        if ($categoryId) {
+            $categoryIds = is_array($categoryId) ? $categoryId : [$categoryId];
+            $uuids = [];
+            $slugs = [];
+
+            foreach ($categoryIds as $cat) {
+                if (is_string($cat)) {
+                    $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $cat);
+                    if ($isUuid) {
+                        $uuids[] = $cat;
+                    } else {
+                        $slugs[] = $cat;
+                    }
+                }
+            }
+
+            $productsQuery->where(function ($q) use ($uuids, $slugs) {
+                if (! empty($uuids)) {
+                    $q->whereIn('category_id', $uuids);
+                }
+                if (! empty($slugs)) {
+                    $q->orWhereHas('category', function ($sub) use ($slugs) {
+                        $sub->whereIn('slug', $slugs);
+                    });
+                }
+            });
+        }
+
+        // Retrieve active promotions to map onto products dynamically
+        $activePromotions = Promotion::with(['items'])
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->get();
+
+        // Retrieve all filtered products first, apply promotion mapping
+        $productsCollection = $productsQuery->get();
+
+        foreach ($productsCollection as $p) {
+            $this->applyPromotionsToProduct($p, $activePromotions);
+        }
+
+        // Apply filters that depend on promotion prices (like promoOnly)
+        if ($promoOnly) {
+            $productsCollection = $productsCollection->filter(function ($p) {
+                return $p->is_promo;
+            });
+        }
+
+        // Re-filter by actual promo/original price if prices were requested
+        if ($minPrice || $maxPrice) {
+            $productsCollection = $productsCollection->filter(function ($p) use ($minPrice, $maxPrice) {
+                $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+                if ($minPrice && $price < $minPrice) {
+                    return false;
+                }
+                if ($maxPrice && $price > $maxPrice) {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        // Apply sorting on the mapped collection
+        if ($sort === 'price_asc') {
+            $productsCollection = $productsCollection->sortBy(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'price_desc') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'popular') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                // Deterministic mock popularity score using crc32 of the product name
+                return crc32($p->name) % 1000;
+            });
+        } elseif ($sort === 'latest') {
+            $productsCollection = $productsCollection->sortByDesc('created_at');
+        } else {
+            // Default: relevance
+            if ($query) {
+                $productsCollection = $productsCollection->sortByDesc(function ($p) use ($query) {
+                    $nameLower = strtolower($p->name);
+                    $queryLower = strtolower($query);
+                    if (str_starts_with($nameLower, $queryLower)) {
+                        return 2;
+                    }
+                    if (str_contains($nameLower, $queryLower)) {
+                        return 1;
+                    }
+
+                    return 0;
+                });
+            } else {
+                $productsCollection = $productsCollection->sortByDesc('created_at');
+            }
+        }
+
+        // Manually paginate the collection
+        $page = request()->input('page', 1);
+        $perPage = 16;
+        $total = $productsCollection->count();
+
+        $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $productsPaginator = new LengthAwarePaginator(
+            $paginatedItems,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/Search', [
+            'categories' => $categories,
+            'products' => $productsPaginator,
+            'filters' => [
+                'q' => $query,
+                'category' => $categoryId,
+                'sort' => $sort,
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
+                'promo' => $promoOnly,
+            ],
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
         ]);
     }
 

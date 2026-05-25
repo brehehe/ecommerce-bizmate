@@ -147,10 +147,21 @@
         );
     }
 
+    // Sync search input state with current URL query params
+    $effect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q') || urlParams.get('search') || '';
+        if (q) {
+            searchQuery = q;
+        }
+    });
+
     function handleSearch(e: Event) {
         e.preventDefault();
         if (searchQuery.trim()) {
-            router.get('/', { search: searchQuery });
+            router.get('/search', { q: searchQuery });
+        } else {
+            router.get('/search');
         }
     }
 

@@ -203,16 +203,18 @@
     function flattenProductsWithVariants(productsList: any[]) {
         if (!productsList) return [];
         let items: any[] = [];
-        productsList.forEach(p => {
+        productsList.forEach((p) => {
             if (!p.variants || p.variants.length === 0) {
                 items.push({ ...p });
             } else {
-                p.variants.forEach(v => {
+                p.variants.forEach((v) => {
                     let item = { ...p };
                     if (v.product_price) {
                         item.product_price = v.product_price;
                     }
-                    const optionNames = v.options ? v.options.map(o => o.name).join(' - ') : '';
+                    const optionNames = v.options
+                        ? v.options.map((o) => o.name).join(' - ')
+                        : '';
                     if (optionNames) {
                         item.name = `${item.name} - ${optionNames}`;
                     }
@@ -234,7 +236,7 @@
     // Derived product lists
     const flashSaleProducts = $derived(
         activeFlashSale
-            ? (activeFlashSale.items?.length > 0 
+            ? activeFlashSale.items?.length > 0
                 ? activeFlashSale.items.map((item) => {
                       let p = { ...item.product }; // Clone to avoid mutating state
                       if (item.variant) {
@@ -242,7 +244,9 @@
                               p.product_price = item.variant.product_price;
                           }
                           const optionNames = item.variant.options
-                              ? item.variant.options.map((o) => o.name).join(' - ')
+                              ? item.variant.options
+                                    .map((o) => o.name)
+                                    .join(' - ')
                               : '';
                           if (optionNames) {
                               p.name = `${p.name} - ${optionNames}`;
@@ -307,8 +311,8 @@
                           discountPercent || randomDiscount();
                       p.promo_stock = p.product_stock?.stock ?? 0;
                       return p;
-                  }))
-            : []
+                  })
+            : [],
     );
     const bestSellerProducts = $derived(newProducts.slice(0, 10));
 
@@ -477,11 +481,25 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 2: QUICK ACCESS STRIPS (Shopee/Tokped style)
 ═══════════════════════════════════════════════════ -->
-    <section class="bg-white mt-2 px-3 sm:px-5 lg:px-8 py-3">
+    <!-- <section class="bg-white mt-2 px-3 sm:px-5 lg:px-8 py-3">
         <div class="max-w-6xl mx-auto">
             <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                {#each [{ icon: 'ti-bolt', label: 'Flash Sale', color: '#ff6b6b' }, { icon: 'ti-truck', label: 'Gratis Ongkir', color: '#1dd1a1' }, { icon: 'ti-gift', label: 'Voucher', color: '#a29bfe' }, { icon: 'ti-cash', label: 'COD', color: '#fd79a8' }, { icon: 'ti-refresh', label: 'Retur Mudah', color: '#fdcb6e' }, { icon: 'ti-star', label: 'Best Seller', color: '#e17055' }, { icon: 'ti-sparkles', label: 'New Arrival', color: '#74b9ff' }, { icon: 'ti-tag', label: 'Flash Deals', color: '#6c5ce7' }] as item}
+                {#each [
+                    { icon: 'ti-layout-grid', label: 'Kategori', color: '#ff6b6b', target: 'categories-section' },
+                    { icon: 'ti-truck', label: 'Gratis Ongkir', color: '#1dd1a1' },
+                    { icon: 'ti-gift', label: 'Voucher', color: '#a29bfe' },
+                    { icon: 'ti-cash', label: 'COD', color: '#fd79a8' },
+                    { icon: 'ti-refresh', label: 'Retur Mudah', color: '#fdcb6e' },
+                    { icon: 'ti-star', label: 'Best Seller', color: '#e17055', target: 'bestsellers-section' },
+                    { icon: 'ti-sparkles', label: 'New Arrival', color: '#74b9ff', target: 'recommendations-section' },
+                    { icon: 'ti-tag', label: 'Flash Deals', color: '#6c5ce7', target: 'bestsellers-section' }
+                ] as item}
                     <button
+                        onclick={() => {
+                            if (item.target) {
+                                document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        }}
                         class="flex flex-col items-center gap-1.5 py-3 px-1 hover:bg-slate-50 rounded-xl transition group"
                     >
                         <div
@@ -498,13 +516,16 @@
                 {/each}
             </div>
         </div>
-    </section>
+    </section> -->
 
     <!-- ═══════════════════════════════════════════════════
      SECTION 3: KATEGORI
 ═══════════════════════════════════════════════════ -->
     {#if categories.length > 0}
-        <section class="bg-white mt-2 px-3 sm:px-5 lg:px-8 py-4">
+        <section
+            id="categories-section"
+            class="bg-white mt-2 px-3 sm:px-5 lg:px-8 py-4"
+        >
             <div class="max-w-6xl mx-auto">
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-4">
@@ -571,168 +592,6 @@
     {/if}
 
     <!-- ═══════════════════════════════════════════════════
-     SECTION 4: FLASH SALE
-═══════════════════════════════════════════════════ -->
-    {#if activeFlashSale}
-    <section class="mt-2 px-3 sm:px-5 lg:px-8">
-        <div
-            class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden shadow-sm"
-        >
-            <!-- Flash Sale Header -->
-            <div
-                class="flex items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3 border-b border-slate-100 min-w-0 gap-2"
-                style="background: linear-gradient(135deg, {primary}, {secondary});"
-            >
-                <div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
-                    <span
-                        class="font-outfit font-black text-xs sm:text-base md:text-lg text-white flex items-center gap-1 sm:gap-2 shrink-0"
-                    >
-                        <i class="ti ti-bolt-filled animate-pulse"></i> Flash Sale
-                    </span>
-                    <!-- Countdown -->
-                    <div
-                        class="flex items-center gap-0.5 sm:gap-1 bg-black/35 rounded-xl px-1.5 py-1 sm:px-3 sm:py-1.5 backdrop-blur-sm shrink-0"
-                    >
-                        <span
-                            class="text-white text-[9px] font-bold mr-1 hidden sm:inline"
-                            >Berakhir dalam</span
-                        >
-                        {#each [countdown.h, countdown.m, countdown.s] as unit, ui}
-                            {#if ui > 0}<span
-                                    class="text-white/60 font-bold text-xs"
-                                    >:</span
-                                >{/if}
-                            <span
-                                class="bg-white font-black text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md min-w-[20px] sm:min-w-[26px] text-center tabular-nums"
-                                style="color: {primary};"
-                            >
-                                {unit}
-                            </span>
-                        {/each}
-                    </div>
-                </div>
-                <a
-                    href="#"
-                    class="text-white/90 text-[10px] sm:text-xs font-bold flex items-center gap-0.5 sm:gap-1 hover:text-white transition shrink-0"
-                >
-                    Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
-                </a>
-            </div>
-
-            <!-- Flash Sale Products (horizontal scroll) -->
-            <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
-                <div
-                    class="flex gap-4 {flashSaleProducts.length < 4
-                        ? 'justify-start sm:justify-center w-full'
-                        : ''}"
-                    style="width: max-content; min-width: 100%;"
-                >
-                    {#if flashSaleProducts.length > 0}
-                        {#each flashSaleProducts as product}
-                            {@const img = getProductImage(product)}
-                            {@const price = product.is_promo
-                                ? product.promo_price
-                                : (product.product_price?.price ?? 150000)}
-                            {@const disc = product.is_promo
-                                ? product.discount_percentage
-                                : randomDiscount()}
-                            {@const ori = product.is_promo
-                                ? (product.product_price?.price ?? price)
-                                : fakeOriginalPrice(price, disc)}
-                            <Link
-                                href="/products/{product.slug || product.id}"
-                                prefetch
-                                class="w-36 sm:w-40 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0"
-                            >
-                                <div
-                                    class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
-                                >
-                                    {#if img}
-                                        <img
-                                            src={img}
-                                            alt={product.name}
-                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                            onerror={(e) => {
-                                                e.currentTarget.src =
-                                                    '/noimage/image.png';
-                                            }}
-                                        />
-                                    {:else}
-                                        <img
-                                            src="/noimage/image.png"
-                                            alt="No Image"
-                                            class="w-full h-full object-cover"
-                                        />
-                                    {/if}
-                                    <span
-                                        class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                        style="background-color: {secondary};"
-                                    >
-                                        -{disc}%
-                                    </span>
-                                </div>
-                                <div class="p-2.5">
-                                    <p
-                                        class="text-[11px] text-slate-700 leading-tight line-clamp-2 mb-1.5 font-medium"
-                                    >
-                                        {product.name}
-                                    </p>
-                                    <p
-                                        class="text-sm font-black"
-                                        style="color: {primary};"
-                                    >
-                                        {formatPrice(price)}
-                                    </p>
-                                    <p
-                                        class="text-[10px] text-slate-400 line-through"
-                                    >
-                                        {formatPrice(ori)}
-                                    </p>
-                                    <!-- Progress bar -->
-                                    <div
-                                        class="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden"
-                                    >
-                                        <div
-                                            class="h-full rounded-full"
-                                            style="width: 100%; background: linear-gradient(90deg, {primary}, {secondary});"
-                                        ></div>
-                                    </div>
-                                    <p
-                                        class="text-[9px] font-bold mt-0.5"
-                                        style="color: {secondary};"
-                                    >
-                                        {product.is_promo
-                                            ? `Tersisa ${product.promo_stock} Stok`
-                                            : 'Hampir Habis!'}
-                                    </p>
-                                </div>
-                            </Link>
-                        {/each}
-                    {:else}
-                        {#each Array(5) as _, i}
-                            <div
-                                class="w-36 sm:w-40 bg-slate-100 rounded-xl overflow-hidden shrink-0 animate-pulse"
-                            >
-                                <div class="aspect-square bg-slate-200"></div>
-                                <div class="p-2.5 space-y-2">
-                                    <div class="h-3 bg-slate-200 rounded"></div>
-                                    <div
-                                        class="h-3 bg-slate-200 rounded w-2/3"
-                                    ></div>
-                                    <div
-                                        class="h-3 bg-slate-200 rounded w-1/2"
-                                    ></div>
-                                </div>
-                            </div>
-                        {/each}
-                    {/if}
-                </div>
-            </div>
-        </div>
-    </section>
-    {/if}
-
-    <!-- ═══════════════════════════════════════════════════
      SECTION 5: SPECIAL DEAL BANNERS (4 small promo cards)
 ═══════════════════════════════════════════════════ -->
     <section class="mt-2 px-3 sm:px-5 lg:px-8">
@@ -769,7 +628,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 6: PRODUK TERLARIS
 ═══════════════════════════════════════════════════ -->
-    <section class="mt-2 px-3 sm:px-5 lg:px-8">
+    <section id="bestsellers-section" class="mt-2 px-3 sm:px-5 lg:px-8">
         <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
             <div
                 class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100"
@@ -815,10 +674,12 @@
                     {#each bestSellerProducts.length > 0 ? bestSellerProducts : Array(8) as product, i}
                         {@const isReal = bestSellerProducts.length > 0}
                         {@const img = isReal ? getProductImage(product) : null}
+                        {@const isPromo = isReal && product.is_promo}
                         {@const price = isReal
-                            ? (product.product_price?.price ?? 0)
+                            ? (isPromo ? product.promo_price : (product.product_price?.price ?? 0))
                             : 0}
-                        {@const disc = randomDiscount()}
+                        {@const originalPrice = isReal && isPromo ? product.original_price : 0}
+                        {@const discountPercentage = isReal && isPromo ? product.discount_percentage : 0}
                         {@const rating = fakeRating()}
                         {@const sold = fakeSold()}
                         <Link
@@ -826,7 +687,7 @@
                                 ? `/products/${product.slug || product.id}`
                                 : '#'}
                             prefetch
-                            class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0"
+                            class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0 flex flex-col h-full"
                         >
                             <div
                                 class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
@@ -852,12 +713,12 @@
                                         class="w-full h-full object-cover"
                                     />
                                 {/if}
-                                {#if isReal && disc >= 20}
+                                {#if isReal && isPromo && discountPercentage > 0}
                                     <span
                                         class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md"
                                         style="background-color: {secondary};"
                                     >
-                                        -{disc}%
+                                        -{discountPercentage}%
                                     </span>
                                 {/if}
                                 <!-- Rank badge -->
@@ -874,41 +735,74 @@
                                     </span>
                                 {/if}
                             </div>
-                            <div class="p-3">
+                            <div class="p-3 flex-1 flex flex-col">
                                 {#if isReal}
-                                    <p
-                                        class="text-xs text-slate-700 leading-tight line-clamp-2 mb-1.5 font-medium"
-                                    >
-                                        {product.name}
-                                    </p>
-                                    <p
-                                        class="text-sm font-black"
-                                        style="color: {secondary};"
-                                    >
-                                        {formatPrice(price)}
-                                    </p>
-                                    <div class="flex items-center gap-1 mt-1.5">
-                                        <i
-                                            class="ti ti-star-filled text-amber-400 text-[10px]"
-                                        ></i>
+                                    <div>
+                                        <p
+                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                            style="color: {primary};"
+                                        >
+                                            {product.category?.name || 'PRODUK'}
+                                        </p>
+                                        <p
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                            style="color: {primary};"
+                                        >
+                                            {product.name}
+                                        </p>
+                                        <div
+                                            class="flex items-center gap-1 mt-1"
+                                        >
+                                            <i
+                                                class="ti ti-star-filled text-amber-500 text-[10px]"
+                                            ></i>
+                                            <span
+                                                class="text-[10px] text-slate-500 font-bold"
+                                                >{rating}</span
+                                            >
+                                        </div>
+                                        <hr class="border-slate-100 my-2" />
+                                        <div class="mb-3">
+                                            <p
+                                                class="text-sm sm:text-base font-black leading-tight"
+                                                style="color: {secondary};"
+                                            >
+                                                {formatPrice(price)}
+                                            </p>
+                                            {#if isPromo && originalPrice > price}
+                                                <p
+                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                >
+                                                    {formatPrice(originalPrice)}
+                                                </p>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                    <div class="mt-auto pt-3">
                                         <span
-                                            class="text-[10px] text-slate-500 font-bold"
-                                            >{rating}</span
+                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                            style="background-color: {primary};"
                                         >
-                                        <span class="text-[10px] text-slate-400"
-                                            >| {sold}+ terjual</span
-                                        >
+                                            <i
+                                                class="ti ti-shopping-cart text-xs sm:text-sm"
+                                            ></i>
+                                            + KERANJANG
+                                        </span>
                                     </div>
                                 {:else}
-                                    <div class="space-y-1.5 animate-pulse">
+                                    <div
+                                        class="space-y-1.5 animate-pulse flex-1 flex flex-col justify-between"
+                                    >
+                                        <div class="space-y-1.5">
+                                            <div
+                                                class="h-3 bg-slate-200 rounded w-full"
+                                            ></div>
+                                            <div
+                                                class="h-3 bg-slate-200 rounded w-3/4"
+                                            ></div>
+                                        </div>
                                         <div
-                                            class="h-3 bg-slate-200 rounded w-full"
-                                        ></div>
-                                        <div
-                                            class="h-3 bg-slate-200 rounded w-3/4"
-                                        ></div>
-                                        <div
-                                            class="h-4 bg-slate-200 rounded w-1/2 mt-2"
+                                            class="h-8 bg-slate-200 rounded-xl w-full mt-2"
                                         ></div>
                                     </div>
                                 {/if}
@@ -941,12 +835,10 @@
         </div>
     </section>
 
-
-
     <!-- ═══════════════════════════════════════════════════
      SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)
 ═══════════════════════════════════════════════════ -->
-    <section class="mt-2 px-3 sm:px-5 lg:px-8">
+    <section id="recommendations-section" class="mt-2 px-3 sm:px-5 lg:px-8">
         <div
             class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden shadow-sm"
         >
@@ -990,17 +882,19 @@
                     {#each recommendedProducts.length > 0 ? recommendedProducts : Array(10) as product, i}
                         {@const isReal = recommendedProducts.length > 0}
                         {@const img = isReal ? getProductImage(product) : null}
+                        {@const isPromo = isReal && product.is_promo}
                         {@const price = isReal
-                            ? (product.product_price?.price ?? 0)
+                            ? (isPromo ? product.promo_price : (product.product_price?.price ?? 0))
                             : 0}
-                        {@const disc = randomDiscount()}
+                        {@const originalPrice = isReal && isPromo ? product.original_price : 0}
+                        {@const discountPercentage = isReal && isPromo ? product.discount_percentage : 0}
                         {@const rating = fakeRating()}
                         <Link
                             href={isReal
                                 ? `/products/${product.slug || product.id}`
                                 : '#'}
                             prefetch
-                            class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer"
+                            class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer flex flex-col h-full"
                         >
                             <div
                                 class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
@@ -1026,43 +920,83 @@
                                         class="w-full h-full object-cover"
                                     />
                                 {/if}
-                                {#if isReal && disc >= 15}
+                                {#if isReal && isPromo && discountPercentage > 0}
                                     <span
                                         class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
                                         style="background-color: {secondary};"
                                     >
-                                        -{disc}%
+                                        -{discountPercentage}%
                                     </span>
                                 {/if}
                             </div>
-                            <div class="p-2.5 sm:p-3">
+                            <div class="p-2.5 sm:p-3 flex-1 flex flex-col">
                                 {#if isReal}
-                                    <p
-                                        class="text-[11px] sm:text-xs text-slate-700 leading-tight line-clamp-2 mb-1.5"
-                                    >
-                                        {product.name}
-                                    </p>
-                                    <p
-                                        class="text-sm font-black"
-                                        style="color: {secondary};"
-                                    >
-                                        {formatPrice(price)}
-                                    </p>
-                                    <div class="flex items-center gap-1 mt-1">
-                                        <i
-                                            class="ti ti-star-filled text-amber-400 text-[10px]"
-                                        ></i>
-                                        <span class="text-[10px] text-slate-500"
-                                            >{rating}</span
+                                    <div>
+                                        <p
+                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                            style="color: {primary};"
                                         >
+                                            {product.category?.name || 'PRODUK'}
+                                        </p>
+                                        <p
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                            style="color: {primary};"
+                                        >
+                                            {product.name}
+                                        </p>
+                                        <div
+                                            class="flex items-center gap-1 mt-1"
+                                        >
+                                            <i
+                                                class="ti ti-star-filled text-amber-500 text-[10px]"
+                                            ></i>
+                                            <span
+                                                class="text-[10px] text-slate-500 font-bold"
+                                                >{rating}</span
+                                            >
+                                        </div>
+                                        <hr class="border-slate-100 my-2" />
+                                        <div class="mb-3">
+                                            <p
+                                                class="text-sm sm:text-base font-black leading-tight"
+                                                style="color: {secondary};"
+                                            >
+                                                {formatPrice(price)}
+                                            </p>
+                                            {#if isPromo && originalPrice > price}
+                                                <p
+                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                >
+                                                    {formatPrice(originalPrice)}
+                                                </p>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                    <div class="mt-auto pt-3">
+                                        <span
+                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                            style="background-color: {primary};"
+                                        >
+                                            <i
+                                                class="ti ti-shopping-cart text-xs sm:text-sm"
+                                            ></i>
+                                            + KERANJANG
+                                        </span>
                                     </div>
                                 {:else}
-                                    <div class="space-y-1.5 animate-pulse">
+                                    <div
+                                        class="space-y-1.5 animate-pulse flex-1 flex flex-col justify-between"
+                                    >
+                                        <div class="space-y-1.5">
+                                            <div
+                                                class="h-3 bg-slate-200 rounded"
+                                            ></div>
+                                            <div
+                                                class="h-4 bg-slate-200 rounded w-2/3"
+                                            ></div>
+                                        </div>
                                         <div
-                                            class="h-3 bg-slate-200 rounded"
-                                        ></div>
-                                        <div
-                                            class="h-4 bg-slate-200 rounded w-2/3"
+                                            class="h-8 bg-slate-200 rounded-xl w-full mt-2"
                                         ></div>
                                     </div>
                                 {/if}
@@ -1214,7 +1148,7 @@
         -ms-overflow-style: none; /* IE and Edge */
         scrollbar-width: none; /* Firefox */
     }
-    
+
     /* Premium horizontal scrollbar styling */
     .scrollbar-thin::-webkit-scrollbar {
         height: 6px;

@@ -23,9 +23,9 @@
                         ? 'opacity-50 cursor-not-allowed pointer-events-none'
                         : ''}"
                 >
-                    {#if link.label.includes('Previous')}
+                    {#if link.label.toLowerCase().includes('previous') || link.label.toLowerCase().includes('prev') || link.label.includes('&laquo;')}
                         <i class="ti ti-chevron-left text-sm"></i>
-                    {:else if link.label.includes('Next')}
+                    {:else if link.label.toLowerCase().includes('next') || link.label.includes('&raquo;')}
                         <i class="ti ti-chevron-right text-sm"></i>
                     {:else}
                         {@html link.label}

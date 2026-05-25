@@ -104,7 +104,7 @@
         }));
         for (const variation of product.variations ?? []) {
             for (const opt of variation.options ?? []) {
-                const img = getOptionImage(opt.id);
+                const img = getOptionImage(opt.id, variation.name);
                 if (img) {
                     slides.push({
                         src: img,
@@ -234,7 +234,8 @@
         selectedOptions = { ...selectedOptions, [variationId]: optionId };
         qty = currentMinPurchase; // reset qty
         // Update main image if this option's variant has an image
-        const optImg = getOptionImage(optionId);
+        const variation = product.variations?.find((v: any) => String(v.id) === variationId);
+        const optImg = getOptionImage(optionId, variation?.name || '');
         if (optImg) variantOverride = optImg;
         // Jump mobile slider to this variant's slide
         const idx = combinedSlides.findIndex(
@@ -268,7 +269,10 @@
         );
     }
 
-    function getOptionImage(optionId: number): string | null {
+    function getOptionImage(optionId: number, variationName: string): string | null {
+        const lowerName = variationName.toLowerCase();
+        const isColorVariation = lowerName.includes('warna') || lowerName.includes('color') || lowerName.includes('colour');
+
         // 1) Option itself may carry an image
         for (const variation of product.variations ?? []) {
             const opt = variation.options?.find(
@@ -276,9 +280,14 @@
             );
             if (opt?.image) return formatImagePath(opt.image);
         }
-        // 2) Fall back to variant image
-        const varImg = getVariantForOption(optionId)?.image;
-        return varImg ? formatImagePath(varImg) : null;
+
+        // 2) Fall back to variant image only for color variations
+        if (isColorVariation) {
+            const varImg = getVariantForOption(optionId)?.image;
+            return varImg ? formatImagePath(varImg) : null;
+        }
+
+        return null;
     }
 
     /** Is this option in-stock (has at least one variant with stock or unlimited)? */
@@ -301,13 +310,25 @@
     // ═══════════════════════════════════════
     const basePrice = $derived(product.product_price?.price ?? 0);
     const currentPrice = $derived(
-        matchingVariant?.product_price?.price ?? basePrice,
+        matchingVariant
+            ? (matchingVariant.is_promo ? Number(matchingVariant.promo_price) : Number(matchingVariant.product_price?.price ?? basePrice))
+            : (product.is_promo ? Number(product.promo_price) : Number(basePrice))
+    );
+    const originalPrice = $derived(
+        matchingVariant
+            ? (matchingVariant.is_promo ? Number(matchingVariant.original_price) : null)
+            : (product.is_promo ? Number(product.original_price) : null)
+    );
+    const discountPercentage = $derived(
+        matchingVariant
+            ? (matchingVariant.is_promo ? Number(matchingVariant.discount_percentage) : 0)
+            : (product.is_promo ? Number(product.discount_percentage) : 0)
     );
 
     function fmt(price: any): string {
         const n = Number(price);
         if (!n) return 'Hubungi Kami';
-        return 'Rp' + n.toLocaleString('id-ID');
+        return 'Rp ' + n.toLocaleString('id-ID');
     }
 
     // ═══════════════════════════════════════
@@ -888,6 +909,17 @@
                                 >
                                     {fmt(currentPrice)}
                                 </span>
+                                {#if originalPrice && originalPrice > currentPrice}
+                                    <span class="text-sm sm:text-base text-slate-400 line-through font-medium">
+                                        {fmt(originalPrice)}
+                                    </span>
+                                    <span
+                                        class="text-xs font-black px-2 py-0.5 rounded-md text-white shadow-sm"
+                                        style="background-color: {secondary};"
+                                    >
+                                        -{discountPercentage}%
+                                    </span>
+                                {/if}
                             </div>
                             {#if hasVariations && !fullySelected}
                                 <p class="text-xs text-slate-400 mt-1.5">
@@ -974,7 +1006,7 @@
                                 <!-- Option buttons -->
                                 <div class="flex flex-wrap gap-2">
                                     {#each variation.options as opt}
-                                        {@const optImg = getOptionImage(opt.id)}
+                                        {@const optImg = getOptionImage(opt.id, variation.name)}
                                         {@const available = isOptionAvailable(
                                             opt.id,
                                         )}
@@ -1278,13 +1310,17 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {#each relatedProducts as rp}
                     {@const ri = relImg(rp)}
-                    {@const price = rp.product_price?.price ?? 0}
+                    {@const isPromo = rp.is_promo}
+                    {@const price = isPromo ? rp.promo_price : (rp.product_price?.price ?? 0)}
+                    {@const originalPrice = isPromo ? rp.original_price : 0}
+                    {@const discountPercentage = isPromo ? rp.discount_percentage : 0}
+                    {@const rating = (4.5 + ((rp.id || 0) % 6) * 0.1).toFixed(1)}
                     <Link
                         href="/products/{rp.slug || rp.id}"
                         prefetch
-                        class="group bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-md overflow-hidden transition cursor-pointer"
+                        class="group bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-md overflow-hidden transition cursor-pointer flex flex-col h-full"
                     >
-                        <div class="aspect-square overflow-hidden">
+                        <div class="relative aspect-square overflow-hidden">
                             {#if ri}
                                 <img
                                     src={ri}
@@ -1302,25 +1338,70 @@
                                     class="w-full h-full object-cover"
                                 />
                             {/if}
-                        </div>
-                        <div class="p-3">
-                            <p
-                                class="text-xs text-slate-700 line-clamp-2 mb-1.5 font-medium leading-snug"
-                            >
-                                {rp.name}
-                            </p>
-                            {#if price > 0}
-                                <p
-                                    class="text-sm font-black"
-                                    style="color:{secondary};"
+                            {#if isPromo && discountPercentage > 0}
+                                <span
+                                    class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                    style="background-color: {secondary};"
                                 >
-                                    {fmt(price)}
-                                </p>
-                            {:else}
-                                <p class="text-xs text-slate-400 font-semibold">
-                                    Hubungi Kami
-                                </p>
+                                    -{discountPercentage}%
+                                </span>
                             {/if}
+                        </div>
+                        <div class="p-3 flex-1 flex flex-col">
+                            <div>
+                                <p
+                                    class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                    style="color: {primary};"
+                                >
+                                    {rp.category?.name || 'PRODUK'}
+                                </p>
+                                <p
+                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                    style="color: {primary};"
+                                >
+                                    {rp.name}
+                                </p>
+                                <div class="flex items-center gap-1 mt-1">
+                                    <i
+                                        class="ti ti-star-filled text-amber-500 text-[10px]"
+                                    ></i>
+                                    <span
+                                        class="text-[10px] text-slate-500 font-bold"
+                                        >{rating}</span
+                                    >
+                                </div>
+                                <hr class="border-slate-100 my-2" />
+                                <div class="mb-3">
+                                    {#if price > 0}
+                                        <p
+                                            class="text-sm sm:text-base font-black leading-tight"
+                                            style="color: {secondary};"
+                                        >
+                                            {fmt(price)}
+                                        </p>
+                                        {#if isPromo && originalPrice > price}
+                                            <p
+                                                class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                            >
+                                                {fmt(originalPrice)}
+                                            </p>
+                                        {/if}
+                                    {:else}
+                                        <p class="text-xs text-slate-400 font-semibold">
+                                            Hubungi Kami
+                                        </p>
+                                    {/if}
+                                </div>
+                            </div>
+                            <div class="mt-auto pt-3">
+                                <span
+                                    class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                    style="background-color: {primary};"
+                                >
+                                    <i class="ti ti-shopping-cart text-xs sm:text-sm"></i>
+                                    + KERANJANG
+                                </span>
+                            </div>
                         </div>
                     </Link>
                 {/each}

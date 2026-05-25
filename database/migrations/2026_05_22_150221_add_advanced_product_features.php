@@ -80,7 +80,7 @@ return new class extends Migration
         Schema::table('products', function (Blueprint $table) {
             $table->dropColumn([
                 'brand', 'cost', 'stock_status', 'summary', 'description',
-                'weight', 'length', 'width', 'height', 'tax_enabled', 'tax_rate'
+                'weight', 'length', 'width', 'height', 'tax_enabled', 'tax_rate',
             ]);
         });
     }
