@@ -913,12 +913,14 @@
                                         >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
-                                        <p
-                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1 min-h-[2.5rem]"
-                                            style="color: {primary};"
-                                        >
-                                            {product.name}
-                                        </p>
+                                        <div class="h-[2.5rem] overflow-hidden mb-1">
+                                            <p
+                                                class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                style="color: {primary};"
+                                            >
+                                                {product.name}
+                                            </p>
+                                        </div>
                                         <div
                                             class="flex items-center gap-1 mt-1"
                                         >
@@ -1080,12 +1082,14 @@
                                         >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
-                                        <p
-                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1.5 min-h-[2.5rem]"
-                                            style="color: {primary};"
-                                        >
-                                            {product.name}
-                                        </p>
+                                        <div class="h-[2.5rem] overflow-hidden mb-1.5">
+                                            <p
+                                                class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                style="color: {primary};"
+                                            >
+                                                {product.name}
+                                            </p>
+                                        </div>
                                         <div class="mb-3">
                                             <p
                                                 class="text-sm sm:text-base font-black leading-tight"
