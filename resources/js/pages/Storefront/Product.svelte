@@ -2,6 +2,7 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import { fade } from 'svelte/transition';
+    import { showToast } from '@/utils/toast';
 
     let { product, relatedProducts = [], storeName = '' } = $props();
 
@@ -197,7 +198,7 @@
                 .catch(() => {});
         } else {
             navigator.clipboard.writeText(window.location.href);
-            alert('Tautan produk berhasil disalin ke papan klip!');
+            showToast('Tautan produk berhasil disalin ke papan klip!', 'success');
         }
     }
 
@@ -563,7 +564,7 @@
         }
 
         if (hasVariations && !fullySelected) {
-            alert('Pilih variasi terlebih dahulu');
+            showToast('Pilih variasi terlebih dahulu', 'error');
             return;
         }
 
@@ -573,10 +574,10 @@
             quantity: qty,
         }, {
             onSuccess: () => {
-                alert('Produk berhasil ditambahkan ke keranjang!');
+                showToast('Produk berhasil ditambahkan ke keranjang!', 'success');
             },
             onError: (errors: any) => {
-                alert('Gagal menambahkan produk ke keranjang');
+                showToast('Gagal menambahkan produk ke keranjang', 'error');
             }
         });
     }
@@ -588,7 +589,7 @@
         }
 
         if (hasVariations && !fullySelected) {
-            alert('Pilih variasi terlebih dahulu');
+            showToast('Pilih variasi terlebih dahulu', 'error');
             return;
         }
 
@@ -601,7 +602,7 @@
                 router.visit('/cart');
             },
             onError: (errors: any) => {
-                alert('Gagal memproses pembelian');
+                showToast('Gagal memproses pembelian', 'error');
             }
         });
     }
@@ -1633,7 +1634,7 @@
                         <button
                             onclick={() => {
                                 if (hasVariations && !fullySelected) {
-                                    alert('Pilih variasi terlebih dahulu');
+                                    showToast('Pilih variasi terlebih dahulu', 'error');
                                     return;
                                 }
                                 addToCart();
