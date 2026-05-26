@@ -385,12 +385,15 @@
         if (!showWholesalePrices) {
             return [];
         }
-        if (hasVariations && fullySelected && matchingVariant) {
-            const variantTiers =
-                matchingVariant.tier_prices || matchingVariant.tierPrices;
-            if (variantTiers && variantTiers.length > 0) {
-                return variantTiers;
+        if (hasVariations) {
+            if (fullySelected && matchingVariant) {
+                const variantTiers =
+                    matchingVariant.tier_prices || matchingVariant.tierPrices;
+                if (variantTiers && variantTiers.length > 0) {
+                    return variantTiers;
+                }
             }
+            return [];
         }
         return product.tier_prices || product.tierPrices || [];
     });
@@ -990,44 +993,6 @@
                         </div>
                     {/if}
 
-                    <!-- Mobile Wholesale Tier Prices Table -->
-                    {#if activeTierPrices && activeTierPrices.length > 0}
-                        <div class="md:hidden w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs my-3">
-                            <table class="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                        <th class="py-2.5 px-3.5 font-semibold">Min. Pembelian</th>
-                                        <th class="py-2.5 px-3.5 font-semibold text-right">Harga Satuan</th>
-                                        <th class="py-2.5 px-3.5 font-semibold text-right">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    {#each activeTierPrices as tier}
-                                        {@const isActive = activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
-                                        <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
-                                            <td class="py-3 px-3.5 font-semibold text-slate-700">
-                                                {tier.min_qty}+ pcs
-                                            </td>
-                                            <td class="py-3 px-3.5 font-black text-slate-800 text-right">
-                                                {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
-                                            </td>
-                                            <td class="py-3 px-3.5 text-right">
-                                                {#if isActive}
-                                                    <span 
-                                                        class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-100/60 animate-pulse"
-                                                    >
-                                                        <i class="ti ti-check-circle"></i> Terpakai
-                                                    </span>
-                                                {:else}
-                                                    <span class="text-[9px] text-slate-350 font-medium">Tersedia</span>
-                                                {/if}
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        </div>
-                    {/if}
 
                     <!-- Mobile Wholesale Promo Clash Alert -->
                     {#if isPromoActive && !shouldKeepTierPricesDuringPromo && hasWholesalePrices}
@@ -1298,40 +1263,34 @@
 
                     <!-- Desktop Wholesale Tier Prices Table -->
                     {#if activeTierPrices && activeTierPrices.length > 0}
-                        <div class="hidden md:block w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs my-4">
-                            <table class="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                        <th class="py-2.5 px-4 font-semibold">Min. Pembelian</th>
-                                        <th class="py-2.5 px-4 font-semibold text-right">Harga Satuan</th>
-                                        <!-- <th class="py-2.5 px-4 font-semibold text-right">Status</th> -->
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-50">
-                                    {#each activeTierPrices as tier}
-                                        {@const isActive = activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
-                                        <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
-                                            <td class="py-3 px-4 font-semibold text-slate-700">
-                                                {tier.min_qty}+ pcs
-                                            </td>
-                                            <td class="py-3 px-4 font-black text-slate-800 text-right">
-                                                {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
-                                            </td>
-                                            <!-- <td class="py-3 px-4 text-right">
-                                                {#if isActive}
-                                                    <span 
-                                                        class="inline-flex items-center gap-0.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-100/60 animate-pulse"
-                                                    >
-                                                        <i class="ti ti-check-circle"></i> Terpakai
-                                                    </span>
-                                                {:else}
-                                                    <span class="text-[9px] text-slate-350 font-medium">Tersedia</span>
-                                                {/if}
-                                            </td> -->
+                        <div class="hidden md:block w-full my-4">
+                            <div class="flex items-center gap-1.5 mb-2 text-xs font-bold text-slate-700">
+                                <i class="ti ti-tags text-brand-blueRoyal text-sm"></i>
+                                <span>Daftar Harga Grosir</span>
+                            </div>
+                            <div class="w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                            <th class="py-2.5 px-4 font-semibold">Min. Pembelian</th>
+                                            <th class="py-2.5 px-4 font-semibold text-right">Harga Satuan</th>
                                         </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-50">
+                                        {#each activeTierPrices as tier}
+                                            {@const isActive = (!hasVariations || fullySelected) && activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
+                                            <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
+                                                <td class="py-3 px-4 font-semibold text-slate-700">
+                                                    {tier.min_qty}+ pcs
+                                                </td>
+                                                <td class="py-3 px-4 font-black text-slate-800 text-right">
+                                                    {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     {/if}
 
@@ -2238,40 +2197,34 @@
 
                 <!-- Drawer Wholesale Tier Prices Table -->
                 {#if activeTierPrices && activeTierPrices.length > 0}
-                    <div class="w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs my-1">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                                    <th class="py-2.5 px-3.5 font-semibold">Min. Pembelian</th>
-                                    <th class="py-2.5 px-3.5 font-semibold text-right">Harga Satuan</th>
-                                    <th class="py-2.5 px-3.5 font-semibold text-right">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50">
-                                {#each activeTierPrices as tier}
-                                    {@const isActive = activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
-                                    <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
-                                        <td class="py-3 px-3.5 font-semibold text-slate-700">
-                                            {tier.min_qty}+ pcs
-                                        </td>
-                                        <td class="py-3 px-3.5 font-black text-slate-800 text-right">
-                                            {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
-                                        </td>
-                                        <td class="py-3 px-3.5 text-right">
-                                            {#if isActive}
-                                                <span 
-                                                    class="inline-flex items-center gap-0.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-100/60 animate-pulse"
-                                                >
-                                                    <i class="ti ti-check-circle"></i> Terpakai
-                                                </span>
-                                            {:else}
-                                                <span class="text-[9px] text-slate-350 font-medium">Tersedia</span>
-                                            {/if}
-                                        </td>
+                    <div class="w-full my-1 px-1">
+                        <div class="flex items-center gap-1.5 mb-2 text-xs font-bold text-slate-700">
+                            <i class="ti ti-tags text-brand-blueRoyal text-sm"></i>
+                            <span>Daftar Harga Grosir</span>
+                        </div>
+                        <div class="w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs">
+                            <table class="w-full text-left border-collapse text-[11px]">
+                                <thead>
+                                    <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                        <th class="py-2.5 px-3 font-semibold">Min. Pembelian</th>
+                                        <th class="py-2.5 px-3 font-semibold text-right">Harga Satuan</th>
                                     </tr>
-                                {/each}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {#each activeTierPrices as tier}
+                                        {@const isActive = (!hasVariations || fullySelected) && activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
+                                        <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
+                                            <td class="py-2.5 px-3 font-semibold text-slate-700">
+                                                {tier.min_qty}+ pcs
+                                            </td>
+                                            <td class="py-2.5 px-3 font-black text-slate-800 text-right">
+                                                {fmt(tier.price)} <span class="text-[9px] text-slate-400 font-normal">/pc</span>
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 {/if}
 
