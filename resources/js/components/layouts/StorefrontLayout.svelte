@@ -2,7 +2,7 @@
     import { page, router, Link } from '@inertiajs/svelte';
     import { slide, fade } from 'svelte/transition';
 
-    let { children, hideMobileHeader = false } = $props();
+    let { children, hideMobileHeader = false, hideMobileFooter = false } = $props();
 
     // Theme from settings
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
@@ -524,7 +524,7 @@
     </main>
 
     <!-- ====== FOOTER ====== -->
-    <footer class="bg-slate-900 text-slate-400 mt-16 py-6">
+    <footer class="{hideMobileFooter ? 'hidden md:block' : ''} bg-slate-900 text-slate-400 mt-16 py-6">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div
                 class="flex flex-col sm:flex-row items-center justify-between gap-4"

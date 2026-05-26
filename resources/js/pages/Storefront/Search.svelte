@@ -176,7 +176,7 @@
     <title>Cari Produk - {storeName || 'Toko Kami'}</title>
 </svelte:head>
 
-<StorefrontLayout hideMobileHeader={true}>
+<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
 
     <!-- ═══════════════════════════════════════════════════
      STICKY MOBILE TOP BAR (mobile only, replaces global header)
@@ -555,33 +555,32 @@
                     <!-- Infinite scroll sentinel + loading indicator -->
                     <div bind:this={sentinel} class="py-8 flex flex-col items-center justify-center gap-3">
                         {#if isLoadingMore}
-                            <!-- Loading spinner -->
-                            <div class="flex items-center gap-2.5">
-                                <div
-                                    class="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
-                                    style="border-color: {primary}40; border-top-color: {primary};"
-                                ></div>
-                                <span class="text-sm font-bold text-slate-500">Memuat Lebih Banyak...</span>
-                            </div>
-                            <!-- Skeleton cards preview -->
-                            <div class="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 opacity-50">
-                                {#each [1,2,3,4] as _}
-                                    <div class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
-                                        <div class="aspect-square bg-slate-100"></div>
-                                        <div class="p-3 space-y-2">
-                                            <div class="h-2 bg-slate-100 rounded w-1/2"></div>
-                                            <div class="h-3 bg-slate-100 rounded w-3/4"></div>
-                                            <div class="h-3 bg-slate-100 rounded w-1/3"></div>
-                                        </div>
-                                    </div>
-                                {/each}
-                            </div>
-                        {:else if !products.next_page_url && allProducts.length > 0}
-                            <!-- End of results -->
-                            <div class="flex items-center gap-3 text-slate-300">
-                                <div class="h-px flex-1 bg-slate-100"></div>
-                                <span class="text-xs font-bold uppercase tracking-wider">Semua produk ditampilkan</span>
-                                <div class="h-px flex-1 bg-slate-100"></div>
+                            <!-- Modern pulsing indicator (same as Home.svelte) -->
+                            <div
+                                class="flex items-center gap-2 mt-4 text-slate-500 font-medium text-xs sm:text-sm animate-pulse"
+                            >
+                                <svg
+                                    class="animate-spin h-5 w-5"
+                                    style="color: {primary};"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        class="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        stroke-width="4"
+                                    ></circle>
+                                    <path
+                                        class="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                </svg>
+                                Memuat lebih banyak...
                             </div>
                         {/if}
                     </div>
