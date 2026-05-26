@@ -287,9 +287,15 @@
             </form>
 
             <!-- Cart icon -->
-            <Link
-                href="#"
-                class="shrink-0 relative w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition"
+            <button
+                onclick={() => {
+                    if (auth) {
+                        router.visit('/cart');
+                    } else {
+                        window.dispatchEvent(new CustomEvent('open-login-modal'));
+                    }
+                }}
+                class="shrink-0 relative w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition cursor-pointer"
                 aria-label="Keranjang"
             >
                 <i class="ti ti-shopping-cart text-lg"></i>
@@ -301,24 +307,24 @@
                         {cartCount}
                     </span>
                 {/if}
-            </Link>
+            </button>
 
             <!-- Profile/Login icon -->
             {#if auth}
-                <Link
-                    href="/dashboard"
-                    class="shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-[10px] text-white"
+                <button
+                    onclick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('toggle-profile-dropdown')); }}
+                    class="shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-[10px] text-white cursor-pointer"
                 >
                     {auth.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
-                </Link>
+                </button>
             {:else}
-                <Link
-                    href="/login"
-                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition"
+                <button
+                    onclick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition cursor-pointer"
                     aria-label="Masuk"
                 >
                     <i class="ti ti-user-circle text-lg"></i>
-                </Link>
+                </button>
             {/if}
         </div>
 

@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page, router, Link } from '@inertiajs/svelte';
     import { slide, fade } from 'svelte/transition';
+    import { onMount } from 'svelte';
 
     let { children, hideMobileHeader = false, hideMobileFooter = false } = $props();
 
@@ -48,8 +49,15 @@
     // Profile dropdown
     let profileDropOpen = $state(false);
 
-    // Cart count (placeholder)
-    let cartCount = $state(0);
+    const cartCount = $derived((page.props as any).cartCount || 0);
+
+    function goToCart() {
+        if (auth) {
+            router.visit('/cart');
+        } else {
+            openLogin();
+        }
+    }
 
     // Login form
     let loginEmail = $state('');
@@ -70,6 +78,19 @@
         authModalOpen = true;
         loginError = '';
     }
+
+    onMount(() => {
+        const handleOpenLogin = () => openLogin();
+        const handleToggleDropdown = () => profileDropOpen = !profileDropOpen;
+        
+        window.addEventListener('open-login-modal', handleOpenLogin);
+        window.addEventListener('toggle-profile-dropdown', handleToggleDropdown);
+        
+        return () => {
+            window.removeEventListener('open-login-modal', handleOpenLogin);
+            window.removeEventListener('toggle-profile-dropdown', handleToggleDropdown);
+        };
+    });
 
     function openRegister() {
         authTab = 'register';
@@ -250,6 +271,7 @@
                 <div class="flex items-center gap-4 shrink-0">
                     <!-- Cart -->
                     <button
+                        onclick={goToCart}
                         class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center"
                         aria-label="Keranjang"
                     >
@@ -299,7 +321,7 @@
 
                             {#if profileDropOpen}
                                 <div
-                                    transition:slide={{ duration: 150 }}
+                                    transition:fade={{ duration: 150 }}
                                     class="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50"
                                 >
                                     <div class="p-3 border-b border-slate-100">
@@ -413,6 +435,7 @@
                 <div class="flex items-center gap-2 shrink-0">
                     <!-- Cart -->
                     <button
+                        onclick={goToCart}
                         class="relative text-white p-1.5"
                         aria-label="Keranjang"
                     >
@@ -448,53 +471,6 @@
             </div>
         {/if}
 
-        <!-- Mobile profile dropdown -->
-        {#if profileDropOpen && auth}
-            <div
-                transition:slide={{ duration: 150 }}
-                class="md:hidden bg-white border-t border-slate-100 shadow-lg"
-            >
-                <div
-                    class="p-4 border-b border-slate-100 flex items-center gap-3"
-                >
-                    <div
-                        class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white"
-                        style="background-color: {primary};"
-                    >
-                        {getInitials(auth.name)}
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-slate-800">
-                            {auth.name}
-                        </p>
-                        <p class="text-xs text-slate-400">{auth.email}</p>
-                    </div>
-                </div>
-                <div class="p-2">
-                    <Link
-                        href="/profile"
-                        prefetch
-                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                    >
-                        <i class="ti ti-user text-lg"></i> Profil Saya
-                    </Link>
-                    <Link
-                        href="/orders"
-                        prefetch
-                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                    >
-                        <i class="ti ti-package text-lg"></i> Pesanan Saya
-                    </Link>
-                    <button
-                        onclick={logout}
-                        class="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 rounded-xl transition"
-                    >
-                        <i class="ti ti-logout text-lg"></i> Keluar
-                    </button>
-                </div>
-            </div>
-        {/if}
-
         <!-- Mobile auth buttons (only if modal not used, shown for quick access below search) -->
         {#if !auth && !hideMobileHeader}
             <div
@@ -517,6 +493,52 @@
             </div>
         {/if}
     </header>
+
+    <!-- Mobile profile dropdown -->
+    {#if profileDropOpen && auth}
+        <div
+            class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl"
+        >
+            <div
+                class="p-4 border-b border-slate-100 flex items-center gap-3"
+            >
+                <div
+                    class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white"
+                    style="background-color: {primary};"
+                >
+                    {getInitials(auth.name)}
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-slate-800">
+                        {auth.name}
+                    </p>
+                    <p class="text-xs text-slate-400">{auth.email}</p>
+                </div>
+            </div>
+            <div class="p-2">
+                <Link
+                    href="/profile"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-user text-lg"></i> Profil Saya
+                </Link>
+                <Link
+                    href="/orders"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-package text-lg"></i> Pesanan Saya
+                </Link>
+                <button
+                    onclick={logout}
+                    class="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 rounded-xl transition"
+                >
+                    <i class="ti ti-logout text-lg"></i> Keluar
+                </button>
+            </div>
+        </div>
+    {/if}
 
     <!-- ====== MAIN CONTENT ====== -->
     <main class="flex-grow">

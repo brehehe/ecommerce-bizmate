@@ -15,6 +15,8 @@
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const cartCount = $derived(page.props.cartCount || 0);
+    const auth = $derived(page.props.auth?.user);
 
     // Filter states
     let searchQ = $state(filters.q || '');
@@ -274,20 +276,46 @@
                 </div>
             </form>
 
-            <!-- Filter button -->
+            <!-- Cart icon -->
             <button
-                onclick={() => showMobileFilters = true}
-                class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition relative"
-                aria-label="Filter"
+                onclick={() => {
+                    if (auth) {
+                        router.visit('/cart');
+                    } else {
+                        window.dispatchEvent(new CustomEvent('open-login-modal'));
+                    }
+                }}
+                class="shrink-0 relative w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition cursor-pointer"
+                aria-label="Keranjang"
             >
-                <i class="ti ti-adjustments-horizontal text-lg"></i>
-                {#if selectedCategories.length > 0 || minPrice || maxPrice || promoOnly}
+                <i class="ti ti-shopping-cart text-lg"></i>
+                {#if cartCount > 0}
                     <span
-                        class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
+                        class="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white"
                         style="background-color: {secondary};"
-                    ></span>
+                    >
+                        {cartCount}
+                    </span>
                 {/if}
             </button>
+
+            <!-- Profile/Login icon -->
+            {#if auth}
+                <button
+                    onclick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('toggle-profile-dropdown')); }}
+                    class="shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-[10px] text-white cursor-pointer"
+                >
+                    {auth.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                </button>
+            {:else}
+                <button
+                    onclick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition cursor-pointer"
+                    aria-label="Masuk"
+                >
+                    <i class="ti ti-user-circle text-lg"></i>
+                </button>
+            {/if}
         </div>
 
         <!-- Sort pills row -->
@@ -312,6 +340,20 @@
                     {sortOpt.label}
                 </button>
             {/each}
+
+            <!-- Filter button at the end of sorting pills -->
+            <button
+                onclick={() => showMobileFilters = true}
+                class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95 flex items-center gap-1
+                       {selectedCategories.length > 0 || minPrice || maxPrice || promoOnly
+                           ? 'text-white border-transparent'
+                           : 'bg-white border-slate-200 text-slate-600'}"
+                style={selectedCategories.length > 0 || minPrice || maxPrice || promoOnly ? `background-color: ${secondary};` : ''}
+                aria-label="Filter"
+            >
+                <i class="ti ti-adjustments-horizontal"></i>
+                Filter
+            </button>
         </div>
     </div>
 

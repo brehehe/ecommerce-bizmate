@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\CartItem;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -63,6 +64,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'cartCount' => $request->user() ? CartItem::where('user_id', $request->user()->id)->sum('quantity') : 0,
             'theme' => [
                 'primary_color' => $primaryColor,
                 'secondary_color' => $secondaryColor,

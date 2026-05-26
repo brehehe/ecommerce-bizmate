@@ -554,6 +554,58 @@
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     }
 
+    const user = $derived((page.props as any).auth?.user);
+
+    function addToCart() {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+            return;
+        }
+
+        if (hasVariations && !fullySelected) {
+            alert('Pilih variasi terlebih dahulu');
+            return;
+        }
+
+        router.post('/cart', {
+            product_id: product.id,
+            product_variant_id: matchingVariant ? matchingVariant.id : null,
+            quantity: qty,
+        }, {
+            onSuccess: () => {
+                alert('Produk berhasil ditambahkan ke keranjang!');
+            },
+            onError: (errors: any) => {
+                alert('Gagal menambahkan produk ke keranjang');
+            }
+        });
+    }
+
+    function buyNow() {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+            return;
+        }
+
+        if (hasVariations && !fullySelected) {
+            alert('Pilih variasi terlebih dahulu');
+            return;
+        }
+
+        router.post('/cart', {
+            product_id: product.id,
+            product_variant_id: matchingVariant ? matchingVariant.id : null,
+            quantity: qty,
+        }, {
+            onSuccess: () => {
+                router.visit('/cart');
+            },
+            onError: (errors: any) => {
+                alert('Gagal memproses pembelian');
+            }
+        });
+    }
+
     // ═══════════════════════════════════════
     //  RELATED
     // ═══════════════════════════════════════
@@ -640,14 +692,19 @@
                 </button>
 
                 <!-- Cart Button -->
-                <Link
-                    href="/"
-                    prefetch
-                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition"
+                <button
+                    onclick={() => {
+                        if (user) {
+                            router.visit('/cart');
+                        } else {
+                            window.dispatchEvent(new CustomEvent('open-login-modal'));
+                        }
+                    }}
+                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition cursor-pointer"
                     aria-label="Keranjang"
                 >
                     <i class="ti ti-shopping-cart text-lg"></i>
-                </Link>
+                </button>
 
                 <!-- Menu Button -->
                 <button
@@ -1574,23 +1631,40 @@
                     <!-- ── CTA BUTTONS ─────────────────────────── -->
                     <div class="pt-5 hidden md:flex flex-col sm:flex-row gap-3">
                         <button
-                            onclick={() => openWhatsapp('buy')}
-                            class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200"
+                            onclick={() => {
+                                if (hasVariations && !fullySelected) {
+                                    alert('Pilih variasi terlebih dahulu');
+                                    return;
+                                }
+                                addToCart();
+                            }}
+                            class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
+                            style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                primary,
+                                0.8,
+                            )});"
+                        >
+                            <i class="ti ti-shopping-cart text-base"></i>
+                            + Keranjang
+                        </button>
+                        <button
+                            onclick={() => buyNow()}
+                            class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
                             style="background: linear-gradient(135deg, {secondary}, {withOpacity(
                                 secondary,
                                 0.8,
                             )});"
                         >
-                            <i class="ti ti-shopping-cart text-base"></i>
+                            <i class="ti ti-credit-card text-base"></i>
                             Beli Sekarang
                         </button>
                         <button
                             onclick={() => openWhatsapp('chat')}
-                            class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm border-2 hover:shadow-md transition duration-200"
+                            class="px-5 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm border-2 hover:shadow-md transition duration-200 cursor-pointer"
                             style="border-color: {primary}; color: {primary};"
                         >
                             <i class="ti ti-brand-whatsapp text-base"></i>
-                            Chat WhatsApp
+                            Chat
                         </button>
                     </div>
 
@@ -1976,8 +2050,12 @@
         <!-- + Keranjang (Solid style) -->
         <button
             onclick={() => {
-                drawerAction = 'cart';
-                drawerOpen = true;
+                if (hasVariations) {
+                    drawerAction = 'cart';
+                    drawerOpen = true;
+                } else {
+                    addToCart();
+                }
             }}
             class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-[0.98] text-center shadow-md"
             style="background-color: {primary};"
@@ -2331,7 +2409,7 @@
                                 return; // Variation must be chosen
                             }
                             drawerOpen = false;
-                            openWhatsapp('buy');
+                            buyNow();
                         }}
                         disabled={hasVariations && !fullySelected}
                         class="w-full py-3.5 rounded-xl font-bold text-sm text-white text-center shadow-lg transition duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2346,7 +2424,7 @@
                                 return; // Variation must be chosen
                             }
                             drawerOpen = false;
-                            openWhatsapp('cart');
+                            addToCart();
                         }}
                         disabled={hasVariations && !fullySelected}
                         class="w-full py-3.5 rounded-xl font-bold text-sm text-white text-center shadow-lg transition duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
