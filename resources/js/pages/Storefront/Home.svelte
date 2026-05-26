@@ -396,7 +396,7 @@
     />
 </svelte:head>
 
-<StorefrontLayout>
+<StorefrontLayout hideMobileFooter={true}>
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->

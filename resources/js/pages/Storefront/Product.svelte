@@ -436,7 +436,7 @@
 
 <svelte:window bind:scrollY />
 
-<StorefrontLayout hideMobileHeader={true}>
+<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
     <!-- MOBILE NAVBAR (Floating & Sticky transition) -->
     <div
         class="md:hidden fixed top-0 left-0 right-0 z-40 transition-all duration-300
@@ -457,34 +457,30 @@
                 <i class="ti ti-arrow-left text-xl"></i>
             </button>
 
-            <!-- Search Bar / Title (Only visible/styled on scroll) -->
-            <div class="flex-grow transition-all duration-300">
-                {#if isScrolled}
-                    <form
-                        onsubmit={(e) => {
-                            e.preventDefault();
-                            if (searchQuery.trim()) {
-                                router.get('/', { search: searchQuery });
-                            }
-                        }}
-                        class="relative"
+            <!-- Search Bar / Title (Always mounted, opacity/pointer-events controlled to prevent page reflow jumps) -->
+            <div class="flex-grow transition-all duration-300 {isScrolled ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}">
+                <form
+                    onsubmit={(e) => {
+                        e.preventDefault();
+                        if (searchQuery.trim()) {
+                            router.get('/', { search: searchQuery });
+                        }
+                    }}
+                    class="relative"
+                >
+                    <input
+                        type="text"
+                        bind:value={searchQuery}
+                        placeholder="Cari produk..."
+                        class="w-full pl-3.5 pr-10 py-1.5 text-xs bg-slate-100 rounded-xl border border-transparent focus:outline-none focus:bg-white focus:border-slate-300 transition"
+                    />
+                    <button
+                        type="submit"
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
                     >
-                        <input
-                            type="text"
-                            bind:value={searchQuery}
-                            placeholder="Cari produk..."
-                            class="w-full pl-3.5 pr-10 py-1.5 text-xs bg-slate-100 rounded-xl border border-transparent focus:outline-none focus:bg-white focus:border-slate-300 transition"
-                        />
-                        <button
-                            type="submit"
-                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                        >
-                            <i class="ti ti-search text-base"></i>
-                        </button>
-                    </form>
-                {:else}
-                    <div class="flex-grow"></div>
-                {/if}
+                        <i class="ti ti-search text-base"></i>
+                    </button>
+                </form>
             </div>
 
             <!-- Right Icons: Share, Cart, Menu -->
