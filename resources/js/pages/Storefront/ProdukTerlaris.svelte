@@ -430,7 +430,7 @@
                 {:else}
                     <!-- Product Grid -->
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {#each allProducts as product (product.id)}
+                        {#each allProducts as product, index (product.id + '_' + index)}
                             {@const img = getProductImage(product)}
                             {@const isPromo = product.is_promo}
                             {@const price = isPromo ? product.promo_price : (product.product_price?.price ?? 0)}

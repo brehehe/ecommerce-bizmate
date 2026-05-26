@@ -1757,8 +1757,7 @@
         </button>
     </div>
 
-    <!-- Bottom Spacer to prevent overlap on mobile -->
-    <div class="h-24 md:hidden"></div>
+
 
     <!-- Bottom Drawer for Varian Produk (Mobile Only) -->
     {#if drawerOpen}
@@ -1966,7 +1965,7 @@
     {/if}
 
     <!-- Bottom Spacer to prevent overlap on mobile -->
-    <div class="h-24 md:hidden"></div>
+    <div class="h-14 md:hidden"></div>
 </StorefrontLayout>
 
 <style>
