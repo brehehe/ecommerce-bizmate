@@ -534,13 +534,14 @@
                     >
                         Kategori
                     </h2>
-                    <a
-                        href="#"
+                    <Link
+                        href="/search"
+                        prefetch
                         class="text-xs font-bold flex items-center gap-1"
                         style="color: {primary};"
                     >
                         Lihat Semua <i class="ti ti-arrow-right text-xs"></i>
-                    </a>
+                    </Link>
                 </div>
                 <!-- Categories scroll row -->
                 <div

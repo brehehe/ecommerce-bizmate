@@ -12,6 +12,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class StorefrontController extends Controller
 {
@@ -343,24 +344,26 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
+        $like = config('database.default') === 'sqlite' ? 'like' : 'ilike';
+
         // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
         if ($query) {
             $terms = array_filter(explode(' ', $query)); // Pisahkan kata berdasarkan spasi
-            $productsQuery->where(function ($q) use ($terms) {
+            $productsQuery->where(function ($q) use ($terms, $like) {
                 foreach ($terms as $term) {
-                    $q->where(function ($subQ) use ($term) {
+                    $q->where(function ($subQ) use ($term, $like) {
                         // Cari di nama dan deskripsi produk
-                        $subQ->where('name', 'ilike', "%{$term}%")
-                            ->orWhere('description', 'ilike', "%{$term}%")
+                        $subQ->where('name', $like, "%{$term}%")
+                            ->orWhere('description', $like, "%{$term}%")
                              // Cari di nama kategori
-                            ->orWhereHas('category', function ($qc) use ($term) {
-                                $qc->where('name', 'ilike', "%{$term}%");
+                            ->orWhereHas('category', function ($qc) use ($term, $like) {
+                                $qc->where('name', $like, "%{$term}%");
                             })
                              // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
-                            ->orWhereHas('variants', function ($qv) use ($term) {
-                                $qv->where('sku', 'ilike', "%{$term}%")
-                                    ->orWhereHas('options', function ($qo) use ($term) {
-                                        $qo->where('name', 'ilike', "%{$term}%");
+                            ->orWhereHas('variants', function ($qv) use ($term, $like) {
+                                $qv->where('sku', $like, "%{$term}%")
+                                    ->orWhereHas('options', function ($qo) use ($term, $like) {
+                                        $qo->where('name', $like, "%{$term}%");
                                     });
                             });
                     });
@@ -671,21 +674,23 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
+        $like = config('database.default') === 'sqlite' ? 'like' : 'ilike';
+
         // Filter by keyword (similar to search method)
         if ($query) {
             $terms = array_filter(explode(' ', $query));
-            $productsQuery->where(function ($q) use ($terms) {
+            $productsQuery->where(function ($q) use ($terms, $like) {
                 foreach ($terms as $term) {
-                    $q->where(function ($subQ) use ($term) {
-                        $subQ->where('name', 'ilike', "%{$term}%")
-                            ->orWhere('description', 'ilike', "%{$term}%")
-                            ->orWhereHas('category', function ($qc) use ($term) {
-                                $qc->where('name', 'ilike', "%{$term}%");
+                    $q->where(function ($subQ) use ($term, $like) {
+                        $subQ->where('name', $like, "%{$term}%")
+                            ->orWhere('description', $like, "%{$term}%")
+                            ->orWhereHas('category', function ($qc) use ($term, $like) {
+                                $qc->where('name', $like, "%{$term}%");
                             })
-                            ->orWhereHas('variants', function ($qv) use ($term) {
-                                $qv->where('sku', 'ilike', "%{$term}%")
-                                    ->orWhereHas('options', function ($qo) use ($term) {
-                                        $qo->where('name', 'ilike', "%{$term}%");
+                            ->orWhereHas('variants', function ($qv) use ($term, $like) {
+                                $qv->where('sku', $like, "%{$term}%")
+                                    ->orWhereHas('options', function ($qo) use ($term, $like) {
+                                        $qo->where('name', $like, "%{$term}%");
                                     });
                             });
                     });
@@ -770,6 +775,117 @@ class StorefrontController extends Controller
             'filters' => [
                 'q' => $query,
                 'category' => $categoryId,
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
+            ],
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Display the products in a specific category.
+     *
+     * @return Response
+     */
+    public function category(Request $request, string $category)
+    {
+        $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $category);
+
+        $categoryModel = $isUuid
+            ? Category::where('id', $category)->firstOrFail()
+            : Category::where('slug', $category)->firstOrFail();
+
+        $query = $request->input('q');
+        $minPrice = $request->input('min_price');
+        $maxPrice = $request->input('max_price');
+
+        // Build product query
+        $productsQuery = Product::with([
+            'category',
+            'productPrice',
+            'productStock',
+            'images',
+            'variants.productPrice',
+            'variants.options',
+            'variants.productStock',
+        ])
+            ->where('active', true)
+            ->where('category_id', $categoryModel->id);
+
+        $like = config('database.default') === 'sqlite' ? 'like' : 'ilike';
+
+        // Filter by keyword (search in name, description, variant SKU, etc.)
+        if ($query) {
+            $terms = array_filter(explode(' ', $query));
+            $productsQuery->where(function ($q) use ($terms, $like) {
+                foreach ($terms as $term) {
+                    $q->where(function ($subQ) use ($term, $like) {
+                        $subQ->where('name', $like, "%{$term}%")
+                            ->orWhere('description', $like, "%{$term}%")
+                            ->orWhereHas('variants', function ($qv) use ($term, $like) {
+                                $qv->where('sku', $like, "%{$term}%")
+                                    ->orWhereHas('options', function ($qo) use ($term, $like) {
+                                        $qo->where('name', $like, "%{$term}%");
+                                    });
+                            });
+                    });
+                }
+            });
+        }
+
+        // Fetch promotions to apply dynamically
+        $activePromotions = Promotion::with(['items'])
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->get();
+
+        $productsCollection = $productsQuery->get();
+
+        // Apply promotions and price filters
+        $productsCollection = $productsCollection->filter(function ($p) use ($activePromotions, $minPrice, $maxPrice) {
+            $this->applyPromotionsToProduct($p, $activePromotions);
+
+            $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            if ($minPrice && $price < $minPrice) {
+                return false;
+            }
+            if ($maxPrice && $price > $maxPrice) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // Default sorting: latest
+        $productsCollection = $productsCollection->sortByDesc('created_at');
+
+        // Paginate
+        $page = request()->input('page', 1);
+        $perPage = 16;
+        $total = $productsCollection->count();
+        $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $productsPaginator = new LengthAwarePaginator(
+            $paginatedItems,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/Category', [
+            'category' => $categoryModel,
+            'products' => $productsPaginator,
+            'filters' => [
+                'q' => $query,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
             ],
