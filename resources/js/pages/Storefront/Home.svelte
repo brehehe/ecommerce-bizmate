@@ -908,13 +908,13 @@
                                 {#if isReal}
                                     <div>
                                         <p
-                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
                                             style="color: {primary};"
                                         >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
                                         <p
-                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1 min-h-[2.5rem]"
                                             style="color: {primary};"
                                         >
                                             {product.name}
@@ -1075,13 +1075,13 @@
                                 {#if isReal}
                                     <div>
                                         <p
-                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
                                             style="color: {primary};"
                                         >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
                                         <p
-                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1.5"
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1.5 min-h-[2.5rem]"
                                             style="color: {primary};"
                                         >
                                             {product.name}
