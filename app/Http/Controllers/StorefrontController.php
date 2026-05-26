@@ -190,6 +190,8 @@ class StorefrontController extends Controller
                 $product->is_promo = true;
                 $product->promo_price = $finalPrice;
                 $product->original_price = $basePrice;
+                $product->promo_type = $appliedPromo->type;
+                $product->promo_end_time = $appliedPromo->end_time?->toIso8601String();
                 if ($basePrice > 0) {
                     $product->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
                 } else {
@@ -200,12 +202,16 @@ class StorefrontController extends Controller
                 $product->promo_price = $basePrice;
                 $product->original_price = $basePrice;
                 $product->discount_percentage = 0;
+                $product->promo_type = null;
+                $product->promo_end_time = null;
             }
         } else {
             $product->is_promo = false;
             $product->promo_price = $basePrice;
             $product->original_price = $basePrice;
             $product->discount_percentage = 0;
+            $product->promo_type = null;
+            $product->promo_end_time = null;
         }
 
         // Apply to variants if loaded
@@ -261,6 +267,8 @@ class StorefrontController extends Controller
                         $variant->is_promo = true;
                         $variant->promo_price = $vFinalPrice;
                         $variant->original_price = $vPrice;
+                        $variant->promo_type = $vAppliedPromo->type;
+                        $variant->promo_end_time = $vAppliedPromo->end_time?->toIso8601String();
                         if ($vPrice > 0) {
                             $variant->discount_percentage = round((($vPrice - $vFinalPrice) / $vPrice) * 100);
                         } else {
@@ -271,12 +279,16 @@ class StorefrontController extends Controller
                         $variant->promo_price = $vPrice;
                         $variant->original_price = $vPrice;
                         $variant->discount_percentage = 0;
+                        $variant->promo_type = null;
+                        $variant->promo_end_time = null;
                     }
                 } else {
                     $variant->is_promo = false;
                     $variant->promo_price = $vPrice;
                     $variant->original_price = $vPrice;
                     $variant->discount_percentage = 0;
+                    $variant->promo_type = null;
+                    $variant->promo_end_time = null;
                 }
             }
 
@@ -294,6 +306,8 @@ class StorefrontController extends Controller
                     $product->promo_price = $cheapestPromoVariant->promo_price;
                     $product->original_price = $cheapestPromoVariant->original_price;
                     $product->discount_percentage = $cheapestPromoVariant->discount_percentage;
+                    $product->promo_type = $cheapestPromoVariant->promo_type;
+                    $product->promo_end_time = $cheapestPromoVariant->promo_end_time;
                 } elseif ($product->is_promo) {
                     // Keep base promo details (it's already calculated and variants are not on promo)
                 } else {

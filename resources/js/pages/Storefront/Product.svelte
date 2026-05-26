@@ -362,6 +362,51 @@
     }
 
     // ═══════════════════════════════════════
+    //  FLASH SALE COUNTDOWN
+    // ═══════════════════════════════════════
+    const isFlashSale = $derived(
+        matchingVariant
+            ? matchingVariant.is_promo &&
+                  matchingVariant.promo_type === 'flash_sale'
+            : product.is_promo && product.promo_type === 'flash_sale',
+    );
+    const flashSaleEndTime = $derived(
+        matchingVariant?.promo_end_time ?? product.promo_end_time ?? null,
+    );
+
+    type CountdownDisplay = { h: string; m: string; s: string };
+    let flashSaleCountdown = $state<CountdownDisplay>({
+        h: '00',
+        m: '00',
+        s: '00',
+    });
+    let flashSaleInterval: ReturnType<typeof setInterval> | null = null;
+
+    function updateFlashSaleCountdown() {
+        const endStr = flashSaleEndTime;
+        if (!endStr) return;
+        const diff = Math.max(0, new Date(endStr).getTime() - Date.now());
+        flashSaleCountdown = {
+            h: String(Math.floor(diff / 3600000)).padStart(2, '0'),
+            m: String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0'),
+            s: String(Math.floor((diff % 60000) / 1000)).padStart(2, '0'),
+        };
+    }
+
+    $effect(() => {
+        if (isFlashSale && flashSaleEndTime) {
+            updateFlashSaleCountdown();
+            flashSaleInterval = setInterval(updateFlashSaleCountdown, 1000);
+        } else {
+            if (flashSaleInterval) clearInterval(flashSaleInterval);
+            flashSaleInterval = null;
+        }
+        return () => {
+            if (flashSaleInterval) clearInterval(flashSaleInterval);
+        };
+    });
+
+    // ═══════════════════════════════════════
     //  STOCK
     //  Rules (from user spec):
     //   - is_unlimited: ambil dari utama ATAU dari variant masing-masing
@@ -391,6 +436,8 @@
     //  QUANTITY
     // ═══════════════════════════════════════
     let qty = $state(1);
+    let drawerOpen = $state(false);
+    let drawerAction = $state<'buy' | 'cart'>('buy');
 
     $effect(() => {
         qty = currentMinPurchase;
@@ -411,16 +458,24 @@
         (page.props as any).settings?.store_whatsapp ?? '',
     );
 
-    function openWhatsapp() {
+    function openWhatsapp(action: 'chat' | 'buy' | 'cart' = 'buy') {
         const parts: string[] = [];
         (product.variations ?? []).forEach((v: any) => {
             const label = getSelectedLabel(v);
             if (label) parts.push(label);
         });
         const varNote = parts.length ? ` (${parts.join(' / ')})` : '';
-        const msg = encodeURIComponent(
-            `Halo, saya ingin memesan *${product.name}*${varNote} sebanyak ${qty} pcs dengan harga ${fmt(currentPrice)}. Apakah masih tersedia?`,
-        );
+        
+        let text = '';
+        if (action === 'chat') {
+            text = `Halo, saya ingin bertanya mengenai produk *${product.name}*${varNote}. Apakah ada informasi lebih detail?`;
+        } else if (action === 'cart') {
+            text = `Halo, saya tertarik dengan produk *${product.name}*${varNote} sebanyak ${qty} pcs. Tolong masukkan ke dalam pesanan/keranjang saya.`;
+        } else {
+            text = `Halo, saya ingin memesan *${product.name}*${varNote} sebanyak ${qty} pcs dengan harga ${fmt(currentPrice)}. Apakah masih tersedia?`;
+        }
+
+        const msg = encodeURIComponent(text);
         const num = waNumber.replace(/\D/g, '');
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     }
@@ -483,10 +538,7 @@
 
             <!-- Search Bar -->
             <div class="flex-grow">
-                <form
-                    onsubmit={handleSearch}
-                    class="relative"
-                >
+                <form onsubmit={handleSearch} class="relative">
                     <input
                         type="text"
                         bind:value={searchQuery}
@@ -617,7 +669,7 @@
     <div class="bg-white pt-9 md:pt-0">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div
-                class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-5 lg:gap-10 items-start"
+                class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-x-5 gap-y-2 lg:gap-10 items-start"
             >
                 <!-- ══ LEFT: GALLERY ══════════════════════════════ -->
                 <div class="flex flex-col gap-3">
@@ -753,6 +805,120 @@
                         {/if}
                     </div>
 
+                    <!-- Mobile Flash Sale Banner (edge-to-edge) -->
+                    {#if isFlashSale}
+                        <div
+                            class="md:hidden -mx-4 -mt-3 bg-white border-y border-slate-100"
+                        >
+                            <!-- Header: FLASH SALE label + countdown -->
+                            <div
+                                class="flex items-center justify-between px-4 py-2 flex-wrap gap-2 border-b border-slate-50"
+                                style="background-color: {primary};"
+                            >
+                                <div
+                                    class="flex items-center gap-1 text-white font-black text-xs tracking-wide uppercase"
+                                >
+                                    <span
+                                        class="text-yellow-300 text-sm drop-shadow-sm"
+                                        >⚡</span
+                                    >
+                                    Flash Sale
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <i
+                                        class="ti ti-clock text-white/90 text-[10px]"
+                                    ></i>
+                                    <span
+                                        class="text-[9px] font-bold text-white uppercase tracking-wider"
+                                        >Berakhir Dalam</span
+                                    >
+                                    <div class="flex items-center gap-0.5">
+                                        <span
+                                            class="bg-white font-mono font-black text-[10px] leading-none px-1.5 py-1 rounded-sm shadow-sm tabular-nums"
+                                            style="color: {primary};"
+                                            >{flashSaleCountdown.h}</span
+                                        >
+                                        <span
+                                            class="text-white/90 font-black text-[10px] mx-0.5"
+                                            >:</span
+                                        >
+                                        <span
+                                            class="bg-white font-mono font-black text-[10px] leading-none px-1.5 py-1 rounded-sm shadow-sm tabular-nums"
+                                            style="color: {primary};"
+                                            >{flashSaleCountdown.m}</span
+                                        >
+                                        <span
+                                            class="text-white/90 font-black text-[10px] mx-0.5"
+                                            >:</span
+                                        >
+                                        <span
+                                            class="bg-white font-mono font-black text-[10px] leading-none px-1.5 py-1 rounded-sm shadow-sm tabular-nums"
+                                            style="color: {primary};"
+                                            >{flashSaleCountdown.s}</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Price row inside banner -->
+                            <div
+                                class="px-4 py-2.5 flex items-baseline gap-2.5 flex-wrap"
+                            >
+                                <span
+                                    class="text-2xl font-bold"
+                                    style="color: {secondary};"
+                                >
+                                    {fmt(currentPrice)}
+                                </span>
+                                {#if originalPrice && originalPrice > currentPrice}
+                                    <span
+                                        class="text-xs text-slate-400 line-through font-medium"
+                                        >{fmt(originalPrice)}</span
+                                    >
+                                    <span
+                                        class="text-[10px] font-black px-1.5 py-0.5 rounded-sm text-white shadow-sm"
+                                        style="background-color: {secondary};"
+                                        >-{discountPercentage}%</span
+                                    >
+                                {/if}
+                            </div>
+                        </div>
+                    {:else}
+                        <!-- Mobile Regular Price Banner (edge-to-edge) -->
+                        <div
+                            class="md:hidden -mx-4 -mt-3 bg-white border-y border-slate-100 px-4 py-3"
+                        >
+                            {#if currentPrice > 0}
+                                <div
+                                    class="flex items-baseline gap-2.5 flex-wrap"
+                                >
+                                    <span
+                                        class="text-2xl font-bold"
+                                        style="color: {secondary};"
+                                    >
+                                        {fmt(currentPrice)}
+                                    </span>
+                                    {#if originalPrice && originalPrice > currentPrice}
+                                        <span
+                                            class="text-xs text-slate-400 line-through font-medium"
+                                        >
+                                            {fmt(originalPrice)}
+                                        </span>
+                                        <span
+                                            class="text-[10px] font-black px-1.5 py-0.5 rounded-sm text-white shadow-sm"
+                                            style="background-color: {secondary};"
+                                        >
+                                            -{discountPercentage}%
+                                        </span>
+                                    {/if}
+                                </div>
+                            {:else}
+                                <span class="text-xl font-bold text-slate-700"
+                                    >Hubungi Kami</span
+                                >
+                            {/if}
+                        </div>
+                    {/if}
+
                     <!-- Desktop Gallery (with Zoom and Thumbnails) -->
                     <div class="hidden md:flex flex-col gap-3">
                         <div
@@ -827,46 +993,14 @@
                             </div>
                         {/if}
                     </div>
-
-                    <!-- Share icons -->
-                    <div class="flex items-center gap-2 pt-1">
-                        <span class="text-xs text-slate-400 font-medium"
-                            >Bagikan:</span
-                        >
-                        <a
-                            href="https://web.whatsapp.com/send?text={encodeURIComponent(
-                                product.name,
-                            )}"
-                            target="_blank"
-                            rel="noopener"
-                            class="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center hover:bg-green-600 transition text-xs"
-                            ><i class="ti ti-brand-whatsapp"></i></a
-                        >
-                        <a
-                            href="https://www.facebook.com/sharer/sharer.php?u=."
-                            target="_blank"
-                            rel="noopener"
-                            class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition text-xs"
-                            ><i class="ti ti-brand-facebook"></i></a
-                        >
-                        <a
-                            href="https://twitter.com/intent/tweet?text={encodeURIComponent(
-                                product.name,
-                            )}"
-                            target="_blank"
-                            rel="noopener"
-                            class="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-slate-700 transition text-xs"
-                            ><i class="ti ti-brand-x"></i></a
-                        >
-                    </div>
                 </div>
 
                 <!-- ══ RIGHT: PRODUCT INFO ════════════════════════ -->
                 <div class="flex flex-col gap-0 divide-y divide-slate-100">
                     <!-- Header: brand + name + rating/terjual -->
-                    <div class="pb-4 flex flex-col gap-2">
+                    <div class="pb-4 flex flex-col">
                         {#if product.brand}
-                            <div>
+                            <div class="mb-1">
                                 <span
                                     class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded"
                                     style="background: {withOpacity(
@@ -880,13 +1014,13 @@
                             </div>
                         {/if}
                         <h1
-                            class="text-lg sm:text-xl font-semibold text-slate-800 leading-snug"
+                            class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight"
                         >
                             {product.name}
                         </h1>
                         <!-- Rating / terjual row -->
                         <div
-                            class="flex items-center gap-3 text-xs text-slate-400 flex-wrap"
+                            class="flex items-center gap-3 text-xs text-slate-400 flex-wrap mt-1.5"
                         >
                             <span
                                 class="text-slate-500 border-r border-slate-200 pr-3"
@@ -905,42 +1039,116 @@
                         </div>
                     </div>
 
-                    <!-- Price -->
-                    <div class="py-4">
-                        {#if currentPrice > 0}
-                            <div class="flex items-baseline gap-3 flex-wrap">
+                    <!-- Flash Sale Banner -->
+                    {#if isFlashSale}
+                        <div
+                            class="rounded-2xl overflow-hidden mb-4 hidden md:block bg-white border border-slate-100 shadow-sm"
+                        >
+                            <!-- Header: FLASH SALE label + countdown -->
+                            <div
+                                class="flex items-center justify-between px-4 py-2.5 flex-wrap gap-2 border-b border-slate-50"
+                                style="background-color: {primary};"
+                            >
+                                <div
+                                    class="flex items-center gap-1.5 text-white font-black text-sm tracking-wide uppercase"
+                                >
+                                    <span
+                                        class="text-yellow-300 text-base drop-shadow-sm"
+                                        >⚡</span
+                                    >
+                                    Flash Sale
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <i class="ti ti-clock text-white/90 text-xs"
+                                    ></i>
+                                    <span
+                                        class="text-[10px] font-bold text-white uppercase tracking-wider"
+                                        >Berakhir Dalam</span
+                                    >
+                                    <div class="flex items-center gap-1">
+                                        <span
+                                            class="bg-white font-mono font-black text-xs leading-none px-2 py-1 rounded shadow-sm tabular-nums"
+                                            style="color: {primary};"
+                                            >{flashSaleCountdown.h}</span
+                                        >
+                                        <span
+                                            class="text-white/90 font-black text-xs"
+                                            >:</span
+                                        >
+                                        <span
+                                            class="bg-white font-mono font-black text-xs leading-none px-2 py-1 rounded shadow-sm tabular-nums"
+                                            style="color: {primary};"
+                                            >{flashSaleCountdown.m}</span
+                                        >
+                                        <span
+                                            class="text-white/90 font-black text-xs"
+                                            >:</span
+                                        >
+                                        <span
+                                            class="bg-white font-mono font-black text-xs leading-none px-2 py-1 rounded shadow-sm tabular-nums"
+                                            style="color: {primary};"
+                                            >{flashSaleCountdown.s}</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Price row inside banner -->
+                            <div
+                                class="px-4 py-3 flex items-baseline gap-3 flex-wrap"
+                            >
                                 <span
-                                    class="text-3xl sm:text-4xl font-bold"
+                                    class="text-2xl sm:text-3xl font-bold"
                                     style="color: {secondary};"
                                 >
                                     {fmt(currentPrice)}
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
-                                        class="text-sm sm:text-base text-slate-400 line-through font-medium"
+                                        class="text-sm text-slate-400 line-through font-medium"
+                                        >{fmt(originalPrice)}</span
                                     >
-                                        {fmt(originalPrice)}
-                                    </span>
                                     <span
                                         class="text-xs font-black px-2 py-0.5 rounded-md text-white shadow-sm"
                                         style="background-color: {secondary};"
+                                        >-{discountPercentage}%</span
                                     >
-                                        -{discountPercentage}%
-                                    </span>
                                 {/if}
                             </div>
-                            {#if hasVariations && !fullySelected}
-                                <p class="text-xs text-slate-400 mt-1.5">
-                                    Pilih semua variasi untuk melihat harga
-                                </p>
+                        </div>
+                    {:else}
+                        <!-- Price (regular) -->
+                        <div class="py-4 hidden md:block">
+                            {#if currentPrice > 0}
+                                <div
+                                    class="flex items-baseline gap-3 flex-wrap"
+                                >
+                                    <span
+                                        class="text-3xl sm:text-4xl font-bold"
+                                        style="color: {secondary};"
+                                    >
+                                        {fmt(currentPrice)}
+                                    </span>
+                                    {#if originalPrice && originalPrice > currentPrice}
+                                        <span
+                                            class="text-sm sm:text-base text-slate-400 line-through font-medium"
+                                        >
+                                            {fmt(originalPrice)}
+                                        </span>
+                                        <span
+                                            class="text-xs font-black px-2 py-0.5 rounded-md text-white shadow-sm"
+                                            style="background-color: {secondary};"
+                                        >
+                                            -{discountPercentage}%
+                                        </span>
+                                    {/if}
+                                </div>
+                            {:else}
+                                <span class="text-2xl font-bold text-slate-700"
+                                    >Hubungi Kami</span
+                                >
                             {/if}
-                        {:else}
-                            <span class="text-2xl font-bold text-slate-700"
-                                >Hubungi Kami</span
-                            >
-                        {/if}
-                    </div>
-
+                        </div>
+                    {/if}
                     <!-- Pengiriman -->
                     <div class="py-4 flex items-start gap-5">
                         <span
@@ -990,8 +1198,10 @@
                         </div>
                     </div>
 
-                    <!-- ── VARIATIONS ──────────────────────────── -->
-                    {#if hasVariations}
+                    <!-- Desktop-only Variations & Quantity (inline) -->
+                    <div class="hidden md:block divide-y divide-slate-100">
+                        <!-- ── VARIATIONS ──────────────────────────── -->
+                        {#if hasVariations}
                         {#each product.variations as variation}
                             {@const selLabel = getSelectedLabel(variation)}
                             <div class="py-4 flex flex-col gap-3">
@@ -1129,11 +1339,12 @@
                             {/if}
                         </div>
                     </div>
+                    </div>
 
                     <!-- ── CTA BUTTONS ─────────────────────────── -->
-                    <div class="pt-5 flex flex-col sm:flex-row gap-3">
+                    <div class="pt-5 hidden md:flex flex-col sm:flex-row gap-3">
                         <button
-                            onclick={openWhatsapp}
+                            onclick={() => openWhatsapp('buy')}
                             class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200"
                             style="background: linear-gradient(135deg, {secondary}, {withOpacity(
                                 secondary,
@@ -1144,7 +1355,7 @@
                             Beli Sekarang
                         </button>
                         <button
-                            onclick={openWhatsapp}
+                            onclick={() => openWhatsapp('chat')}
                             class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm border-2 hover:shadow-md transition duration-200"
                             style="border-color: {primary}; color: {primary};"
                         >
@@ -1505,6 +1716,251 @@
             </div>
         </div>
     {/if}
+
+    <!-- Sticky Bottom Bar (Mobile Only) -->
+    <div
+        class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 px-4 pt-2.5 pb-2.5 flex items-center gap-3 md:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
+        style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));"
+    >
+        <!-- Chat WhatsApp (Square) -->
+        <button
+            onclick={() => openWhatsapp('chat')}
+            class="w-12 h-12 flex items-center justify-center rounded-xl border border-slate-200 text-slate-700 active:bg-slate-50 transition shrink-0"
+            aria-label="Chat WhatsApp"
+        >
+            <i class="ti ti-message-dots text-xl"></i>
+        </button>
+
+        <!-- Beli Langsung (Outline style) -->
+        <button
+            onclick={() => {
+                drawerAction = 'buy';
+                drawerOpen = true;
+            }}
+            class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition active:scale-[0.98] text-center"
+            style="border-color: {primary}; color: {primary};"
+        >
+            Beli Langsung
+        </button>
+
+        <!-- + Keranjang (Solid style) -->
+        <button
+            onclick={() => {
+                drawerAction = 'cart';
+                drawerOpen = true;
+            }}
+            class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-[0.98] text-center shadow-md"
+            style="background-color: {primary};"
+        >
+            + Keranjang
+        </button>
+    </div>
+
+    <!-- Bottom Spacer to prevent overlap on mobile -->
+    <div class="h-24 md:hidden"></div>
+
+    <!-- Bottom Drawer for Varian Produk (Mobile Only) -->
+    {#if drawerOpen}
+        <!-- Backdrop -->
+        <div
+            class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm md:hidden"
+            onclick={() => (drawerOpen = false)}
+            transition:fade={{ duration: 150 }}
+        ></div>
+
+        <!-- Drawer Content -->
+        <div
+            class="fixed bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl md:hidden max-h-[85vh] flex flex-col shadow-2xl animate-slide-up"
+            style="padding-bottom: env(safe-area-inset-bottom, 0px);"
+        >
+            <!-- Header -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
+                <span class="text-base font-extrabold text-slate-800">Varian produk</span>
+                <button
+                    onclick={() => (drawerOpen = false)}
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"
+                >
+                    <i class="ti ti-x text-base"></i>
+                </button>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="flex-grow overflow-y-auto px-5 py-4 flex flex-col gap-4">
+                <!-- Product Overview -->
+                <div class="flex gap-4 items-start pb-4 border-b border-slate-100 shrink-0">
+                    <div class="w-24 h-24 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0 select-none">
+                        <img
+                            src={displayImage || '/noimage/image.png'}
+                            alt={product.name}
+                            class="w-full h-full object-cover"
+                            onerror={(e) => {
+                                e.currentTarget.src = '/noimage/image.png';
+                            }}
+                        />
+                    </div>
+                    <div class="flex-grow pt-1">
+                        <p class="text-xl font-bold" style="color: {secondary};">
+                            {fmt(currentPrice)}
+                        </p>
+                        <!-- Selected variations hint -->
+                        <div class="text-xs text-slate-400 mt-1 flex flex-wrap gap-1 items-center">
+                            {#if hasVariations}
+                                {@const selectedParts = []}
+                                {#each product.variations as v}
+                                    {@const lbl = getSelectedLabel(v)}
+                                    {#if lbl}
+                                        {selectedParts.push(lbl) && ''}
+                                    {/if}
+                                {/each}
+                                {#if selectedParts.length > 0}
+                                    <span class="bg-slate-50 text-slate-600 px-2 py-0.5 rounded font-medium border border-slate-100">
+                                        {selectedParts.join(' / ')}
+                                    </span>
+                                {:else}
+                                    <span class="text-slate-400">Pilih variasi terlebih dahulu</span>
+                                {/if}
+                            {:else}
+                                <span class="text-green-600 font-bold">Stok Ready</span>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendation Badge -->
+                <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100/60 text-amber-700 text-xs font-bold shrink-0 shadow-sm animate-pulse">
+                    <span class="text-sm">👍</span>
+                    <span>Pilihan tepat! 100% pembeli merasa puas!</span>
+                </div>
+
+                <!-- Variations List -->
+                {#if hasVariations}
+                    <div class="flex flex-col divide-y divide-slate-100">
+                        {#each product.variations as variation}
+                            {@const selLabel = getSelectedLabel(variation)}
+                            <div class="py-3 flex flex-col gap-2.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-bold text-slate-700">
+                                        Pilih {variation.name}:
+                                    </span>
+                                    {#if selLabel}
+                                        <span class="text-sm font-bold" style="color: {primary};">
+                                            {selLabel}
+                                        </span>
+                                    {/if}
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    {#each variation.options as opt}
+                                        {@const optImg = getOptionImage(opt.id, variation.name)}
+                                        {@const available = isOptionAvailable(opt.id)}
+                                        {@const sel = isSelected(String(variation.id), opt.id)}
+                                        <button
+                                            onclick={() => available && selectOption(String(variation.id), opt.id)}
+                                            class="relative flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs font-bold transition duration-150
+                                               {sel ? 'shadow-sm' : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
+                                               {!available ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}"
+                                            style={sel ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};` : ''}
+                                            disabled={!available}
+                                        >
+                                            {#if optImg}
+                                                <img
+                                                    src={optImg}
+                                                    alt={opt.name}
+                                                    class="w-7 h-7 rounded-lg object-cover shrink-0"
+                                                    onerror={(e) => {
+                                                        e.currentTarget.src = '/noimage/image.png';
+                                                    }}
+                                                />
+                                            {/if}
+                                            {opt.name}
+                                            {#if !available}
+                                                <span class="absolute top-0.5 right-0.5 text-[9px] font-black text-red-400">✕</span>
+                                            {/if}
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/each}
+                    </div>
+                {/if}
+
+                <!-- Quantity Stepper -->
+                <div class="py-3 flex items-center justify-between border-t border-slate-100 mt-2 shrink-0">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-sm font-bold text-slate-700">Jumlah</span>
+                        <div class="flex items-center gap-1.5">
+                            {#if hasVariations && !fullySelected}
+                                <span class="text-[11px] text-slate-400">Pilih variasi terlebih dahulu</span>
+                            {:else if currentIsUnlimited}
+                                <span class="text-[11px] font-bold text-green-600 tracking-wide">TERSEDIA</span>
+                            {:else if isInStock}
+                                <span class="text-[11px] font-bold text-green-600">Stok: {currentStock}</span>
+                            {:else}
+                                <span class="text-[11px] font-bold text-red-500">HABIS</span>
+                            {/if}
+                            {#if currentMinPurchase > 1}
+                                <span class="text-[10px] text-slate-400">(Min. {currentMinPurchase} pcs)</span>
+                            {/if}
+                        </div>
+                    </div>
+                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden shrink-0 bg-white">
+                        <button
+                            onclick={decQty}
+                            disabled={qty <= currentMinPurchase}
+                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                        >
+                            <i class="ti ti-minus text-sm"></i>
+                        </button>
+                        <span class="w-12 text-center text-sm font-black text-slate-800 tabular-nums">{qty}</span>
+                        <button
+                            onclick={incQty}
+                            disabled={!currentIsUnlimited && qty >= currentStock}
+                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                        >
+                            <i class="ti ti-plus text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky Bottom CTA Button inside Drawer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
+                {#if drawerAction === 'buy'}
+                    <button
+                        onclick={() => {
+                            if (hasVariations && !fullySelected) {
+                                return; // Variation must be chosen
+                            }
+                            drawerOpen = false;
+                            openWhatsapp('buy');
+                        }}
+                        disabled={hasVariations && !fullySelected}
+                        class="w-full py-3.5 rounded-xl font-bold text-sm text-white text-center shadow-lg transition duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        style="background-color: {primary};"
+                    >
+                        Beli Langsung
+                    </button>
+                {:else}
+                    <button
+                        onclick={() => {
+                            if (hasVariations && !fullySelected) {
+                                return; // Variation must be chosen
+                            }
+                            drawerOpen = false;
+                            openWhatsapp('cart');
+                        }}
+                        disabled={hasVariations && !fullySelected}
+                        class="w-full py-3.5 rounded-xl font-bold text-sm text-white text-center shadow-lg transition duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        style="background-color: {primary};"
+                    >
+                        + Keranjang
+                    </button>
+                {/if}
+            </div>
+        </div>
+    {/if}
+
+    <!-- Bottom Spacer to prevent overlap on mobile -->
+    <div class="h-24 md:hidden"></div>
 </StorefrontLayout>
 
 <style>
@@ -1520,6 +1976,18 @@
     }
     .animate-pop {
         animation: pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes slide-up {
+        from {
+            transform: translateY(100%);
+        }
+        to {
+            transform: translateY(0);
+        }
+    }
+    .animate-slide-up {
+        animation: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     /* prose reset for product descriptions */
