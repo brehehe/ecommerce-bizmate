@@ -234,7 +234,9 @@
         selectedOptions = { ...selectedOptions, [variationId]: optionId };
         qty = currentMinPurchase; // reset qty
         // Update main image if this option's variant has an image
-        const variation = product.variations?.find((v: any) => String(v.id) === variationId);
+        const variation = product.variations?.find(
+            (v: any) => String(v.id) === variationId,
+        );
         const optImg = getOptionImage(optionId, variation?.name || '');
         if (optImg) variantOverride = optImg;
         // Jump mobile slider to this variant's slide
@@ -269,9 +271,15 @@
         );
     }
 
-    function getOptionImage(optionId: number, variationName: string): string | null {
+    function getOptionImage(
+        optionId: number,
+        variationName: string,
+    ): string | null {
         const lowerName = variationName.toLowerCase();
-        const isColorVariation = lowerName.includes('warna') || lowerName.includes('color') || lowerName.includes('colour');
+        const isColorVariation =
+            lowerName.includes('warna') ||
+            lowerName.includes('color') ||
+            lowerName.includes('colour');
 
         // 1) Option itself may carry an image
         for (const variation of product.variations ?? []) {
@@ -311,18 +319,30 @@
     const basePrice = $derived(product.product_price?.price ?? 0);
     const currentPrice = $derived(
         matchingVariant
-            ? (matchingVariant.is_promo ? Number(matchingVariant.promo_price) : Number(matchingVariant.product_price?.price ?? basePrice))
-            : (product.is_promo ? Number(product.promo_price) : Number(basePrice))
+            ? matchingVariant.is_promo
+                ? Number(matchingVariant.promo_price)
+                : Number(matchingVariant.product_price?.price ?? basePrice)
+            : product.is_promo
+              ? Number(product.promo_price)
+              : Number(basePrice),
     );
     const originalPrice = $derived(
         matchingVariant
-            ? (matchingVariant.is_promo ? Number(matchingVariant.original_price) : null)
-            : (product.is_promo ? Number(product.original_price) : null)
+            ? matchingVariant.is_promo
+                ? Number(matchingVariant.original_price)
+                : null
+            : product.is_promo
+              ? Number(product.original_price)
+              : null,
     );
     const discountPercentage = $derived(
         matchingVariant
-            ? (matchingVariant.is_promo ? Number(matchingVariant.discount_percentage) : 0)
-            : (product.is_promo ? Number(product.discount_percentage) : 0)
+            ? matchingVariant.is_promo
+                ? Number(matchingVariant.discount_percentage)
+                : 0
+            : product.is_promo
+              ? Number(product.discount_percentage)
+              : 0,
     );
 
     function fmt(price: any): string {
@@ -438,7 +458,9 @@
 
 <StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
     <!-- MOBILE NAVBAR (Always visible, matching Image 3) -->
-    <div class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-xs py-2.5 px-3">
+    <div
+        class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-xs py-2.5 px-3"
+    >
         <div class="flex items-center gap-3">
             <!-- Back Button -->
             <button
@@ -587,7 +609,7 @@
     <!-- ─────────────────────────────────────────────────────
      MAIN PRODUCT CARD
 ───────────────────────────────────────────────────── -->
-    <div class="bg-white md:pt-0">
+    <div class="bg-white pt-14 md:pt-0">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div
                 class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-5 lg:gap-10 items-start"
@@ -889,7 +911,9 @@
                                     {fmt(currentPrice)}
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
-                                    <span class="text-sm sm:text-base text-slate-400 line-through font-medium">
+                                    <span
+                                        class="text-sm sm:text-base text-slate-400 line-through font-medium"
+                                    >
                                         {fmt(originalPrice)}
                                     </span>
                                     <span
@@ -985,7 +1009,10 @@
                                 <!-- Option buttons -->
                                 <div class="flex flex-wrap gap-2">
                                     {#each variation.options as opt}
-                                        {@const optImg = getOptionImage(opt.id, variation.name)}
+                                        {@const optImg = getOptionImage(
+                                            opt.id,
+                                            variation.name,
+                                        )}
                                         {@const available = isOptionAvailable(
                                             opt.id,
                                         )}
@@ -1290,10 +1317,16 @@
                 {#each relatedProducts as rp}
                     {@const ri = relImg(rp)}
                     {@const isPromo = rp.is_promo}
-                    {@const price = isPromo ? rp.promo_price : (rp.product_price?.price ?? 0)}
+                    {@const price = isPromo
+                        ? rp.promo_price
+                        : (rp.product_price?.price ?? 0)}
                     {@const originalPrice = isPromo ? rp.original_price : 0}
-                    {@const discountPercentage = isPromo ? rp.discount_percentage : 0}
-                    {@const rating = (4.5 + ((rp.id || 0) % 6) * 0.1).toFixed(1)}
+                    {@const discountPercentage = isPromo
+                        ? rp.discount_percentage
+                        : 0}
+                    {@const rating = (4.5 + ((rp.id || 0) % 6) * 0.1).toFixed(
+                        1,
+                    )}
                     <Link
                         href="/products/{rp.slug || rp.id}"
                         prefetch
@@ -1366,7 +1399,9 @@
                                             </p>
                                         {/if}
                                     {:else}
-                                        <p class="text-xs text-slate-400 font-semibold">
+                                        <p
+                                            class="text-xs text-slate-400 font-semibold"
+                                        >
                                             Hubungi Kami
                                         </p>
                                     {/if}
@@ -1377,7 +1412,9 @@
                                     class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
                                     style="background-color: {primary};"
                                 >
-                                    <i class="ti ti-shopping-cart text-xs sm:text-sm"></i>
+                                    <i
+                                        class="ti ti-shopping-cart text-xs sm:text-sm"
+                                    ></i>
                                     + KERANJANG
                                 </span>
                             </div>
