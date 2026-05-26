@@ -486,7 +486,7 @@
                         type="text"
                         bind:value={searchQuery}
                         placeholder="Cari produk..."
-                        class="w-full pl-3.5 pr-10 py-1.5 text-xs bg-slate-100 rounded-xl border border-transparent focus:outline-none focus:bg-white focus:border-slate-300 transition"
+                        class="w-full pl-3 pr-10 py-2 text-sm bg-white/20 rounded-xl border border-white/30 text-white placeholder-white/60 focus:outline-none focus:bg-white focus:text-slate-800 focus:placeholder-slate-400 transition"
                     />
                     <button
                         type="submit"
