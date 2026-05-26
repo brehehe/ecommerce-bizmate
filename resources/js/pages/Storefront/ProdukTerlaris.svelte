@@ -6,15 +6,18 @@
     let {
         categories = [],
         products = { data: [], links: [] },
-        filters = { q: '', category: '', min_price: '', max_price: '' },
+        filters = { q: '', category: '', min_price: '', max_price: '', sort: 'popular' },
         storeName = ''
     } = $props();
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const cartCount = $derived(page.props.cartCount || 0);
+    const auth = $derived(page.props.auth?.user);
 
     // Filter states
     let searchQ = $state(filters.q || '');
+    let selectedSort = $state(filters.sort || 'popular');
     
     function getCategoriesFromFilter(catFilter: any) {
         if (!catFilter) return [];
@@ -35,6 +38,7 @@
         selectedCategories = getCategoriesFromFilter(filters.category);
         minPrice = filters.min_price || '';
         maxPrice = filters.max_price || '';
+        selectedSort = filters.sort || 'popular';
     });
 
     function applyFilters(closeDrawer = true) {
@@ -44,6 +48,7 @@
             category: selectedCategories,
             min_price: minPrice,
             max_price: maxPrice,
+            sort: selectedSort,
         }, {
             preserveState: true,
             replace: true
@@ -55,6 +60,7 @@
         selectedCategories = [];
         minPrice = '';
         maxPrice = '';
+        selectedSort = 'popular';
         
         if (!keepMobileOpen) {
             showMobileFilters = false;
@@ -201,15 +207,15 @@
     <div
         class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm"
     >
-        <!-- Search bar row (Screenshot 2 style) -->
-        <div class="flex items-center gap-2 px-3 py-2.5" style="background-color: {primary};">
+        <!-- Row 1: Back, Search, Cart, Profile -->
+        <div class="flex items-center gap-3 px-3 py-2.5 text-white" style="background-color: {primary};">
             <!-- Back button -->
             <button
                 onclick={() => history.back()}
-                class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition"
+                class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition"
                 aria-label="Kembali"
             >
-                <i class="ti ti-arrow-left text-xl"></i>
+                <i class="ti ti-arrow-left text-lg"></i>
             </button>
 
             <!-- Inline search input -->
@@ -222,41 +228,98 @@
                     <input
                         type="text"
                         bind:value={searchQ}
-                        placeholder="Cari produk, merek..."
-                        class="w-full pl-9 pr-4 py-2 text-sm bg-white rounded-xl border-0 focus:outline-none focus:ring-2 shadow-sm"
-                        style="--tw-ring-color: {primary}40;"
+                        placeholder="Cari..."
+                        class="w-full pl-8 pr-7 py-1.5 text-xs bg-white text-slate-800 rounded-xl border-0 focus:outline-none focus:ring-1 focus:ring-white/55 shadow-sm"
                     />
                     {#if searchQ}
                         <button
                             type="button"
                             onclick={() => { searchQ = ''; applyFilters(); }}
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
                         >
-                            <i class="ti ti-x text-sm"></i>
+                            <i class="ti ti-x text-xs"></i>
                         </button>
                     {/if}
                 </div>
             </form>
 
-            <!-- Filter button -->
+            <!-- Cart icon -->
+            <Link
+                href="#"
+                class="shrink-0 relative w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition"
+                aria-label="Keranjang"
+            >
+                <i class="ti ti-shopping-cart text-lg"></i>
+                {#if cartCount > 0}
+                    <span
+                        class="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white"
+                        style="background-color: {secondary};"
+                    >
+                        {cartCount}
+                    </span>
+                {/if}
+            </Link>
+
+            <!-- Profile/Login icon -->
+            {#if auth}
+                <Link
+                    href="/dashboard"
+                    class="shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-[10px] text-white"
+                >
+                    {auth.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                </Link>
+            {:else}
+                <Link
+                    href="/login"
+                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition"
+                    aria-label="Masuk"
+                >
+                    <i class="ti ti-user-circle text-lg"></i>
+                </Link>
+            {/if}
+        </div>
+
+        <!-- Row 2: Sort pills + Filter button -->
+        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-slate-100">
+            {#each [
+                { id: 'relevance', label: 'Terkait' },
+                { id: 'latest', label: 'Terbaru' },
+                { id: 'popular', label: 'Terlaris' },
+                { id: 'price_asc', label: 'Harga ↑' },
+                { id: 'price_desc', label: 'Harga ↓' },
+            ] as sortOpt}
+                <button
+                    onclick={() => { selectedSort = sortOpt.id; applyFilters(); }}
+                    class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95"
+                    class:text-white={selectedSort === sortOpt.id}
+                    class:border-transparent={selectedSort === sortOpt.id}
+                    class:bg-white={selectedSort !== sortOpt.id}
+                    class:border-slate-200={selectedSort !== sortOpt.id}
+                    class:text-slate-600={selectedSort !== sortOpt.id}
+                    style={selectedSort === sortOpt.id ? `background-color: ${primary};` : ''}
+                >
+                    {sortOpt.label}
+                </button>
+            {/each}
+
+            <!-- Filter button at the end of sorting pills -->
             <button
                 onclick={() => showMobileFilters = true}
-                class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition relative"
+                class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95 flex items-center gap-1
+                       {selectedCategories.length > 0 || minPrice || maxPrice
+                           ? 'text-white border-transparent'
+                           : 'bg-white border-slate-200 text-slate-600'}"
+                style={selectedCategories.length > 0 || minPrice || maxPrice ? `background-color: ${secondary};` : ''}
                 aria-label="Filter"
             >
-                <i class="ti ti-adjustments-horizontal text-lg"></i>
-                {#if selectedCategories.length > 0 || minPrice || maxPrice}
-                    <span
-                        class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
-                        style="background-color: {secondary};"
-                    ></span>
-                {/if}
+                <i class="ti ti-adjustments-horizontal"></i>
+                Filter
             </button>
         </div>
     </div>
 
     <!-- Spacer for mobile sticky bar -->
-    <div class="md:hidden h-[50px]"></div>
+    <div class="md:hidden h-[92px]"></div>
 
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow">
         <!-- Desktop Header (Desktop only, no tabs) -->
@@ -265,9 +328,6 @@
                 <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
                     🔥 Produk Terlaris
                 </h1>
-                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                    Menampilkan {products.from || 0} - {products.to || 0} dari {products.total || 0} produk
-                </p>
             </div>
         </div>
 

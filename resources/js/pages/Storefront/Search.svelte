@@ -332,9 +332,6 @@
                         Semua Produk
                     {/if}
                 </h1>
-                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                    Menampilkan {products.from || 0} - {products.to || 0} dari {products.total || 0} produk
-                </p>
             </div>
 
             <!-- Sorting & Mini Pagination (Desktop only) -->

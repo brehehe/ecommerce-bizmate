@@ -2,23 +2,95 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import { onMount, onDestroy } from 'svelte';
+    import InputCurrency from '@/components/ui/InputCurrency.svelte';
 
     let {
+        categories = [],
         products = { data: [], links: [] },
         activeFlashSale = null,
+        filters = { q: '', category: '', min_price: '', max_price: '', sort: 'relevance' },
         storeName = ''
     } = $props();
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const cartCount = $derived(page.props.cartCount || 0);
+    const auth = $derived(page.props.auth?.user);
 
-    // Search state & handler
-    let searchQ = $state('');
+    // Filter states
+    let searchQ = $state(filters.q || '');
+    let selectedSort = $state(filters.sort || 'relevance');
+    
+    function getCategoriesFromFilter(catFilter: any) {
+        if (!catFilter) return [];
+        if (Array.isArray(catFilter)) return catFilter;
+        return [catFilter];
+    }
+    
+    let selectedCategories = $state(getCategoriesFromFilter(filters.category));
+    let minPrice = $state(filters.min_price || '');
+    let maxPrice = $state(filters.max_price || '');
 
-    function handleSearch() {
-        if (searchQ.trim()) {
-            router.get('/search', { q: searchQ });
+    // Mobile filter overlay state
+    let showMobileFilters = $state(false);
+
+    // Sync state if props change (Inertia navigate)
+    $effect(() => {
+        searchQ = filters.q || '';
+        selectedCategories = getCategoriesFromFilter(filters.category);
+        minPrice = filters.min_price || '';
+        maxPrice = filters.max_price || '';
+        selectedSort = filters.sort || 'relevance';
+    });
+
+    function applyFilters(closeDrawer = true) {
+        if (closeDrawer) showMobileFilters = false;
+        router.get('/flash-sale', {
+            q: searchQ,
+            category: selectedCategories,
+            min_price: minPrice,
+            max_price: maxPrice,
+            sort: selectedSort,
+        }, {
+            preserveState: true,
+            replace: true
+        });
+    }
+
+    function resetFilters(keepMobileOpen = false) {
+        searchQ = '';
+        selectedCategories = [];
+        minPrice = '';
+        maxPrice = '';
+        selectedSort = 'relevance';
+        
+        if (!keepMobileOpen) {
+            showMobileFilters = false;
         }
+
+        router.get('/flash-sale', {}, {
+            preserveState: true,
+            replace: true
+        });
+    }
+
+    // Di mobile drawer: hanya toggle state, tidak langsung navigasi
+    function selectCategory(catSlug: string) {
+        if (selectedCategories.includes(catSlug)) {
+            selectedCategories = selectedCategories.filter(slug => slug !== catSlug);
+        } else {
+            selectedCategories = [...selectedCategories, catSlug];
+        }
+    }
+
+    // Di desktop sidebar: toggle dan langsung terapkan filter
+    function selectCategoryDesktop(catSlug: string) {
+        if (selectedCategories.includes(catSlug)) {
+            selectedCategories = selectedCategories.filter(slug => slug !== catSlug);
+        } else {
+            selectedCategories = [...selectedCategories, catSlug];
+        }
+        applyFilters(false);
     }
 
     // ──────────────────────────────────────────────────
@@ -178,20 +250,20 @@
     <div
         class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm"
     >
-        <!-- Header row with Back button and Inline Search Input -->
-        <div class="flex items-center gap-2 px-3 py-2.5" style="background-color: {primary};">
+        <!-- Row 1: Back, Search, Cart, Profile -->
+        <div class="flex items-center gap-3 px-3 py-2.5 text-white" style="background-color: {primary};">
             <!-- Back button -->
             <button
                 onclick={() => history.back()}
-                class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition"
+                class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition"
                 aria-label="Kembali"
             >
-                <i class="ti ti-arrow-left text-xl"></i>
+                <i class="ti ti-arrow-left text-lg"></i>
             </button>
 
             <!-- Inline search input -->
             <form
-                onsubmit={(e) => { e.preventDefault(); handleSearch(); }}
+                onsubmit={(e) => { e.preventDefault(); applyFilters(); }}
                 class="flex-grow"
             >
                 <div class="relative">
@@ -199,42 +271,183 @@
                     <input
                         type="text"
                         bind:value={searchQ}
-                        placeholder="Cari produk, merek..."
-                        class="w-full pl-9 pr-4 py-2 text-sm bg-white rounded-xl border-0 focus:outline-none focus:ring-2 shadow-sm"
-                        style="--tw-ring-color: {primary}40;"
+                        placeholder="Cari..."
+                        class="w-full pl-8 pr-7 py-1.5 text-xs bg-white text-slate-800 rounded-xl border-0 focus:outline-none focus:ring-1 focus:ring-white/55 shadow-sm"
                     />
                     {#if searchQ}
                         <button
                             type="button"
-                            onclick={() => { searchQ = ''; }}
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                            onclick={() => { searchQ = ''; applyFilters(); }}
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
                         >
-                            <i class="ti ti-x text-sm"></i>
+                            <i class="ti ti-x text-xs"></i>
                         </button>
                     {/if}
                 </div>
             </form>
+
+            <!-- Cart icon -->
+            <Link
+                href="#"
+                class="shrink-0 relative w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition"
+                aria-label="Keranjang"
+            >
+                <i class="ti ti-shopping-cart text-lg"></i>
+                {#if cartCount > 0}
+                    <span
+                        class="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white"
+                        style="background-color: {secondary};"
+                    >
+                        {cartCount}
+                    </span>
+                {/if}
+            </Link>
+
+            <!-- Profile/Login icon -->
+            {#if auth}
+                <Link
+                    href="/dashboard"
+                    class="shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-[10px] text-white"
+                >
+                    {auth.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                </Link>
+            {:else}
+                <Link
+                    href="/login"
+                    class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition"
+                    aria-label="Masuk"
+                >
+                    <i class="ti ti-user-circle text-lg"></i>
+                </Link>
+            {/if}
+        </div>
+
+        <!-- Row 2: Sort pills + Filter button -->
+        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-slate-100">
+            {#each [
+                { id: 'relevance', label: 'Terkait' },
+                { id: 'latest', label: 'Terbaru' },
+                { id: 'popular', label: 'Terlaris' },
+                { id: 'price_asc', label: 'Harga ↑' },
+                { id: 'price_desc', label: 'Harga ↓' },
+            ] as sortOpt}
+                <button
+                    onclick={() => { selectedSort = sortOpt.id; applyFilters(); }}
+                    class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95"
+                    class:text-white={selectedSort === sortOpt.id}
+                    class:border-transparent={selectedSort === sortOpt.id}
+                    class:bg-white={selectedSort !== sortOpt.id}
+                    class:border-slate-200={selectedSort !== sortOpt.id}
+                    class:text-slate-600={selectedSort !== sortOpt.id}
+                    style={selectedSort === sortOpt.id ? `background-color: ${primary};` : ''}
+                >
+                    {sortOpt.label}
+                </button>
+            {/each}
+
+            <!-- Filter button at the end of sorting pills -->
+            <button
+                onclick={() => showMobileFilters = true}
+                class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95 flex items-center gap-1
+                       {selectedCategories.length > 0 || minPrice || maxPrice
+                           ? 'text-white border-transparent'
+                           : 'bg-white border-slate-200 text-slate-600'}"
+                style={selectedCategories.length > 0 || minPrice || maxPrice ? `background-color: ${secondary};` : ''}
+                aria-label="Filter"
+            >
+                <i class="ti ti-adjustments-horizontal"></i>
+                Filter
+            </button>
         </div>
     </div>
 
     <!-- Spacer for mobile sticky bar -->
-    <div class="md:hidden h-[50px]"></div>
+    <div class="md:hidden h-[92px]"></div>
 
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow">
         <!-- Desktop Header (Desktop only, no tabs) -->
         <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
-                ⚡ Flash Sale
-            </h1>
-            
-            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider self-end md:self-auto">
-                Menampilkan {products.from || 0} - {products.to || 0} dari {products.total || 0} produk
-            </p>
+            <div>
+                <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
+                    ⚡ Flash Sale
+                </h1>
+            </div>
         </div>
 
-        <div class="w-full">
+        <div class="flex gap-8 items-start">
             <!-- ═══════════════════════════════════════════════════
-             PRODUCT GRID
+             FILTER SIDEBAR (Desktop)
+            ═══════════════════════════════════════════════════ -->
+            <aside class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <span class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ti ti-filter text-base" style="color: {primary};"></i> Filter
+                    </span>
+                    <button
+                        onclick={resetFilters}
+                        class="text-[10px] font-black uppercase tracking-wider hover:underline"
+                        style="color: {secondary};"
+                    >
+                        Reset
+                    </button>
+                </div>
+
+                <!-- Kategori Filter -->
+                <div class="space-y-2.5">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kategori</span>
+                    <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
+                        {#each categories as cat}
+                            <button
+                                onclick={() => selectCategoryDesktop(cat.slug || cat.id.toString())}
+                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                       {selectedCategories.includes(cat.slug || cat.id.toString())
+                                           ? 'bg-slate-50'
+                                           : 'text-slate-600 hover:text-slate-900'}"
+                                style={selectedCategories.includes(cat.slug || cat.id.toString()) ? `color: ${primary};` : ''}
+                            >
+                                <span class="flex items-center gap-2">
+                                    <i class="ti {cat.icon || 'ti-tag'} text-sm"></i>
+                                    {cat.name}
+                                </span>
+                                {#if selectedCategories.includes(cat.slug || cat.id.toString())}
+                                    <i class="ti ti-check text-xs"></i>
+                                {/if}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Rentang Harga Filter -->
+                <div class="space-y-3">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
+                    <div class="space-y-3">
+                        <InputCurrency
+                            bind:value={minPrice}
+                            placeholder="0"
+                            prefix="Rp"
+                            label="Harga Minimum"
+                        />
+                        <InputCurrency
+                            bind:value={maxPrice}
+                            placeholder="Maks"
+                            prefix="Rp"
+                            label="Harga Maksimum"
+                        />
+                    </div>
+                    <button
+                        onclick={applyFilters}
+                        class="w-full py-2 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
+                        style="background-color: {primary};"
+                    >
+                        Terapkan Harga
+                    </button>
+                </div>
+            </aside>
+
+            <!-- ═══════════════════════════════════════════════════
+             PRODUCT GRID (Right Column)
             ═══════════════════════════════════════════════════ -->
             <div class="flex-grow flex flex-col min-w-0">
                 <!-- Flash Sale Info Banner (if flash_sale is active) -->
@@ -277,9 +490,17 @@
                         
                         <h3 class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight">Produk Tidak Ditemukan</h3>
                         
-                        <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2">
-                            Kami tidak dapat menemukan produk flash sale saat ini.
+                        <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8">
+                            Kami tidak dapat menemukan produk flash sale yang cocok dengan pencarian atau filter Anda. Coba reset filter atau gunakan kata kunci lain.
                         </p>
+                        
+                        <button
+                            onclick={resetFilters}
+                            class="px-8 py-3 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-95 shadow-lg shadow-blue-600/25 hover:shadow-blue-600/35"
+                            style="background-color: {primary};"
+                        >
+                            Reset Filter
+                        </button>
                     </div>
                 {:else}
                     <!-- Product Grid -->
@@ -391,4 +612,96 @@
             </div>
         </div>
     </div>
+
+    <!-- ═══════════════════════════════════════════════════
+     MOBILE FILTER DRAWER (Mobile)
+    ═══════════════════════════════════════════════════ -->
+    {#if showMobileFilters}
+        <div class="fixed inset-0 z-50 flex justify-end md:hidden">
+            <!-- Backdrop -->
+            <button
+                onclick={() => showMobileFilters = false}
+                class="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full cursor-default border-0"
+            ></button>
+
+            <!-- Drawer body -->
+            <div class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between p-6 overflow-y-auto space-y-6">
+                <div>
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+                        <span class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="ti ti-filter text-base" style="color: {primary};"></i> Filter
+                        </span>
+                        <button
+                            onclick={() => showMobileFilters = false}
+                            class="text-slate-400 hover:text-slate-600"
+                        >
+                            <i class="ti ti-x text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Kategori Filter -->
+                    <div class="space-y-2.5">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kategori</span>
+                        <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                            {#each categories as cat}
+                                <button
+                                    onclick={() => selectCategory(cat.slug || cat.id.toString())}
+                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                           {selectedCategories.includes(cat.slug || cat.id.toString())
+                                               ? 'bg-slate-50'
+                                               : 'text-slate-600 hover:text-slate-900'}"
+                                    style={selectedCategories.includes(cat.slug || cat.id.toString()) ? `color: ${primary};` : ''}
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <i class="ti {cat.icon || 'ti-tag'} text-sm"></i>
+                                        {cat.name}
+                                    </span>
+                                    {#if selectedCategories.includes(cat.slug || cat.id.toString())}
+                                        <i class="ti ti-check text-xs"></i>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100 my-5" />
+
+                    <!-- Rentang Harga Filter -->
+                    <div class="space-y-3">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
+                        <div class="space-y-3">
+                            <InputCurrency
+                                bind:value={minPrice}
+                                placeholder="0"
+                                prefix="Rp"
+                                label="Harga Minimum"
+                            />
+                            <InputCurrency
+                                bind:value={maxPrice}
+                                placeholder="Maks"
+                                prefix="Rp"
+                                label="Harga Maksimum"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
+                    <button
+                        onclick={() => resetFilters(true)}
+                        class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
+                    >
+                        Reset
+                    </button>
+                    <button
+                        onclick={applyFilters}
+                        class="py-3 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition"
+                        style="background-color: {primary};"
+                    >
+                        Terapkan
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
 </StorefrontLayout>

@@ -510,6 +510,12 @@ class StorefrontController extends Controller
      */
     public function flashSale(Request $request)
     {
+        $query = $request->input('q');
+        $categoryId = $request->input('category');
+        $minPrice = $request->input('min_price');
+        $maxPrice = $request->input('max_price');
+        $sort = $request->input('sort', 'relevance');
+
         $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
             ->orderBy('order')
             ->get();
@@ -518,6 +524,7 @@ class StorefrontController extends Controller
         $activeFlashSale = Promotion::with([
             'items.product.productPrice',
             'items.product.images',
+            'items.product.category',
             'items.variant.productPrice',
             'items.variant.options',
         ])
@@ -571,7 +578,7 @@ class StorefrontController extends Controller
         }
 
         // Filter and map collection
-        $productsCollection = $productsCollection->filter(function ($p) use ($activeFlashSale) {
+        $productsCollection = $productsCollection->filter(function ($p) use ($activeFlashSale, $query, $categoryId, $minPrice, $maxPrice) {
             if ($activeFlashSale) {
                 // Force flash sale promotion
                 $basePrice = $p->productPrice?->price ?? 0;
@@ -606,11 +613,67 @@ class StorefrontController extends Controller
                 }
             }
 
+            // Keyword filter
+            if ($query) {
+                $terms = array_filter(explode(' ', strtolower($query)));
+                $nameLower = strtolower($p->name);
+                $descLower = strtolower($p->description ?? '');
+                $categoryNameLower = strtolower($p->category?->name ?? '');
+                foreach ($terms as $term) {
+                    if (! str_contains($nameLower, $term) &&
+                        ! str_contains($descLower, $term) &&
+                        ! str_contains($categoryNameLower, $term)) {
+                        return false;
+                    }
+                }
+            }
+
+            // Category filter
+            if ($categoryId) {
+                $categoryIds = is_array($categoryId) ? $categoryId : [$categoryId];
+                $match = false;
+                foreach ($categoryIds as $cat) {
+                    if ($p->category_id === $cat || $p->category?->slug === $cat || $p->category?->id === $cat) {
+                        $match = true;
+                        break;
+                    }
+                }
+                if (! $match) {
+                    return false;
+                }
+            }
+
+            // Price range filter
+            $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            if ($minPrice && $price < $minPrice) {
+                return false;
+            }
+            if ($maxPrice && $price > $maxPrice) {
+                return false;
+            }
+
             return true;
         });
 
-        // flash_sale sorting (by discount percentage desc)
-        $productsCollection = $productsCollection->sortByDesc('discount_percentage');
+        // apply dynamic sorting
+        if ($sort === 'price_asc') {
+            $productsCollection = $productsCollection->sortBy(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'price_desc') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'latest') {
+            $productsCollection = $productsCollection->sortByDesc('created_at');
+        } elseif ($sort === 'popular') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return crc32($p->name) % 1000;
+            });
+        } else {
+            // relevance / discount_desc
+            $productsCollection = $productsCollection->sortByDesc('discount_percentage');
+        }
 
         // Paginate
         $page = request()->input('page', 1);
@@ -636,6 +699,13 @@ class StorefrontController extends Controller
             'categories' => $categories,
             'products' => $productsPaginator,
             'activeFlashSale' => $activeFlashSale,
+            'filters' => [
+                'q' => $query,
+                'category' => $categoryId,
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
+                'sort' => $sort,
+            ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
@@ -650,6 +720,7 @@ class StorefrontController extends Controller
         $categoryId = $request->input('category');
         $minPrice = $request->input('min_price');
         $maxPrice = $request->input('max_price');
+        $sort = $request->input('sort', 'popular');
 
         $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
             ->orderBy('order')
@@ -744,10 +815,41 @@ class StorefrontController extends Controller
             return true;
         });
 
-        // Sorting by mock popularity score (same as bestsellers search/slider)
-        $productsCollection = $productsCollection->sortByDesc(function ($p) {
-            return crc32($p->name) % 1000;
-        });
+        // Apply sorting on the mapped collection
+        if ($sort === 'price_asc') {
+            $productsCollection = $productsCollection->sortBy(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'price_desc') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'latest') {
+            $productsCollection = $productsCollection->sortByDesc('created_at');
+        } elseif ($sort === 'popular') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return crc32($p->name) % 1000;
+            });
+        } else {
+            if ($query) {
+                $productsCollection = $productsCollection->sortByDesc(function ($p) use ($query) {
+                    $nameLower = strtolower($p->name);
+                    $queryLower = strtolower($query);
+                    if (str_starts_with($nameLower, $queryLower)) {
+                        return 2;
+                    }
+                    if (str_contains($nameLower, $queryLower)) {
+                        return 1;
+                    }
+
+                    return 0;
+                });
+            } else {
+                $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                    return crc32($p->name) % 1000;
+                });
+            }
+        }
 
         // Paginate
         $page = request()->input('page', 1);
@@ -777,6 +879,7 @@ class StorefrontController extends Controller
                 'category' => $categoryId,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
+                'sort' => $sort,
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
@@ -799,6 +902,11 @@ class StorefrontController extends Controller
         $query = $request->input('q');
         $minPrice = $request->input('min_price');
         $maxPrice = $request->input('max_price');
+        $sort = $request->input('sort', 'latest');
+
+        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
+            ->orderBy('order')
+            ->get();
 
         // Build product query
         $productsQuery = Product::with([
@@ -858,8 +966,39 @@ class StorefrontController extends Controller
             return true;
         });
 
-        // Default sorting: latest
-        $productsCollection = $productsCollection->sortByDesc('created_at');
+        // Apply sorting on the mapped collection
+        if ($sort === 'price_asc') {
+            $productsCollection = $productsCollection->sortBy(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'price_desc') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            });
+        } elseif ($sort === 'popular') {
+            $productsCollection = $productsCollection->sortByDesc(function ($p) {
+                return crc32($p->name) % 1000;
+            });
+        } elseif ($sort === 'latest') {
+            $productsCollection = $productsCollection->sortByDesc('created_at');
+        } else {
+            if ($query) {
+                $productsCollection = $productsCollection->sortByDesc(function ($p) use ($query) {
+                    $nameLower = strtolower($p->name);
+                    $queryLower = strtolower($query);
+                    if (str_starts_with($nameLower, $queryLower)) {
+                        return 2;
+                    }
+                    if (str_contains($nameLower, $queryLower)) {
+                        return 1;
+                    }
+
+                    return 0;
+                });
+            } else {
+                $productsCollection = $productsCollection->sortByDesc('created_at');
+            }
+        }
 
         // Paginate
         $page = request()->input('page', 1);
@@ -883,11 +1022,13 @@ class StorefrontController extends Controller
 
         return Inertia::render('Storefront/Category', [
             'category' => $categoryModel,
+            'categories' => $categories,
             'products' => $productsPaginator,
             'filters' => [
                 'q' => $query,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
+                'sort' => $sort,
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
