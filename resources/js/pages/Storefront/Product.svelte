@@ -1,6 +1,7 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
+    import { fade } from 'svelte/transition';
 
     let { product, relatedProducts = [], storeName = '' } = $props();
 
@@ -1777,8 +1778,13 @@
             <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
                 <span class="text-base font-extrabold text-slate-800">Varian produk</span>
                 <button
-                    onclick={() => (drawerOpen = false)}
-                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"
+                    type="button"
+                    onclick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        drawerOpen = false;
+                    }}
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition cursor-pointer relative z-55"
                 >
                     <i class="ti ti-x text-base"></i>
                 </button>
