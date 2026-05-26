@@ -33,6 +33,9 @@
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
+    
+    // Tampilan empty state: true untuk model card (mirip screenshot), false untuk tanpa card
+    let useCardStyle = $state(true);
 
     let initialPromoOnly = filters.promo || false;
 
@@ -61,15 +64,21 @@
         });
     }
 
-    function resetFilters() {
+    function resetFilters(keepMobileOpen = false) {
         searchQ = '';
         selectedCategories = [];
         selectedSort = 'latest';
         minPrice = '';
         maxPrice = '';
         promoOnly = false;
-        showMobileFilters = false;
-        router.get('/search');
+        
+        if (!keepMobileOpen) {
+            showMobileFilters = false;
+        }
+
+        router.get('/search', {}, {
+            preserveState: true
+        });
     }
 
     // Di mobile drawer: hanya toggle state, tidak langsung navigasi
@@ -108,6 +117,9 @@
     // Accumulate products across pages
     let allProducts = $state<any[]>(products.data || []);
     let isLoadingMore = $state(false);
+    let currentPage = $state(products.current_page || 1);
+    let nextPageUrl = $state(products.next_page_url || null);
+    
     let lastFilterKey = $state(JSON.stringify({
         q: filters.q, category: filters.category,
         sort: filters.sort, min_price: filters.min_price,
@@ -133,26 +145,44 @@
                 allProducts = [...allProducts, ...newItems];
             }
         }
+        currentPage = products.current_page || 1;
+        nextPageUrl = products.next_page_url || null;
         isLoadingMore = false;
     });
 
-    function loadMore() {
-        if (isLoadingMore || !products.next_page_url) return;
+    async function loadMore() {
+        if (isLoadingMore || !nextPageUrl) return;
         isLoadingMore = true;
-        const nextPage = (products.current_page || 1) + 1;
-        router.get('/search', {
-            q: filters.q,
-            category: filters.category,
-            sort: filters.sort,
-            min_price: filters.min_price,
-            max_price: filters.max_price,
-            promo: filters.promo ? 1 : 0,
-            page: nextPage,
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-            only: ['products'],
-        });
+
+        try {
+            const response = await fetch(nextPageUrl, {
+                headers: {
+                    'X-Inertia': 'true',
+                    'X-Inertia-Partial-Component': 'Storefront/Search',
+                    'X-Inertia-Partial-Data': 'products',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (response.ok) {
+                const json = await response.json();
+                const newProductsPaginator = json.props?.products;
+                if (newProductsPaginator) {
+                    currentPage = newProductsPaginator.current_page;
+                    nextPageUrl = newProductsPaginator.next_page_url;
+                    
+                    const newItems = newProductsPaginator.data || [];
+                    const existingIds = new Set(allProducts.map((p: any) => p.id));
+                    const filteredNewItems = newItems.filter((p: any) => !existingIds.has(p.id));
+                    if (filteredNewItems.length > 0) {
+                        allProducts = [...allProducts, ...filteredNewItems];
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load more products:', error);
+        } finally {
+            isLoadingMore = false;
+        }
     }
 
     // Set up IntersectionObserver on sentinel element
@@ -339,32 +369,6 @@
                     </div>
                 </div>
 
-                <!-- Mini Pagination (Desktop only) -->
-                {#if products.last_page > 1}
-                    <div class="flex items-center gap-2 border-l border-slate-150 pl-4 h-8">
-                        <span class="text-xs font-bold text-slate-500">
-                            <span style="color: {primary};">{products.current_page}</span>
-                            <span class="text-slate-300">/</span>
-                            {products.last_page}
-                        </span>
-                        <div class="flex items-center gap-1">
-                            <Link
-                                href={products.prev_page_url || '#'}
-                                prefetch
-                                class="w-8 h-8 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95 {!products.prev_page_url ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}"
-                            >
-                                <i class="ti ti-chevron-left text-sm"></i>
-                            </Link>
-                            <Link
-                                href={products.next_page_url || '#'}
-                                prefetch
-                                class="w-8 h-8 rounded-xl flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95 {!products.next_page_url ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}"
-                            >
-                                <i class="ti ti-chevron-right text-sm"></i>
-                            </Link>
-                        </div>
-                    </div>
-                {/if}
             </div>
         </div>
 
@@ -461,21 +465,50 @@
             ═══════════════════════════════════════════════════ -->
             <div class="flex-grow flex flex-col min-w-0">
                 {#if allProducts.length === 0 && !isLoadingMore}
-                    <div class="bg-white border border-slate-150 rounded-2xl p-16 text-center shadow-soft">
-                        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
-                            <i class="ti ti-package-off text-3xl"></i>
+                    <div 
+                        class={useCardStyle 
+                            ? "bg-white border border-slate-900 rounded-[28px] py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300" 
+                            : "py-12 sm:py-16 px-4 text-center max-w-2xl mx-auto w-full transition-all duration-300"}
+                    >
+                        <!-- Circular Icon (similar to screenshot) -->
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                            <i class="ti ti-package-off text-3xl sm:text-4xl"></i>
                         </div>
-                        <h3 class="text-slate-800 font-bold text-lg mb-1">Produk Tidak Ditemukan</h3>
-                        <p class="text-slate-400 text-sm max-w-sm mx-auto mt-2">
+                        
+                        <!-- Title (matching screenshot) -->
+                        <h3 class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight">Produk Tidak Ditemukan</h3>
+                        
+                        <!-- Description (matching screenshot) -->
+                        <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8">
                             Kami tidak dapat menemukan produk yang cocok dengan pencarian atau filter Anda. Coba reset filter atau gunakan kata kunci lain.
                         </p>
+                        
+                        <!-- Button with dynamic theme color & blue shadow (matching screenshot) -->
                         <button
                             onclick={resetFilters}
-                            class="mt-6 px-6 py-2.5 rounded-xl font-bold text-xs text-white shadow-md transition active:scale-95"
+                            class="px-8 py-3 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-95 shadow-lg shadow-blue-600/25 hover:shadow-blue-600/35"
                             style="background-color: {primary};"
                         >
                             Reset Filter
                         </button>
+
+                        <!-- Subtle developer/client option toggle at the bottom -->
+                        <div class="mt-8 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-300">
+                            <span>Opsi Tampilan:</span>
+                            <button 
+                                onclick={() => useCardStyle = true} 
+                                class="px-2 py-0.5 rounded transition {useCardStyle ? 'bg-slate-100 text-slate-600' : 'hover:text-slate-500'}"
+                            >
+                                Dengan Card (Screenshot)
+                            </button>
+                            <span class="text-slate-200">|</span>
+                            <button 
+                                onclick={() => useCardStyle = false} 
+                                class="px-2 py-0.5 rounded transition {!useCardStyle ? 'bg-slate-100 text-slate-600' : 'hover:text-slate-500'}"
+                            >
+                                Tanpa Card
+                            </button>
+                        </div>
                     </div>
                 {:else}
                     <!-- Product Grid -->
@@ -676,7 +709,7 @@
 
                 <div class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
                     <button
-                        onclick={resetFilters}
+                        onclick={() => resetFilters(true)}
                         class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
                     >
                         Reset
