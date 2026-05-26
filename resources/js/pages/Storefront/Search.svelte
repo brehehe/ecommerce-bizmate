@@ -175,7 +175,7 @@
         </div>
 
         <!-- Sort pills row -->
-        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto scrollbar-hide">
+        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {#each [
                 { id: 'relevance', label: 'Terkait' },
                 { id: 'latest', label: 'Terbaru' },
