@@ -676,10 +676,14 @@
                         {@const img = isReal ? getProductImage(product) : null}
                         {@const isPromo = isReal && product.is_promo}
                         {@const price = isReal
-                            ? (isPromo ? product.promo_price : (product.product_price?.price ?? 0))
+                            ? isPromo
+                                ? product.promo_price
+                                : (product.product_price?.price ?? 0)
                             : 0}
-                        {@const originalPrice = isReal && isPromo ? product.original_price : 0}
-                        {@const discountPercentage = isReal && isPromo ? product.discount_percentage : 0}
+                        {@const originalPrice =
+                            isReal && isPromo ? product.original_price : 0}
+                        {@const discountPercentage =
+                            isReal && isPromo ? product.discount_percentage : 0}
                         {@const rating = fakeRating()}
                         {@const sold = fakeSold()}
                         <Link
@@ -839,43 +843,9 @@
      SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)
 ═══════════════════════════════════════════════════ -->
     <section id="recommendations-section" class="mt-2 px-3 sm:px-5 lg:px-8">
-        <div
-            class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden shadow-sm"
-        >
-            <div
-                class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100"
-            >
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
-                        style="background: linear-gradient(135deg, {primary}, {secondary});"
-                    >
-                        <i class="ti ti-heart text-lg"></i>
-                    </div>
-                    <div>
-                        <h2
-                            class="font-outfit font-black text-base sm:text-lg text-slate-800"
-                        >
-                            Hanya Untukmu
-                        </h2>
-                        <p
-                            class="text-[10px] text-slate-400 font-bold uppercase tracking-wider"
-                        >
-                            Rekomendasi Pilihan
-                        </p>
-                    </div>
-                </div>
-                <a
-                    href="#"
-                    class="text-xs font-bold flex items-center gap-1"
-                    style="color: {primary};"
-                >
-                    Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
-                </a>
-            </div>
-
+        <div class="max-w-6xl mx-auto bg-transparent shadow-none">
             <!-- Masonry-style grid -->
-            <div class="p-3 sm:p-5">
+            <div class="py-3 px-0">
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                 >
@@ -884,20 +854,25 @@
                         {@const img = isReal ? getProductImage(product) : null}
                         {@const isPromo = isReal && product.is_promo}
                         {@const price = isReal
-                            ? (isPromo ? product.promo_price : (product.product_price?.price ?? 0))
+                            ? isPromo
+                                ? product.promo_price
+                                : (product.product_price?.price ?? 0)
                             : 0}
-                        {@const originalPrice = isReal && isPromo ? product.original_price : 0}
-                        {@const discountPercentage = isReal && isPromo ? product.discount_percentage : 0}
+                        {@const originalPrice =
+                            isReal && isPromo ? product.original_price : 0}
+                        {@const discountPercentage =
+                            isReal && isPromo ? product.discount_percentage : 0}
                         {@const rating = fakeRating()}
                         <Link
                             href={isReal
                                 ? `/products/${product.slug || product.id}`
                                 : '#'}
                             prefetch
-                            class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer flex flex-col h-full"
+                            class="group bg-transparent border-none shadow-none hover:shadow-none transition cursor-pointer flex flex-col h-full p-0"
                         >
+                            <!-- Rounded image container -->
                             <div
-                                class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
+                                class="relative aspect-square overflow-hidden rounded-[20px] border border-slate-100 group/img bg-slate-50"
                             >
                                 {#if img}
                                     <img
@@ -929,7 +904,9 @@
                                     </span>
                                 {/if}
                             </div>
-                            <div class="p-2.5 sm:p-3 flex-1 flex flex-col">
+                            <div
+                                class="py-3 px-0 flex-1 flex flex-col justify-between"
+                            >
                                 {#if isReal}
                                     <div>
                                         <p
@@ -939,27 +916,15 @@
                                             {product.category?.name || 'PRODUK'}
                                         </p>
                                         <p
-                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1.5"
                                             style="color: {primary};"
                                         >
                                             {product.name}
                                         </p>
-                                        <div
-                                            class="flex items-center gap-1 mt-1"
-                                        >
-                                            <i
-                                                class="ti ti-star-filled text-amber-500 text-[10px]"
-                                            ></i>
-                                            <span
-                                                class="text-[10px] text-slate-500 font-bold"
-                                                >{rating}</span
-                                            >
-                                        </div>
-                                        <hr class="border-slate-100 my-2" />
                                         <div class="mb-3">
                                             <p
                                                 class="text-sm sm:text-base font-black leading-tight"
-                                                style="color: {secondary};"
+                                                style="color: {primary};"
                                             >
                                                 {formatPrice(price)}
                                             </p>
@@ -972,9 +937,9 @@
                                             {/if}
                                         </div>
                                     </div>
-                                    <div class="mt-auto pt-3">
+                                    <div class="pt-2">
                                         <span
-                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                            class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
                                             style="background-color: {primary};"
                                         >
                                             <i
@@ -1066,16 +1031,6 @@
                             </svg>
                             Memuat rekomendasi lebih banyak...
                         </div>
-                    </div>
-                {/if}
-
-                {#if !hasMore && recommendedProducts.length > 0}
-                    <div
-                        class="mt-8 text-center text-xs sm:text-sm font-semibold text-slate-400 flex items-center justify-center gap-2"
-                    >
-                        <span class="w-8 h-px bg-slate-200"></span>
-                        Kamu telah melihat semua rekomendasi
-                        <span class="w-8 h-px bg-slate-200"></span>
                     </div>
                 {/if}
             </div>
