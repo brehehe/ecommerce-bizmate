@@ -1,15 +1,19 @@
 export function showToast(
     message: string,
     type: 'success' | 'error' = 'success',
+    position: 'top' | 'bottom' = 'bottom',
 ) {
-    let container = document.getElementById('toast-container');
+    const containerId = `toast-container-${position}`;
+    let container = document.getElementById(containerId);
 
     // Create container if it doesn't exist
     if (!container) {
         container = document.createElement('div');
-        container.id = 'toast-container';
+        container.id = containerId;
         container.className =
-            'fixed bottom-4 right-4 z-[9999] flex flex-col gap-3';
+            position === 'top'
+                ? 'fixed top-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-[9999] flex flex-col gap-3 items-center md:items-end'
+                : 'fixed bottom-4 left-1/2 -translate-x-1/2 md:left-auto md:right-4 md:translate-x-0 z-[9999] flex flex-col gap-3 items-center md:items-end';
         document.body.appendChild(container);
     }
 
@@ -18,21 +22,32 @@ export function showToast(
         type === 'success'
             ? 'ti-circle-check-filled text-emerald-500'
             : 'ti-circle-x-filled text-rose-500';
+
+    const initTransform = position === 'top' ? '-translate-y-4' : 'translate-y-4';
+    const endTransform = position === 'top' ? '-translate-y-2' : 'translate-y-2';
+
     toast.className =
-        'flex items-center gap-3 bg-white border border-slate-200 shadow-xl px-4 py-3 rounded-2xl min-w-[260px] max-w-sm transition-all duration-300 translate-y-4 opacity-0';
+        `flex items-center gap-3 bg-white border border-slate-200 shadow-xl px-4 py-3 rounded-2xl min-w-[260px] max-w-sm transition-all duration-300 ${initTransform} opacity-0`;
     toast.innerHTML = `
         <i class="ti ${icon} text-xl shrink-0"></i>
         <p class="text-xs font-bold text-slate-800 flex-grow">${message}</p>
         <button class="text-slate-400 hover:text-slate-600 transition shrink-0" onclick="this.parentElement.remove()" aria-label="Tutup"><i class="ti ti-x text-sm"></i></button>
     `;
-    container.appendChild(toast);
+
+    // If top position, prepend to make newer toasts appear on top
+    if (position === 'top') {
+        container.insertBefore(toast, container.firstChild);
+    } else {
+        container.appendChild(toast);
+    }
 
     // Animate in
-    setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 50);
+    setTimeout(() => toast.classList.remove(initTransform, 'opacity-0'), 50);
 
     // Animate out and remove
     setTimeout(() => {
-        toast.classList.add('translate-y-2', 'opacity-0');
+        toast.classList.add(endTransform, 'opacity-0');
         setTimeout(() => toast.remove(), 300);
     }, 3500);
 }
+

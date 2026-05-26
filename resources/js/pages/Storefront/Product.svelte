@@ -198,7 +198,7 @@
                 .catch(() => {});
         } else {
             navigator.clipboard.writeText(window.location.href);
-            showToast('Tautan produk berhasil disalin ke papan klip!', 'success');
+            showToast('Tautan produk berhasil disalin ke papan klip!', 'success', 'top');
         }
     }
 
@@ -564,7 +564,7 @@
         }
 
         if (hasVariations && !fullySelected) {
-            showToast('Pilih variasi terlebih dahulu', 'error');
+            showToast('Pilih variasi terlebih dahulu', 'error', 'top');
             return;
         }
 
@@ -574,10 +574,10 @@
             quantity: qty,
         }, {
             onSuccess: () => {
-                showToast('Produk berhasil ditambahkan ke keranjang!', 'success');
+                showToast('Produk berhasil ditambahkan ke keranjang!', 'success', 'top');
             },
             onError: (errors: any) => {
-                showToast('Gagal menambahkan produk ke keranjang', 'error');
+                showToast('Gagal menambahkan produk ke keranjang', 'error', 'top');
             }
         });
     }
@@ -589,7 +589,7 @@
         }
 
         if (hasVariations && !fullySelected) {
-            showToast('Pilih variasi terlebih dahulu', 'error');
+            showToast('Pilih variasi terlebih dahulu', 'error', 'top');
             return;
         }
 
@@ -602,7 +602,7 @@
                 router.visit('/cart');
             },
             onError: (errors: any) => {
-                showToast('Gagal memproses pembelian', 'error');
+                showToast('Gagal memproses pembelian', 'error', 'top');
             }
         });
     }
@@ -1634,7 +1634,7 @@
                         <button
                             onclick={() => {
                                 if (hasVariations && !fullySelected) {
-                                    showToast('Pilih variasi terlebih dahulu', 'error');
+                                    showToast('Pilih variasi terlebih dahulu', 'error', 'top');
                                     return;
                                 }
                                 addToCart();
