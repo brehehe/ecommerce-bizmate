@@ -60,7 +60,8 @@
             max_price: maxPrice,
             promo: promoOnly ? 1 : 0
         }, {
-            preserveState: true
+            preserveState: true,
+            replace: true
         });
     }
 
@@ -77,7 +78,8 @@
         }
 
         router.get('/search', {}, {
-            preserveState: true
+            preserveState: true,
+            replace: true
         });
     }
 
