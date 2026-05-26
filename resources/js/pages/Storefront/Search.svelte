@@ -154,15 +154,34 @@
         if (isLoadingMore || !nextPageUrl) return;
         isLoadingMore = true;
 
+        // Convert nextPageUrl to relative path to prevent CORS/port mismatch blocks
+        let fetchUrl = nextPageUrl;
+        if (fetchUrl.startsWith('http://') || fetchUrl.startsWith('https://')) {
+            try {
+                const urlObj = new URL(fetchUrl);
+                fetchUrl = urlObj.pathname + urlObj.search;
+            } catch (e) {
+                console.error('URL parse error:', e);
+            }
+        }
+
         try {
-            const response = await fetch(nextPageUrl, {
+            const response = await fetch(fetchUrl, {
                 headers: {
                     'X-Inertia': 'true',
                     'X-Inertia-Partial-Component': 'Storefront/Search',
                     'X-Inertia-Partial-Data': 'products',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Inertia-Version': page.version || ''
                 }
             });
+
+            if (response.status === 409) {
+                // Asset version mismatch: refresh page to get the latest assets
+                window.location.reload();
+                return;
+            }
+
             if (response.ok) {
                 const json = await response.json();
                 const newProductsPaginator = json.props?.products;
@@ -185,10 +204,8 @@
         }
     }
 
-    // Set up IntersectionObserver on sentinel element
-    let sentinel: HTMLDivElement | null = null;
-
-    onMount(() => {
+    // Svelte Action for Infinite Scroll Observer
+    function setupObserver(node: HTMLElement) {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting) {
@@ -197,9 +214,13 @@
             },
             { rootMargin: '200px' }
         );
-        if (sentinel) observer.observe(sentinel);
-        return () => observer.disconnect();
-    });
+        observer.observe(node);
+        return {
+            destroy() {
+                observer.disconnect();
+            }
+        };
+    }
 </script>
 
 <svelte:head>
@@ -586,7 +607,7 @@
                     </div>
 
                     <!-- Infinite scroll sentinel + loading indicator -->
-                    <div bind:this={sentinel} class="py-8 flex flex-col items-center justify-center gap-3">
+                    <div use:setupObserver class="py-8 flex flex-col items-center justify-center gap-3">
                         {#if isLoadingMore}
                             <!-- Modern pulsing indicator (same as Home.svelte) -->
                             <div
