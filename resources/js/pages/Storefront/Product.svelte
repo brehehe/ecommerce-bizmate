@@ -356,6 +356,72 @@
               : 0,
     );
 
+    // ═══════════════════════════════════════
+    //  TIER PRICING (WHOLESALE / GROSIR)
+    // ═══════════════════════════════════════
+    const isPromoActive = $derived(
+        matchingVariant ? matchingVariant.is_promo : product.is_promo,
+    );
+
+    const shouldKeepTierPricesDuringPromo = $derived(
+        matchingVariant
+            ? matchingVariant.keep_tier_prices
+            : product.keep_tier_prices,
+    );
+
+    const showWholesalePrices = $derived(
+        !isPromoActive || shouldKeepTierPricesDuringPromo,
+    );
+
+    const hasWholesalePrices = $derived(
+        product.tier_prices?.length > 0 ||
+            product.tierPrices?.length > 0 ||
+            (matchingVariant &&
+                (matchingVariant.tier_prices?.length > 0 ||
+                    matchingVariant.tierPrices?.length > 0)),
+    );
+
+    const activeTierPrices = $derived.by(() => {
+        if (!showWholesalePrices) {
+            return [];
+        }
+        if (hasVariations && fullySelected && matchingVariant) {
+            const variantTiers =
+                matchingVariant.tier_prices || matchingVariant.tierPrices;
+            if (variantTiers && variantTiers.length > 0) {
+                return variantTiers;
+            }
+        }
+        return product.tier_prices || product.tierPrices || [];
+    });
+
+    const activeUnitPrice = $derived.by(() => {
+        const base = currentPrice;
+        if (!activeTierPrices || activeTierPrices.length === 0) {
+            return base;
+        }
+        // Sort descending by min_qty so we match the highest threshold first
+        const sortedTiers = [...activeTierPrices].sort(
+            (a, b) => Number(b.min_qty) - Number(a.min_qty),
+        );
+        const matchingTier = sortedTiers.find(
+            (tier) => qty >= Number(tier.min_qty),
+        );
+        return matchingTier ? Number(matchingTier.price) : base;
+    });
+
+    const totalPrice = $derived(activeUnitPrice * qty);
+
+    const activeTier = $derived.by(() => {
+        if (!activeTierPrices || activeTierPrices.length === 0) {
+            return null;
+        }
+        const sortedTiers = [...activeTierPrices].sort(
+            (a, b) => Number(b.min_qty) - Number(a.min_qty),
+        );
+        return sortedTiers.find((tier) => qty >= Number(tier.min_qty)) || null;
+    });
+
     function fmt(price: any): string {
         const n = Number(price);
         if (!n) return 'Hubungi Kami';
@@ -466,14 +532,18 @@
             if (label) parts.push(label);
         });
         const varNote = parts.length ? ` (${parts.join(' / ')})` : '';
-        
+
         let text = '';
         if (action === 'chat') {
             text = `Halo, saya ingin bertanya mengenai produk *${product.name}*${varNote}. Apakah ada informasi lebih detail?`;
         } else if (action === 'cart') {
             text = `Halo, saya tertarik dengan produk *${product.name}*${varNote} sebanyak ${qty} pcs. Tolong masukkan ke dalam pesanan/keranjang saya.`;
         } else {
-            text = `Halo, saya ingin memesan *${product.name}*${varNote} sebanyak ${qty} pcs dengan harga ${fmt(currentPrice)}. Apakah masih tersedia?`;
+            if (activeTier) {
+                text = `Halo, saya ingin memesan *${product.name}*${varNote} sebanyak ${qty} pcs dengan harga grosir ${fmt(activeUnitPrice)} (Total ${fmt(totalPrice)}). Apakah masih tersedia?`;
+            } else {
+                text = `Halo, saya ingin memesan *${product.name}*${varNote} sebanyak ${qty} pcs dengan harga ${fmt(activeUnitPrice)} (Total ${fmt(totalPrice)}). Apakah masih tersedia?`;
+            }
         }
 
         const msg = encodeURIComponent(text);
@@ -868,7 +938,7 @@
                                     class="text-2xl font-bold"
                                     style="color: {secondary};"
                                 >
-                                    {fmt(currentPrice)}
+                                    {fmt(activeUnitPrice)}
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
@@ -896,7 +966,7 @@
                                         class="text-2xl font-bold"
                                         style="color: {secondary};"
                                     >
-                                        {fmt(currentPrice)}
+                                        {fmt(activeUnitPrice)}
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
@@ -917,6 +987,81 @@
                                     >Hubungi Kami</span
                                 >
                             {/if}
+                        </div>
+                    {/if}
+
+                    <!-- Mobile Wholesale Tier Prices Table -->
+                    {#if activeTierPrices && activeTierPrices.length > 0}
+                        <div class="md:hidden w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs my-3">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                        <th class="py-2.5 px-3.5 font-semibold">Min. Pembelian</th>
+                                        <th class="py-2.5 px-3.5 font-semibold text-right">Harga Satuan</th>
+                                        <th class="py-2.5 px-3.5 font-semibold text-right">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {#each activeTierPrices as tier}
+                                        {@const isActive = activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
+                                        <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
+                                            <td class="py-3 px-3.5 font-semibold text-slate-700">
+                                                {tier.min_qty}+ pcs
+                                            </td>
+                                            <td class="py-3 px-3.5 font-black text-slate-800 text-right">
+                                                {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
+                                            </td>
+                                            <td class="py-3 px-3.5 text-right">
+                                                {#if isActive}
+                                                    <span 
+                                                        class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-100/60 animate-pulse"
+                                                    >
+                                                        <i class="ti ti-check-circle"></i> Terpakai
+                                                    </span>
+                                                {:else}
+                                                    <span class="text-[9px] text-slate-350 font-medium">Tersedia</span>
+                                                {/if}
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {/if}
+
+                    <!-- Mobile Wholesale Promo Clash Alert -->
+                    {#if isPromoActive && !shouldKeepTierPricesDuringPromo && hasWholesalePrices}
+                        <div
+                            class="md:hidden flex items-start gap-3 p-4 rounded-2xl border text-xs my-3 shadow-xs"
+                            style="background-color: #fffaf0; border-color: #fbd38d;"
+                        >
+                            <div
+                                class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0"
+                            >
+                                <i
+                                    class="ti ti-info-circle text-amber-600 text-base animate-pulse"
+                                ></i>
+                            </div>
+                            <div class="flex-grow text-[11px] leading-relaxed">
+                                <span
+                                    class="font-bold text-amber-950 block text-xs"
+                                    >Harga Grosir Dijeda Sementara</span
+                                >
+                                <p class="text-amber-800 mt-0.5">
+                                    Produk ini sedang dalam masa promo aktif <span
+                                        class="font-black text-amber-950 uppercase"
+                                        >({isPromoActive
+                                            ? (
+                                                  matchingVariant?.promo_type ??
+                                                  product.promo_type ??
+                                                  'Promo'
+                                              ).replace('_', ' ')
+                                            : ''})</span
+                                    >. Selama masa promo berlangsung, potongan
+                                    harga grosir dinonaktifkan untuk memberikan
+                                    harga terbaik.
+                                </p>
+                            </div>
                         </div>
                     {/if}
 
@@ -1101,7 +1246,7 @@
                                     class="text-2xl sm:text-3xl font-bold"
                                     style="color: {secondary};"
                                 >
-                                    {fmt(currentPrice)}
+                                    {fmt(activeUnitPrice)}
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
@@ -1127,7 +1272,7 @@
                                         class="text-3xl sm:text-4xl font-bold"
                                         style="color: {secondary};"
                                     >
-                                        {fmt(currentPrice)}
+                                        {fmt(activeUnitPrice)}
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
@@ -1150,6 +1295,82 @@
                             {/if}
                         </div>
                     {/if}
+
+                    <!-- Desktop Wholesale Tier Prices Table -->
+                    {#if activeTierPrices && activeTierPrices.length > 0}
+                        <div class="hidden md:block w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs my-4">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                        <th class="py-2.5 px-4 font-semibold">Min. Pembelian</th>
+                                        <th class="py-2.5 px-4 font-semibold text-right">Harga Satuan</th>
+                                        <!-- <th class="py-2.5 px-4 font-semibold text-right">Status</th> -->
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    {#each activeTierPrices as tier}
+                                        {@const isActive = activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
+                                        <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
+                                            <td class="py-3 px-4 font-semibold text-slate-700">
+                                                {tier.min_qty}+ pcs
+                                            </td>
+                                            <td class="py-3 px-4 font-black text-slate-800 text-right">
+                                                {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
+                                            </td>
+                                            <!-- <td class="py-3 px-4 text-right">
+                                                {#if isActive}
+                                                    <span 
+                                                        class="inline-flex items-center gap-0.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-100/60 animate-pulse"
+                                                    >
+                                                        <i class="ti ti-check-circle"></i> Terpakai
+                                                    </span>
+                                                {:else}
+                                                    <span class="text-[9px] text-slate-350 font-medium">Tersedia</span>
+                                                {/if}
+                                            </td> -->
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {/if}
+
+                    <!-- Desktop Wholesale Promo Clash Alert -->
+                    {#if isPromoActive && !shouldKeepTierPricesDuringPromo && hasWholesalePrices}
+                        <div
+                            class="hidden md:flex items-start gap-3 p-4 rounded-2xl border text-xs my-3 shadow-xs"
+                            style="background-color: #fffaf0; border-color: #fbd38d;"
+                        >
+                            <div
+                                class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0"
+                            >
+                                <i
+                                    class="ti ti-info-circle text-amber-600 text-base animate-pulse"
+                                ></i>
+                            </div>
+                            <div class="flex-grow text-[11px] leading-relaxed">
+                                <span
+                                    class="font-bold text-amber-950 block text-xs"
+                                    >Harga Grosir Dijeda Sementara</span
+                                >
+                                <p class="text-amber-800 mt-0.5">
+                                    Produk ini sedang dalam masa promo aktif <span
+                                        class="font-black text-amber-950 uppercase"
+                                        >({isPromoActive
+                                            ? (
+                                                  matchingVariant?.promo_type ??
+                                                  product.promo_type ??
+                                                  'Promo'
+                                              ).replace('_', ' ')
+                                            : ''})</span
+                                    >. Selama masa promo berlangsung, potongan
+                                    harga grosir dinonaktifkan untuk memberikan
+                                    harga terbaik.
+                                </p>
+                            </div>
+                        </div>
+                    {/if}
+
                     <!-- Pengiriman -->
                     <div class="py-2.5 flex items-start gap-4">
                         <span
@@ -1159,14 +1380,17 @@
                         <div
                             class="flex items-start gap-1.5 text-xs text-slate-700"
                         >
-                            <i
-                                class="ti ti-truck text-green-500 text-sm mt-0.5"
+                            <i class="ti ti-truck text-green-500 text-sm mt-0.5"
                             ></i>
-                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <div
+                                class="flex flex-wrap items-center gap-x-2 gap-y-0.5"
+                            >
                                 <span class="font-bold text-slate-800">
                                     Garansi tiba 1–3 hari kerja
                                 </span>
-                                <span class="text-[11px] text-slate-400 font-normal">
+                                <span
+                                    class="text-[11px] text-slate-400 font-normal"
+                                >
                                     (JNE · J&T · SiCepat · Gosend · Grab)
                                 </span>
                             </div>
@@ -1203,143 +1427,193 @@
                     <div class="hidden md:block divide-y divide-slate-100">
                         <!-- ── VARIATIONS ──────────────────────────── -->
                         {#if hasVariations}
-                        {#each product.variations as variation}
-                            {@const selLabel = getSelectedLabel(variation)}
-                            <div class="py-4 flex flex-col gap-3">
-                                <!-- Label row -->
-                                <div class="flex items-center gap-2">
-                                    <span
-                                        class="text-sm font-bold text-slate-700"
-                                    >
-                                        Pilih {variation.name}:
-                                    </span>
-                                    {#if selLabel}
+                            {#each product.variations as variation}
+                                {@const selLabel = getSelectedLabel(variation)}
+                                <div class="py-4 flex flex-col gap-3">
+                                    <!-- Label row -->
+                                    <div class="flex items-center gap-2">
                                         <span
-                                            class="text-sm font-bold"
-                                            style="color: {primary};"
-                                            >{selLabel}</span
+                                            class="text-sm font-bold text-slate-700"
                                         >
-                                    {/if}
-                                </div>
+                                            Pilih {variation.name}:
+                                        </span>
+                                        {#if selLabel}
+                                            <span
+                                                class="text-sm font-bold"
+                                                style="color: {primary};"
+                                                >{selLabel}</span
+                                            >
+                                        {/if}
+                                    </div>
 
-                                <!-- Option buttons -->
-                                <div class="flex flex-wrap gap-2">
-                                    {#each variation.options as opt}
-                                        {@const optImg = getOptionImage(
-                                            opt.id,
-                                            variation.name,
-                                        )}
-                                        {@const available = isOptionAvailable(
-                                            opt.id,
-                                        )}
-                                        {@const sel = isSelected(
-                                            String(variation.id),
-                                            opt.id,
-                                        )}
-                                        <button
-                                            onclick={() =>
-                                                available &&
-                                                selectOption(
-                                                    String(variation.id),
-                                                    opt.id,
-                                                )}
-                                            class="relative flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs font-semibold transition duration-150
+                                    <!-- Option buttons -->
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each variation.options as opt}
+                                            {@const optImg = getOptionImage(
+                                                opt.id,
+                                                variation.name,
+                                            )}
+                                            {@const available =
+                                                isOptionAvailable(opt.id)}
+                                            {@const sel = isSelected(
+                                                String(variation.id),
+                                                opt.id,
+                                            )}
+                                            <button
+                                                onclick={() =>
+                                                    available &&
+                                                    selectOption(
+                                                        String(variation.id),
+                                                        opt.id,
+                                                    )}
+                                                class="relative flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs font-semibold transition duration-150
                                                {sel
-                                                ? 'shadow-sm'
-                                                : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
+                                                    ? 'shadow-sm'
+                                                    : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
                                                {!available
-                                                ? 'opacity-40 cursor-not-allowed'
-                                                : 'cursor-pointer'}"
-                                            style={sel
-                                                ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};`
-                                                : ''}
-                                            disabled={!available}
+                                                    ? 'opacity-40 cursor-not-allowed'
+                                                    : 'cursor-pointer'}"
+                                                style={sel
+                                                    ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};`
+                                                    : ''}
+                                                disabled={!available}
+                                            >
+                                                {#if optImg}
+                                                    <img
+                                                        src={optImg}
+                                                        alt={opt.name}
+                                                        class="w-8 h-8 rounded-lg object-cover shrink-0"
+                                                        onerror={(e) => {
+                                                            e.currentTarget.src =
+                                                                '/noimage/image.png';
+                                                        }}
+                                                    />
+                                                {/if}
+                                                {opt.name}
+                                                <!-- Out-of-stock diagonal stripe hint -->
+                                                {#if !available}
+                                                    <span
+                                                        class="absolute top-0.5 right-0.5 text-[9px] font-black text-red-400"
+                                                        >✕</span
+                                                    >
+                                                {/if}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                            {/each}
+                        {/if}
+
+                        <!-- ── QUANTITY ────────────────────────────── -->
+                        <div class="py-4 flex items-center gap-5">
+                            <span
+                                class="text-sm text-slate-500 w-28 shrink-0 font-medium"
+                                >Kuantitas</span
+                            >
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <!-- Stepper -->
+                                <div
+                                    class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white"
+                                >
+                                    <button
+                                        onclick={decQty}
+                                        disabled={qty <= currentMinPurchase}
+                                        class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                    >
+                                        <i class="ti ti-minus text-sm"></i>
+                                    </button>
+                                    <span
+                                        class="w-12 text-center text-sm font-black text-slate-800 tabular-nums"
+                                        >{qty}</span
+                                    >
+                                    <button
+                                        onclick={incQty}
+                                        disabled={!currentIsUnlimited &&
+                                            qty >= currentStock}
+                                        class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                    >
+                                        <i class="ti ti-plus text-sm"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Stock label -->
+                                {#if hasVariations && !fullySelected}
+                                    <span class="text-xs text-slate-400"
+                                        >Pilih variasi terlebih dahulu</span
+                                    >
+                                {:else if currentIsUnlimited}
+                                    <span
+                                        class="text-xs font-bold text-green-600 tracking-wide"
+                                        >TERSEDIA</span
+                                    >
+                                {:else if isInStock}
+                                    <span
+                                        class="text-xs font-bold text-green-600"
+                                        >Stok: {currentStock}</span
+                                    >
+                                {:else}
+                                    <span class="text-xs font-bold text-red-500"
+                                        >HABIS</span
+                                    >
+                                {/if}
+
+                                {#if currentMinPurchase > 1}
+                                    <span
+                                        class="text-[11px] text-slate-400 font-semibold"
+                                        >Min. {currentMinPurchase} pcs</span
+                                    >
+                                {/if}
+                            </div>
+                        </div>
+
+                        <!-- Desktop Live Calculation & Min Purchase Alert -->
+                        {#if !hasVariations || fullySelected}
+                            <div
+                                class="py-2.5 flex items-center gap-5 border-t border-slate-100 mt-2"
+                            >
+                                <span
+                                    class="text-sm text-slate-500 w-28 shrink-0 font-medium"
+                                    >Subtotal</span
+                                >
+                                <div
+                                    class="flex items-center gap-3 flex-wrap text-xs"
+                                >
+                                    <span
+                                        class="font-bold text-slate-700 tabular-nums"
+                                    >
+                                        {qty} x {fmt(activeUnitPrice)} =
+                                        <span
+                                            class="font-extrabold text-sm text-brand-blueRoyal"
+                                            >{fmt(totalPrice)}</span
                                         >
-                                            {#if optImg}
-                                                <img
-                                                    src={optImg}
-                                                    alt={opt.name}
-                                                    class="w-8 h-8 rounded-lg object-cover shrink-0"
-                                                    onerror={(e) => {
-                                                        e.currentTarget.src =
-                                                            '/noimage/image.png';
-                                                    }}
-                                                />
-                                            {/if}
-                                            {opt.name}
-                                            <!-- Out-of-stock diagonal stripe hint -->
-                                            {#if !available}
-                                                <span
-                                                    class="absolute top-0.5 right-0.5 text-[9px] font-black text-red-400"
-                                                    >✕</span
-                                                >
-                                            {/if}
-                                        </button>
-                                    {/each}
+                                    </span>
                                 </div>
                             </div>
-                        {/each}
-                    {/if}
+                        {/if}
 
-                    <!-- ── QUANTITY ────────────────────────────── -->
-                    <div class="py-4 flex items-center gap-5">
-                        <span
-                            class="text-sm text-slate-500 w-28 shrink-0 font-medium"
-                            >Kuantitas</span
-                        >
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <!-- Stepper -->
+                        {#if currentMinPurchase > 1}
                             <div
-                                class="flex items-center border border-slate-300 rounded-lg overflow-hidden"
+                                class="py-2.5 flex items-center gap-5 border-t border-slate-100"
                             >
-                                <button
-                                    onclick={decQty}
-                                    disabled={qty <= currentMinPurchase}
-                                    class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
-                                >
-                                    <i class="ti ti-minus text-sm"></i>
-                                </button>
                                 <span
-                                    class="w-12 text-center text-sm font-black text-slate-800 tabular-nums"
-                                    >{qty}</span
+                                    class="text-sm text-slate-500 w-28 shrink-0 font-medium"
+                                    >Informasi</span
                                 >
-                                <button
-                                    onclick={incQty}
-                                    disabled={!currentIsUnlimited &&
-                                        qty >= currentStock}
-                                    class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
-                                >
-                                    <i class="ti ti-plus text-sm"></i>
-                                </button>
+                                <div class="flex-grow">
+                                    <div
+                                        class="p-3 bg-blue-50/40 rounded-xl border border-blue-100/60 flex items-start gap-2 text-[11px] text-blue-700 font-medium max-w-md"
+                                    >
+                                        <i
+                                            class="ti ti-info-circle text-blue-500 text-sm mt-0.5 shrink-0"
+                                        ></i>
+                                        <span>
+                                            Minimum pembelian {currentMinPurchase}
+                                            pcs
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-
-                            <!-- Stock label -->
-                            {#if hasVariations && !fullySelected}
-                                <span class="text-xs text-slate-400"
-                                    >Pilih variasi terlebih dahulu</span
-                                >
-                            {:else if currentIsUnlimited}
-                                <span
-                                    class="text-xs font-bold text-green-600 tracking-wide"
-                                    >TERSEDIA</span
-                                >
-                            {:else if isInStock}
-                                <span class="text-xs font-bold text-green-600"
-                                    >Stok: {currentStock}</span
-                                >
-                            {:else}
-                                <span class="text-xs font-bold text-red-500"
-                                    >HABIS</span
-                                >
-                            {/if}
-
-                            {#if currentMinPurchase > 1}
-                                <span class="text-[11px] text-slate-400"
-                                    >Min. {currentMinPurchase} pcs</span
-                                >
-                            {/if}
-                        </div>
-                    </div>
+                        {/if}
                     </div>
 
                     <!-- ── CTA BUTTONS ─────────────────────────── -->
@@ -1757,8 +2031,6 @@
         </button>
     </div>
 
-
-
     <!-- Bottom Drawer for Varian Produk (Mobile Only) -->
     {#if drawerOpen}
         <!-- Backdrop -->
@@ -1774,8 +2046,12 @@
             style="padding-bottom: env(safe-area-inset-bottom, 0px);"
         >
             <!-- Header -->
-            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-                <span class="text-base font-extrabold text-slate-800">Varian produk</span>
+            <div
+                class="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0"
+            >
+                <span class="text-base font-extrabold text-slate-800"
+                    >Varian produk</span
+                >
                 <button
                     type="button"
                     onclick={(e) => {
@@ -1789,53 +2065,67 @@
                 </button>
             </div>
 
-            <!-- Scrollable Content -->
-            <div class="flex-grow overflow-y-auto px-5 py-4 flex flex-col gap-4">
-                <!-- Product Overview -->
-                <div class="flex gap-4 items-start pb-4 border-b border-slate-100 shrink-0">
-                    <div class="w-24 h-24 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0 select-none">
-                        <img
-                            src={displayImage || '/noimage/image.png'}
-                            alt={product.name}
-                            class="w-full h-full object-cover"
-                            onerror={(e) => {
-                                e.currentTarget.src = '/noimage/image.png';
-                            }}
-                        />
-                    </div>
-                    <div class="flex-grow pt-1">
-                        <p class="text-xl font-bold" style="color: {secondary};">
-                            {fmt(currentPrice)}
-                        </p>
-                        <!-- Selected variations hint -->
-                        <div class="text-xs text-slate-400 mt-1 flex flex-wrap gap-1 items-center">
-                            {#if hasVariations}
-                                {@const selectedParts = []}
-                                {#each product.variations as v}
-                                    {@const lbl = getSelectedLabel(v)}
-                                    {#if lbl}
-                                        {selectedParts.push(lbl) && ''}
-                                    {/if}
-                                {/each}
-                                {#if selectedParts.length > 0}
-                                    <span class="bg-slate-50 text-slate-600 px-2 py-0.5 rounded font-medium border border-slate-100">
-                                        {selectedParts.join(' / ')}
-                                    </span>
-                                {:else}
-                                    <span class="text-slate-400">Pilih variasi terlebih dahulu</span>
+            <!-- Fixed Product Overview at the top of drawer -->
+            <div
+                class="flex gap-4 items-start p-5 border-b border-slate-100 shrink-0 bg-white"
+            >
+                <div
+                    class="w-24 h-24 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 shrink-0 select-none"
+                >
+                    <img
+                        src={displayImage || '/noimage/image.png'}
+                        alt={product.name}
+                        class="w-full h-full object-cover"
+                        onerror={(e) => {
+                            e.currentTarget.src = '/noimage/image.png';
+                        }}
+                    />
+                </div>
+                <div class="flex-grow pt-1">
+                    <p class="text-xl font-bold" style="color: {secondary};">
+                        {fmt(activeUnitPrice)}
+                    </p>
+                    <!-- Selected variations hint -->
+                    <div
+                        class="text-xs text-slate-400 mt-1 flex flex-wrap gap-1 items-center"
+                    >
+                        {#if hasVariations}
+                            {@const selectedParts = []}
+                            {#each product.variations as v}
+                                {@const lbl = getSelectedLabel(v)}
+                                {#if lbl}
+                                    {selectedParts.push(lbl) && ''}
                                 {/if}
+                            {/each}
+                            {#if selectedParts.length > 0}
+                                <span
+                                    class="bg-slate-50 text-slate-600 px-2 py-0.5 rounded font-medium border border-slate-100"
+                                >
+                                    {selectedParts.join(' / ')}
+                                </span>
                             {:else}
-                                <span class="text-green-600 font-bold">Stok Ready</span>
+                                <span class="text-slate-400"
+                                    >Pilih variasi terlebih dahulu</span
+                                >
                             {/if}
-                        </div>
+                        {:else}
+                            <span class="text-green-600 font-bold"
+                                >Stok Ready</span
+                            >
+                        {/if}
                     </div>
                 </div>
+            </div>
 
+            <!-- Scrollable Content -->
+            <div
+                class="flex-grow overflow-y-auto px-5 py-4 flex flex-col gap-4"
+            >
                 <!-- Recommendation Badge -->
-                <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100/60 text-amber-700 text-xs font-bold shrink-0 shadow-sm animate-pulse">
+                <!-- <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100/60 text-amber-700 text-xs font-bold shrink-0 shadow-sm animate-pulse">
                     <span class="text-sm">👍</span>
                     <span>Pilihan tepat! 100% pembeli merasa puas!</span>
-                </div>
+                </div> -->
 
                 <!-- Variations List -->
                 {#if hasVariations}
@@ -1844,26 +2134,50 @@
                             {@const selLabel = getSelectedLabel(variation)}
                             <div class="py-3 flex flex-col gap-2.5">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm font-bold text-slate-700">
+                                    <span
+                                        class="text-sm font-bold text-slate-700"
+                                    >
                                         Pilih {variation.name}:
                                     </span>
                                     {#if selLabel}
-                                        <span class="text-sm font-bold" style="color: {primary};">
+                                        <span
+                                            class="text-sm font-bold"
+                                            style="color: {primary};"
+                                        >
                                             {selLabel}
                                         </span>
                                     {/if}
                                 </div>
                                 <div class="flex flex-wrap gap-2">
                                     {#each variation.options as opt}
-                                        {@const optImg = getOptionImage(opt.id, variation.name)}
-                                        {@const available = isOptionAvailable(opt.id)}
-                                        {@const sel = isSelected(String(variation.id), opt.id)}
+                                        {@const optImg = getOptionImage(
+                                            opt.id,
+                                            variation.name,
+                                        )}
+                                        {@const available = isOptionAvailable(
+                                            opt.id,
+                                        )}
+                                        {@const sel = isSelected(
+                                            String(variation.id),
+                                            opt.id,
+                                        )}
                                         <button
-                                            onclick={() => available && selectOption(String(variation.id), opt.id)}
+                                            onclick={() =>
+                                                available &&
+                                                selectOption(
+                                                    String(variation.id),
+                                                    opt.id,
+                                                )}
                                             class="relative flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-xs font-bold transition duration-150
-                                               {sel ? 'shadow-sm' : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
-                                               {!available ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}"
-                                            style={sel ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};` : ''}
+                                               {sel
+                                                ? 'shadow-sm'
+                                                : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
+                                               {!available
+                                                ? 'opacity-40 cursor-not-allowed'
+                                                : 'cursor-pointer'}"
+                                            style={sel
+                                                ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};`
+                                                : ''}
                                             disabled={!available}
                                         >
                                             {#if optImg}
@@ -1872,13 +2186,17 @@
                                                     alt={opt.name}
                                                     class="w-7 h-7 rounded-lg object-cover shrink-0"
                                                     onerror={(e) => {
-                                                        e.currentTarget.src = '/noimage/image.png';
+                                                        e.currentTarget.src =
+                                                            '/noimage/image.png';
                                                     }}
                                                 />
                                             {/if}
                                             {opt.name}
                                             {#if !available}
-                                                <span class="absolute top-0.5 right-0.5 text-[9px] font-black text-red-400">✕</span>
+                                                <span
+                                                    class="absolute top-0.5 right-0.5 text-[9px] font-black text-red-400"
+                                                    >✕</span
+                                                >
                                             {/if}
                                         </button>
                                     {/each}
@@ -1888,42 +2206,170 @@
                     </div>
                 {/if}
 
-                <!-- Quantity Stepper -->
-                <div class="py-3 flex items-center justify-between border-t border-slate-100 mt-2 shrink-0">
-                    <div class="flex flex-col gap-0.5">
-                        <span class="text-sm font-bold text-slate-700">Jumlah</span>
-                        <div class="flex items-center gap-1.5">
-                            {#if hasVariations && !fullySelected}
-                                <span class="text-[11px] text-slate-400">Pilih variasi terlebih dahulu</span>
-                            {:else if currentIsUnlimited}
-                                <span class="text-[11px] font-bold text-green-600 tracking-wide">TERSEDIA</span>
-                            {:else if isInStock}
-                                <span class="text-[11px] font-bold text-green-600">Stok: {currentStock}</span>
-                            {:else}
-                                <span class="text-[11px] font-bold text-red-500">HABIS</span>
-                            {/if}
-                            {#if currentMinPurchase > 1}
-                                <span class="text-[10px] text-slate-400">(Min. {currentMinPurchase} pcs)</span>
-                            {/if}
+                <!-- Drawer Wholesale Promo Clash Alert -->
+                {#if isPromoActive && !shouldKeepTierPricesDuringPromo && hasWholesalePrices}
+                    <div
+                        class="rounded-2xl p-3.5 flex items-start gap-3 border shadow-xs my-1"
+                        style="background-color: #fffaf0; border-color: #fbd38d;"
+                    >
+                        <div
+                            class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0"
+                        >
+                            <i
+                                class="ti ti-info-circle text-amber-600 text-base animate-pulse"
+                            ></i>
+                        </div>
+                        <div class="flex-grow text-[11px] leading-relaxed">
+                            <span class="font-bold text-amber-950 block text-xs"
+                                >Harga Grosir Dijeda Sementara</span
+                            >
+                            <span class="text-amber-800 mt-0.5 block">
+                                Karena promo <span
+                                    class="font-black text-amber-950 uppercase"
+                                    >{isPromoActive
+                                        ? (
+                                              matchingVariant?.promo_type ??
+                                              product.promo_type ??
+                                              'Promo'
+                                          ).replace('_', ' ')
+                                        : ''}</span
+                                > aktif, diskon grosir dinonaktifkan untuk memberikan
+                                harga promo terbaik.
+                            </span>
                         </div>
                     </div>
-                    <div class="flex items-center border border-slate-300 rounded-lg overflow-hidden shrink-0 bg-white">
-                        <button
-                            onclick={decQty}
-                            disabled={qty <= currentMinPurchase}
-                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
-                        >
-                            <i class="ti ti-minus text-sm"></i>
-                        </button>
-                        <span class="w-12 text-center text-sm font-black text-slate-800 tabular-nums">{qty}</span>
-                        <button
-                            onclick={incQty}
-                            disabled={!currentIsUnlimited && qty >= currentStock}
-                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
-                        >
-                            <i class="ti ti-plus text-sm"></i>
-                        </button>
+                {/if}
+
+                <!-- Drawer Wholesale Tier Prices Table -->
+                {#if activeTierPrices && activeTierPrices.length > 0}
+                    <div class="w-full overflow-hidden border border-slate-100 rounded-xl bg-white shadow-xs my-1">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50/65 border-b border-slate-100 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    <th class="py-2.5 px-3.5 font-semibold">Min. Pembelian</th>
+                                    <th class="py-2.5 px-3.5 font-semibold text-right">Harga Satuan</th>
+                                    <th class="py-2.5 px-3.5 font-semibold text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                {#each activeTierPrices as tier}
+                                    {@const isActive = activeTier && Number(activeTier.min_qty) === Number(tier.min_qty)}
+                                    <tr class="transition duration-150 {isActive ? 'bg-brand-blueRoyal/[0.02]' : ''}">
+                                        <td class="py-3 px-3.5 font-semibold text-slate-700">
+                                            {tier.min_qty}+ pcs
+                                        </td>
+                                        <td class="py-3 px-3.5 font-black text-slate-800 text-right">
+                                            {fmt(tier.price)} <span class="text-[10px] text-slate-400 font-normal">/pc</span>
+                                        </td>
+                                        <td class="py-3 px-3.5 text-right">
+                                            {#if isActive}
+                                                <span 
+                                                    class="inline-flex items-center gap-0.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-green-50 text-green-600 border border-green-100/60 animate-pulse"
+                                                >
+                                                    <i class="ti ti-check-circle"></i> Terpakai
+                                                </span>
+                                            {:else}
+                                                <span class="text-[9px] text-slate-350 font-medium">Tersedia</span>
+                                            {/if}
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
                     </div>
+                {/if}
+
+                <!-- Quantity Stepper -->
+                <div
+                    class="py-3 flex flex-col gap-2 border-t border-slate-100 mt-2 shrink-0"
+                >
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col gap-0.5">
+                            <span class="text-sm font-bold text-slate-700"
+                                >Jumlah</span
+                            >
+                            <div class="flex items-center gap-1.5">
+                                {#if hasVariations && !fullySelected}
+                                    <span class="text-[11px] text-slate-400"
+                                        >Pilih variasi terlebih dahulu</span
+                                    >
+                                {:else if currentIsUnlimited}
+                                    <span
+                                        class="text-[11px] font-bold text-green-600 tracking-wide"
+                                        >TERSEDIA</span
+                                    >
+                                {:else if isInStock}
+                                    <span
+                                        class="text-[11px] font-bold text-green-600"
+                                        >Stok: {currentStock}</span
+                                    >
+                                {:else}
+                                    <span
+                                        class="text-[11px] font-bold text-red-500"
+                                        >HABIS</span
+                                    >
+                                {/if}
+                                {#if currentMinPurchase > 1}
+                                    <span
+                                        class="text-[10px] text-slate-400 font-semibold"
+                                        >(Min. {currentMinPurchase} pcs)</span
+                                    >
+                                {/if}
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-center border border-slate-300 rounded-lg overflow-hidden shrink-0 bg-white"
+                        >
+                            <button
+                                onclick={decQty}
+                                disabled={qty <= currentMinPurchase}
+                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                            >
+                                <i class="ti ti-minus text-sm"></i>
+                            </button>
+                            <span
+                                class="w-12 text-center text-sm font-black text-slate-800 tabular-nums"
+                                >{qty}</span
+                            >
+                            <button
+                                onclick={incQty}
+                                disabled={!currentIsUnlimited &&
+                                    qty >= currentStock}
+                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                            >
+                                <i class="ti ti-plus text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Total Price Live Calculation (quantity x harga = total) -->
+                    {#if !hasVariations || fullySelected}
+                        <div
+                            class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs mt-1"
+                        >
+                            <span class="text-slate-500 font-medium"
+                                >Subtotal Pemesanan</span
+                            >
+                            <span
+                                class="font-extrabold text-sm text-brand-blueRoyal"
+                                >{fmt(totalPrice)}</span
+                            >
+                        </div>
+                    {/if}
+
+                    <!-- Minimum Purchase Info Alert (If set) -->
+                    {#if currentMinPurchase > 1}
+                        <div
+                            class="mt-1 p-3 bg-blue-50/40 rounded-xl border border-blue-100/60 flex items-start gap-2 text-[11px] text-blue-700 font-medium"
+                        >
+                            <i
+                                class="ti ti-info-circle text-blue-500 text-sm mt-0.5 shrink-0"
+                            ></i>
+                            <span>
+                                Minimum pembelian {currentMinPurchase} pcs
+                            </span>
+                        </div>
+                    {/if}
                 </div>
             </div>
 

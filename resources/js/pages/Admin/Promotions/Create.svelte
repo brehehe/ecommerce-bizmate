@@ -84,6 +84,7 @@
         end_time: '',
         is_active: true,
         settings: {
+            keep_tier_prices: false,
             bundle: {
                 buy_items: [
                     { product_id: '', product_variant_id: '', qty: 1 }
@@ -1038,6 +1039,15 @@
                             label="Aktifkan Promosi"
                             description="Tentukan apakah promosi langsung berjalan pada jadwal yang diatur."
                             icon="ti-toggle-left"
+                        />
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 mt-2">
+                        <Toggle
+                            bind:checked={form.settings.keep_tier_prices}
+                            label="Tetap Aktifkan Harga Grosir"
+                            description="Jika diaktifkan, potongan harga grosir/lusinan akan tetap berlaku bersamaan dengan promo ini."
+                            icon="ti-tags"
                         />
                     </div>
 

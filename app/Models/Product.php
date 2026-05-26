@@ -34,6 +34,11 @@ class Product extends Model
         return $this->hasOne(ProductPrice::class)->whereNull('product_variant_id');
     }
 
+    public function tierPrices()
+    {
+        return $this->hasMany(ProductTierPrice::class)->whereNull('product_variant_id')->orderBy('min_qty', 'asc');
+    }
+
     public function productStock()
     {
         return $this->hasOne(ProductStock::class)->whereNull('product_variant_id');

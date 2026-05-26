@@ -137,6 +137,7 @@
         is_active: promotion.is_active ?? true,
         settings: (() => {
             let settings = promotion.settings || {};
+            settings.keep_tier_prices = settings.keep_tier_prices ?? false;
             // If old structure exists, convert to new structure on the fly
             if (settings.bundle && !settings.bundle.buy_items && settings.bundle.buy_product_id) {
                 settings.bundle = {
@@ -1138,6 +1139,15 @@
                             label="Aktifkan Promosi"
                             description="Tentukan apakah promosi langsung berjalan pada jadwal yang diatur."
                             icon="ti-toggle-left"
+                        />
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 mt-2">
+                        <Toggle
+                            bind:checked={form.settings.keep_tier_prices}
+                            label="Tetap Aktifkan Harga Grosir"
+                            description="Jika diaktifkan, potongan harga grosir/lusinan akan tetap berlaku bersamaan dengan promo ini."
+                            icon="ti-tags"
                         />
                     </div>
 

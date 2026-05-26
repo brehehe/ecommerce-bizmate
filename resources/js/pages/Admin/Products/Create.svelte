@@ -44,6 +44,7 @@
         photos: [],
         variations: [],
         variants: [],
+        tier_prices: [],
     });
 
     let uploadedPhotos = $state([]);
@@ -167,6 +168,7 @@
                 custom_weight: false,
                 price: '',
                 cost: '',
+                tier_prices: [],
                 stock: '',
                 min_stock: '',
                 min_purchase: 1,
@@ -194,6 +196,7 @@
                         custom_weight: false,
                         price: '',
                         cost: '',
+                        tier_prices: [],
                         stock: '',
                         min_stock: '',
                         min_purchase: 1,
@@ -280,6 +283,17 @@
         const rawVariations = $state.snapshot(variations);
         const rawVariants = $state.snapshot(variants);
 
+        // Filter and set master tier prices
+        form.tier_prices = form.tier_prices
+            ? form.tier_prices.filter(
+                  (tp) =>
+                      tp.min_qty >= 2 &&
+                      tp.price !== '' &&
+                      tp.price !== null &&
+                      Number(tp.price) > 0,
+              )
+            : [];
+
         form.variations = enableVariants ? rawVariations : [];
         form.variants = enableVariants
             ? rawVariants
@@ -297,6 +311,17 @@
                           custom_weight: globalCustomWeight,
                           price: isCustom && globalCustomPrice ? v.price : '',
                           cost: isCustom && globalCustomPrice ? v.cost : '',
+                          // Filter and set variant tier prices
+                          tier_prices:
+                              isCustom && globalCustomPrice && v.tier_prices
+                                  ? v.tier_prices.filter(
+                                        (tp) =>
+                                            tp.min_qty >= 2 &&
+                                            tp.price !== '' &&
+                                            tp.price !== null &&
+                                            Number(tp.price) > 0,
+                                    )
+                                  : [],
                           stock: isCustom && globalCustomStock ? v.stock : '',
                           min_stock:
                               isCustom && globalCustomStock ? v.min_stock : '',
@@ -499,6 +524,65 @@
                             prefix="Rp"
                             error={form.errors.cost}
                         />
+                    </div>
+
+                    <!-- Wholesale Prices Section (Master) -->
+                    <div class="mb-6 border-t border-slate-100 pt-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                                <i class="ti ti-tags text-sm text-slate-400"></i> Harga Grosir (Master)
+                            </span>
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    if (!form.tier_prices) form.tier_prices = [];
+                                    form.tier_prices.push({ min_qty: 2, price: '' });
+                                }}
+                                class="px-3 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+                            >
+                                <i class="ti ti-plus text-xs"></i> Tambah Grosir
+                            </button>
+                        </div>
+
+                        {#if !form.tier_prices || form.tier_prices.length === 0}
+                            <p class="text-xs text-slate-400 italic">Belum ada harga grosir untuk produk ini.</p>
+                        {:else}
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                {#each form.tier_prices as tier, idx (idx)}
+                                    <div class="flex items-center gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 relative group">
+                                        <div class="w-24 shrink-0">
+                                            <Input
+                                                type="number"
+                                                min="2"
+                                                bind:value={tier.min_qty}
+                                                id={`tier-min-qty-${idx}`}
+                                                label="Min. Qty"
+                                                placeholder="2"
+                                            />
+                                        </div>
+                                        <div class="flex-grow">
+                                            <InputCurrency
+                                                bind:value={tier.price}
+                                                id={`tier-price-${idx}`}
+                                                label="Harga Satuan"
+                                                prefix="Rp"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onclick={() => {
+                                                form.tier_prices = form.tier_prices.filter((_, i) => i !== idx);
+                                            }}
+                                            class="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-rose-600 cursor-pointer z-10"
+                                            title="Hapus Grosir"
+                                        >
+                                            <i class="ti ti-x"></i>
+                                        </button>
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -1206,6 +1290,65 @@
                                                                     </div>
                                                                 {/if}
                                                             {/if}
+
+                                                            <!-- Variant Wholesale Section -->
+                                                            <div class="mt-4 border-t border-slate-100 pt-4">
+                                                                <div class="flex items-center justify-between mb-3">
+                                                                    <span class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                                                                        <i class="ti ti-tags text-sm text-slate-400"></i> Harga Grosir ({variant.name})
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onclick={() => {
+                                                                            if (!variant.tier_prices) variant.tier_prices = [];
+                                                                            variant.tier_prices.push({ min_qty: 2, price: '' });
+                                                                        }}
+                                                                        class="px-2.5 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-bold rounded-lg flex items-center gap-1 transition"
+                                                                    >
+                                                                        <i class="ti ti-plus text-xs"></i> Tambah Grosir
+                                                                    </button>
+                                                                </div>
+
+                                                                {#if !variant.tier_prices || variant.tier_prices.length === 0}
+                                                                    <p class="text-[11px] text-slate-400 italic">Belum ada harga grosir untuk varian ini.</p>
+                                                                {:else}
+                                                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                                                        {#each variant.tier_prices as tier, idx (idx)}
+                                                                            <div class="flex items-center gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 relative group">
+                                                                                <div class="w-24 shrink-0">
+                                                                                    <Input
+                                                                                        type="number"
+                                                                                        min="2"
+                                                                                        bind:value={tier.min_qty}
+                                                                                        id={`v-tier-min-qty-${variant.id}-${idx}`}
+                                                                                        label="Min. Qty"
+                                                                                        placeholder="2"
+                                                                                    />
+                                                                                </div>
+                                                                                <div class="flex-grow">
+                                                                                    <InputCurrency
+                                                                                        bind:value={tier.price}
+                                                                                        id={`v-tier-price-${variant.id}-${idx}`}
+                                                                                        label="Harga Satuan"
+                                                                                        prefix="Rp"
+                                                                                        placeholder="0"
+                                                                                    />
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onclick={() => {
+                                                                                        variant.tier_prices = variant.tier_prices.filter((_, i) => i !== idx);
+                                                                                    }}
+                                                                                    class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 cursor-pointer z-10"
+                                                                                    title="Hapus Grosir"
+                                                                                >
+                                                                                    <i class="ti ti-x"></i>
+                                                                                </button>
+                                                                            </div>
+                                                                        {/each}
+                                                                    </div>
+                                                                {/if}
+                                                            </div>
                                                         </div>
                                                     {/if}
 

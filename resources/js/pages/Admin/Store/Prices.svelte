@@ -33,6 +33,12 @@
                               Number(v.product_price.cost) > 0
                                   ? v.product_price.cost
                                   : '',
+                          tier_prices: v.tier_prices
+                              ? v.tier_prices.map((tp) => ({
+                                    min_qty: tp.min_qty,
+                                    price: tp.price,
+                                }))
+                              : [],
                       };
                   })
                 : [];
@@ -52,6 +58,12 @@
                 use_custom: hasCustomVariantPrice,
                 expanded: false, // accordion state closed by default
                 variants: variantsData,
+                tier_prices: p.tier_prices
+                    ? p.tier_prices.map((tp) => ({
+                          min_qty: tp.min_qty,
+                          price: tp.price,
+                      }))
+                    : [],
             };
         });
     });
@@ -93,8 +105,35 @@
     );
 
     function submit() {
-        // Build the payload from current localProducts state
-        form.products = $state.snapshot(localProducts);
+        const payload = $state.snapshot(localProducts).map((p) => {
+            return {
+                ...p,
+                tier_prices: p.tier_prices
+                    ? p.tier_prices.filter(
+                          (tp) =>
+                              tp.min_qty >= 2 &&
+                              tp.price !== '' &&
+                              tp.price !== null &&
+                              Number(tp.price) > 0,
+                      )
+                    : [],
+                variants: p.variants
+                    ? p.variants.map((v) => ({
+                          ...v,
+                          tier_prices: v.tier_prices
+                              ? v.tier_prices.filter(
+                                    (tp) =>
+                                        tp.min_qty >= 2 &&
+                                        tp.price !== '' &&
+                                        tp.price !== null &&
+                                        Number(tp.price) > 0,
+                                )
+                              : [],
+                      }))
+                    : [],
+            };
+        });
+        form.products = payload;
         form.post('/admin/store/prices', {
             onSuccess: () => {
                 // Flash success notification or alert is handled by global layout
@@ -485,6 +524,96 @@
                                         {/if}
                                     </div>
                                 </div>
+
+                                <!-- Wholesale Prices Section -->
+                                <div
+                                    class="px-5 pb-5 sm:px-6 sm:pb-6 border-t border-slate-100 pt-5"
+                                >
+                                    <div
+                                        class="flex items-center justify-between mb-4"
+                                    >
+                                        <span
+                                            class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider"
+                                        >
+                                            <i
+                                                class="ti ti-tags text-sm text-slate-400"
+                                            ></i> Harga Grosir (Master)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onclick={() => {
+                                                if (!product.tier_prices)
+                                                    product.tier_prices = [];
+                                                product.tier_prices.push({
+                                                    min_qty: 2,
+                                                    price: '',
+                                                });
+                                            }}
+                                            class="px-3 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+                                        >
+                                            <i class="ti ti-plus text-xs"></i> Tambah
+                                            Grosir
+                                        </button>
+                                    </div>
+
+                                    {#if !product.tier_prices || product.tier_prices.length === 0}
+                                        <p
+                                            class="text-xs text-slate-400 italic"
+                                        >
+                                            Belum ada harga grosir untuk produk
+                                            ini.
+                                        </p>
+                                    {:else}
+                                        <div
+                                            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+                                        >
+                                            {#each product.tier_prices as tier, idx (idx)}
+                                                <div
+                                                    class="flex items-center gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 relative group"
+                                                >
+                                                    <div class="w-24 shrink-0">
+                                                        <Input
+                                                            type="number"
+                                                            min="2"
+                                                            bind:value={
+                                                                tier.min_qty
+                                                            }
+                                                            id={`tier-min-qty-${product.id}-${idx}`}
+                                                            label="Min. Qty"
+                                                            placeholder="2"
+                                                        />
+                                                    </div>
+                                                    <div class="flex-grow">
+                                                        <InputCurrency
+                                                            bind:value={
+                                                                tier.price
+                                                            }
+                                                            id={`tier-price-${product.id}-${idx}`}
+                                                            label="Harga Satuan"
+                                                            prefix="Rp"
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => {
+                                                            product.tier_prices =
+                                                                product.tier_prices.filter(
+                                                                    (_, i) =>
+                                                                        i !==
+                                                                        idx,
+                                                                );
+                                                        }}
+                                                        class="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-rose-600 cursor-pointer z-10"
+                                                        title="Hapus Grosir"
+                                                    >
+                                                        <i class="ti ti-x"></i>
+                                                    </button>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
                             {/if}
 
                             <!-- Accordion Varian List -->
@@ -519,179 +648,296 @@
                                                     ? Number(variant.price)
                                                     : Number(product.price)}
                                             <div
-                                                class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm"
+                                                class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 shadow-sm"
                                             >
-                                                <!-- Variant Name / SKU -->
                                                 <div
-                                                    class="flex items-center gap-3 min-w-[200px]"
+                                                    class="flex flex-col lg:flex-row lg:items-center justify-between gap-6"
                                                 >
+                                                    <!-- Variant Name / SKU -->
                                                     <div
-                                                        class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-base font-bold shrink-0"
+                                                        class="flex items-center gap-3 min-w-[200px]"
                                                     >
-                                                        <i class="ti ti-box"
-                                                        ></i>
-                                                    </div>
-                                                    <div>
-                                                        <h5
-                                                            class="font-bold text-slate-800 text-sm leading-tight"
+                                                        <div
+                                                            class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-base font-bold shrink-0"
                                                         >
-                                                            {variant.name}
-                                                        </h5>
-                                                        <span
-                                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
-                                                            >{variant.sku ||
-                                                                'TANPA SKU'}</span
+                                                            <i class="ti ti-box"
+                                                            ></i>
+                                                        </div>
+                                                        <div>
+                                                            <h5
+                                                                class="font-bold text-slate-800 text-sm leading-tight"
+                                                            >
+                                                                {variant.name}
+                                                            </h5>
+                                                            <span
+                                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                                                                >{variant.sku ||
+                                                                    'TANPA SKU'}</span
+                                                            >
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Price Fields (Always Visible) -->
+                                                    <div
+                                                        class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-grow max-w-md"
+                                                    >
+                                                        <InputCurrency
+                                                            bind:value={
+                                                                variant.price
+                                                            }
+                                                            id={`v-price-${variant.id}`}
+                                                            label="Harga Jual *"
+                                                            prefix="Rp"
+                                                            placeholder={product.price
+                                                                ? product.price.toString()
+                                                                : '0'}
+                                                        />
+                                                        <InputCurrency
+                                                            bind:value={
+                                                                variant.cost
+                                                            }
+                                                            id={`v-cost-${variant.id}`}
+                                                            label="Harga Modal"
+                                                            prefix="Rp"
+                                                            placeholder={product.cost
+                                                                ? product.cost.toString()
+                                                                : '0'}
+                                                        />
+                                                    </div>
+
+                                                    <!-- Dynamic Custom Price / Master Fallback Badge -->
+                                                    {#if variant.price === '' || variant.price === null || Number(variant.price) === 0}
+                                                        <div
+                                                            class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/55 px-2.5 py-1 rounded-lg self-center flex items-center gap-1 shrink-0"
                                                         >
-                                                    </div>
-                                                </div>
+                                                            <i
+                                                                class="ti ti-info-circle text-xs"
+                                                            ></i> Ikut Master
+                                                        </div>
+                                                    {:else}
+                                                        <div
+                                                            class="text-[10px] font-bold text-brand-blueRoyal bg-brand-blueRoyal/5 border border-brand-blueRoyal/20 px-2.5 py-1 rounded-lg self-center flex items-center gap-1 shrink-0"
+                                                        >
+                                                            <i
+                                                                class="ti ti-settings text-xs"
+                                                            ></i> Harga Kustom
+                                                        </div>
+                                                    {/if}
 
-                                                <!-- Price Fields (Always Visible) -->
-                                                <div
-                                                    class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-grow max-w-md"
-                                                >
-                                                    <InputCurrency
-                                                        bind:value={
-                                                            variant.price
-                                                        }
-                                                        id={`v-price-${variant.id}`}
-                                                        label="Harga Jual *"
-                                                        prefix="Rp"
-                                                        placeholder={product.price
-                                                            ? product.price.toString()
-                                                            : '0'}
-                                                    />
-                                                    <InputCurrency
-                                                        bind:value={
-                                                            variant.cost
-                                                        }
-                                                        id={`v-cost-${variant.id}`}
-                                                        label="Harga Modal"
-                                                        prefix="Rp"
-                                                        placeholder={product.cost
-                                                            ? product.cost.toString()
-                                                            : '0'}
-                                                    />
-                                                </div>
-
-                                                <!-- Dynamic Custom Price / Master Fallback Badge -->
-                                                {#if variant.price === '' || variant.price === null || Number(variant.price) === 0}
-                                                    <div
-                                                        class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/55 px-2.5 py-1 rounded-lg self-center flex items-center gap-1 shrink-0"
-                                                    >
-                                                        <i
-                                                            class="ti ti-info-circle text-xs"
-                                                        ></i> Ikut Master
-                                                    </div>
-                                                {:else}
-                                                    <div
-                                                        class="text-[10px] font-bold text-brand-blueRoyal bg-brand-blueRoyal/5 border border-brand-blueRoyal/20 px-2.5 py-1 rounded-lg self-center flex items-center gap-1 shrink-0"
-                                                    >
-                                                        <i
-                                                            class="ti ti-settings text-xs"
-                                                        ></i> Harga Kustom
-                                                    </div>
-                                                {/if}
-
-                                                <!-- Variant Tax Info -->
-                                                {#if globalTaxEnabled && activePrice > 0}
-                                                    <div
-                                                        class="bg-slate-50/50 rounded-xl p-3 border border-slate-100 min-w-[200px] text-[11px] text-slate-500 space-y-1"
-                                                    >
-                                                        {#if product.tax_enabled}
-                                                            <div
-                                                                class="flex justify-between"
-                                                            >
-                                                                <span
-                                                                    >Harga Asli:</span
+                                                    <!-- Variant Tax Info -->
+                                                    {#if globalTaxEnabled && activePrice > 0}
+                                                        <div
+                                                            class="bg-slate-50/50 rounded-xl p-3 border border-slate-100 min-w-[200px] text-[11px] text-slate-500 space-y-1"
+                                                        >
+                                                            {#if product.tax_enabled}
+                                                                <div
+                                                                    class="flex justify-between"
                                                                 >
-                                                                <span
-                                                                    >Rp {activePrice.toLocaleString(
-                                                                        'id-ID',
-                                                                    )}</span
+                                                                    <span
+                                                                        >Harga
+                                                                        Asli:</span
+                                                                    >
+                                                                    <span
+                                                                        >Rp {activePrice.toLocaleString(
+                                                                            'id-ID',
+                                                                        )}</span
+                                                                    >
+                                                                </div>
+                                                                <div
+                                                                    class="flex justify-between text-rose-500"
                                                                 >
-                                                            </div>
-                                                            <div
-                                                                class="flex justify-between text-rose-500"
-                                                            >
-                                                                <span>PPN:</span
+                                                                    <span
+                                                                        >PPN:</span
+                                                                    >
+                                                                    <span
+                                                                        >+ Rp {Math.round(
+                                                                            (activePrice *
+                                                                                globalTaxPercentage) /
+                                                                                100,
+                                                                        ).toLocaleString(
+                                                                            'id-ID',
+                                                                        )}</span
+                                                                    >
+                                                                </div>
+                                                                <div
+                                                                    class="flex justify-between text-slate-800 font-black pt-1 border-t border-dashed border-slate-200"
                                                                 >
-                                                                <span
-                                                                    >+ Rp {Math.round(
-                                                                        (activePrice *
-                                                                            globalTaxPercentage) /
-                                                                            100,
-                                                                    ).toLocaleString(
-                                                                        'id-ID',
-                                                                    )}</span
+                                                                    <span
+                                                                        >Total
+                                                                        Bayar:</span
+                                                                    >
+                                                                    <span
+                                                                        >Rp {Math.round(
+                                                                            activePrice *
+                                                                                (1 +
+                                                                                    globalTaxPercentage /
+                                                                                        100),
+                                                                        ).toLocaleString(
+                                                                            'id-ID',
+                                                                        )}</span
+                                                                    >
+                                                                </div>
+                                                            {:else}
+                                                                <div
+                                                                    class="flex justify-between font-bold text-slate-800"
                                                                 >
-                                                            </div>
-                                                            <div
-                                                                class="flex justify-between text-slate-800 font-black pt-1 border-t border-dashed border-slate-200"
-                                                            >
-                                                                <span
-                                                                    >Total
-                                                                    Bayar:</span
+                                                                    <span
+                                                                        >Total
+                                                                        Bayar:</span
+                                                                    >
+                                                                    <span
+                                                                        >Rp {activePrice.toLocaleString(
+                                                                            'id-ID',
+                                                                        )}</span
+                                                                    >
+                                                                </div>
+                                                                <div
+                                                                    class="flex justify-between"
                                                                 >
-                                                                <span
-                                                                    >Rp {Math.round(
-                                                                        activePrice *
-                                                                            (1 +
-                                                                                globalTaxPercentage /
-                                                                                    100),
-                                                                    ).toLocaleString(
-                                                                        'id-ID',
-                                                                    )}</span
-                                                                >
-                                                            </div>
-                                                        {:else}
-                                                            <div
-                                                                class="flex justify-between font-bold text-slate-800"
-                                                            >
-                                                                <span
-                                                                    >Total
-                                                                    Bayar:</span
-                                                                >
-                                                                <span
-                                                                    >Rp {activePrice.toLocaleString(
-                                                                        'id-ID',
-                                                                    )}</span
-                                                                >
-                                                            </div>
-                                                            <div
-                                                                class="flex justify-between"
-                                                            >
-                                                                <span
-                                                                    >Harga Asli:</span
-                                                                >
-                                                                <span
-                                                                    >Rp {Math.round(
-                                                                        activePrice /
-                                                                            (1 +
-                                                                                globalTaxPercentage /
-                                                                                    100),
-                                                                    ).toLocaleString(
-                                                                        'id-ID',
-                                                                    )}</span
-                                                                >
-                                                            </div>
-                                                            <div
-                                                                class="flex justify-between text-rose-500"
-                                                            >
-                                                                <span
-                                                                    >PPN (di
-                                                                    dlm):</span
-                                                                >
-                                                                <span
-                                                                    >Rp {Math.round(
-                                                                        activePrice -
+                                                                    <span
+                                                                        >Harga
+                                                                        Asli:</span
+                                                                    >
+                                                                    <span
+                                                                        >Rp {Math.round(
                                                                             activePrice /
                                                                                 (1 +
                                                                                     globalTaxPercentage /
                                                                                         100),
-                                                                    ).toLocaleString(
-                                                                        'id-ID',
-                                                                    )}</span
+                                                                        ).toLocaleString(
+                                                                            'id-ID',
+                                                                        )}</span
+                                                                    >
+                                                                </div>
+                                                                <div
+                                                                    class="flex justify-between text-rose-500"
                                                                 >
+                                                                    <span
+                                                                        >PPN (di
+                                                                        dlm):</span
+                                                                    >
+                                                                    <span
+                                                                        >Rp {Math.round(
+                                                                            activePrice -
+                                                                                activePrice /
+                                                                                    (1 +
+                                                                                        globalTaxPercentage /
+                                                                                            100),
+                                                                        ).toLocaleString(
+                                                                            'id-ID',
+                                                                        )}</span
+                                                                    >
+                                                                </div>
+                                                            {/if}
+                                                        </div>
+                                                    {/if}
+                                                </div>
+
+                                                <!-- Variant Tier Prices (Only if variant has a custom price) -->
+                                                {#if variant.price !== '' && variant.price !== null && Number(variant.price) > 0}
+                                                    <div
+                                                        class="border-t border-slate-100 pt-4 mt-2"
+                                                    >
+                                                        <div
+                                                            class="flex items-center justify-between mb-3"
+                                                        >
+                                                            <span
+                                                                class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-tags text-sm text-slate-400"
+                                                                ></i>
+                                                                Harga Grosir ({variant.name})
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onclick={() => {
+                                                                    if (
+                                                                        !variant.tier_prices
+                                                                    )
+                                                                        variant.tier_prices =
+                                                                            [];
+                                                                    variant.tier_prices.push(
+                                                                        {
+                                                                            min_qty: 2,
+                                                                            price: '',
+                                                                        },
+                                                                    );
+                                                                }}
+                                                                class="px-2.5 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-bold rounded-lg flex items-center gap-1 transition"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-plus text-xs"
+                                                                ></i> Tambah Grosir
+                                                            </button>
+                                                        </div>
+
+                                                        {#if !variant.tier_prices || variant.tier_prices.length === 0}
+                                                            <p
+                                                                class="text-[11px] text-slate-400 italic"
+                                                            >
+                                                                Belum ada harga
+                                                                grosir untuk
+                                                                varian ini.
+                                                            </p>
+                                                        {:else}
+                                                            <div
+                                                                class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
+                                                            >
+                                                                {#each variant.tier_prices as tier, idx (idx)}
+                                                                    <div
+                                                                        class="flex items-center gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 relative group"
+                                                                    >
+                                                                        <div
+                                                                            class="w-24 shrink-0"
+                                                                        >
+                                                                            <Input
+                                                                                type="number"
+                                                                                min="2"
+                                                                                bind:value={
+                                                                                    tier.min_qty
+                                                                                }
+                                                                                id={`v-tier-min-qty-${variant.id}-${idx}`}
+                                                                                label="Min. Qty"
+                                                                                placeholder="2"
+                                                                            />
+                                                                        </div>
+                                                                        <div
+                                                                            class="flex-grow"
+                                                                        >
+                                                                            <InputCurrency
+                                                                                bind:value={
+                                                                                    tier.price
+                                                                                }
+                                                                                id={`tier-price-${variant.id}-${idx}`}
+                                                                                label="Harga Satuan"
+                                                                                prefix="Rp"
+                                                                                placeholder="0"
+                                                                            />
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick={() => {
+                                                                                variant.tier_prices =
+                                                                                    variant.tier_prices.filter(
+                                                                                        (
+                                                                                            _,
+                                                                                            i,
+                                                                                        ) =>
+                                                                                            i !==
+                                                                                            idx,
+                                                                                    );
+                                                                            }}
+                                                                            class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 cursor-pointer z-10"
+                                                                            title="Hapus Grosir"
+                                                                        >
+                                                                            <i
+                                                                                class="ti ti-x"
+
+                                                                            ></i>
+                                                                        </button>
+                                                                    </div>
+                                                                {/each}
                                                             </div>
                                                         {/if}
                                                     </div>

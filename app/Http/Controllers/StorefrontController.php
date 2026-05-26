@@ -108,6 +108,8 @@ class StorefrontController extends Controller
             'variants.productPrice',
             'variants.productStock',
             'variants.options',
+            'tierPrices',
+            'variants.tierPrices',
         ]);
 
         $relatedProducts = Product::with(['productPrice', 'images', 'category'])
@@ -192,6 +194,7 @@ class StorefrontController extends Controller
                 $product->original_price = $basePrice;
                 $product->promo_type = $appliedPromo->type;
                 $product->promo_end_time = $appliedPromo->end_time?->toIso8601String();
+                $product->keep_tier_prices = $appliedPromo->settings['keep_tier_prices'] ?? false;
                 if ($basePrice > 0) {
                     $product->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
                 } else {
@@ -204,6 +207,7 @@ class StorefrontController extends Controller
                 $product->discount_percentage = 0;
                 $product->promo_type = null;
                 $product->promo_end_time = null;
+                $product->keep_tier_prices = false;
             }
         } else {
             $product->is_promo = false;
@@ -212,6 +216,7 @@ class StorefrontController extends Controller
             $product->discount_percentage = 0;
             $product->promo_type = null;
             $product->promo_end_time = null;
+            $product->keep_tier_prices = false;
         }
 
         // Apply to variants if loaded
@@ -269,6 +274,7 @@ class StorefrontController extends Controller
                         $variant->original_price = $vPrice;
                         $variant->promo_type = $vAppliedPromo->type;
                         $variant->promo_end_time = $vAppliedPromo->end_time?->toIso8601String();
+                        $variant->keep_tier_prices = $vAppliedPromo->settings['keep_tier_prices'] ?? false;
                         if ($vPrice > 0) {
                             $variant->discount_percentage = round((($vPrice - $vFinalPrice) / $vPrice) * 100);
                         } else {
@@ -281,6 +287,7 @@ class StorefrontController extends Controller
                         $variant->discount_percentage = 0;
                         $variant->promo_type = null;
                         $variant->promo_end_time = null;
+                        $variant->keep_tier_prices = false;
                     }
                 } else {
                     $variant->is_promo = false;
@@ -289,6 +296,7 @@ class StorefrontController extends Controller
                     $variant->discount_percentage = 0;
                     $variant->promo_type = null;
                     $variant->promo_end_time = null;
+                    $variant->keep_tier_prices = false;
                 }
             }
 

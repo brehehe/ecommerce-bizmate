@@ -13,6 +13,11 @@ class ProductVariant extends Model
         return $this->hasOne(ProductPrice::class);
     }
 
+    public function tierPrices()
+    {
+        return $this->hasMany(ProductTierPrice::class)->orderBy('min_qty', 'asc');
+    }
+
     public function productStock()
     {
         return $this->hasOne(ProductStock::class);

@@ -21,9 +21,11 @@ class ProductController extends Controller
             'category',
             'productPrice',
             'productStock',
+            'tierPrices',
             'variants.options',
             'variants.productPrice',
             'variants.productStock',
+            'variants.tierPrices',
             'variations.options',
         ])->latest();
 
@@ -90,6 +92,9 @@ class ProductController extends Controller
             'photos' => 'nullable|array',
             'variations' => 'nullable|array',
             'variants' => 'nullable|array',
+            'tier_prices' => 'nullable|array',
+            'tier_prices.*.min_qty' => 'required|integer|min:2',
+            'tier_prices.*.price' => 'required|numeric|min:0',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(5);
@@ -111,6 +116,7 @@ class ProductController extends Controller
             'photos',
             'variations',
             'variants',
+            'tier_prices',
         ]);
 
         $product = Product::create($productData);
@@ -128,6 +134,16 @@ class ProductController extends Controller
             'min_purchase' => $validated['min_purchase'] ?? 1,
             'is_unlimited' => $validated['is_unlimited'] ?? false,
         ]);
+
+        // Create Tier Prices for Master Product
+        if (! empty($validated['tier_prices'])) {
+            foreach ($validated['tier_prices'] as $tp) {
+                $product->tierPrices()->create([
+                    'min_qty' => $tp['min_qty'],
+                    'price' => $tp['price'],
+                ]);
+            }
+        }
 
         // Process photos
         if (! empty($validated['photos'])) {
@@ -197,6 +213,17 @@ class ProductController extends Controller
                             'price' => $vCombData['price'] ?: 0,
                             'cost' => $vCombData['cost'] ?: null,
                         ]);
+
+                        // Custom Variant Tier Prices
+                        if (! empty($vCombData['tier_prices'])) {
+                            foreach ($vCombData['tier_prices'] as $tp) {
+                                $variant->tierPrices()->create([
+                                    'product_id' => $product->id,
+                                    'min_qty' => $tp['min_qty'],
+                                    'price' => $tp['price'],
+                                ]);
+                            }
+                        }
                     }
 
                     // Custom Variant Stock
@@ -243,10 +270,12 @@ class ProductController extends Controller
             'images',
             'productPrice',
             'productStock',
+            'tierPrices',
             'variations.options',
             'variants.options',
             'variants.productPrice',
             'variants.productStock',
+            'variants.tierPrices',
         ]);
 
         return Inertia::render('Admin/Products/Edit', [
@@ -282,6 +311,9 @@ class ProductController extends Controller
             'photos' => 'nullable|array',
             'variations' => 'nullable|array',
             'variants' => 'nullable|array',
+            'tier_prices' => 'nullable|array',
+            'tier_prices.*.min_qty' => 'required|integer|min:2',
+            'tier_prices.*.price' => 'required|numeric|min:0',
         ]);
 
         if ($product->name !== $validated['name']) {
@@ -305,9 +337,21 @@ class ProductController extends Controller
             'variations',
             'variants',
             'photos',
+            'tier_prices',
         ]);
 
         $product->update($productData);
+
+        // Sync Tier Prices for Master Product
+        $product->tierPrices()->delete();
+        if (! empty($validated['tier_prices'])) {
+            foreach ($validated['tier_prices'] as $tp) {
+                $product->tierPrices()->create([
+                    'min_qty' => $tp['min_qty'],
+                    'price' => $tp['price'],
+                ]);
+            }
+        }
 
         $product->productPrice()->updateOrCreate(
             ['product_variant_id' => null],
@@ -549,8 +593,21 @@ class ProductController extends Controller
                             'cost' => $vCombData['cost'] ?: null,
                         ]
                     );
+
+                    // Sync variant tier prices
+                    $variant->tierPrices()->delete();
+                    if (! empty($vCombData['tier_prices'])) {
+                        foreach ($vCombData['tier_prices'] as $tp) {
+                            $variant->tierPrices()->create([
+                                'product_id' => $product->id,
+                                'min_qty' => $tp['min_qty'],
+                                'price' => $tp['price'],
+                            ]);
+                        }
+                    }
                 } else {
                     $variant->productPrice()->delete();
+                    $variant->tierPrices()->delete();
                 }
 
                 // 5. Custom Variant Stock
@@ -601,8 +658,10 @@ class ProductController extends Controller
         $query = Product::with([
             'category',
             'productPrice',
+            'tierPrices',
             'variants.options',
             'variants.productPrice',
+            'variants.tierPrices',
         ])->latest();
 
         if ($search) {
@@ -625,7 +684,16 @@ class ProductController extends Controller
             'products.*.price' => 'required|numeric|min:0',
             'products.*.cost' => 'nullable|numeric|min:0',
             'products.*.tax_enabled' => 'boolean',
+            'products.*.tier_prices' => 'nullable|array',
+            'products.*.tier_prices.*.min_qty' => 'required|integer|min:2',
+            'products.*.tier_prices.*.price' => 'required|numeric|min:0',
             'products.*.variants' => 'nullable|array',
+            'products.*.variants.*.id' => 'required|exists:product_variants,id',
+            'products.*.variants.*.price' => 'nullable|numeric|min:0',
+            'products.*.variants.*.cost' => 'nullable|numeric|min:0',
+            'products.*.variants.*.tier_prices' => 'nullable|array',
+            'products.*.variants.*.tier_prices.*.min_qty' => 'required|integer|min:2',
+            'products.*.variants.*.tier_prices.*.price' => 'required|numeric|min:0',
         ]);
 
         \DB::transaction(function () use ($request) {
@@ -643,6 +711,17 @@ class ProductController extends Controller
                     ]
                 );
 
+                // Sync main product tier prices
+                $product->tierPrices()->delete();
+                if (! empty($pData['tier_prices'])) {
+                    foreach ($pData['tier_prices'] as $tp) {
+                        $product->tierPrices()->create([
+                            'min_qty' => $tp['min_qty'],
+                            'price' => $tp['price'],
+                        ]);
+                    }
+                }
+
                 if (! empty($pData['variants'])) {
                     foreach ($pData['variants'] as $vData) {
                         $variant = $product->variants()->findOrFail($vData['id']);
@@ -656,8 +735,21 @@ class ProductController extends Controller
                                     'cost' => $vData['cost'] ?: null,
                                 ]
                             );
+
+                            // Sync variant tier prices
+                            $variant->tierPrices()->delete();
+                            if (! empty($vData['tier_prices'])) {
+                                foreach ($vData['tier_prices'] as $tp) {
+                                    $variant->tierPrices()->create([
+                                        'product_id' => $product->id,
+                                        'min_qty' => $tp['min_qty'],
+                                        'price' => $tp['price'],
+                                    ]);
+                                }
+                            }
                         } else {
                             $variant->productPrice()->delete();
+                            $variant->tierPrices()->delete();
                         }
                     }
                 }
