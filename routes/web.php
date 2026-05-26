@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [StorefrontController::class, 'index'])->name('home');
 Route::get('/search', [StorefrontController::class, 'search'])->name('search');
+Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');
+Route::get('/produk-terlaris', [StorefrontController::class, 'produkTerlaris'])->name('produk-terlaris');
 Route::get('/products/{product:slug}', [StorefrontController::class, 'show'])->name('products.show');
 
 Route::middleware('guest')->group(function () {

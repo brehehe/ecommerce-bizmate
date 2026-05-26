@@ -351,18 +351,18 @@ class StorefrontController extends Controller
                     $q->where(function ($subQ) use ($term) {
                         // Cari di nama dan deskripsi produk
                         $subQ->where('name', 'ilike', "%{$term}%")
-                             ->orWhere('description', 'ilike', "%{$term}%")
+                            ->orWhere('description', 'ilike', "%{$term}%")
                              // Cari di nama kategori
-                             ->orWhereHas('category', function ($qc) use ($term) {
-                                 $qc->where('name', 'ilike', "%{$term}%");
-                             })
+                            ->orWhereHas('category', function ($qc) use ($term) {
+                                $qc->where('name', 'ilike', "%{$term}%");
+                            })
                              // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
-                             ->orWhereHas('variants', function ($qv) use ($term) {
-                                 $qv->where('sku', 'ilike', "%{$term}%")
+                            ->orWhereHas('variants', function ($qv) use ($term) {
+                                $qv->where('sku', 'ilike', "%{$term}%")
                                     ->orWhereHas('options', function ($qo) use ($term) {
                                         $qo->where('name', 'ilike', "%{$term}%");
                                     });
-                             });
+                            });
                     });
                 }
             });
@@ -496,6 +496,282 @@ class StorefrontController extends Controller
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
                 'promo' => $promoOnly,
+            ],
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Display the flash sale listing page.
+     */
+    public function flashSale(Request $request)
+    {
+        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
+            ->orderBy('order')
+            ->get();
+
+        // 1. Fetch active flash sale
+        $activeFlashSale = Promotion::with([
+            'items.product.productPrice',
+            'items.product.images',
+            'items.variant.productPrice',
+            'items.variant.options',
+        ])
+            ->where('type', 'flash_sale')
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->latest()
+            ->first();
+
+        $productsCollection = collect();
+
+        if ($activeFlashSale) {
+            // Build products collection from flash sale items
+            if ($activeFlashSale->items->isNotEmpty()) {
+                foreach ($activeFlashSale->items as $item) {
+                    if ($item->product) {
+                        $p = clone $item->product;
+                        if ($item->variant) {
+                            if ($item->variant->productPrice) {
+                                $p->setRelation('productPrice', $item->variant->productPrice);
+                            }
+                            $optionNames = $item->variant->options
+                                ? $item->variant->options->map(fn ($o) => $o->name)->join(' - ')
+                                : '';
+                            if ($optionNames) {
+                                $p->name = "{$p->name} - {$optionNames}";
+                            }
+                            if ($item->variant->image) {
+                                $p->image = $item->variant->image;
+                                $p->setRelation('images', collect());
+                            }
+                        }
+                        $productsCollection->push($p);
+                    }
+                }
+            } else {
+                // If flash sale has no items, it applies to all products
+                $productsCollection = Product::with([
+                    'category',
+                    'productPrice',
+                    'productStock',
+                    'images',
+                    'variants.productPrice',
+                    'variants.options',
+                    'variants.productStock',
+                ])
+                    ->where('active', true)
+                    ->get();
+            }
+        }
+
+        // Filter and map collection
+        $productsCollection = $productsCollection->filter(function ($p) use ($activeFlashSale) {
+            if ($activeFlashSale) {
+                // Force flash sale promotion
+                $basePrice = $p->productPrice?->price ?? 0;
+                $discountType = $activeFlashSale->discount_type;
+                $discountValue = $activeFlashSale->discount_value;
+
+                // Check if there is an item specific discount override
+                if ($activeFlashSale->items->isNotEmpty()) {
+                    $item = $activeFlashSale->items->firstWhere('product_id', $p->id);
+                    if ($item) {
+                        $discountType = $item->discount_type ?? $discountType;
+                        $discountValue = $item->discount_value ?? $discountValue;
+                    }
+                }
+
+                if ($discountType === 'percentage') {
+                    $finalPrice = $basePrice - ($basePrice * ($discountValue / 100));
+                } elseif ($discountType === 'fixed') {
+                    $finalPrice = $basePrice - $discountValue;
+                } else {
+                    $finalPrice = $basePrice;
+                }
+
+                $finalPrice = max(0, $finalPrice);
+                $p->is_promo = true;
+                $p->promo_price = $finalPrice;
+                $p->original_price = $basePrice;
+                if ($basePrice > 0) {
+                    $p->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
+                } else {
+                    $p->discount_percentage = 0;
+                }
+            }
+
+            return true;
+        });
+
+        // flash_sale sorting (by discount percentage desc)
+        $productsCollection = $productsCollection->sortByDesc('discount_percentage');
+
+        // Paginate
+        $page = request()->input('page', 1);
+        $perPage = 16;
+        $total = $productsCollection->count();
+        $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $productsPaginator = new LengthAwarePaginator(
+            $paginatedItems,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/FlashSale', [
+            'categories' => $categories,
+            'products' => $productsPaginator,
+            'activeFlashSale' => $activeFlashSale,
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Display the best sellers listing page.
+     */
+    public function produkTerlaris(Request $request)
+    {
+        $query = $request->input('q');
+        $categoryId = $request->input('category');
+        $minPrice = $request->input('min_price');
+        $maxPrice = $request->input('max_price');
+
+        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
+            ->orderBy('order')
+            ->get();
+
+        // Fetch active promotions to map onto products dynamically
+        $activePromotions = Promotion::with(['items'])
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->get();
+
+        // Build product query
+        $productsQuery = Product::with([
+            'category',
+            'productPrice',
+            'productStock',
+            'images',
+            'variants.productPrice',
+            'variants.options',
+            'variants.productStock',
+        ])
+            ->where('active', true);
+
+        // Filter by keyword (similar to search method)
+        if ($query) {
+            $terms = array_filter(explode(' ', $query));
+            $productsQuery->where(function ($q) use ($terms) {
+                foreach ($terms as $term) {
+                    $q->where(function ($subQ) use ($term) {
+                        $subQ->where('name', 'ilike', "%{$term}%")
+                            ->orWhere('description', 'ilike', "%{$term}%")
+                            ->orWhereHas('category', function ($qc) use ($term) {
+                                $qc->where('name', 'ilike', "%{$term}%");
+                            })
+                            ->orWhereHas('variants', function ($qv) use ($term) {
+                                $qv->where('sku', 'ilike', "%{$term}%")
+                                    ->orWhereHas('options', function ($qo) use ($term) {
+                                        $qo->where('name', 'ilike', "%{$term}%");
+                                    });
+                            });
+                    });
+                }
+            });
+        }
+
+        // Filter by category
+        if ($categoryId) {
+            $categoryIds = is_array($categoryId) ? $categoryId : [$categoryId];
+            $uuids = [];
+            $slugs = [];
+
+            foreach ($categoryIds as $cat) {
+                if (is_string($cat)) {
+                    $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $cat);
+                    if ($isUuid) {
+                        $uuids[] = $cat;
+                    } else {
+                        $slugs[] = $cat;
+                    }
+                }
+            }
+
+            $productsQuery->where(function ($q) use ($uuids, $slugs) {
+                if (! empty($uuids)) {
+                    $q->whereIn('category_id', $uuids);
+                }
+                if (! empty($slugs)) {
+                    $q->orWhereHas('category', function ($sub) use ($slugs) {
+                        $sub->whereIn('slug', $slugs);
+                    });
+                }
+            });
+        }
+
+        $productsCollection = $productsQuery->get();
+
+        // Apply promotions and filter by price range
+        $productsCollection = $productsCollection->filter(function ($p) use ($activePromotions, $minPrice, $maxPrice) {
+            $this->applyPromotionsToProduct($p, $activePromotions);
+
+            $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            if ($minPrice && $price < $minPrice) {
+                return false;
+            }
+            if ($maxPrice && $price > $maxPrice) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // Sorting by mock popularity score (same as bestsellers search/slider)
+        $productsCollection = $productsCollection->sortByDesc(function ($p) {
+            return crc32($p->name) % 1000;
+        });
+
+        // Paginate
+        $page = request()->input('page', 1);
+        $perPage = 16;
+        $total = $productsCollection->count();
+        $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $productsPaginator = new LengthAwarePaginator(
+            $paginatedItems,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/ProdukTerlaris', [
+            'categories' => $categories,
+            'products' => $productsPaginator,
+            'filters' => [
+                'q' => $query,
+                'category' => $categoryId,
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,

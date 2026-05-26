@@ -1,6 +1,6 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
-    import { page, Link } from '@inertiajs/svelte';
+    import { page, Link, router } from '@inertiajs/svelte';
 
     let { product, relatedProducts = [], storeName = '' } = $props();
 
@@ -172,6 +172,16 @@
     let searchQuery = $state('');
     let mobileMenuOpen = $state(false);
     const isScrolled = $derived(scrollY > 80);
+
+    function handleSearch(e: Event) {
+        e.preventDefault();
+        const query = searchQuery.trim();
+        if (query) {
+            router.get('/search', { q: query });
+        } else {
+            router.get('/search');
+        }
+    }
 
     function shareProduct() {
         if (navigator.share) {
@@ -474,12 +484,7 @@
             <!-- Search Bar -->
             <div class="flex-grow">
                 <form
-                    onsubmit={(e) => {
-                        e.preventDefault();
-                        if (searchQuery.trim()) {
-                            router.get('/search', { q: searchQuery });
-                        }
-                    }}
+                    onsubmit={handleSearch}
                     class="relative"
                 >
                     <input

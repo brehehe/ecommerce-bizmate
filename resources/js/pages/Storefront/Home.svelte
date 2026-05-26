@@ -115,7 +115,7 @@
 
     onMount(() => {
         if (activeFlashSale?.end_time) {
-            const timeStr = activeFlashSale.end_time.replace(' ', 'T');
+            const timeStr = String(activeFlashSale.end_time).replace(' ', 'T');
             flashSaleEnd = new Date(timeStr);
         } else {
             flashSaleEnd = new Date();
@@ -592,8 +592,171 @@
     {/if}
 
     <!-- ═══════════════════════════════════════════════════
+     SECTION 4: FLASH SALE
+    ═══════════════════════════════════════════════════ -->
+    {#if activeFlashSale}
+        <section class="mt-2 px-3 sm:px-5 lg:px-8">
+            <div
+                class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden shadow-sm"
+            >
+                <!-- Flash Sale Header -->
+                <div
+                    class="flex items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3 border-b border-slate-100 min-w-0 gap-2"
+                    style="background: linear-gradient(135deg, {primary}, {secondary});"
+                >
+                    <div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
+                        <span
+                            class="font-outfit font-black text-xs sm:text-base md:text-lg text-white flex items-center gap-1 sm:gap-2 shrink-0"
+                        >
+                            <i class="ti ti-bolt-filled animate-pulse"></i> Flash Sale
+                        </span>
+                        <!-- Countdown -->
+                        <div
+                            class="flex items-center gap-0.5 sm:gap-1 bg-black/35 rounded-xl px-1.5 py-1 sm:px-3 sm:py-1.5 backdrop-blur-sm shrink-0"
+                        >
+                            <span
+                                class="text-white text-[9px] font-bold mr-1 hidden sm:inline"
+                                >Berakhir dalam</span
+                            >
+                            {#each [countdown.h, countdown.m, countdown.s] as unit, ui}
+                                {#if ui > 0}<span
+                                        class="text-white/60 font-bold text-xs"
+                                        >:</span
+                                    >{/if}
+                                <span
+                                    class="bg-white font-black text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md min-w-[20px] sm:min-w-[26px] text-center tabular-nums"
+                                    style="color: {primary};"
+                                >
+                                    {unit}
+                                </span>
+                            {/each}
+                        </div>
+                    </div>
+                    <Link
+                        href="/flash-sale"
+                        prefetch
+                        class="text-white/90 text-[10px] sm:text-xs font-bold flex items-center gap-0.5 sm:gap-1 hover:text-white transition shrink-0"
+                    >
+                        Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
+                    </Link>
+                </div>
+
+                <!-- Flash Sale Products (horizontal scroll) -->
+                <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
+                    <div
+                        class="flex gap-4 {flashSaleProducts.length < 4
+                            ? 'justify-start sm:justify-center w-full'
+                            : ''}"
+                        style="width: max-content; min-width: 100%;"
+                    >
+                        {#if flashSaleProducts.length > 0}
+                            {#each flashSaleProducts as product}
+                                {@const img = getProductImage(product)}
+                                {@const price = product.is_promo
+                                    ? product.promo_price
+                                    : (product.product_price?.price ?? 150000)}
+                                {@const disc = product.is_promo
+                                    ? product.discount_percentage
+                                    : randomDiscount()}
+                                {@const ori = product.is_promo
+                                    ? (product.product_price?.price ?? price)
+                                    : fakeOriginalPrice(price, disc)}
+                                <Link
+                                    href="/products/{product.slug || product.id}"
+                                    prefetch
+                                    class="w-36 sm:w-40 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0"
+                                >
+                                    <div
+                                        class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
+                                    >
+                                        {#if img}
+                                            <img
+                                                src={img}
+                                                alt={product.name}
+                                                class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                                onerror={(e) => {
+                                                    e.currentTarget.src =
+                                                        '/noimage/image.png';
+                                                }}
+                                            />
+                                        {:else}
+                                            <img
+                                                src="/noimage/image.png"
+                                                alt="No Image"
+                                                class="w-full h-full object-cover"
+                                            />
+                                        {/if}
+                                        <span
+                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                            style="background-color: {secondary};"
+                                        >
+                                            -{disc}%
+                                        </span>
+                                    </div>
+                                    <div class="p-2.5">
+                                        <p
+                                            class="text-[11px] text-slate-700 leading-tight line-clamp-2 mb-1.5 font-medium"
+                                        >
+                                            {product.name}
+                                        </p>
+                                        <p
+                                            class="text-sm font-black"
+                                            style="color: {primary};"
+                                        >
+                                            {formatPrice(price)}
+                                        </p>
+                                        <p
+                                            class="text-[10px] text-slate-400 line-through"
+                                        >
+                                            {formatPrice(ori)}
+                                        </p>
+                                        <!-- Progress bar -->
+                                        <div
+                                            class="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden"
+                                        >
+                                            <div
+                                                class="h-full rounded-full"
+                                                style="width: 100%; background: linear-gradient(90deg, {primary}, {secondary});"
+                                            ></div>
+                                        </div>
+                                        <p
+                                            class="text-[9px] font-bold mt-0.5"
+                                            style="color: {secondary};"
+                                        >
+                                            {product.is_promo
+                                                ? `Tersisa ${product.promo_stock} Stok`
+                                                : 'Hampir Habis!'}
+                                        </p>
+                                    </div>
+                                </Link>
+                            {/each}
+                        {:else}
+                            {#each Array(5) as _, i}
+                                <div
+                                    class="w-36 sm:w-40 bg-slate-100 rounded-xl overflow-hidden shrink-0 animate-pulse"
+                                >
+                                    <div class="aspect-square bg-slate-200"></div>
+                                    <div class="p-2.5 space-y-2">
+                                        <div class="h-3 bg-slate-200 rounded"></div>
+                                        <div
+                                            class="h-3 bg-slate-200 rounded w-2/3"
+                                        ></div>
+                                        <div
+                                            class="h-3 bg-slate-200 rounded w-1/2"
+                                        ></div>
+                                    </div>
+                                </div>
+                            {/each}
+                        {/if}
+                    </div>
+                </div>
+            </div>
+        </section>
+    {/if}
+
+    <!-- ═══════════════════════════════════════════════════
      SECTION 5: SPECIAL DEAL BANNERS (4 small promo cards)
-═══════════════════════════════════════════════════ -->
+    ═══════════════════════════════════════════════════ -->
     <section class="mt-2 px-3 sm:px-5 lg:px-8">
         <div class="max-w-6xl mx-auto">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -656,13 +819,14 @@
                         </p>
                     </div>
                 </div>
-                <a
-                    href="#"
+                <Link
+                    href="/produk-terlaris"
+                    prefetch
                     class="text-xs font-bold flex items-center gap-1"
                     style="color: {primary};"
                 >
                     Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
-                </a>
+                </Link>
             </div>
             <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
                 <div
