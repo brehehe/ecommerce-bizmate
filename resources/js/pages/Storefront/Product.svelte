@@ -609,7 +609,7 @@
     <!-- ─────────────────────────────────────────────────────
      MAIN PRODUCT CARD
 ───────────────────────────────────────────────────── -->
-    <div class="bg-white pt-14 md:pt-0">
+    <div class="bg-white md:pt-0">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div
                 class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-5 lg:gap-10 items-start"
