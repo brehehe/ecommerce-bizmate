@@ -329,7 +329,7 @@
                     <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
                         {#each categories as cat}
                             <button
-                                onclick={() => selectCategory(cat.slug || cat.id.toString())}
+                                onclick={() => selectCategoryDesktop(cat.slug || cat.id.toString())}
                                 class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
                                        {selectedCategories.includes(cat.slug || cat.id.toString())
                                            ? 'bg-slate-50'
