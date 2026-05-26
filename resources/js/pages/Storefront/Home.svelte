@@ -916,7 +916,7 @@
                                         <div class="h-[2.5rem] overflow-hidden mb-1">
                                             <p
                                                 class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                style="color: {primary};"
+                                                style="color: #000000;"
                                             >
                                                 {product.name}
                                             </p>
@@ -1085,7 +1085,7 @@
                                         <div class="h-[2.5rem] overflow-hidden mb-1.5">
                                             <p
                                                 class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                style="color: {primary};"
+                                                style="color: #000000;"
                                             >
                                                 {product.name}
                                             </p>

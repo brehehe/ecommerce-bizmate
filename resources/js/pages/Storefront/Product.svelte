@@ -1151,49 +1151,49 @@
                         </div>
                     {/if}
                     <!-- Pengiriman -->
-                    <div class="py-4 flex items-start gap-5">
+                    <div class="py-2.5 flex items-start gap-4">
                         <span
-                            class="text-sm text-slate-500 w-28 shrink-0 font-medium pt-0.5"
+                            class="text-xs text-slate-400 w-20 sm:w-24 shrink-0 font-bold uppercase tracking-wider pt-0.5"
                             >Pengiriman</span
                         >
                         <div
-                            class="flex items-start gap-2 text-sm text-slate-700"
+                            class="flex items-start gap-1.5 text-xs text-slate-700"
                         >
                             <i
-                                class="ti ti-truck text-green-500 mt-0.5 text-base"
+                                class="ti ti-truck text-green-500 text-sm mt-0.5"
                             ></i>
-                            <div>
-                                <p class="font-semibold text-slate-800">
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <span class="font-bold text-slate-800">
                                     Garansi tiba 1–3 hari kerja
-                                </p>
-                                <p class="text-xs text-slate-400 mt-0.5">
-                                    JNE · J&T · SiCepat · Gosend · Grab
-                                </p>
+                                </span>
+                                <span class="text-[11px] text-slate-400 font-normal">
+                                    (JNE · J&T · SiCepat · Gosend · Grab)
+                                </span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Jaminan -->
-                    <div class="py-4 flex items-start gap-5">
+                    <div class="py-2.5 flex items-start gap-4">
                         <span
-                            class="text-sm text-slate-500 w-28 shrink-0 font-medium pt-0.5"
+                            class="text-xs text-slate-400 w-20 sm:w-24 shrink-0 font-bold uppercase tracking-wider pt-0.5"
                             >Jaminan</span
                         >
                         <div
-                            class="flex flex-wrap gap-3 text-xs text-slate-600"
+                            class="flex flex-wrap gap-x-3.5 gap-y-1.5 text-xs text-slate-650"
                         >
-                            <span class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-1">
                                 <i
-                                    class="ti ti-shield-check text-green-500 text-sm"
+                                    class="ti ti-shield-check text-green-500 text-xs"
                                 ></i> Bebas Pengembalian
                             </span>
-                            <span class="flex items-center gap-1.5">
-                                <i class="ti ti-cash text-orange-400 text-sm"
+                            <span class="flex items-center gap-1">
+                                <i class="ti ti-cash text-orange-400 text-xs"
                                 ></i> COD Tersedia
                             </span>
-                            <span class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-1">
                                 <i
-                                    class="ti ti-rosette-discount-check text-blue-500 text-sm"
+                                    class="ti ti-rosette-discount-check text-blue-500 text-xs"
                                 ></i> Produk Original
                             </span>
                         </div>
