@@ -437,28 +437,20 @@
 <svelte:window bind:scrollY />
 
 <StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
-    <!-- MOBILE NAVBAR (Floating & Sticky transition) -->
-    <div
-        class="md:hidden fixed top-0 left-0 right-0 z-40 transition-all duration-300
-               {isScrolled
-            ? 'bg-white shadow-sm border-b border-slate-100/80 py-2 px-3'
-            : 'bg-transparent py-4 px-4'}"
-    >
+    <!-- MOBILE NAVBAR (Always visible, matching Image 3) -->
+    <div class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-xs py-2.5 px-3">
         <div class="flex items-center gap-3">
             <!-- Back Button -->
             <button
                 onclick={() => window.history.back()}
-                class="w-9 h-9 rounded-full flex items-center justify-center transition duration-200
-                       {isScrolled
-                    ? 'text-slate-700 hover:bg-slate-100'
-                    : 'bg-black/30 backdrop-blur-sm text-white hover:bg-black/45'}"
+                class="w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-full transition active:scale-95 shrink-0"
                 aria-label="Kembali"
             >
                 <i class="ti ti-arrow-left text-xl"></i>
             </button>
 
-            <!-- Search Bar / Title (Always mounted, opacity/pointer-events controlled to prevent page reflow jumps) -->
-            <div class="flex-grow transition-all duration-300 {isScrolled ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}">
+            <!-- Search Bar -->
+            <div class="flex-grow">
                 <form
                     onsubmit={(e) => {
                         e.preventDefault();
@@ -484,27 +476,21 @@
             </div>
 
             <!-- Right Icons: Share, Cart, Menu -->
-            <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-1.5 shrink-0">
                 <!-- Share Button -->
                 <button
                     onclick={shareProduct}
-                    class="w-9 h-9 rounded-full flex items-center justify-center transition duration-200
-                           {isScrolled
-                        ? 'text-slate-700 hover:bg-slate-100'
-                        : 'bg-black/30 backdrop-blur-sm text-white hover:bg-black/45'}"
+                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition"
                     aria-label="Bagikan"
                 >
                     <i class="ti ti-share text-lg"></i>
                 </button>
 
-                <!-- Cart (Visual Placeholder matching desktop) -->
+                <!-- Cart Button -->
                 <Link
                     href="/"
                     prefetch
-                    class="w-9 h-9 rounded-full flex items-center justify-center transition duration-200
-                           {isScrolled
-                        ? 'text-slate-700 hover:bg-slate-100'
-                        : 'bg-black/30 backdrop-blur-sm text-white hover:bg-black/45'}"
+                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition"
                     aria-label="Keranjang"
                 >
                     <i class="ti ti-shopping-cart text-lg"></i>
@@ -513,10 +499,7 @@
                 <!-- Menu Button -->
                 <button
                     onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-                    class="w-9 h-9 rounded-full flex items-center justify-center transition duration-200
-                           {isScrolled
-                        ? 'text-slate-700 hover:bg-slate-100'
-                        : 'bg-black/30 backdrop-blur-sm text-white hover:bg-black/45'}"
+                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition"
                     aria-label="Menu"
                 >
                     <i class="ti ti-dots text-lg"></i>
@@ -604,7 +587,7 @@
     <!-- ─────────────────────────────────────────────────────
      MAIN PRODUCT CARD
 ───────────────────────────────────────────────────── -->
-    <div class="bg-white">
+    <div class="bg-white md:pt-0">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div
                 class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-5 lg:gap-10 items-start"
@@ -613,7 +596,7 @@
                 <div class="flex flex-col gap-3">
                     <!-- Mobile Gallery (Slider — combined product + variant images) -->
                     <div
-                        class="md:hidden relative aspect-square bg-slate-50 overflow-hidden -mx-4 -mt-5"
+                        class="md:hidden relative aspect-square bg-slate-50 overflow-hidden -mx-4"
                         style="width: calc(100% + 2rem)"
                         ontouchstart={onTouchStart}
                         ontouchend={onTouchEnd}
