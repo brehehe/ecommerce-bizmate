@@ -1581,11 +1581,7 @@
                                     <span
                                         class="font-bold text-slate-700 tabular-nums"
                                     >
-                                        {qty} x {fmt(activeUnitPrice)} =
-                                        <span
-                                            class="font-extrabold text-sm text-brand-blueRoyal"
-                                            >{fmt(totalPrice)}</span
-                                        >
+                                        {fmt(totalPrice)}
                                     </span>
                                 </div>
                             </div>
