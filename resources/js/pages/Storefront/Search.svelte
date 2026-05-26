@@ -1,7 +1,7 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
-    import Pagination from '@/components/ui/Pagination.svelte';
+    import { onMount } from 'svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
     import Select from '@/components/ui/Select.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
@@ -104,9 +104,72 @@
         return null;
     }
 
-    function fakeRating() {
-        return (4.3 + Math.random() * 0.6).toFixed(1);
+    // ── Infinite Scroll ──────────────────────────────────────────────────────
+    // Accumulate products across pages
+    let allProducts = $state<any[]>(products.data || []);
+    let isLoadingMore = $state(false);
+    let lastFilterKey = $state(JSON.stringify({
+        q: filters.q, category: filters.category,
+        sort: filters.sort, min_price: filters.min_price,
+        max_price: filters.max_price, promo: filters.promo
+    }));
+
+    // Detect filter change vs page change and reset or append
+    $effect(() => {
+        const newKey = JSON.stringify({
+            q: filters.q, category: filters.category,
+            sort: filters.sort, min_price: filters.min_price,
+            max_price: filters.max_price, promo: filters.promo
+        });
+        if (newKey !== lastFilterKey) {
+            // Filters changed — reset list
+            allProducts = products.data || [];
+            lastFilterKey = newKey;
+        } else {
+            // Same filters, new page — merge/append
+            const existingIds = new Set(allProducts.map((p: any) => p.id));
+            const newItems = (products.data || []).filter((p: any) => !existingIds.has(p.id));
+            if (newItems.length > 0) {
+                allProducts = [...allProducts, ...newItems];
+            }
+        }
+        isLoadingMore = false;
+    });
+
+    function loadMore() {
+        if (isLoadingMore || !products.next_page_url) return;
+        isLoadingMore = true;
+        const nextPage = (products.current_page || 1) + 1;
+        router.get('/search', {
+            q: filters.q,
+            category: filters.category,
+            sort: filters.sort,
+            min_price: filters.min_price,
+            max_price: filters.max_price,
+            promo: filters.promo ? 1 : 0,
+            page: nextPage,
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ['products'],
+        });
     }
+
+    // Set up IntersectionObserver on sentinel element
+    let sentinel: HTMLDivElement | null = null;
+
+    onMount(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    loadMore();
+                }
+            },
+            { rootMargin: '200px' }
+        );
+        if (sentinel) observer.observe(sentinel);
+        return () => observer.disconnect();
+    });
 </script>
 
 <svelte:head>
@@ -397,7 +460,7 @@
              PRODUCT GRID (Right Column)
             ═══════════════════════════════════════════════════ -->
             <div class="flex-grow flex flex-col min-w-0">
-                {#if products.data.length === 0}
+                {#if allProducts.length === 0 && !isLoadingMore}
                     <div class="bg-white border border-slate-150 rounded-2xl p-16 text-center shadow-soft">
                         <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
                             <i class="ti ti-package-off text-3xl"></i>
@@ -415,15 +478,14 @@
                         </button>
                     </div>
                 {:else}
-                    <!-- Masonry Grid -->
+                    <!-- Product Grid -->
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {#each products.data as product}
+                        {#each allProducts as product (product.id)}
                             {@const img = getProductImage(product)}
                             {@const isPromo = product.is_promo}
                             {@const price = isPromo ? product.promo_price : (product.product_price?.price ?? 0)}
                             {@const originalPrice = isPromo ? product.original_price : 0}
                             {@const discountPercentage = isPromo ? product.discount_percentage : 0}
-                            {@const rating = fakeRating()}
 
                             <Link
                                 href={`/products/${product.slug || product.id}`}
@@ -464,10 +526,6 @@
                                         <p class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1" style="color: {primary};">
                                             {product.name}
                                         </p>
-                                        <div class="flex items-center gap-1 mt-1">
-                                            <i class="ti ti-star-filled text-amber-500 text-[10px]"></i>
-                                            <span class="text-[10px] text-slate-500 font-bold">{rating}</span>
-                                        </div>
                                         <hr class="border-slate-100 my-2" />
                                         <div class="mb-3">
                                             <p class="text-sm sm:text-base font-black leading-tight" style="color: {secondary};">
@@ -492,6 +550,40 @@
                                 </div>
                             </Link>
                         {/each}
+                    </div>
+
+                    <!-- Infinite scroll sentinel + loading indicator -->
+                    <div bind:this={sentinel} class="py-8 flex flex-col items-center justify-center gap-3">
+                        {#if isLoadingMore}
+                            <!-- Loading spinner -->
+                            <div class="flex items-center gap-2.5">
+                                <div
+                                    class="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+                                    style="border-color: {primary}40; border-top-color: {primary};"
+                                ></div>
+                                <span class="text-sm font-bold text-slate-500">Memuat Lebih Banyak...</span>
+                            </div>
+                            <!-- Skeleton cards preview -->
+                            <div class="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 opacity-50">
+                                {#each [1,2,3,4] as _}
+                                    <div class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
+                                        <div class="aspect-square bg-slate-100"></div>
+                                        <div class="p-3 space-y-2">
+                                            <div class="h-2 bg-slate-100 rounded w-1/2"></div>
+                                            <div class="h-3 bg-slate-100 rounded w-3/4"></div>
+                                            <div class="h-3 bg-slate-100 rounded w-1/3"></div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {:else if !products.next_page_url && allProducts.length > 0}
+                            <!-- End of results -->
+                            <div class="flex items-center gap-3 text-slate-300">
+                                <div class="h-px flex-1 bg-slate-100"></div>
+                                <span class="text-xs font-bold uppercase tracking-wider">Semua produk ditampilkan</span>
+                                <div class="h-px flex-1 bg-slate-100"></div>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
             </div>
