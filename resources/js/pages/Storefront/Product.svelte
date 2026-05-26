@@ -455,7 +455,7 @@
                     onsubmit={(e) => {
                         e.preventDefault();
                         if (searchQuery.trim()) {
-                            router.get('/', { search: searchQuery });
+                            router.get('/search', { q: searchQuery });
                         }
                     }}
                     class="relative"
