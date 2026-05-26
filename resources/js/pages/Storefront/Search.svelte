@@ -47,8 +47,8 @@
         initialPromoOnly = filters.promo || false;
     });
 
-    function applyFilters() {
-        showMobileFilters = false;
+    function applyFilters(closeDrawer = true) {
+        if (closeDrawer) showMobileFilters = false;
         router.get('/search', {
             q: searchQ,
             category: selectedCategories,
@@ -72,13 +72,23 @@
         router.get('/search');
     }
 
+    // Di mobile drawer: hanya toggle state, tidak langsung navigasi
     function selectCategory(catSlug: string) {
         if (selectedCategories.includes(catSlug)) {
             selectedCategories = selectedCategories.filter(slug => slug !== catSlug);
         } else {
             selectedCategories = [...selectedCategories, catSlug];
         }
-        applyFilters();
+    }
+
+    // Di desktop sidebar: toggle dan langsung terapkan filter
+    function selectCategoryDesktop(catSlug: string) {
+        if (selectedCategories.includes(catSlug)) {
+            selectedCategories = selectedCategories.filter(slug => slug !== catSlug);
+        } else {
+            selectedCategories = [...selectedCategories, catSlug];
+        }
+        applyFilters(false);
     }
 
     function formatPrice(price: any) {
@@ -103,10 +113,98 @@
     <title>Cari Produk - {storeName || 'Toko Kami'}</title>
 </svelte:head>
 
-<StorefrontLayout>
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
-        <!-- Breadcrumbs / Top Bar -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+<StorefrontLayout hideMobileHeader={true}>
+
+    <!-- ═══════════════════════════════════════════════════
+     STICKY MOBILE TOP BAR (mobile only, replaces global header)
+    ═══════════════════════════════════════════════════ -->
+    <div
+        class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm"
+    >
+        <!-- Search bar row -->
+        <div class="flex items-center gap-2 px-3 py-2.5" style="background: linear-gradient(135deg, {primary}f5, {primary}cc);">
+            <!-- Back button -->
+            <button
+                onclick={() => history.back()}
+                class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition"
+                aria-label="Kembali"
+            >
+                <i class="ti ti-arrow-left text-xl"></i>
+            </button>
+
+            <!-- Inline search input -->
+            <form
+                onsubmit={(e) => { e.preventDefault(); applyFilters(); }}
+                class="flex-grow"
+            >
+                <div class="relative">
+                    <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                    <input
+                        type="text"
+                        bind:value={searchQ}
+                        placeholder="Cari produk, merek..."
+                        class="w-full pl-9 pr-4 py-2 text-sm bg-white rounded-xl border-0 focus:outline-none focus:ring-2 shadow-sm"
+                        style="--tw-ring-color: {primary}40;"
+                    />
+                    {#if searchQ}
+                        <button
+                            type="button"
+                            onclick={() => { searchQ = ''; applyFilters(); }}
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                        >
+                            <i class="ti ti-x text-sm"></i>
+                        </button>
+                    {/if}
+                </div>
+            </form>
+
+            <!-- Filter button -->
+            <button
+                onclick={() => showMobileFilters = true}
+                class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition relative"
+                aria-label="Filter"
+            >
+                <i class="ti ti-adjustments-horizontal text-lg"></i>
+                {#if selectedCategories.length > 0 || minPrice || maxPrice || promoOnly}
+                    <span
+                        class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
+                        style="background-color: {secondary};"
+                    ></span>
+                {/if}
+            </button>
+        </div>
+
+        <!-- Sort pills row -->
+        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto scrollbar-hide">
+            {#each [
+                { id: 'relevance', label: 'Terkait' },
+                { id: 'latest', label: 'Terbaru' },
+                { id: 'popular', label: 'Terlaris' },
+                { id: 'price_asc', label: 'Harga ↑' },
+                { id: 'price_desc', label: 'Harga ↓' },
+            ] as sortOpt}
+                <button
+                    onclick={() => { selectedSort = sortOpt.id; applyFilters(); }}
+                    class="shrink-0 px-3.5 py-1.5 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95"
+                    class:text-white={selectedSort === sortOpt.id}
+                    class:border-transparent={selectedSort === sortOpt.id}
+                    class:bg-white={selectedSort !== sortOpt.id}
+                    class:border-slate-200={selectedSort !== sortOpt.id}
+                    class:text-slate-600={selectedSort !== sortOpt.id}
+                    style={selectedSort === sortOpt.id ? `background-color: ${primary};` : ''}
+                >
+                    {sortOpt.label}
+                </button>
+            {/each}
+        </div>
+    </div>
+
+    <!-- Spacer for mobile sticky bar (search row ~50px + sort row ~38px + extra breathing room) -->
+    <div class="md:hidden h-[106px]"></div>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow">
+        <!-- Breadcrumbs / Top Bar (Desktop only) -->
+        <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
                 <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
                     <i class="ti ti-search" style="color: {primary};"></i>
@@ -123,17 +221,17 @@
                 </p>
             </div>
 
-            <!-- Sorting & Mini Pagination & Mobile Filter trigger -->
-            <div class="flex items-center gap-3.5 self-end md:self-auto">
+            <!-- Sorting & Mini Pagination (Desktop only) -->
+            <div class="hidden md:flex items-center gap-3.5 self-end md:self-auto">
                 <!-- Sorting Tabs (Desktop) -->
-                <div class="hidden md:flex items-center gap-2 z-20">
+                <div class="flex items-center gap-2 z-20">
                     <span class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1">Urutkan:</span>
-                    
+
                     <button
                         onclick={() => { selectedSort = 'relevance'; applyFilters(); }}
                         class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'relevance' 
-                                   ? 'text-white' 
+                               {selectedSort === 'relevance'
+                                   ? 'text-white'
                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
                         style={selectedSort === 'relevance' ? `background-color: ${primary}; border-color: ${primary};` : ''}
                     >
@@ -143,8 +241,8 @@
                     <button
                         onclick={() => { selectedSort = 'latest'; applyFilters(); }}
                         class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'latest' 
-                                   ? 'text-white' 
+                               {selectedSort === 'latest'
+                                   ? 'text-white'
                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
                         style={selectedSort === 'latest' ? `background-color: ${primary}; border-color: ${primary};` : ''}
                     >
@@ -154,8 +252,8 @@
                     <button
                         onclick={() => { selectedSort = 'popular'; applyFilters(); }}
                         class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'popular' 
-                                   ? 'text-white' 
+                               {selectedSort === 'popular'
+                                   ? 'text-white'
                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
                         style={selectedSort === 'popular' ? `background-color: ${primary}; border-color: ${primary};` : ''}
                     >
@@ -178,27 +276,9 @@
                     </div>
                 </div>
 
-                <!-- Sorting Dropdown (Mobile) -->
-                <div class="md:hidden flex items-center gap-2 z-20">
-                    <span class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap">Urutkan:</span>
-                    <div class="w-36">
-                        <Select
-                            bind:value={selectedSort}
-                            onchange={applyFilters}
-                            options={[
-                                { id: 'relevance', name: 'Terkait' },
-                                { id: 'latest', name: 'Terbaru' },
-                                { id: 'popular', name: 'Terlaris' },
-                                { id: 'price_asc', name: 'Harga: Terendah' },
-                                { id: 'price_desc', name: 'Harga: Tertinggi' }
-                            ]}
-                        />
-                    </div>
-                </div>
-
                 <!-- Mini Pagination (Desktop only) -->
                 {#if products.last_page > 1}
-                    <div class="hidden md:flex items-center gap-2 border-l border-slate-150 pl-4 h-8">
+                    <div class="flex items-center gap-2 border-l border-slate-150 pl-4 h-8">
                         <span class="text-xs font-bold text-slate-500">
                             <span style="color: {primary};">{products.current_page}</span>
                             <span class="text-slate-300">/</span>
@@ -222,15 +302,6 @@
                         </div>
                     </div>
                 {/if}
-
-                <!-- Mobile Filter Button -->
-                <button
-                    onclick={() => showMobileFilters = true}
-                    class="md:hidden flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-xs font-bold text-slate-600 rounded-xl shadow-sm active:scale-95 transition"
-                >
-                    <i class="ti ti-filter text-sm"></i>
-                    Filter
-                </button>
             </div>
         </div>
 
@@ -421,11 +492,6 @@
                                 </div>
                             </Link>
                         {/each}
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="mt-8 flex justify-center">
-                        <Pagination paginator={products} itemLabel="Produk" />
                     </div>
                 {/if}
             </div>

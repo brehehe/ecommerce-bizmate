@@ -343,14 +343,28 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        // Filter by keyword
+        // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
         if ($query) {
-            $productsQuery->where(function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%")
-                    ->orWhere('description', 'like', "%{$query}%")
-                    ->orWhereHas('category', function ($qc) use ($query) {
-                        $qc->where('name', 'like', "%{$query}%");
+            $terms = array_filter(explode(' ', $query)); // Pisahkan kata berdasarkan spasi
+            $productsQuery->where(function ($q) use ($terms) {
+                foreach ($terms as $term) {
+                    $q->where(function ($subQ) use ($term) {
+                        // Cari di nama dan deskripsi produk
+                        $subQ->where('name', 'ilike', "%{$term}%")
+                             ->orWhere('description', 'ilike', "%{$term}%")
+                             // Cari di nama kategori
+                             ->orWhereHas('category', function ($qc) use ($term) {
+                                 $qc->where('name', 'ilike', "%{$term}%");
+                             })
+                             // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
+                             ->orWhereHas('variants', function ($qv) use ($term) {
+                                 $qv->where('sku', 'ilike', "%{$term}%")
+                                    ->orWhereHas('options', function ($qo) use ($term) {
+                                        $qo->where('name', 'ilike', "%{$term}%");
+                                    });
+                             });
                     });
+                }
             });
         }
 
@@ -390,34 +404,30 @@ class StorefrontController extends Controller
             ->where('end_time', '>=', now())
             ->get();
 
-        // Retrieve all filtered products first, apply promotion mapping
+        // Retrieve all filtered products first
         $productsCollection = $productsQuery->get();
 
-        foreach ($productsCollection as $p) {
+        // Apply promotions and filter collection in a single pass for better performance
+        $productsCollection = $productsCollection->filter(function ($p) use ($activePromotions, $promoOnly, $minPrice, $maxPrice) {
+            // 1. Apply promotion data
             $this->applyPromotionsToProduct($p, $activePromotions);
-        }
 
-        // Apply filters that depend on promotion prices (like promoOnly)
-        if ($promoOnly) {
-            $productsCollection = $productsCollection->filter(function ($p) {
-                return $p->is_promo;
-            });
-        }
+            // 2. Filter by 'promo only'
+            if ($promoOnly && ! $p->is_promo) {
+                return false;
+            }
 
-        // Re-filter by actual promo/original price if prices were requested
-        if ($minPrice || $maxPrice) {
-            $productsCollection = $productsCollection->filter(function ($p) use ($minPrice, $maxPrice) {
-                $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                if ($minPrice && $price < $minPrice) {
-                    return false;
-                }
-                if ($maxPrice && $price > $maxPrice) {
-                    return false;
-                }
+            // 3. Filter by price range
+            $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
+            if ($minPrice && $price < $minPrice) {
+                return false;
+            }
+            if ($maxPrice && $price > $maxPrice) {
+                return false;
+            }
 
-                return true;
-            });
-        }
+            return true;
+        });
 
         // Apply sorting on the mapped collection
         if ($sort === 'price_asc') {
