@@ -80,11 +80,14 @@
                             return m;
                         });
                     }
+
+                    // Reload Inertia props to update thread list & total unread count on sidebar
+                    router.reload({ only: ['chats', 'totalUnread', 'adminChatUnreadCount'], preserveScroll: true });
                 }
             } catch (err) {
                 console.error('Error polling messages:', err);
             }
-        }, 5000);
+        }, 2000);
     }
 
     function stopPolling() {
