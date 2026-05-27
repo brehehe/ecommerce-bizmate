@@ -293,7 +293,7 @@
     <!-- ═══════════════════════════════════════════════════
      MAIN WRAPPER
     ═══════════════════════════════════════════════════ -->
-    <div class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 pt-0 md:pt-4 pb-28 md:py-8 flex-grow bg-white md:bg-slate-50/50 w-full">
+    <div class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 pt-0 md:pt-4 pb-28 md:py-8 flex-grow bg-white md:bg-slate-50/50 w-full min-h-screen md:min-h-0">
         
         <!-- Desktop Page Title -->
         <h1 class="hidden md:flex font-outfit font-black text-2xl sm:text-3xl text-slate-800 items-center gap-2.5 mb-8">
@@ -303,12 +303,12 @@
 
         {#if cartItems.length === 0}
             <!-- Empty Cart State -->
-            <div 
-                class="bg-white border border-slate-150 rounded-[28px] py-16 px-6 sm:px-12 text-center max-w-lg mx-auto w-full shadow-soft"
+            <div
+                class="flex flex-col items-center justify-center py-20 px-6 text-center w-full"
                 transition:fade={{ duration: 200 }}
             >
-                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300 border border-slate-100">
-                    <i class="ti ti-shopping-cart-x text-4xl"></i>
+                <div class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-300">
+                    <i class="ti ti-shopping-cart-x text-5xl"></i>
                 </div>
                 
                 <h3 class="text-[#0a1d37] font-black text-xl sm:text-2xl mb-2 tracking-tight">Keranjang Belanja Kosong</h3>
@@ -494,9 +494,21 @@
                                                     >
                                                         <i class="ti ti-minus text-[8px]"></i>
                                                     </button>
-                                                    <span class="w-7 h-full flex items-center justify-center font-bold text-slate-700 bg-white border-x border-slate-200 tabular-nums">
-                                                        {item.quantity}
-                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max={item.is_unlimited ? undefined : item.stock}
+                                                        value={item.quantity}
+                                                        onchange={(e) => {
+                                                            const val = parseInt((e.target as HTMLInputElement).value);
+                                                            if (!isNaN(val) && val >= 1) {
+                                                                updateQty(item, val);
+                                                            } else {
+                                                                (e.target as HTMLInputElement).value = String(item.quantity);
+                                                            }
+                                                        }}
+                                                        class="w-8 h-full text-center font-bold text-slate-700 bg-white border-x border-slate-200 tabular-nums text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                                                    />
                                                     <button
                                                         onclick={() => updateQty(item, item.quantity + 1)}
                                                         disabled={!item.is_unlimited && item.quantity >= item.stock}
