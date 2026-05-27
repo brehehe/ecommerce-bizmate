@@ -629,7 +629,7 @@
 
 <StorefrontLayout hideMobileFooter={true}>
     <div
-        class="max-w-md mx-auto min-h-[calc(100vh-56px)] md:min-h-[calc(100vh-140px)] bg-white shadow-md flex flex-col relative"
+        class="max-w-md mx-auto h-[calc(100vh-56px)] md:h-[calc(100vh-140px)] bg-white shadow-md flex flex-col relative overflow-hidden"
     >
         <!-- ====== STEP 1: LIST VIEW ====== -->
         {#if step === 'list'}
