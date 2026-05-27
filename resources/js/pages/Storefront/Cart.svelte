@@ -2,6 +2,7 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import { fade } from 'svelte/transition';
+    import { showToast } from '@/utils/toast';
 
     let { cartItems = [], storeName = '' } = $props();
 
@@ -104,11 +105,11 @@
     // Stepper operations
     function updateQty(item: any, newQty: number) {
         if (newQty < 1) return;
-        
-        // If stock is limited, check bounds
+
+        // If stock is limited, clamp to max and show toast
         if (!item.is_unlimited && newQty > item.stock) {
-            alert(`Stok tidak mencukupi. Stok maksimal: ${item.stock}`);
-            return;
+            showToast(`Stok maksimal: ${item.stock}`, 'warning');
+            newQty = item.stock;
         }
 
         router.patch(`/cart/${item.id}`, {
@@ -438,125 +439,121 @@
                                     </div>
 
                                     <!-- Product Details Column -->
-                                    <div class="flex-grow flex flex-col justify-between min-w-0">
-                                        <div class="space-y-1">
-                                            <h3 class="text-xs font-bold text-slate-800 line-clamp-1 leading-snug">
-                                                {item.product.name}
-                                            </h3>
+                                    <div class="flex-grow flex flex-col justify-between min-w-0 gap-1.5">
 
-                                            <!-- Variant dropdown & Stepper aligned in one row as in screenshot -->
-                                            <div class="flex items-center justify-between gap-3">
-                                                {#if item.product.variants && item.product.variants.length > 0}
-                                                    <div class="relative shrink-0">
-                                                        <button 
-                                                            onclick={(e) => {
-                                                                e.stopPropagation();
-                                                                activeVariantDropdownId = activeVariantDropdownId === item.id ? null : item.id;
-                                                            }}
-                                                            class="inline-flex items-center gap-1 bg-slate-50 text-slate-605 text-[9.5px] px-1.5 py-0.5 rounded border border-slate-150 transition hover:bg-slate-100 cursor-pointer shrink-0"
-                                                        >
-                                                            <span>{varLabel || 'Standard'}</span>
-                                                            <i class="ti ti-chevron-down text-[8px]"></i>
-                                                        </button>
+                                        <!-- Product Name -->
+                                        <h3 class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug">
+                                            {item.product.name}
+                                        </h3>
 
-                                                        {#if activeVariantDropdownId === item.id}
-                                                            <div class="absolute left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 text-xs text-slate-700 animate-in fade-in slide-in-from-top-1 duration-100">
-                                                                {#each item.product.variants as variant}
-                                                                    {@const variantName = variant.options.map((o) => o.name).join(' / ')}
-                                                                    {@const isSelected = item.product_variant_id === variant.id}
-                                                                    <button
-                                                                        onclick={() => {
-                                                                            selectVariant(item, variant.id);
-                                                                            activeVariantDropdownId = null;
-                                                                        }}
-                                                                        class="w-full text-left px-3 py-2 hover:bg-slate-50 transition flex items-center justify-between font-medium cursor-pointer border-0 bg-transparent"
-                                                                        style={isSelected ? `color: ${primary}; font-weight: 800;` : ''}
-                                                                    >
-                                                                        <span>{variantName}</span>
-                                                                        {#if isSelected}
-                                                                            <i class="ti ti-check text-[10px]" style="color: {primary};"></i>
-                                                                        {/if}
-                                                                    </button>
-                                                                {/each}
-                                                            </div>
-                                                        {/if}
+                                        <!-- Variant Dropdown -->
+                                        {#if item.product.variants && item.product.variants.length > 0}
+                                            <div class="relative">
+                                                <button 
+                                                    onclick={(e) => {
+                                                        e.stopPropagation();
+                                                        activeVariantDropdownId = activeVariantDropdownId === item.id ? null : item.id;
+                                                    }}
+                                                    class="inline-flex items-center gap-1 bg-slate-50 text-slate-600 text-[9.5px] px-1.5 py-0.5 rounded border border-slate-200 transition hover:bg-slate-100 cursor-pointer"
+                                                >
+                                                    <span>{varLabel || 'Standard'}</span>
+                                                    <i class="ti ti-chevron-down text-[8px]"></i>
+                                                </button>
+
+                                                {#if activeVariantDropdownId === item.id}
+                                                    <div class="absolute left-0 mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 text-xs text-slate-700 animate-in fade-in slide-in-from-top-1 duration-100">
+                                                        {#each item.product.variants as variant}
+                                                            {@const variantName = variant.options.map((o) => o.name).join(' / ')}
+                                                            {@const isSelected = item.product_variant_id === variant.id}
+                                                            <button
+                                                                onclick={() => {
+                                                                    selectVariant(item, variant.id);
+                                                                    activeVariantDropdownId = null;
+                                                                }}
+                                                                class="w-full text-left px-3 py-2 hover:bg-slate-50 transition flex items-center justify-between font-medium cursor-pointer border-0 bg-transparent"
+                                                                style={isSelected ? `color: ${primary}; font-weight: 800;` : ''}
+                                                            >
+                                                                <span>{variantName}</span>
+                                                                {#if isSelected}
+                                                                    <i class="ti ti-check text-[10px]" style="color: {primary};"></i>
+                                                                {/if}
+                                                            </button>
+                                                        {/each}
                                                     </div>
-                                                {:else}
-                                                    <div></div>
                                                 {/if}
+                                            </div>
+                                        {/if}
 
-                                                <!-- Stepper exactly on the right -->
-                                                <div class="flex items-center border border-slate-200 rounded overflow-hidden shadow-3xs h-6 text-[10px] bg-slate-100 shrink-0">
+                                        <!-- Badges -->
+                                        <div class="flex gap-1.5 flex-wrap items-center">
+                                            {#if isItemFlashSale}
+                                                <span class="text-[7.5px] font-black px-1.5 py-0.5 bg-rose-50 text-rose-600 border border-rose-200 rounded flex items-center gap-0.5">
+                                                    <i class="ti ti-bolt text-[9px] text-rose-500 animate-pulse"></i>
+                                                    Flash Sale
+                                                </span>
+                                            {/if}
+                                            <span class="text-[7.5px] font-black px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded">Gratis Ongkir XTRA</span>
+                                        </div>
+
+                                        <!-- Bottom row: Price (left) — Stepper + Trash (right) -->
+                                        <div class="flex items-center justify-between gap-2 mt-0.5">
+                                            <!-- Price -->
+                                            <div class="flex flex-col min-w-0">
+                                                {#if isItemFlashSale && originalPrice > item.unit_price}
+                                                    <span class="text-[9px] text-slate-400 line-through tabular-nums leading-none">
+                                                        {fmt(originalPrice)}
+                                                    </span>
+                                                {/if}
+                                                <span class="text-xs font-black leading-tight" style="color: {secondary};">
+                                                    {fmt(item.unit_price)}
+                                                </span>
+                                            </div>
+
+                                            <!-- Stepper + Trash -->
+                                            <div class="flex items-center gap-1.5 shrink-0">
+                                                <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden h-7 bg-white shadow-sm">
                                                     <button
                                                         onclick={() => updateQty(item, item.quantity - 1)}
                                                         disabled={item.quantity <= 1}
-                                                        class="w-5.5 h-full flex items-center justify-center hover:bg-slate-200 transition text-slate-550 disabled:opacity-30 cursor-pointer border-0 bg-transparent"
+                                                        class="w-7 h-full flex items-center justify-center hover:bg-slate-100 transition text-slate-500 disabled:opacity-30 cursor-pointer border-0 bg-transparent"
                                                     >
-                                                        <i class="ti ti-minus text-[8px]"></i>
+                                                        <i class="ti ti-minus text-[9px]"></i>
                                                     </button>
                                                     <input
-                                                        type="number"
-                                                        min="1"
-                                                        max={item.is_unlimited ? undefined : item.stock}
+                                                        type="text"
+                                                        inputmode="numeric"
+                                                        pattern="[0-9]*"
                                                         value={item.quantity}
-                                                        onchange={(e) => {
+                                                        onfocus={(e) => (e.target as HTMLInputElement).select()}
+                                                        onblur={(e) => {
                                                             const val = parseInt((e.target as HTMLInputElement).value);
-                                                            if (!isNaN(val) && val >= 1) {
-                                                                updateQty(item, val);
-                                                            } else {
-                                                                (e.target as HTMLInputElement).value = String(item.quantity);
-                                                            }
+                                                            const clamped = isNaN(val) || val < 1
+                                                                ? 1
+                                                                : (!item.is_unlimited && val > item.stock ? item.stock : val);
+                                                            updateQty(item, clamped);
                                                         }}
-                                                        class="w-8 h-full text-center font-bold text-slate-700 bg-white border-x border-slate-200 tabular-nums text-[10px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                                                        onkeydown={(e) => {
+                                                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                                        }}
+                                                        class="w-9 h-full text-center font-bold text-slate-700 bg-white border-x border-slate-200 tabular-nums text-[11px] focus:outline-none"
                                                     />
                                                     <button
                                                         onclick={() => updateQty(item, item.quantity + 1)}
                                                         disabled={!item.is_unlimited && item.quantity >= item.stock}
-                                                        class="w-5.5 h-full flex items-center justify-center hover:bg-slate-200 transition text-slate-555 disabled:opacity-30 cursor-pointer border-0 bg-transparent"
+                                                        class="w-7 h-full flex items-center justify-center hover:bg-slate-100 transition text-slate-500 disabled:opacity-30 cursor-pointer border-0 bg-transparent"
                                                     >
-                                                        <i class="ti ti-plus text-[8px]"></i>
+                                                        <i class="ti ti-plus text-[9px]"></i>
                                                     </button>
                                                 </div>
-                                            </div>
 
-                                            <!-- Shopee-style Badges -->
-                                            <div class="flex gap-1.5 flex-wrap items-center">
-                                                {#if isItemFlashSale}
-                                                    <span class="text-[7.5px] font-black px-1.5 py-0.25 bg-rose-50 text-rose-600 border border-rose-200 rounded flex items-center gap-0.5 shrink-0">
-                                                        <i class="ti ti-bolt text-[9px] text-rose-500 animate-pulse"></i>
-                                                        Flash Sale
-                                                    </span>
-                                                {/if}
-                                                <span class="text-[7.5px] font-black px-1.5 py-0.25 bg-[#26b99a]/10 text-[#26b99a] rounded">Gratis Ongkir XTRA</span>
+                                                <button 
+                                                    onclick={() => deleteItem(item)}
+                                                    class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer border border-slate-200 bg-white"
+                                                    aria-label="Hapus Produk"
+                                                >
+                                                    <i class="ti ti-trash text-xs"></i>
+                                                </button>
                                             </div>
-                                        </div>
-
-                                        <!-- Price & Voucher note Row -->
-                                        <div class="flex items-center justify-between gap-2 mt-1.5">
-                                            <div class="flex items-center gap-1.5">
-                                                {#if isItemFlashSale && originalPrice > item.unit_price}
-                                                    <span class="text-[9.5px] text-slate-400 line-through tabular-nums leading-none shrink-0">
-                                                        {fmt(originalPrice)}
-                                                    </span>
-                                                {/if}
-                                                <span class="text-xs sm:text-sm font-black" style="color: {secondary};">
-                                                    {fmt(item.unit_price)}
-                                                </span>
-                                                <!-- "Dengan Voucher" note exactly as in screenshot -->
-                                                <span class="text-[8.5px] font-bold flex items-center gap-0.5 shrink-0" style="color: {primary};">
-                                                    <i class="ti ti-ticket text-[10px]"></i>
-                                                    Dengan Voucher
-                                                </span>
-                                            </div>
-
-                                            <!-- Mini Trash Button -->
-                                            <button 
-                                                onclick={() => deleteItem(item)}
-                                                class="text-slate-350 hover:text-rose-500 transition p-0.5 shrink-0 cursor-pointer border-0 bg-transparent"
-                                                aria-label="Hapus Produk"
-                                            >
-                                                <i class="ti ti-trash text-sm"></i>
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
