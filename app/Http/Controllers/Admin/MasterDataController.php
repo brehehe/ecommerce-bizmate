@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -239,5 +240,101 @@ class MasterDataController extends Controller
             'roles' => $roles,
             'filters' => $request->only(['search']),
         ]);
+    }
+
+    /**
+     * Display a listing of payment methods.
+     */
+    public function paymentMethods(Request $request)
+    {
+        $query = PaymentMethod::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where('name', 'ilike', "%{$search}%");
+        }
+
+        $perPage = $request->get('perPage', 10);
+        $paymentMethods = $query->latest()->paginate($perPage)->withQueryString();
+
+        return Inertia::render('Admin/MasterData/PaymentMethods', [
+            'paymentMethods' => $paymentMethods,
+            'filters' => [
+                'search' => $request->search,
+                'perPage' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created payment method.
+     */
+    public function storePaymentMethod(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:manual,gateway',
+            'bank_name' => 'nullable|string|max:255|required_if:type,manual',
+            'account_number' => 'nullable|string|max:255|required_if:type,manual',
+            'account_name' => 'nullable|string|max:255|required_if:type,manual',
+            'api_key' => 'nullable|string|max:255|required_if:type,gateway',
+            'api_secret' => 'nullable|string|max:255',
+            'admin_fee' => 'nullable|numeric|min:0',
+        ]);
+
+        PaymentMethod::create(array_merge($validated, ['is_active' => true]));
+
+        return back()->with('success', 'Metode Pembayaran berhasil ditambahkan.');
+    }
+
+    /**
+     * Update the specified payment method.
+     */
+    public function updatePaymentMethod(Request $request, PaymentMethod $paymentMethod)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'type' => 'required|in:manual,gateway',
+            'bank_name' => 'nullable|string|max:255|required_if:type,manual',
+            'account_number' => 'nullable|string|max:255|required_if:type,manual',
+            'account_name' => 'nullable|string|max:255|required_if:type,manual',
+            'api_key' => 'nullable|string|max:255|required_if:type,gateway',
+            'api_secret' => 'nullable|string|max:255',
+            'admin_fee' => 'nullable|numeric|min:0',
+        ]);
+
+        // If type is switched, nullify the irrelevant fields
+        if ($validated['type'] === 'manual') {
+            $validated['api_key'] = null;
+            $validated['api_secret'] = null;
+        } else {
+            $validated['bank_name'] = null;
+            $validated['account_number'] = null;
+            $validated['account_name'] = null;
+        }
+
+        $paymentMethod->update($validated);
+
+        return back()->with('success', 'Metode Pembayaran berhasil diperbarui.');
+    }
+
+    /**
+     * Remove the specified payment method.
+     */
+    public function destroyPaymentMethod(PaymentMethod $paymentMethod)
+    {
+        $paymentMethod->delete();
+
+        return back()->with('success', 'Metode Pembayaran berhasil dihapus.');
+    }
+
+    /**
+     * Toggle active status of payment method.
+     */
+    public function toggleActivePaymentMethod(PaymentMethod $paymentMethod)
+    {
+        $paymentMethod->update(['is_active' => ! $paymentMethod->is_active]);
+
+        return back()->with('success', 'Status metode pembayaran berhasil diubah.');
     }
 }

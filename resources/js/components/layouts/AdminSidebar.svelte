@@ -402,6 +402,37 @@
                                 <span>Pelanggan</span>
                             </a>
                         </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/master-data/payment-methods')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/master-data/payment-methods"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/master-data/payment-methods',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/master-data/payment-methods')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-credit-card text-lg group-hover:scale-110 transition"
+                                    style={isActive(
+                                        '/admin/master-data/payment-methods',
+                                    )
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Metode Pembayaran</span>
+                            </a>
+                        </div>
                     </div>
                 {/if}
             </div>

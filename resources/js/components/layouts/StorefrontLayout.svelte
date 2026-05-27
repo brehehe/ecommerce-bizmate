@@ -344,6 +344,13 @@
                                             Saya
                                         </Link>
                                         <Link
+                                            href="/profile/addresses"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                        >
+                                            <i class="ti ti-map-pin text-base"></i> Alamat Pengiriman
+                                        </Link>
+                                        <Link
                                             href="/orders"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
@@ -471,27 +478,7 @@
             </div>
         {/if}
 
-        <!-- Mobile auth buttons (only if modal not used, shown for quick access below search) -->
-        {#if !auth && !hideMobileHeader}
-            <div
-                class="md:hidden flex items-center gap-2 px-4 py-2 bg-white border-b border-slate-100"
-            >
-                <button
-                    onclick={openLogin}
-                    class="flex-1 py-2 text-sm font-bold border rounded-xl transition"
-                    style="color: {primary}; border-color: {primary};"
-                >
-                    Masuk
-                </button>
-                <button
-                    onclick={openRegister}
-                    class="flex-1 py-2 text-sm font-bold text-white rounded-xl transition"
-                    style="background-color: {primary};"
-                >
-                    Daftar Gratis
-                </button>
-            </div>
-        {/if}
+
     </header>
 
     <!-- Mobile profile dropdown -->
@@ -524,12 +511,20 @@
                     <i class="ti ti-user text-lg"></i> Profil Saya
                 </Link>
                 <Link
+                    href="/profile/addresses"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-map-pin text-lg"></i> Alamat Pengiriman
+                </Link>
+                <Link
                     href="/orders"
                     prefetch
                     class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                 >
                     <i class="ti ti-package text-lg"></i> Pesanan Saya
                 </Link>
+
                 <button
                     onclick={logout}
                     class="w-full flex items-center gap-3 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 rounded-xl transition"

@@ -15,6 +15,7 @@
     import Toggle from '@/components/ui/Toggle.svelte';
     import SelectSearch from '@/components/ui/SelectSearch.svelte';
     import ColorPicker from '@/components/ui/ColorPicker.svelte';
+    import InputCurrency from '@/components/ui/InputCurrency.svelte';
 
     let { settings = {} } = $props();
 
@@ -54,18 +55,13 @@
         bank_account: settings.bank_account || '',
         bank_holder: settings.bank_holder || '',
         shipping_rate: settings.shipping_rate || '',
-        enable_cod:
-            settings.enable_cod === 'true' ||
-            settings.enable_cod === true ||
-            settings.enable_cod === '1',
-        enable_qris:
-            settings.enable_qris === 'true' ||
-            settings.enable_qris === true ||
-            settings.enable_qris === '1',
-        enable_bank:
-            settings.enable_bank === 'true' ||
-            settings.enable_bank === true ||
-            settings.enable_bank === '1',
+        bank_name: settings.bank_name || '',
+        bank_account: settings.bank_account || '',
+        bank_holder: settings.bank_holder || '',
+        shipping_rate: settings.shipping_rate || '',
+        
+        rajaongkir_url: settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
+        rajaongkir_key: settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
     });
 
     let imagePreview = $state(null);
@@ -684,52 +680,6 @@
                         </div>
                     </div>
 
-                    <div
-                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
-                    >
-                        <div
-                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
-                        >
-                            <div
-                                class="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"
-                            >
-                                <i class="ti ti-credit-card text-lg"></i>
-                            </div>
-                            <div>
-                                <h3
-                                    class="font-outfit font-black text-slate-800 text-base leading-none"
-                                >
-                                    Rekening Pembayaran
-                                </h3>
-                                <p
-                                    class="text-xs text-slate-400 font-medium mt-1"
-                                >
-                                    Rekening bank resmi toko.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <Input
-                                id="input-bank-name"
-                                bind:value={form.bank_name}
-                                label="Nama Bank"
-                                placeholder="Contoh: Bank Central Asia (BCA)"
-                            />
-                            <Input
-                                id="input-bank-account"
-                                bind:value={form.bank_account}
-                                label="Nomor Rekening"
-                                placeholder="Contoh: 8291048590"
-                            />
-                            <Input
-                                id="input-bank-holder"
-                                bind:value={form.bank_holder}
-                                label="Nama Pemilik Rekening"
-                                placeholder="Contoh: PT Bizmate Solusi Retail"
-                            />
-                        </div>
-                    </div>
 
                     <div
                         class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
@@ -796,12 +746,11 @@
                             <div class="h-px bg-slate-100"></div>
 
                             <div class="space-y-2">
-                                <Input
-                                    type="number"
-                                    id="input-shipping-rate"
+                                <InputCurrency
+                                    id="input-app-fee"
                                     bind:value={form.shipping_rate}
-                                    label="Biaya Pengiriman Flat (Rp)"
-                                    placeholder="Contoh: 50000"
+                                    label="Biaya Aplikasi"
+                                    placeholder="2500"
                                     required={true}
                                 />
                             </div>
@@ -809,30 +758,25 @@
                             <div class="h-px bg-slate-100"></div>
 
                             <div class="space-y-3.5">
-                                <span
-                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
-                                    >Metode Pembayaran Aktif</span
-                                >
-
-                                <Toggle
-                                    bind:checked={form.enable_cod}
-                                    label="Cash on Delivery (COD)"
-                                    description="Bayar ditempat saat kurir tiba"
-                                    icon="ti-cash"
+                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                    Konfigurasi Rajaongkir
+                                </span>
+                                <Input
+                                    id="input-rajaongkir-url"
+                                    bind:value={form.rajaongkir_url}
+                                    label="Rajaongkir Base URL"
+                                    placeholder="Contoh: https://rajaongkir.komerce.id/api/v1/"
+                                    required={true}
                                 />
-                                <Toggle
-                                    bind:checked={form.enable_qris}
-                                    label="QRIS Dinamis"
-                                    description="Scan barcode e-wallet otomatis"
-                                    icon="ti-qrcode"
-                                />
-                                <Toggle
-                                    bind:checked={form.enable_bank}
-                                    label="Transfer Manual"
-                                    description="Verifikasi manual ke rekening"
-                                    icon="ti-building-bank"
+                                <Input
+                                    id="input-rajaongkir-key"
+                                    bind:value={form.rajaongkir_key}
+                                    label="Rajaongkir API Key"
+                                    placeholder="Masukkan API Key Rajaongkir Anda"
+                                    required={true}
                                 />
                             </div>
+
                         </div>
                     </div>
 

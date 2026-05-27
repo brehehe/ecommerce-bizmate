@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+
+    // Customer Shipping Addresses
+    Route::get('/profile/addresses', [CustomerAddressController::class, 'index'])->name('profile.addresses.index');
+    Route::post('/profile/addresses', [CustomerAddressController::class, 'store'])->name('profile.addresses.store');
+    Route::put('/profile/addresses/{address}', [CustomerAddressController::class, 'update'])->name('profile.addresses.update');
+    Route::delete('/profile/addresses/{address}', [CustomerAddressController::class, 'destroy'])->name('profile.addresses.destroy');
+    Route::post('/profile/addresses/{address}/make-primary', [CustomerAddressController::class, 'makePrimary'])->name('profile.addresses.make-primary');
+
+    // Address Search & Reverse Geocode Proxy APIs
+    Route::get('/api/addresses/search', [CustomerAddressController::class, 'searchApi'])->name('api.addresses.search');
+    Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
@@ -71,6 +83,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::put('/master-data/customers/{user}', [MasterDataController::class, 'updateCustomer'])->name('master-data.customers.update');
     Route::delete('/master-data/customers/{user}', [MasterDataController::class, 'destroyCustomer'])->name('master-data.customers.destroy');
     Route::post('/master-data/customers/{user}/toggle-active', [MasterDataController::class, 'toggleActiveCustomer'])->name('master-data.customers.toggle-active');
+
+    Route::get('/master-data/payment-methods', [MasterDataController::class, 'paymentMethods'])->name('master-data.payment-methods');
+    Route::post('/master-data/payment-methods', [MasterDataController::class, 'storePaymentMethod'])->name('master-data.payment-methods.store');
+    Route::put('/master-data/payment-methods/{paymentMethod}', [MasterDataController::class, 'updatePaymentMethod'])->name('master-data.payment-methods.update');
+    Route::delete('/master-data/payment-methods/{paymentMethod}', [MasterDataController::class, 'destroyPaymentMethod'])->name('master-data.payment-methods.destroy');
+    Route::post('/master-data/payment-methods/{paymentMethod}/toggle-active', [MasterDataController::class, 'toggleActivePaymentMethod'])->name('master-data.payment-methods.toggle-active');
 
     Route::get('/master-data/roles', [MasterDataController::class, 'roles'])->name('master-data.roles');
 });
