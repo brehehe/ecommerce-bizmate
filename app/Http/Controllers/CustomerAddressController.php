@@ -193,4 +193,51 @@ class CustomerAddressController extends Controller
 
         return response()->json(['error' => 'Geocoding failed'], 500);
     }
+
+    /**
+     * Get approximate coordinates using the customer's IP address.
+     */
+    public function ipLocation(Request $request)
+    {
+        $ip = $request->ip();
+
+        // If local IP, use Surabaya as fallback dev coordinate
+        if ($ip === '127.0.0.1' || $ip === '::1' || str_starts_with($ip, '192.168.')) {
+            return response()->json([
+                'latitude' => -7.250445,
+                'longitude' => 112.768845,
+                'city' => 'Surabaya',
+                'region' => 'Jawa Timur',
+                'country' => 'Indonesia',
+            ]);
+        }
+
+        try {
+            $response = Http::withUserAgent('BurningRoomEcommerce/1.0')
+                ->get("https://ipapi.co/{$ip}/json/");
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                return response()->json([
+                    'latitude' => $data['latitude'] ?? -7.250445,
+                    'longitude' => $data['longitude'] ?? 112.768845,
+                    'city' => $data['city'] ?? 'Surabaya',
+                    'region' => $data['region'] ?? 'Jawa Timur',
+                    'country' => $data['country_name'] ?? 'Indonesia',
+                ]);
+            }
+        } catch (\Exception $e) {
+            // Silence and fallback
+        }
+
+        // Final fallback
+        return response()->json([
+            'latitude' => -7.250445,
+            'longitude' => 112.768845,
+            'city' => 'Surabaya',
+            'region' => 'Jawa Timur',
+            'country' => 'Indonesia',
+        ]);
+    }
 }

@@ -62,16 +62,21 @@
     // Login form
     let loginEmail = $state('');
     let loginPassword = $state('');
+    let showLoginPassword = $state(false);
     let loginError = $state('');
     let loginLoading = $state(false);
+
 
     // Register form
     let registerName = $state('');
     let registerEmail = $state('');
     let registerPassword = $state('');
+    let showRegisterPassword = $state(false);
     let registerPasswordConfirmation = $state('');
+    let showRegisterPasswordConfirmation = $state(false);
     let registerError = $state('');
     let registerLoading = $state(false);
+
 
     function openLogin() {
         authTab = 'login';
@@ -102,11 +107,14 @@
         authModalOpen = false;
         loginEmail = '';
         loginPassword = '';
+        showLoginPassword = false;
         loginError = '';
         registerName = '';
         registerEmail = '';
         registerPassword = '';
+        showRegisterPassword = false;
         registerPasswordConfirmation = '';
+        showRegisterPasswordConfirmation = false;
         registerError = '';
     }
 
@@ -719,13 +727,21 @@
                                         class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type="password"
+                                        type={showLoginPassword ? 'text' : 'password'}
                                         bind:value={loginPassword}
                                         required
                                         placeholder="••••••••"
-                                        class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
+                                    <button
+                                        type="button"
+                                        onclick={() => (showLoginPassword = !showLoginPassword)}
+                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                        aria-label={showLoginPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                    >
+                                        <i class="ti {showLoginPassword ? 'ti-eye-off' : 'ti-eye'} text-lg"></i>
+                                    </button>
                                 </div>
                             </div>
 
@@ -843,13 +859,21 @@
                                         class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type="password"
+                                        type={showRegisterPassword ? 'text' : 'password'}
                                         bind:value={registerPassword}
                                         required
                                         placeholder="Min. 8 karakter"
-                                        class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
+                                    <button
+                                        type="button"
+                                        onclick={() => (showRegisterPassword = !showRegisterPassword)}
+                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                        aria-label={showRegisterPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                    >
+                                        <i class="ti {showRegisterPassword ? 'ti-eye-off' : 'ti-eye'} text-lg"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div>
@@ -862,15 +886,21 @@
                                         class="ti ti-lock-check absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type="password"
-                                        bind:value={
-                                            registerPasswordConfirmation
-                                        }
+                                        type={showRegisterPasswordConfirmation ? 'text' : 'password'}
+                                        bind:value={registerPasswordConfirmation}
                                         required
                                         placeholder="Ulangi kata sandi"
-                                        class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
+                                    <button
+                                        type="button"
+                                        onclick={() => (showRegisterPasswordConfirmation = !showRegisterPasswordConfirmation)}
+                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                        aria-label={showRegisterPasswordConfirmation ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                    >
+                                        <i class="ti {showRegisterPasswordConfirmation ? 'ti-eye-off' : 'ti-eye'} text-lg"></i>
+                                    </button>
                                 </div>
                             </div>
 

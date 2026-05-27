@@ -2,8 +2,9 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, router, Link } from '@inertiajs/svelte';
     import { fade, slide } from 'svelte/transition';
-    import { onMount } from 'svelte';
+    import { onMount, tick, untrack } from 'svelte';
     import { showToast } from '@/utils/toast';
+    import 'leaflet/dist/leaflet.css';
 
     let { addresses = [] } = $props();
 
@@ -68,6 +69,17 @@
         }
     });
 
+    // Auto-initialize map when step transitions to 'map'
+    $effect(() => {
+        if (step === 'map') {
+            untrack(() => {
+                const lat = mapLatitude ?? -7.2575;
+                const lon = mapLongitude ?? 112.7521;
+                initLeafletMap(lat, lon);
+            });
+        }
+    });
+
     // Handle back button clicks
     function goBack() {
         if (step === 'search') {
@@ -87,38 +99,63 @@
 
     // Geolocation logic
     function getBrowserLocation() {
-        if (!navigator.geolocation) {
-            showToast('Browser Anda tidak mendukung deteksi lokasi.', 'error');
-            return;
+        locationLoading = true;
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    mapLatitude = lat;
+                    mapLongitude = lon;
+
+                    await performReverseGeocode(lat, lon);
+                    locationLoading = false;
+
+                    // Transition step; $effect will auto-initialize map
+                    step = 'map';
+                },
+                async (error) => {
+                    console.warn('GPS denied or failed, trying IP fallback...', error);
+                    await fallbackToIpLocation();
+                },
+                { enableHighAccuracy: false, timeout: 5000 },
+            );
+        } else {
+            fallbackToIpLocation();
+        }
+    }
+
+    // IP-based Geolocation fallback (avoids browser prompts/blocks)
+    async function fallbackToIpLocation() {
+        try {
+            // Fetch approximate location using our safe backend proxy (prevents CORS)
+            const response = await fetch('/api/addresses/ip-location');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.latitude && data.longitude) {
+                    const lat = parseFloat(data.latitude);
+                    const lon = parseFloat(data.longitude);
+                    mapLatitude = lat;
+                    mapLongitude = lon;
+
+                    await performReverseGeocode(lat, lon);
+                    locationLoading = false;
+
+                    // Transition step; $effect will auto-initialize map
+                    step = 'map';
+                    showToast('Lokasi diperkirakan berdasarkan internet (IP). Silakan geser pin untuk ketepatan.', 'success');
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('IP Geolocation failed:', err);
         }
 
-        locationLoading = true;
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                mapLatitude = lat;
-                mapLongitude = lon;
-
-                await performReverseGeocode(lat, lon);
-                locationLoading = false;
-
-                // Initialize map with new coordinates
-                step = 'map';
-                initLeafletMap(lat, lon);
-            },
-            (error) => {
-                locationLoading = false;
-                showToast(
-                    'Gagal mendeteksi lokasi. Pastikan GPS aktif dan akses diizinkan.',
-                    'error',
-                );
-                console.error(error);
-                // Fallback to manual entry if location failed
-                step = 'form';
-            },
-            { enableHighAccuracy: true, timeout: 8000 },
-        );
+        // Complete fallback if both GPS and IP geocoding fail
+        locationLoading = false;
+        showToast('Gagal mendeteksi lokasi otomatis. Silakan cari alamat atau isi manual.', 'error');
+        step = 'form';
     }
 
     // Search query suggestion logic
@@ -175,74 +212,79 @@
         pinpointAddress = item.display_name || item.name;
         formFullAddress = pinpointAddress;
 
+        // Transition step; $effect will auto-initialize map
         step = 'map';
-        initLeafletMap(lat, lon);
     }
 
     // Initialize/update Leaflet Map
     async function initLeafletMap(lat: number, lon: number) {
-        // Wait for container to be rendered in the DOM
-        setTimeout(async () => {
-            if (!mapContainer) return;
+        // Wait for Svelte DOM updates to resolve bind:this container reference
+        await tick();
+        if (!mapContainer) return;
 
-            // Load Leaflet dynamically to avoid SSR window errors
-            if (!L) {
-                L = await import('leaflet');
-                await import('leaflet/dist/leaflet.css');
-            }
+        // Load Leaflet dynamically to avoid SSR window errors
+        if (!L) {
+            L = await import('leaflet');
+        }
 
-            // Clean up existing map instance if any
+        // Clean up existing map instance if any
+        if (map) {
+            map.remove();
+        }
+
+        // Tokopedia-style beautiful pinpoint marker icon
+        // Adapts dynamically to primary theme color
+        const customIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color: ${primary}; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"><i class="ti ti-map-pin text-white text-xl"></i></div>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 36],
+        });
+
+        map = L.map(mapContainer, {
+            zoomControl: false,
+            attributionControl: false,
+        }).setView([lat, lon], 16);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Add standard zoom control at top right
+        L.control
+            .zoom({
+                position: 'topright',
+            })
+            .addTo(map);
+
+        marker = L.marker([lat, lon], {
+            icon: customIcon,
+            draggable: true,
+        }).addTo(map);
+
+        // Fetch info on dragend
+        marker.on('dragend', async () => {
+            const position = marker.getLatLng();
+            mapLatitude = position.lat;
+            mapLongitude = position.lng;
+            await performReverseGeocode(position.lat, position.lng);
+        });
+
+        // Map click reposition
+        map.on('click', async (e: any) => {
+            const { lat: clickLat, lng: clickLon } = e.latlng;
+            marker.setLatLng([clickLat, clickLon]);
+            mapLatitude = clickLat;
+            mapLongitude = clickLon;
+            await performReverseGeocode(clickLat, clickLon);
+        });
+
+        // Force Leaflet to recalculate map dimensions and sizes after it renders in DOM
+        setTimeout(() => {
             if (map) {
-                map.remove();
+                map.invalidateSize();
             }
-
-            // Tokopedia-style beautiful pinpoint marker icon
-            // Adapts dynamically to primary theme color
-            const customIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div style="background-color: ${primary}; width: 36px; height: 36px; border-radius: 50%; border: 3px solid white; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);"><i class="ti ti-map-pin text-white text-xl"></i></div>`,
-                iconSize: [36, 36],
-                iconAnchor: [18, 36],
-            });
-
-            map = L.map(mapContainer, {
-                zoomControl: false,
-                attributionControl: false,
-            }).setView([lat, lon], 16);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-            }).addTo(map);
-
-            // Add standard zoom control at top right
-            L.control
-                .zoom({
-                    position: 'topright',
-                })
-                .addTo(map);
-
-            marker = L.marker([lat, lon], {
-                icon: customIcon,
-                draggable: true,
-            }).addTo(map);
-
-            // Fetch info on dragend
-            marker.on('dragend', async () => {
-                const position = marker.getLatLng();
-                mapLatitude = position.lat;
-                mapLongitude = position.lng;
-                await performReverseGeocode(position.lat, position.lng);
-            });
-
-            // Map click reposition
-            map.on('click', async (e: any) => {
-                const { lat: clickLat, lng: clickLon } = e.latlng;
-                marker.setLatLng([clickLat, clickLon]);
-                mapLatitude = clickLat;
-                mapLongitude = clickLon;
-                await performReverseGeocode(clickLat, clickLon);
-            });
-        }, 100);
+        }, 200);
     }
 
     // Re-center map using current browser location
@@ -764,7 +806,7 @@
             <div
                 class="flex-grow relative bg-slate-100 overflow-hidden min-h-[300px]"
             >
-                <div bind:this={mapContainer} class="w-full h-full z-10"></div>
+                <div bind:this={mapContainer} class="absolute inset-0 w-full h-full z-10"></div>
 
                 <!-- Floating Overlays on Map -->
                 <div class="absolute bottom-4 left-4 right-4 z-20 flex gap-2.5">

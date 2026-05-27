@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     // Address Search & Reverse Geocode Proxy APIs
     Route::get('/api/addresses/search', [CustomerAddressController::class, 'searchApi'])->name('api.addresses.search');
     Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
+    Route::get('/api/addresses/ip-location', [CustomerAddressController::class, 'ipLocation'])->name('api.addresses.ip-location');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
