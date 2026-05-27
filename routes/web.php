@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
@@ -43,6 +45,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/addresses/search', [CustomerAddressController::class, 'searchApi'])->name('api.addresses.search');
     Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
     Route::get('/api/addresses/ip-location', [CustomerAddressController::class, 'ipLocation'])->name('api.addresses.ip-location');
+
+    // Chat
+    Route::get('/chats', [ChatController::class, 'index'])->name('chats.index');
+    Route::post('/chats', [ChatController::class, 'createChat'])->name('chats.create');
+    Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->name('chats.messages');
+    Route::post('/chats/{chat}/messages', [ChatController::class, 'store'])->name('chats.store');
+    Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->name('chats.destroy');
+    Route::delete('/chats/{chat}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
@@ -92,6 +102,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/master-data/payment-methods/{paymentMethod}/toggle-active', [MasterDataController::class, 'toggleActivePaymentMethod'])->name('master-data.payment-methods.toggle-active');
 
     Route::get('/master-data/roles', [MasterDataController::class, 'roles'])->name('master-data.roles');
+
+    // Chat (Admin)
+    Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
+    Route::get('/chats/{chat}', [AdminChatController::class, 'show'])->name('chats.show');
+    Route::get('/chats/{chat}/poll', [AdminChatController::class, 'pollMessages'])->name('chats.poll');
+    Route::post('/chats/{chat}/reply', [AdminChatController::class, 'reply'])->name('chats.reply');
+    Route::delete('/chats/{chat}', [AdminChatController::class, 'destroy'])->name('chats.destroy');
+    Route::delete('/chats/{chat}/messages/{message}', [AdminChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
 });
 
 Route::redirect('/admin', '/admin/dashboard');

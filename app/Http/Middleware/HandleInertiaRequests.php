@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\CartItem;
+use App\Models\ChatMessage;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -65,6 +66,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'cartCount' => $request->user() ? CartItem::where('user_id', $request->user()->id)->sum('quantity') : 0,
+            'chatUnreadCount' => $request->user() ? ChatMessage::whereHas('chat', fn ($q) => $q->where('user_id', $request->user()->id))->where('sender_type', 'admin')->where('is_read', false)->count() : 0,
+            'adminChatUnreadCount' => $request->user() ? ChatMessage::where('sender_type', 'user')->where('is_read', false)->count() : 0,
             'theme' => [
                 'primary_color' => $primaryColor,
                 'secondary_color' => $secondaryColor,

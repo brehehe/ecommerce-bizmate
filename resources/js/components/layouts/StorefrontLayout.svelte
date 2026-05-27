@@ -50,6 +50,226 @@
     let profileDropOpen = $state(false);
 
     const cartCount = $derived((page.props as any).cartCount || 0);
+    const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
+
+    // Desktop floating mini-chat state
+    let desktopChatOpen = $state(false);
+    let chatList = $state<any[]>([]);
+    let activeChatId = $state<number | null>(null);
+    let activeChat = $derived(chatList.find((c) => c.id === activeChatId) || null);
+    let chatMessages = $state<any[]>([]);
+    let chatInput = $state('');
+    let chatInterval: any = null;
+    let chatListInterval: any = null;
+    let chatListLoading = $state(false);
+    let chatMessagesLoading = $state(false);
+
+    async function toggleDesktopChat() {
+        if (!auth) {
+            openLogin();
+            return;
+        }
+        desktopChatOpen = !desktopChatOpen;
+        if (desktopChatOpen) {
+            await fetchChatList();
+            startChatListPolling();
+            if (activeChatId) {
+                await fetchChatMessages();
+                startChatPolling();
+            }
+        } else {
+            stopChatPolling();
+            stopChatListPolling();
+        }
+    }
+
+    async function fetchChatList(silent = false) {
+        if (!auth) return;
+        if (!silent) chatListLoading = true;
+        try {
+            const response = await fetch('/chats', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (response.ok) {
+                chatList = await response.json();
+                if (chatList.length > 0 && !activeChatId) {
+                    selectChat(chatList[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching chat list:', err);
+        } finally {
+            if (!silent) chatListLoading = false;
+        }
+    }
+
+    async function selectChat(id: number) {
+        activeChatId = id;
+        chatMessages = [];
+        await fetchChatMessages();
+        startChatPolling();
+    }
+
+    async function fetchChatMessages() {
+        if (!activeChatId) return;
+        chatMessagesLoading = true;
+        try {
+            const response = await fetch(`/chats/${activeChatId}/messages`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                chatMessages = Array.isArray(data) ? data : (data.messages || []);
+                setTimeout(scrollMiniChatToBottom, 50);
+            }
+        } catch (err) {
+            console.error('Error fetching chat messages:', err);
+        } finally {
+            chatMessagesLoading = false;
+        }
+    }
+
+    function startChatPolling() {
+        stopChatPolling();
+        chatInterval = setInterval(async () => {
+            if (!activeChatId) return;
+            const lastMsgId = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1].id : 0;
+            try {
+                const response = await fetch(`/chats/${activeChatId}/messages?after_id=${lastMsgId}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const newMsgs = Array.isArray(data) ? data : (data.messages || []);
+                    if (newMsgs.length > 0) {
+                        chatMessages = [...chatMessages, ...newMsgs];
+                        setTimeout(scrollMiniChatToBottom, 50);
+                        fetchChatList(true);
+                    }
+                }
+            } catch (err) {
+                console.error('Error polling chat messages:', err);
+            }
+        }, 5000);
+    }
+
+    function stopChatPolling() {
+        if (chatInterval) {
+            clearInterval(chatInterval);
+            chatInterval = null;
+        }
+    }
+
+    function startChatListPolling() {
+        stopChatListPolling();
+        chatListInterval = setInterval(async () => {
+            await fetchChatList(true);
+        }, 10000);
+    }
+
+    function stopChatListPolling() {
+        if (chatListInterval) {
+            clearInterval(chatListInterval);
+            chatListInterval = null;
+        }
+    }
+
+    async function sendChatMessage() {
+        const text = chatInput.trim();
+        if (!text || !activeChatId) return;
+
+        // Optimistic update
+        const tempId = -Date.now();
+        const optimisticMsg = {
+            id: tempId,
+            body: text,
+            sender_type: 'user',
+            sender_id: auth.id,
+            time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            created_at: new Date().toISOString(),
+            is_read: false
+        };
+        chatMessages = [...chatMessages, optimisticMsg];
+        chatInput = '';
+        setTimeout(scrollMiniChatToBottom, 50);
+
+        try {
+            const response = await fetch(`/chats/${activeChatId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                },
+                body: JSON.stringify({ body: text })
+            });
+
+            if (response.ok) {
+                const realMsg = await response.json();
+                chatMessages = chatMessages.map(m => m.id === tempId ? realMsg : m);
+                fetchChatList(true);
+            } else {
+                chatMessages = chatMessages.filter(m => m.id !== tempId);
+                chatInput = text;
+            }
+        } catch (err) {
+            console.error('Error sending message:', err);
+            chatMessages = chatMessages.filter(m => m.id !== tempId);
+            chatInput = text;
+        }
+    }
+
+    function scrollMiniChatToBottom() {
+        const el = document.querySelector('.mini-chat-messages-container');
+        if (el) {
+            el.scrollTop = el.scrollHeight;
+        }
+    }
+
+    function formatMiniChatImagePath(path: any): string {
+        if (!path || typeof path !== 'string') return '/noimage/image.png';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        return path.startsWith('/') ? path : '/' + path;
+    }
+
+    async function createGeneralChat() {
+        if (!auth) {
+            openLogin();
+            return;
+        }
+        try {
+            const response = await fetch('/chats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                },
+                body: JSON.stringify({
+                    subject: 'Tanya Penjual'
+                })
+            });
+            if (response.ok) {
+                const chat = await response.json();
+                await fetchChatList(true);
+                await selectChat(chat.id);
+            }
+        } catch (err) {
+            console.error('Error creating general chat:', err);
+        }
+    }
+
+    function goToChat() {
+        if (auth) {
+            if (window.innerWidth >= 768) {
+                toggleDesktopChat();
+            } else {
+                router.visit('/chats');
+            }
+        } else {
+            openLogin();
+        }
+    }
 
     function goToCart() {
         if (auth) {
@@ -87,13 +307,40 @@
     onMount(() => {
         const handleOpenLogin = () => openLogin();
         const handleToggleDropdown = () => profileDropOpen = !profileDropOpen;
+        const handleOpenDesktopChat = async (e: any) => {
+            const { productId, productName } = e.detail;
+            desktopChatOpen = true;
+            try {
+                const response = await fetch('/chats', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                    },
+                    body: JSON.stringify({
+                        subject: productName,
+                        product_id: productId
+                    })
+                });
+                if (response.ok) {
+                    const chat = await response.json();
+                    await fetchChatList(true);
+                    await selectChat(chat.id);
+                }
+            } catch (err) {
+                console.error('Error starting product chat:', err);
+            }
+        };
         
         window.addEventListener('open-login-modal', handleOpenLogin);
         window.addEventListener('toggle-profile-dropdown', handleToggleDropdown);
+        window.addEventListener('open-desktop-chat', handleOpenDesktopChat);
         
         return () => {
             window.removeEventListener('open-login-modal', handleOpenLogin);
             window.removeEventListener('toggle-profile-dropdown', handleToggleDropdown);
+            window.removeEventListener('open-desktop-chat', handleOpenDesktopChat);
         };
     });
 
@@ -277,6 +524,24 @@
 
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-4 shrink-0">
+                    <!-- Chat -->
+                    <button
+                        onclick={goToChat}
+                        class="hidden relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center"
+                        aria-label="Chat"
+                    >
+                        <i class="ti ti-message-dots text-2xl"></i>
+                        {#if chatUnreadCount > 0}
+                            <span
+                                class="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white"
+                                style="background-color: {secondary};"
+                            >
+                                {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                            </span>
+                        {/if}
+                        <span class="text-[10px] font-bold text-white/80 mt-0.5">Chat</span>
+                    </button>
+
                     <!-- Cart -->
                     <button
                         onclick={goToCart}
@@ -448,6 +713,23 @@
 
                 <!-- Mobile right icons -->
                 <div class="flex items-center gap-2 shrink-0">
+                    <!-- Chat icon (mobile) -->
+                    <button
+                        onclick={goToChat}
+                        class="relative text-white p-1.5"
+                        aria-label="Chat"
+                    >
+                        <i class="ti ti-message-dots text-2xl"></i>
+                        {#if chatUnreadCount > 0}
+                            <span
+                                class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white"
+                                style="background-color: {secondary};"
+                            >
+                                {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                            </span>
+                        {/if}
+                    </button>
+
                     <!-- Cart -->
                     <button
                         onclick={goToCart}
@@ -944,6 +1226,237 @@
         </div>
     </div>
 {/if}
+
+<!-- Desktop Floating Mini Chat Window -->
+{#if desktopChatOpen}
+    <div
+        transition:fade={{ duration: 150 }}
+        class="hidden md:flex fixed bottom-6 right-[88px] z-[9999] w-[600px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex-row"
+    >
+        <!-- LEFT PANEL: Thread List -->
+        <div class="w-[200px] bg-slate-50/50 border-r border-slate-100 flex flex-col shrink-0">
+            <div class="px-3.5 py-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
+                <span class="font-outfit font-black text-sm text-slate-800">Obrolan</span>
+                <div class="flex items-center gap-1.5">
+                    <button
+                        onclick={createGeneralChat}
+                        class="text-[9px] font-bold text-white px-2 py-1 rounded-lg transition flex items-center gap-0.5 cursor-pointer shadow-3xs"
+                        style="background-color: {secondary};"
+                        title="Tanya Penjual"
+                    >
+                        <i class="ti ti-plus text-[8px]"></i>
+                        <span>Tanya</span>
+                    </button>
+                    {#if chatListLoading}
+                        <i class="ti ti-loader animate-spin text-slate-400 text-xs"></i>
+                    {/if}
+                </div>
+            </div>
+
+            <!-- List -->
+            <div class="flex-grow overflow-y-auto divide-y divide-slate-100/60 bg-white">
+                {#if chatList.length === 0}
+                    <div class="py-12 text-center text-slate-400 px-3">
+                        <i class="ti ti-message-2 text-2xl mb-1 text-slate-300 block"></i>
+                        <span class="text-[10px] font-bold">Belum ada obrolan</span>
+                    </div>
+                {:else}
+                    {#each chatList as chat (chat.id)}
+                        <button
+                            onclick={() => selectChat(chat.id)}
+                            class="w-full text-left px-3 py-3 flex items-start gap-2.5 hover:bg-slate-50/70 transition duration-150 relative cursor-pointer
+                                   {activeChatId === chat.id ? 'bg-slate-50' : ''}"
+                        >
+                            <!-- Avatar -->
+                            <div
+                                class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-xs"
+                                style="background-color: {activeChatId === chat.id ? secondary : primary};"
+                            >
+                                {storeName.charAt(0).toUpperCase()}
+                            </div>
+
+                            <!-- Info -->
+                            <div class="flex-grow min-w-0">
+                                <p class="font-outfit font-bold text-[11px] text-slate-800 truncate mb-0.5">
+                                    {chat.subject || storeName}
+                                </p>
+                                <p class="text-[10px] text-slate-500 truncate leading-normal">
+                                    {#if chat.last_message}
+                                        {#if chat.last_message.sender_type === 'user'}
+                                            Anda: 
+                                        {/if}
+                                        {#if chat.last_message.attachment_type === 'image'}
+                                            📷 Gambar
+                                        {:else if chat.last_message.attachment_type === 'product'}
+                                            📦 Produk
+                                        {:else}
+                                            {chat.last_message.body || ''}
+                                        {/if}
+                                    {:else}
+                                        Mulai obrolan...
+                                    {/if}
+                                </p>
+                            </div>
+
+                            <!-- Badge -->
+                            {#if chat.unread_count > 0}
+                                <span
+                                    class="absolute right-3 bottom-3 w-4 h-4 rounded-full text-[8px] font-black text-white flex items-center justify-center shadow-xs"
+                                    style="background-color: {secondary};"
+                                >
+                                    {chat.unread_count}
+                                </span>
+                            {/if}
+                        </button>
+                    {/each}
+                {/if}
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Chat Area -->
+        <div class="flex-grow flex flex-col bg-slate-50/30">
+            <!-- Header Right -->
+            <div class="px-4 py-3 border-b border-slate-100 bg-white flex items-center gap-3 shrink-0">
+                {#if activeChat}
+                    <div
+                        class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                        style="background-color: {primary};"
+                    >
+                        {storeName.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-outfit font-black text-xs text-slate-800 truncate">{storeName}</p>
+                        <p class="text-[9px] text-emerald-500 font-bold flex items-center gap-0.5 mt-0.5">
+                            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full inline-block"></span>
+                            Online
+                        </p>
+                    </div>
+                {:else}
+                    <div class="flex-grow">
+                        <span class="font-outfit font-black text-xs text-slate-800">{storeName} Chat</span>
+                    </div>
+                {/if}
+
+                <!-- Minimize / Close -->
+                <button
+                    onclick={() => { desktopChatOpen = false; stopChatPolling(); stopChatListPolling(); }}
+                    class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-50 transition shrink-0 cursor-pointer"
+                    aria-label="Tutup"
+                >
+                    <i class="ti ti-x text-base"></i>
+                </button>
+            </div>
+
+            <!-- Messages List -->
+            <div class="flex-grow overflow-y-auto px-4 py-3 space-y-2.5 relative mini-chat-messages-container bg-slate-50/50">
+                {#if !activeChatId}
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 px-6 text-center select-none">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                            <i class="ti ti-message text-3xl text-slate-400"></i>
+                        </div>
+                        <p class="font-outfit font-black text-xs text-slate-800 mb-1">Mari memulai obrolan!</p>
+                        <p class="text-[10px] text-slate-400 leading-normal max-w-[200px]">Pilih salah satu obrolan di samping untuk mulai chat dengan penjual.</p>
+                    </div>
+                {:else if chatMessagesLoading && chatMessages.length === 0}
+                    <div class="h-full flex items-center justify-center text-slate-400">
+                        <i class="ti ti-loader animate-spin text-xl"></i>
+                    </div>
+                {:else}
+                    {#each chatMessages as msg (msg.id)}
+                        <div class="flex flex-col {msg.sender_type === 'user' ? 'items-end' : 'items-start'} gap-0.5">
+                            {#if msg.attachment_type === 'product' && msg.attachment_data}
+                                <!-- Product Card -->
+                                <div
+                                    class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}"
+                                    style="background-color: {msg.sender_type === 'user' ? primary : 'white'};"
+                                >
+                                    <div class="flex items-center gap-2 p-2">
+                                        <img
+                                            src={formatMiniChatImagePath(msg.attachment_data.image)}
+                                            alt={msg.attachment_data.name}
+                                            class="w-10 h-10 rounded-lg object-cover shrink-0 bg-slate-100"
+                                            onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
+                                        />
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] font-bold truncate {msg.sender_type === 'user' ? 'text-white' : 'text-slate-800'}">{msg.attachment_data.name}</p>
+                                            <p class="text-[10px] mt-0.5 font-black {msg.sender_type === 'user' ? 'text-white/90' : 'text-orange-500'}">
+                                                Rp{Number(msg.attachment_data.price ?? 0).toLocaleString('id-ID')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {/if}
+
+                            {#if msg.attachment_type === 'image' && msg.attachment_data?.url}
+                                <!-- Image Card -->
+                                <div class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}">
+                                    <img
+                                        src={msg.attachment_data.url}
+                                        alt="Sent image"
+                                        class="max-w-full max-h-40 object-contain bg-slate-100 cursor-pointer rounded-lg"
+                                        onclick={() => window.open(msg.attachment_data.url, '_blank')}
+                                    />
+                                </div>
+                            {/if}
+
+                            {#if msg.body}
+                                <div
+                                    class="max-w-[85%] px-3.5 py-2 rounded-2xl text-[11px] leading-relaxed shadow-3xs {msg.sender_type === 'user' ? 'rounded-tr-sm text-white' : 'rounded-tl-sm text-slate-800 bg-white'}"
+                                    style="background-color: {msg.sender_type === 'user' ? primary : 'white'};"
+                                >
+                                    {msg.body}
+                                </div>
+                            {/if}
+                            <span class="text-[8px] text-slate-400 px-1 mt-0.5">{msg.time}</span>
+                        </div>
+                    {/each}
+                {/if}
+            </div>
+
+            <!-- Message Input Area -->
+            {#if activeChatId}
+                <div class="bg-white border-t border-slate-100 px-3.5 py-3 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="text"
+                            bind:value={chatInput}
+                            onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') sendChatMessage(); }}
+                            placeholder="Tulis pesan..."
+                            class="flex-grow bg-slate-100 rounded-full px-3.5 py-2 text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-200 transition"
+                        />
+                        <button
+                            onclick={sendChatMessage}
+                            disabled={!chatInput.trim()}
+                            class="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-xs transition active:scale-95 disabled:opacity-40 shrink-0 cursor-pointer"
+                            style="background-color: {primary};"
+                            aria-label="Kirim"
+                        >
+                            <i class="ti ti-send text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            {/if}
+        </div>
+    </div>
+{/if}
+
+<!-- Floating Chat Button (Desktop & Tablet Only) -->
+<button
+    onclick={goToChat}
+    class="hidden md:flex fixed bottom-6 right-6 z-50 w-14 h-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+    style="background: linear-gradient(135deg, {primary}, {secondary});"
+    aria-label="Chat"
+>
+    <i class="ti ti-message-dots text-2xl"></i>
+    {#if chatUnreadCount > 0}
+        <span
+            class="absolute -top-1 -right-1 w-6 h-6 rounded-full text-[10px] font-black flex items-center justify-center text-white border-2 border-white"
+            style="background-color: {secondary};"
+        >
+            {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+        </span>
+    {/if}
+</button>
 
 <!-- Click outside to close profile dropdown -->
 {#if profileDropOpen}

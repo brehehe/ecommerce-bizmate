@@ -8,6 +8,16 @@
 
     const primary = $derived((page.props as any).theme?.primary_color ?? '#ee4d2d');
     const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
+    const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
+
+    function goToChat() {
+        const auth = (page.props as any).auth?.user;
+        if (auth) {
+            router.visit('/chats');
+        } else {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+        }
+    }
 
     // Selection states
     let selectedIds = $state<number[]>([]);
@@ -279,11 +289,17 @@
             >
                 Hapus Semua
             </button>
-            <button class="relative w-8 h-8 flex items-center justify-center hover:bg-slate-50 rounded-full transition border-0 bg-transparent cursor-pointer" aria-label="Chat">
+            <button 
+                onclick={goToChat}
+                class="relative w-8 h-8 flex items-center justify-center hover:bg-slate-50 rounded-full transition border-0 bg-transparent cursor-pointer" 
+                aria-label="Chat"
+            >
                 <i class="ti ti-message-dots text-xl" style="color: {primary};"></i>
-                <span class="absolute -top-1 -right-1.5 text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white shadow-3xs" style="background-color: {primary};">
-                    22
-                </span>
+                {#if chatUnreadCount > 0}
+                    <span class="absolute -top-1 -right-1.5 text-white text-[8px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border border-white shadow-3xs" style="background-color: {primary};">
+                        {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                    </span>
+                {/if}
             </button>
         </div>
     </div>

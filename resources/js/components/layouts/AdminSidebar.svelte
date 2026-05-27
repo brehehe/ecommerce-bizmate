@@ -97,6 +97,45 @@
         </div>
 
         <div class="relative">
+            {#if isActive('/admin/chats')}
+                <div
+                    class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
+                    style="background-color: {secondaryColor};"
+                ></div>
+            {/if}
+            <a
+                href="/admin/chats"
+                use:inertia
+                class="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
+                    '/admin/chats',
+                )
+                    ? 'bg-slate-50 font-bold'
+                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                style={isActive('/admin/chats')
+                    ? `color: ${primaryColor};`
+                    : ''}
+            >
+                <i
+                    class="ti ti-message-dots text-xl group-hover:scale-110 transition"
+                    style={isActive('/admin/chats')
+                        ? `color: ${primaryColor};`
+                        : ''}
+                ></i>
+                <span class="flex-1 flex items-center justify-between min-w-0">
+                    <span class="truncate">Chat</span>
+                    {#if (page.props as any).adminChatUnreadCount > 0}
+                        <span 
+                            class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0"
+                            style="background-color: {secondaryColor};"
+                        >
+                            {(page.props as any).adminChatUnreadCount}
+                        </span>
+                    {/if}
+                </span>
+            </a>
+        </div>
+
+        <div class="relative">
             {#if isActive('/admin/finance')}
                 <div
                     class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
