@@ -14,8 +14,8 @@
 
 <div
     class="min-h-screen flex selection:bg-brand-blueRoyal selection:text-white bg-brand-slateBg font-sans"
-    style="--color-brand-blueRoyal: {page.props.theme?.primary_color ||
-        '#0c4cb4'}; --color-brand-orange: {page.props.theme?.secondary_color ||
+    style="--color-brand-blueRoyal: {$page.props.theme?.primary_color ||
+        '#0c4cb4'}; --color-brand-orange: {$page.props.theme?.secondary_color ||
         '#fa7315'};"
 >
     <!-- Overlay for mobile sidebar -->

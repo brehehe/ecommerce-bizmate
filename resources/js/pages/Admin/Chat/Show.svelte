@@ -11,8 +11,8 @@
         totalUnread = 0
     } = $props();
 
-    const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
-    const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const primaryColor = $derived($page.props.theme?.primary_color || '#0c4cb4');
+    const secondaryColor = $derived($page.props.theme?.secondary_color || '#fa7315');
 
     let messages = $state<any[]>(initialMessages);
     let replyInput = $state('');

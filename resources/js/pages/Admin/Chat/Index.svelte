@@ -5,8 +5,8 @@
 
     let { chats = { data: [], links: [] }, totalUnread = 0 } = $props();
 
-    const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
-    const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const primaryColor = $derived($page.props.theme?.primary_color || '#0c4cb4');
+    const secondaryColor = $derived($page.props.theme?.secondary_color || '#fa7315');
 
     let searchQuery = $state('');
     let pollInterval: any = null;

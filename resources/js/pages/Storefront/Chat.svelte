@@ -7,9 +7,9 @@
 
     let { chats = [] } = $props();
 
-    const primary = $derived((page.props as any).theme?.primary_color ?? '#0c4cb4');
-    const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
-    const storeName = $derived((page.props as any).settings?.store_name ?? 'bizmate');
+    const primary = $derived(($page.props as any).theme?.primary_color ?? '#0c4cb4');
+    const secondary = $derived(($page.props as any).theme?.secondary_color ?? '#fa7315');
+    const storeName = $derived(($page.props as any).settings?.store_name ?? 'bizmate');
 
     let activeChatId = $state<number | null>(null);
     let activeChat = $derived(chats.find((c: any) => c.id === activeChatId) || null);
@@ -458,7 +458,7 @@
                     </div>
 
                     <!-- Messages list -->
-                    <div class="chat-messages-container flex-grow overflow-y-auto overflow-x-hidden px-4 py-6 space-y-4 relative">
+                    <div class="chat-messages-container flex-grow overflow-y-auto overflow-x-hidden px-4 py-6 pb-20 md:pb-6 space-y-4 relative">
                         <!-- Fraud Warning -->
                         <div class="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-xs text-amber-800 leading-relaxed text-center max-w-xl mx-auto">
                             ⚠️ Hati-hati penipuan! Selalu lakukan pembayaran resmi lewat platform. Jangan bertransaksi secara personal/direct transfer.
@@ -535,76 +535,79 @@
                         {/each}
                     </div>
 
-                    <!-- Selected Attachment Preview -->
-                    {#if attachedImageUrl}
-                        <div class="px-4 pb-2 shrink-0 bg-white border-t border-slate-100 pt-3">
-                            <div class="relative inline-block bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
-                                <img
-                                    src={attachedImageUrl}
-                                    alt="Preview"
-                                    class="w-20 h-20 rounded-xl object-cover"
-                                />
-                                <button
-                                    onclick={() => { attachedImage = null; attachedImageUrl = null; }}
-                                    class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white hover:bg-rose-600 rounded-full w-5 h-5 flex items-center justify-center shadow cursor-pointer"
-                                    aria-label="Hapus"
-                                >
-                                    <i class="ti ti-x text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-                    {/if}
-
-                    <!-- Input Bar -->
-                    <div class="bg-white border-t border-slate-100 px-4 py-3 shrink-0">
-                        <div class="flex items-center gap-2.5">
-                            <button 
-                                onclick={() => attachMenuOpen = !attachMenuOpen}
-                                class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full transition hover:bg-slate-100 cursor-pointer {attachMenuOpen ? 'bg-slate-100' : ''}"
-                                aria-label="Lampirkan"
-                            >
-                                <i class="ti ti-plus text-xl"></i>
-                            </button>
-
-                            <input
-                                type="text"
-                                bind:value={chatInput}
-                                onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') sendMessage(); }}
-                                placeholder="Tulis pesan..."
-                                class="flex-grow bg-slate-100 rounded-full px-5 py-3 text-xs sm:text-sm focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-200 transition"
-                            />
-
-                            <button
-                                onclick={sendMessage}
-                                disabled={!chatInput.trim() && !attachedImage}
-                                class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md transition active:scale-95 disabled:opacity-40 cursor-pointer shrink-0"
-                                style="background-color: {primary};"
-                                aria-label="Kirim"
-                            >
-                                <i class="ti ti-send text-base"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Attachment Menu overlay -->
-                    {#if attachMenuOpen}
-                        <div class="bg-white border-t border-slate-100 px-6 py-4 shrink-0 animate-slide-up">
-                            <div class="flex items-start gap-8">
-                                <button
-                                    onclick={triggerImageUpload}
-                                    class="flex flex-col items-center gap-2 cursor-pointer"
-                                >
-                                    <div 
-                                        class="w-12 h-12 rounded-full flex items-center justify-center shadow"
-                                        style="background: linear-gradient(135deg, #f5a623, #e8891d);"
+                    <!-- Input section wrapper for mobile fixed bottom layout -->
+                    <div class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-100 pb-safe md:relative md:bottom-auto md:left-auto md:right-auto md:z-0 md:border-t-0 md:pb-0 shrink-0">
+                        <!-- Selected Attachment Preview -->
+                        {#if attachedImageUrl}
+                            <div class="px-4 pb-2 shrink-0 bg-white pt-3">
+                                <div class="relative inline-block bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+                                    <img
+                                        src={attachedImageUrl}
+                                        alt="Preview"
+                                        class="w-20 h-20 rounded-xl object-cover"
+                                    />
+                                    <button
+                                        onclick={() => { attachedImage = null; attachedImageUrl = null; }}
+                                        class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white hover:bg-rose-600 rounded-full w-5 h-5 flex items-center justify-center shadow cursor-pointer"
+                                        aria-label="Hapus"
                                     >
-                                        <i class="ti ti-photo text-white text-xl"></i>
-                                    </div>
-                                    <span class="text-[10px] font-bold text-slate-700">Gambar</span>
+                                        <i class="ti ti-x text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Input Bar -->
+                        <div class="bg-white px-4 py-3">
+                            <div class="flex items-center gap-2.5">
+                                <button 
+                                    onclick={() => attachMenuOpen = !attachMenuOpen}
+                                    class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full transition hover:bg-slate-100 cursor-pointer {attachMenuOpen ? 'bg-slate-100' : ''}"
+                                    aria-label="Lampirkan"
+                                >
+                                    <i class="ti ti-plus text-xl"></i>
+                                </button>
+
+                                <input
+                                    type="text"
+                                    bind:value={chatInput}
+                                    onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') sendMessage(); }}
+                                    placeholder="Tulis pesan..."
+                                    class="flex-grow bg-slate-100 rounded-full px-5 py-3 text-xs sm:text-sm focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-200 transition"
+                                />
+
+                                <button
+                                    onclick={sendMessage}
+                                    disabled={!chatInput.trim() && !attachedImage}
+                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md transition active:scale-95 disabled:opacity-40 cursor-pointer shrink-0"
+                                    style="background-color: {primary};"
+                                    aria-label="Kirim"
+                                >
+                                    <i class="ti ti-send text-base"></i>
                                 </button>
                             </div>
                         </div>
-                    {/if}
+
+                        <!-- Attachment Menu overlay -->
+                        {#if attachMenuOpen}
+                            <div class="bg-white border-t border-slate-100 px-6 py-4 shrink-0 animate-slide-up">
+                                <div class="flex items-start gap-8">
+                                    <button
+                                        onclick={triggerImageUpload}
+                                        class="flex flex-col items-center gap-2 cursor-pointer"
+                                    >
+                                        <div 
+                                            class="w-12 h-12 rounded-full flex items-center justify-center shadow"
+                                            style="background: linear-gradient(135deg, #f5a623, #e8891d);"
+                                        >
+                                            <i class="ti ti-photo text-white text-xl"></i>
+                                        </div>
+                                        <span class="text-[10px] font-bold text-slate-700">Gambar</span>
+                                    </button>
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
 
                 {:else}
                     <!-- Empty State -->

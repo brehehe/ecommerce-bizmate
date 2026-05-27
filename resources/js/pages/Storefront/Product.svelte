@@ -7,10 +7,10 @@
     let { product, relatedProducts = [], storeName = '' } = $props();
 
     const primary = $derived(
-        (page.props as any).theme?.primary_color ?? '#0c4cb4',
+        ($page.props as any).theme?.primary_color ?? '#0c4cb4',
     );
     const secondary = $derived(
-        (page.props as any).theme?.secondary_color ?? '#fa7315',
+        ($page.props as any).theme?.secondary_color ?? '#fa7315',
     );
 
     function withOpacity(hex: string, opacity: number): string {
@@ -745,7 +745,7 @@
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     }
 
-    const user = $derived((page.props as any).auth?.user);
+    const user = $derived(($page.props as any).auth?.user);
 
     function addToCart() {
         if (!user) {
