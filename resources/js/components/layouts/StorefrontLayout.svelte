@@ -1,13 +1,15 @@
 <script lang="ts">
-    import { page, router, Link } from '@inertiajs/svelte';
+    import { usePage, router, Link } from '@inertiajs/svelte';
     import { slide, fade } from 'svelte/transition';
     import { onMount } from 'svelte';
 
     let { children, hideMobileHeader = false, hideMobileFooter = false } = $props();
 
+    const page = usePage();
+
     // Theme from settings
-    const primary = $derived($page.props.theme?.primary_color || '#0c4cb4');
-    const secondary = $derived($page.props.theme?.secondary_color || '#fa7315');
+    const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
+    const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
 
     function withOpacity(hex: string, opacity: number): string {
         if (!hex) return '';
@@ -24,16 +26,16 @@
             .padStart(2, '0');
         return `#${cleanHex}${alphaHex}`;
     }
-    const auth = $derived($page.props.auth?.user);
+    const auth = $derived(page.props.auth?.user);
     const storeName = $derived(
-        ($page.props as any).storeName ||
-            ($page.props as any).settings?.store_name ||
-            $page.props.name ||
+        (page.props as any).storeName ||
+            (page.props as any).settings?.store_name ||
+            page.props.name ||
             'Toko Kami',
     );
     const storeLogo = $derived(
-        ($page.props as any).storeLogo ||
-            ($page.props as any).settings?.store_logo,
+        (page.props as any).storeLogo ||
+            (page.props as any).settings?.store_logo,
     );
 
     // Modal state
@@ -49,8 +51,8 @@
     // Profile dropdown
     let profileDropOpen = $state(false);
 
-    const cartCount = $derived(($page.props as any).cartCount || 0);
-    const chatUnreadCount = $derived(($page.props as any).chatUnreadCount || 0);
+    const cartCount = $derived((page.props as any).cartCount || 0);
+    const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
 
     // Desktop floating mini-chat state
     let desktopChatOpen = $state(false);

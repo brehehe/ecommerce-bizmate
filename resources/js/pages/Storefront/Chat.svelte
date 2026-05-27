@@ -1,15 +1,17 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
-    import { page, router } from '@inertiajs/svelte';
+    import { usePage, router } from '@inertiajs/svelte';
     import { onMount, onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
     let { chats = [] } = $props();
 
-    const primary = $derived(($page.props as any).theme?.primary_color ?? '#0c4cb4');
-    const secondary = $derived(($page.props as any).theme?.secondary_color ?? '#fa7315');
-    const storeName = $derived(($page.props as any).settings?.store_name ?? 'bizmate');
+    const page = usePage();
+
+    const primary = $derived((page.props as any).theme?.primary_color ?? '#0c4cb4');
+    const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
+    const storeName = $derived((page.props as any).settings?.store_name ?? 'bizmate');
 
     let activeChatId = $state<number | null>(null);
     let activeChat = $derived(chats.find((c: any) => c.id === activeChatId) || null);

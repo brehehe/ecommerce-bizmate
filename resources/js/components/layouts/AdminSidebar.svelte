@@ -1,13 +1,15 @@
 <script lang="ts">
-    import { page, router, inertia } from '@inertiajs/svelte';
+    import { usePage, router, inertia } from '@inertiajs/svelte';
     import { fade, slide } from 'svelte/transition';
 
     let { isSidebarOpen = false } = $props();
 
+    const page = usePage();
+
     let isProfileDropdownOpen = $state(false);
     let isCatalogOpen = $state(false);
     let isMasterDataOpen = $state(false);
-    const user = $derived($page.props.auth?.user);
+    const user = $derived(page.props.auth?.user);
 
     const handleLogout = () => {
         router.post('/logout');
@@ -15,12 +17,12 @@
 
     // Helper to check if a route is active
     const isActive = (path: string) => {
-        return $page.url.startsWith(path);
+        return page.url.startsWith(path);
     };
 
-    const primaryColor = $derived($page.props.theme?.primary_color || '#0c4cb4');
+    const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(
-        $page.props.theme?.secondary_color || '#fa7315',
+        page.props.theme?.secondary_color || '#fa7315',
     );
 
     $effect(() => {
@@ -123,12 +125,12 @@
                 ></i>
                 <span class="flex-1 flex items-center justify-between min-w-0">
                     <span class="truncate">Chat</span>
-                    {#if ($page.props as any).adminChatUnreadCount > 0}
+                    {#if (page.props as any).adminChatUnreadCount > 0}
                         <span 
                             class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0"
                             style="background-color: {secondaryColor};"
                         >
-                            {($page.props as any).adminChatUnreadCount}
+                            {(page.props as any).adminChatUnreadCount}
                         </span>
                     {/if}
                 </span>
