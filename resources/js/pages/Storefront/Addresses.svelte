@@ -629,7 +629,7 @@
 
 <StorefrontLayout hideMobileFooter={true}>
     <div
-        class="max-w-md mx-auto h-[calc(100vh-56px)] md:h-[calc(100vh-140px)] bg-white shadow-md flex flex-col relative overflow-hidden"
+        class="max-w-md mx-auto min-h-[calc(100vh-56px)] md:min-h-[calc(100vh-140px)] bg-white shadow-md flex flex-col relative"
     >
         <!-- ====== STEP 1: LIST VIEW ====== -->
         {#if step === 'list'}
@@ -841,7 +841,7 @@
 
             <!-- Sticky Bottom Action -->
             <div
-                class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 z-30"
+                class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-slate-100 z-30"
             >
                 <button
                     onclick={confirmPilihAlamat}
@@ -1390,7 +1390,7 @@
 
             <!-- Sticky Bottom Save -->
             <div
-                class="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 z-30"
+                class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-slate-100 z-30"
             >
                 <button
                     onclick={saveAddress}
