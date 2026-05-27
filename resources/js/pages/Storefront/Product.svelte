@@ -585,7 +585,7 @@
             });
             if (response.ok) {
                 const data = await response.json();
-                chatMessages = data;
+                chatMessages = Array.isArray(data) ? data : (data.messages || []);
                 setTimeout(scrollToBottom, 50);
             }
         } catch (err) {
@@ -610,7 +610,8 @@
                     headers: { 'Accept': 'application/json' }
                 });
                 if (response.ok) {
-                    const newMsgs = await response.json();
+                    const data = await response.json();
+                    const newMsgs = Array.isArray(data) ? data : (data.messages || []);
                     if (newMsgs.length > 0) {
                         chatMessages = [...chatMessages, ...newMsgs];
                         setTimeout(scrollToBottom, 50);
@@ -662,8 +663,13 @@
 
             if (response.ok) {
                 const msg = await response.json();
-                if (!chatMessages.some(m => m.id === msg.id)) {
-                    chatMessages = [...chatMessages, msg];
+                if (Array.isArray(chatMessages)) {
+                    if (!chatMessages.some(m => m.id === msg.id)) {
+                        chatMessages = [...chatMessages, msg];
+                        setTimeout(scrollToBottom, 50);
+                    }
+                } else {
+                    chatMessages = [msg];
                     setTimeout(scrollToBottom, 50);
                 }
             }
