@@ -4,6 +4,7 @@
     import { fade, slide } from 'svelte/transition';
     import { onMount, tick, untrack } from 'svelte';
     import { showToast } from '@/utils/toast';
+    import SelectSearch from '@/components/ui/SelectSearch.svelte';
     import 'leaflet/dist/leaflet.css';
 
     let { addresses = [] } = $props();
@@ -41,6 +42,22 @@
     let searchLoading = $state(false);
     let locationLoading = $state(false);
     let isEditing = $state(false);
+
+    // Regional dropdown state
+    let formProvinceId = $state('');
+    let formProvinceName = $state('');
+    let formRegencyId = $state('');
+    let formRegencyName = $state('');
+    let formDistrictId = $state('');
+    let formDistrictName = $state('');
+    let formVillageId = $state('');
+    let formVillageName = $state('');
+    let formPostalCode = $state('');
+
+    let provinces = $state<any[]>([]);
+    let regencies = $state<any[]>([]);
+    let districts = $state<any[]>([]);
+    let villages = $state<any[]>([]);
 
     // Leaflet variables
     let L: any;
@@ -80,6 +97,32 @@
         }
     });
 
+    let permissionState = $state<'granted' | 'denied' | 'prompt'>('prompt');
+
+    onMount(() => {
+        fetchProvinces();
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions
+                .query({ name: 'geolocation' })
+                .then((status) => {
+                    permissionState = status.state;
+                    status.onchange = () => {
+                        permissionState = status.state;
+                        if (status.state === 'granted') {
+                            showToast(
+                                'Izin lokasi diaktifkan! Silakan klik "Gunakan Lokasi Saat Ini" kembali.',
+                                'success',
+                                'top',
+                            );
+                        }
+                    };
+                })
+                .catch((err) => {
+                    console.warn('Permissions API query failed:', err);
+                });
+        }
+    });
+
     // Handle back button clicks
     function goBack() {
         if (step === 'search') {
@@ -114,15 +157,48 @@
 
                     // Transition step; $effect will auto-initialize map
                     step = 'map';
+                    showToast(
+                        'Berhasil mendapatkan lokasi Anda.',
+                        'success',
+                        'top',
+                    );
                 },
                 async (error) => {
-                    console.warn('GPS denied or failed, trying IP fallback...', error);
-                    await fallbackToIpLocation();
+                    locationLoading = false;
+                    console.error('GPS Geolocation error:', error);
+
+                    if (error.code === 1) {
+                        // PERMISSION_DENIED: User or browser blocked access
+                        // Do not show overlapping toast; the inline pink warning card explains everything clearly!
+                    } else if (error.code === 2) {
+                        // POSITION_UNAVAILABLE: Location scanner failed
+                        showToast(
+                            'Lokasi tidak tersedia. Pastikan Wi-Fi perangkat Anda aktif.',
+                            'error',
+                            'top',
+                        );
+                        await fallbackToIpLocation();
+                    } else if (error.code === 3) {
+                        // TIMEOUT
+                        showToast(
+                            'Waktu habis mendeteksi lokasi. Mengalihkan ke perkiraan internet...',
+                            'error',
+                            'top',
+                        );
+                        await fallbackToIpLocation();
+                    } else {
+                        await fallbackToIpLocation();
+                    }
                 },
-                { enableHighAccuracy: false, timeout: 5000 },
+                { enableHighAccuracy: true, timeout: 8000 },
             );
         } else {
-            fallbackToIpLocation();
+            locationLoading = false;
+            showToast(
+                'Browser Anda tidak mendukung deteksi lokasi.',
+                'error',
+                'top',
+            );
         }
     }
 
@@ -144,7 +220,7 @@
 
                     // Transition step; $effect will auto-initialize map
                     step = 'map';
-                    showToast('Lokasi diperkirakan berdasarkan internet (IP). Silakan geser pin untuk ketepatan.', 'success');
+                    showToast('Berhasil Mendapatkan alamat.', 'success', 'top');
                     return;
                 }
             }
@@ -154,7 +230,11 @@
 
         // Complete fallback if both GPS and IP geocoding fail
         locationLoading = false;
-        showToast('Gagal mendeteksi lokasi otomatis. Silakan cari alamat atau isi manual.', 'error');
+        showToast(
+            'Gagal mendeteksi lokasi otomatis. Silakan cari alamat atau isi manual.',
+            'error',
+            'top',
+        );
         step = 'form';
     }
 
@@ -303,6 +383,84 @@
         });
     }
 
+    // Regional dropdown loader APIs
+    async function fetchProvinces() {
+        try {
+            const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+            provinces = await res.json();
+        } catch (e) {
+            console.error('Error fetching provinces:', e);
+        }
+    }
+
+    async function fetchRegencies(provinceId: string) {
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${provinceId}.json`);
+            regencies = await res.json();
+        } catch (e) {
+            console.error('Error fetching regencies:', e);
+        }
+    }
+
+    async function fetchDistricts(regencyId: string) {
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${regencyId}.json`);
+            districts = await res.json();
+        } catch (e) {
+            console.error('Error fetching districts:', e);
+        }
+    }
+
+    async function fetchVillages(districtId: string) {
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${districtId}.json`);
+            villages = await res.json();
+        } catch (e) {
+            console.error('Error fetching villages:', e);
+        }
+    }
+
+    function handleProvinceChange(id: string) { 
+        formProvinceId = id;
+        formProvinceName = provinces.find((p) => p.id === id)?.name || '';
+        formRegencyId = '';
+        formRegencyName = '';
+        formDistrictId = '';
+        formDistrictName = '';
+        formVillageId = '';
+        formVillageName = '';
+        regencies = [];
+        districts = [];
+        villages = [];
+        if (id) fetchRegencies(id);
+    }
+
+    function handleRegencyChange(id: string) {
+        formRegencyId = id;
+        formRegencyName = regencies.find((r) => r.id === id)?.name || '';
+        formDistrictId = '';
+        formDistrictName = '';
+        formVillageId = '';
+        formVillageName = '';
+        districts = [];
+        villages = [];
+        if (id) fetchDistricts(id);
+    }
+
+    function handleDistrictChange(id: string) {
+        formDistrictId = id;
+        formDistrictName = districts.find((d) => d.id === id)?.name || '';
+        formVillageId = '';
+        formVillageName = '';
+        villages = [];
+        if (id) fetchVillages(id);
+    }
+
+    function handleVillageChange(id: string) {
+        formVillageId = id;
+        formVillageName = villages.find((v) => v.id === id)?.name || '';
+    }
+
     // Open add address flow
     function startAddAddress() {
         addressId = null;
@@ -319,11 +477,25 @@
         searchInput = '';
         searchResults = [];
 
+        // Reset regional dropdown states
+        formProvinceId = '';
+        formProvinceName = '';
+        formRegencyId = '';
+        formRegencyName = '';
+        formDistrictId = '';
+        formDistrictName = '';
+        formVillageId = '';
+        formVillageName = '';
+        formPostalCode = '';
+        regencies = [];
+        districts = [];
+        villages = [];
+
         step = 'search';
     }
 
     // Open edit address flow
-    function startEditAddress(addr: any) {
+    async function startEditAddress(addr: any) { 
         addressId = addr.id;
         isEditing = true;
         formLabel = addr.label;
@@ -336,10 +508,26 @@
         mapLatitude = addr.latitude;
         mapLongitude = addr.longitude;
 
+        // Load regional fields
+        formProvinceId = addr.province_id || '';
+        formProvinceName = addr.province_name || '';
+        formRegencyId = addr.regency_id || '';
+        formRegencyName = addr.regency_name || '';
+        formDistrictId = addr.district_id || '';
+        formDistrictName = addr.district_name || '';
+        formVillageId = addr.village_id || '';
+        formVillageName = addr.village_name || '';
+        formPostalCode = addr.postal_code || '';
+
+        // Eager load dependent options
+        if (formProvinceId) await fetchRegencies(formProvinceId);
+        if (formRegencyId) await fetchDistricts(formRegencyId);
+        if (formDistrictId) await fetchVillages(formDistrictId);
+
         if (addr.latitude && addr.longitude) {
             pinpointAddress = addr.full_address;
             step = 'form';
-        } else {
+        } else { 
             step = 'form';
         }
     }
@@ -347,7 +535,11 @@
     // Save Address handler
     function saveAddress() {
         if (!formAgree) {
-            showToast('Anda harus menyetujui Syarat & Ketentuan.', 'error');
+            showToast(
+                'Anda harus menyetujui Syarat & Ketentuan.',
+                'error',
+                'top',
+            );
             return;
         }
 
@@ -356,6 +548,15 @@
             receiver_name: formReceiverName,
             phone_number: formPhoneNumber,
             full_address: formFullAddress,
+            province_id: formProvinceId,
+            province_name: formProvinceName,
+            regency_id: formRegencyId,
+            regency_name: formRegencyName,
+            district_id: formDistrictId,
+            district_name: formDistrictName,
+            village_id: formVillageId,
+            village_name: formVillageName,
+            postal_code: formPostalCode,
             latitude: mapLatitude,
             longitude: mapLongitude,
             note: formNote,
@@ -365,23 +566,31 @@
         if (isEditing && addressId) {
             router.put(`/profile/addresses/${addressId}`, data, {
                 onSuccess: () => {
-                    showToast('Alamat berhasil diperbarui.', 'success');
+                    showToast('Alamat berhasil diperbarui.', 'success', 'top');
                     step = 'list';
                 },
                 onError: (errors) => {
                     const firstError = Object.values(errors)[0] as string;
-                    showToast(firstError || 'Gagal menyimpan alamat.', 'error');
+                    showToast(
+                        firstError || 'Gagal menyimpan alamat.',
+                        'error',
+                        'top',
+                    );
                 },
             });
         } else {
             router.post('/profile/addresses', data, {
                 onSuccess: () => {
-                    showToast('Alamat berhasil ditambahkan.', 'success');
+                    showToast('Alamat berhasil ditambahkan.', 'success', 'top');
                     step = 'list';
                 },
                 onError: (errors) => {
                     const firstError = Object.values(errors)[0] as string;
-                    showToast(firstError || 'Gagal menyimpan alamat.', 'error');
+                    showToast(
+                        firstError || 'Gagal menyimpan alamat.',
+                        'error',
+                        'top',
+                    );
                 },
             });
         }
@@ -407,12 +616,13 @@
                         showToast(
                             'Alamat berhasil dipilih sebagai alamat utama.',
                             'success',
+                            'top',
                         );
                     },
                 },
             );
         } else {
-            showToast('Alamat utama berhasil dipilih.', 'success');
+            showToast('Alamat utama berhasil dipilih.', 'success', 'top');
         }
     }
 </script>
@@ -696,6 +906,32 @@
                     {/if}
                 </div>
 
+                <!-- Warning banner when location permission is denied -->
+                {#if permissionState === 'denied'}
+                    <div
+                        class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex gap-3"
+                        transition:slide
+                    >
+                        <i
+                            class="ti ti-alert-triangle text-rose-500 text-xl shrink-0 mt-0.5"
+                        ></i>
+                        <div>
+                            <h4 class="text-sm font-bold text-rose-800">
+                                Akses Lokasi Diblokir
+                            </h4>
+                            <p
+                                class="text-xs text-rose-600 mt-1 leading-relaxed"
+                            >
+                                Izin lokasi dinonaktifkan di browser Anda.
+                                Silakan klik ikon <b>lingkaran (i) / gembok</b>
+                                di sebelah kiri alamat URL browser Anda, lalu aktifkan
+                                kembali tombol <b>"Lokasi"</b> agar peta & deteksi
+                                otomatis berfungsi.
+                            </p>
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- Geolocation trigger -->
                 <button
                     onclick={getBrowserLocation}
@@ -806,27 +1042,30 @@
             <div
                 class="flex-grow relative bg-slate-100 overflow-hidden min-h-[300px]"
             >
-                <div bind:this={mapContainer} class="absolute inset-0 w-full h-full z-10"></div>
+                <div
+                    bind:this={mapContainer}
+                    class="absolute inset-0 w-full h-full z-10"
+                ></div>
 
                 <!-- Floating Overlays on Map -->
                 <div class="absolute bottom-4 left-4 right-4 z-20 flex gap-2.5">
                     <button
                         onclick={recenterMap}
-                        class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 font-bold text-xs text-slate-700 transition"
+                        class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 font-bold text-xs text-slate-700 transition"
                     >
                         <i
                             class="ti ti-target text-sm"
                             style="color: {primary};"
-                        ></i> Gunakan Lokasi Sa...
+                        ></i> Lokasi Saya
                     </button>
                     <button
                         onclick={() => (step = 'search')}
-                        class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 font-bold text-xs text-slate-700 transition"
+                        class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 font-bold text-xs text-slate-700 transition"
                     >
                         <i
                             class="ti ti-search text-sm"
                             style="color: {primary};"
-                        ></i> Cari Ulang Alamat
+                        ></i> Cari Alamat
                     </button>
                 </div>
             </div>
@@ -941,6 +1180,70 @@
                         placeholder="Contoh: Rumah, Kantor, Kos"
                         class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
                     />
+                </div>
+
+                <!-- Wilayah Pengiriman Dropdowns -->
+                <div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-4">
+                    <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ti ti-map-pin text-sm" style="color: {primary};"></i> Wilayah Pengiriman
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Provinsi -->
+                        <SelectSearch
+                            bind:value={formProvinceId}
+                            options={provinces}
+                            label="Provinsi"
+                            placeholder="Pilih Provinsi"
+                            required={true}
+                            onchange={handleProvinceChange}
+                        />
+
+                        <!-- Kota / Kabupaten -->
+                        <SelectSearch
+                            bind:value={formRegencyId}
+                            options={regencies}
+                            label="Kota / Kabupaten"
+                            placeholder="Pilih Kota/Kabupaten"
+                            required={true}
+                            disabled={!regencies.length && !formProvinceId}
+                            onchange={handleRegencyChange}
+                        />
+
+                        <!-- Kecamatan -->
+                        <SelectSearch
+                            bind:value={formDistrictId}
+                            options={districts}
+                            label="Kecamatan"
+                            placeholder="Pilih Kecamatan"
+                            required={true}
+                            disabled={!districts.length && !formRegencyId}
+                            onchange={handleDistrictChange}
+                        />
+
+                        <!-- Kelurahan -->
+                        <SelectSearch
+                            bind:value={formVillageId}
+                            options={villages}
+                            label="Kelurahan"
+                            placeholder="Pilih Kelurahan"
+                            required={true}
+                            disabled={!villages.length && !formDistrictId}
+                            onchange={handleVillageChange}
+                        />
+
+                        <!-- Kode Pos -->
+                        <div class="col-span-full">
+                            <label for="kode-pos" class="block text-xs font-bold text-slate-600 mb-1.5">Kode Pos</label>
+                            <input
+                                id="kode-pos"
+                                type="text"
+                                bind:value={formPostalCode}
+                                placeholder="Masukkan Kode Pos"
+                                class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Alamat Lengkap -->
@@ -1095,7 +1398,12 @@
                         !formLabel.trim() ||
                         !formFullAddress.trim() ||
                         !formReceiverName.trim() ||
-                        !formPhoneNumber.trim()}
+                        !formPhoneNumber.trim() ||
+                        !formProvinceId ||
+                        !formRegencyId ||
+                        !formDistrictId ||
+                        !formVillageId ||
+                        !formPostalCode.trim()}
                     class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
                     style="background-color: {primary};"
                 >
