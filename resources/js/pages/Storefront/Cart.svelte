@@ -10,10 +10,12 @@
 
     // Selection states
     let selectedIds = $state<number[]>([]);
+    let hasInitialized = $state(false);
 
     $effect(() => {
-        if (cartItems.length > 0 && selectedIds.length === 0) {
+        if (cartItems.length > 0 && !hasInitialized) {
             selectedIds = cartItems.map((item: any) => item.id);
+            hasInitialized = true;
         }
     });
 
@@ -116,19 +118,49 @@
         });
     }
 
+    let deleteModalOpen = $state(false);
+    let deleteType = $state<'single' | 'selected' | 'all'>('single');
+    let itemToDelete = $state<any>(null);
+
     function deleteItem(item: any) {
-        if (confirm('Apakah Anda yakin ingin menghapus produk ini dari keranjang?')) {
-            router.delete(`/cart/${item.id}`, {
-                preserveScroll: true
-            });
-        }
+        itemToDelete = item;
+        deleteType = 'single';
+        deleteModalOpen = true;
     }
 
     function deleteSelected() {
         if (selectedIds.length === 0) return;
-        if (confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} produk terpilih dari keranjang?`)) {
+        deleteType = 'selected';
+        deleteModalOpen = true;
+    }
+
+    function deleteAll() {
+        if (cartItems.length === 0) return;
+        deleteType = 'all';
+        deleteModalOpen = true;
+    }
+
+    function executeDelete() {
+        deleteModalOpen = false;
+        if (deleteType === 'single' && itemToDelete) {
+            router.delete(`/cart/${itemToDelete.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedIds = selectedIds.filter((id) => id !== itemToDelete.id);
+                    itemToDelete = null;
+                }
+            });
+        } else if (deleteType === 'selected') {
             selectedIds.forEach((id) => {
                 router.delete(`/cart/${id}`, {
+                    preserveScroll: true,
+                    preserveState: true
+                });
+            });
+            selectedIds = [];
+        } else if (deleteType === 'all') {
+            cartItems.forEach((item: any) => {
+                router.delete(`/cart/${item.id}`, {
                     preserveScroll: true,
                     preserveState: true
                 });
@@ -239,8 +271,12 @@
         </div>
         
         <div class="flex items-center gap-3.5">
-            <button class="text-xs font-semibold text-slate-600 hover:text-slate-800 border-0 bg-transparent cursor-pointer">
-                Ubah
+            <button 
+                onclick={deleteAll}
+                disabled={cartItems.length === 0}
+                class="text-xs font-bold text-rose-600 hover:text-rose-700 disabled:opacity-50 border-0 bg-transparent cursor-pointer"
+            >
+                Hapus Semua
             </button>
             <button class="relative w-8 h-8 flex items-center justify-center hover:bg-slate-50 rounded-full transition border-0 bg-transparent cursor-pointer" aria-label="Chat">
                 <i class="ti ti-message-dots text-xl" style="color: {primary};"></i>
@@ -298,22 +334,24 @@
                     
                     <!-- Select All Control (Desktop Header) -->
                     <div class="hidden md:flex items-center justify-between bg-white border border-slate-200 rounded-3xl px-5 py-4 shadow-3xs">
-                        <div class="flex items-center gap-3">
-                            <button
-                                onclick={toggleSelectAll}
-                                class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer border-slate-300"
+                        <button
+                            onclick={toggleSelectAll}
+                            class="flex items-center gap-3 cursor-pointer border-0 bg-transparent p-0 text-left"
+                            aria-label="Pilih Semua"
+                        >
+                            <div
+                                class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all duration-200 border-slate-300"
                                 class:border-transparent={isAllSelected}
                                 style={isAllSelected ? `background-color: ${primary}; border-color: ${primary};` : ''}
-                                aria-label="Pilih Semua"
                             >
                                 {#if isAllSelected}
                                     <i class="ti ti-check text-white text-[10px] font-black"></i>
                                 {/if}
-                            </button>
-                            <span class="text-xs sm:text-sm font-black text-slate-700">
+                            </div>
+                            <span class="text-xs sm:text-sm font-black text-slate-700 select-none">
                                 Pilih Semua ({selectedIds.length}/{cartItems.length} produk)
                             </span>
-                        </div>
+                        </button>
                         
                         {#if selectedIds.length > 0}
                             <button 
@@ -357,15 +395,19 @@
                                     <div class="flex items-center shrink-0">
                                         <button
                                             onclick={() => toggleItem(item.id)}
-                                            class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer"
-                                            style={isChecked 
-                                                ? `background-color: ${primary}; border-color: ${primary};` 
-                                                : 'border-color: #cbd5e1;'}
+                                            class="w-8 h-8 -ml-1.5 flex items-center justify-center rounded-full hover:bg-slate-50 transition shrink-0 cursor-pointer border-0 bg-transparent"
                                             aria-label="Pilih Produk"
                                         >
-                                            {#if isChecked}
-                                                <i class="ti ti-check text-white text-[10px] font-black"></i>
-                                            {/if}
+                                            <div
+                                                class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all duration-200"
+                                                style={isChecked 
+                                                    ? `background-color: ${primary}; border-color: ${primary};` 
+                                                    : 'border-color: #cbd5e1;'}
+                                            >
+                                                {#if isChecked}
+                                                    <i class="ti ti-check text-white text-[10px] font-black"></i>
+                                                {/if}
+                                            </div>
                                         </button>
                                     </div>
  
@@ -620,20 +662,22 @@
             <!-- Row 3: Checkbox, Total, Button -->
             <div class="flex items-center justify-between px-3 py-2 gap-3 bg-white">
                 <!-- Checkbox "Semua" -->
-                <div class="flex items-center gap-1.5 shrink-0">
-                    <button
-                        onclick={toggleSelectAll}
-                        class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all duration-200 cursor-pointer border-slate-300"
+                <button
+                    onclick={toggleSelectAll}
+                    class="flex items-center gap-1.5 shrink-0 cursor-pointer border-0 bg-transparent p-0 text-left animate-none"
+                    aria-label="Pilih Semua Mobile"
+                >
+                    <div
+                        class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all duration-200 border-slate-300"
                         class:border-transparent={isAllSelected}
                         style={isAllSelected ? `background-color: ${primary}; border-color: ${primary};` : ''}
-                        aria-label="Pilih Semua Mobile"
                     >
                         {#if isAllSelected}
                             <i class="ti ti-check text-white text-[10px] font-black"></i>
                         {/if}
-                    </button>
-                    <span class="text-[10.5px] font-black text-slate-600">Semua</span>
-                </div>
+                    </div>
+                    <span class="text-[10.5px] font-black text-slate-600 select-none">Semua</span>
+                </button>
 
                 <!-- Total Payment display -->
                 <div class="flex flex-col text-right">
@@ -930,6 +974,67 @@
                 >
                     Kembali Berbelanja
                 </button>
+            </div>
+        </div>
+    {/if}
+
+    <!-- ==========================================
+     DELETE CONFIRMATION MODAL (Xendit-Style Premium Modal)
+    ========================================== -->
+    {#if deleteModalOpen}
+        <div class="fixed inset-0 z-[10005] flex items-center justify-center p-4" transition:fade={{ duration: 150 }}>
+            <!-- Backdrop -->
+            <div
+                class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                onclick={() => (deleteModalOpen = false)}
+                onkeypress={() => (deleteModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <!-- Modal Box -->
+            <div
+                class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+            >
+                <div
+                    class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+                >
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <h4
+                    class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+                >
+                    {#if deleteType === 'all'}
+                        Hapus Semua Produk?
+                    {:else if deleteType === 'selected'}
+                        Hapus Produk Terpilih?
+                    {:else}
+                        Hapus Produk?
+                    {/if}
+                </h4>
+                <p class="text-sm text-center text-slate-500 font-medium mb-8">
+                    {#if deleteType === 'all'}
+                        Apakah Anda yakin ingin menghapus semua produk (<strong>{cartItems.length}</strong> item) dari keranjang belanja Anda?
+                    {:else if deleteType === 'selected'}
+                        Apakah Anda yakin ingin menghapus <strong>{selectedIds.length}</strong> produk terpilih dari keranjang belanja Anda?
+                    {:else}
+                        Produk <strong>{itemToDelete?.product?.name || itemToDelete?.product_variant?.product?.name}</strong> akan terhapus dari keranjang belanja.
+                    {/if}
+                </p>
+                <div class="flex items-center gap-3">
+                    <button
+                        onclick={() => (deleteModalOpen = false)}
+                        class="flex-grow py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer border-0"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={executeDelete}
+                        class="flex-grow py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs shadow-lg shadow-red-500/30 transition cursor-pointer border-0"
+                    >
+                        Ya, Hapus
+                    </button>
+                </div>
             </div>
         </div>
     {/if}
