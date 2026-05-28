@@ -9,8 +9,15 @@
     let {
         categories = [],
         products = { data: [], links: [] },
-        filters = { q: '', category: '', sort: 'latest', min_price: '', max_price: '', promo: false },
-        storeName = ''
+        filters = {
+            q: '',
+            category: '',
+            sort: 'latest',
+            min_price: '',
+            max_price: '',
+            promo: false,
+        },
+        storeName = '',
     } = $props();
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
@@ -20,13 +27,13 @@
 
     // Filter states
     let searchQ = $state(filters.q || '');
-    
+
     function getCategoriesFromFilter(catFilter: any) {
         if (!catFilter) return [];
         if (Array.isArray(catFilter)) return catFilter;
         return [catFilter];
     }
-    
+
     let selectedCategories = $state(getCategoriesFromFilter(filters.category));
     let selectedSort = $state(filters.sort || 'relevance');
     let minPrice = $state(filters.min_price || '');
@@ -35,12 +42,11 @@
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
-    
 
     let initialPromoOnly = filters.promo || false;
 
     // Sync state if props change (Inertia navigate)
-    $effect(() => { 
+    $effect(() => {
         searchQ = filters.q || '';
         selectedCategories = getCategoriesFromFilter(filters.category);
         selectedSort = filters.sort || 'relevance';
@@ -52,17 +58,21 @@
 
     function applyFilters(closeDrawer = true) {
         if (closeDrawer) showMobileFilters = false;
-        router.get('/search', {
-            q: searchQ,
-            category: selectedCategories,
-            sort: selectedSort,
-            min_price: minPrice,
-            max_price: maxPrice,
-            promo: promoOnly ? 1 : 0
-        }, {
-            preserveState: true,
-            replace: true
-        });
+        router.get(
+            '/search',
+            {
+                q: searchQ,
+                category: selectedCategories,
+                sort: selectedSort,
+                min_price: minPrice,
+                max_price: maxPrice,
+                promo: promoOnly ? 1 : 0,
+            },
+            {
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     function resetFilters(keepMobileOpen = false) {
@@ -72,21 +82,27 @@
         minPrice = '';
         maxPrice = '';
         promoOnly = false;
-        
+
         if (!keepMobileOpen) {
             showMobileFilters = false;
         }
 
-        router.get('/search', {}, {
-            preserveState: true,
-            replace: true
-        });
+        router.get(
+            '/search',
+            {},
+            {
+                preserveState: true,
+                replace: true,
+            },
+        );
     }
 
     // Di mobile drawer: hanya toggle state, tidak langsung navigasi
     function selectCategory(catSlug: string) {
         if (selectedCategories.includes(catSlug)) {
-            selectedCategories = selectedCategories.filter(slug => slug !== catSlug);
+            selectedCategories = selectedCategories.filter(
+                (slug) => slug !== catSlug,
+            );
         } else {
             selectedCategories = [...selectedCategories, catSlug];
         }
@@ -95,7 +111,9 @@
     // Di desktop sidebar: toggle dan langsung terapkan filter
     function selectCategoryDesktop(catSlug: string) {
         if (selectedCategories.includes(catSlug)) {
-            selectedCategories = selectedCategories.filter(slug => slug !== catSlug);
+            selectedCategories = selectedCategories.filter(
+                (slug) => slug !== catSlug,
+            );
         } else {
             selectedCategories = [...selectedCategories, catSlug];
         }
@@ -121,19 +139,27 @@
     let isLoadingMore = $state(false);
     let currentPage = $state(products.current_page || 1);
     let nextPageUrl = $state(products.next_page_url || null);
-    
-    let lastFilterKey = $state(JSON.stringify({
-        q: filters.q, category: filters.category,
-        sort: filters.sort, min_price: filters.min_price,
-        max_price: filters.max_price, promo: filters.promo
-    }));
+
+    let lastFilterKey = $state(
+        JSON.stringify({
+            q: filters.q,
+            category: filters.category,
+            sort: filters.sort,
+            min_price: filters.min_price,
+            max_price: filters.max_price,
+            promo: filters.promo,
+        }),
+    );
 
     // Detect filter change vs page change and reset or append
     $effect(() => {
         const newKey = JSON.stringify({
-            q: filters.q, category: filters.category,
-            sort: filters.sort, min_price: filters.min_price,
-            max_price: filters.max_price, promo: filters.promo
+            q: filters.q,
+            category: filters.category,
+            sort: filters.sort,
+            min_price: filters.min_price,
+            max_price: filters.max_price,
+            promo: filters.promo,
         });
         if (newKey !== lastFilterKey) {
             // Filters changed — reset list
@@ -142,7 +168,9 @@
         } else {
             // Same filters, new page — merge/append
             const existingIds = new Set(allProducts.map((p: any) => p.id));
-            const newItems = (products.data || []).filter((p: any) => !existingIds.has(p.id));
+            const newItems = (products.data || []).filter(
+                (p: any) => !existingIds.has(p.id),
+            );
             if (newItems.length > 0) {
                 allProducts = [...allProducts, ...newItems];
             }
@@ -174,8 +202,8 @@
                     'X-Inertia-Partial-Component': 'Storefront/Search',
                     'X-Inertia-Partial-Data': 'products',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-Inertia-Version': page.version || ''
-                }
+                    'X-Inertia-Version': page.version || '',
+                },
             });
 
             if (response.status === 409) {
@@ -190,10 +218,14 @@
                 if (newProductsPaginator) {
                     currentPage = newProductsPaginator.current_page;
                     nextPageUrl = newProductsPaginator.next_page_url;
-                    
+
                     const newItems = newProductsPaginator.data || [];
-                    const existingIds = new Set(allProducts.map((p: any) => p.id));
-                    const filteredNewItems = newItems.filter((p: any) => !existingIds.has(p.id));
+                    const existingIds = new Set(
+                        allProducts.map((p: any) => p.id),
+                    );
+                    const filteredNewItems = newItems.filter(
+                        (p: any) => !existingIds.has(p.id),
+                    );
                     if (filteredNewItems.length > 0) {
                         allProducts = [...allProducts, ...filteredNewItems];
                     }
@@ -214,13 +246,13 @@
                     loadMore();
                 }
             },
-            { rootMargin: '200px' }
+            { rootMargin: '200px' },
         );
         observer.observe(node);
         return {
             destroy() {
                 observer.disconnect();
-            }
+            },
         };
     }
 </script>
@@ -230,7 +262,6 @@
 </svelte:head>
 
 <StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
-
     <!-- ═══════════════════════════════════════════════════
      STICKY MOBILE TOP BAR (mobile only, replaces global header)
     ═══════════════════════════════════════════════════ -->
@@ -238,7 +269,10 @@
         class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm"
     >
         <!-- Search bar row -->
-        <div class="flex items-center gap-2 px-3 py-2.5" style="background: linear-gradient(135deg, {primary}f5, {primary}cc);">
+        <div
+            class="flex items-center gap-2 px-3 py-2.5"
+            style="background: linear-gradient(135deg, {primary}f5, {primary}cc);"
+        >
             <!-- Back button -->
             <button
                 onclick={() => history.back()}
@@ -250,11 +284,16 @@
 
             <!-- Inline search input -->
             <form
-                onsubmit={(e) => { e.preventDefault(); applyFilters(); }}
+                onsubmit={(e) => {
+                    e.preventDefault();
+                    applyFilters();
+                }}
                 class="flex-grow"
             >
                 <div class="relative">
-                    <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                    <i
+                        class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"
+                    ></i>
                     <input
                         type="text"
                         bind:value={searchQ}
@@ -265,7 +304,10 @@
                     {#if searchQ}
                         <button
                             type="button"
-                            onclick={() => { searchQ = ''; applyFilters(); }}
+                            onclick={() => {
+                                searchQ = '';
+                                applyFilters();
+                            }}
                             class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
                         >
                             <i class="ti ti-x text-sm"></i>
@@ -280,7 +322,9 @@
                     if (auth) {
                         router.visit('/cart');
                     } else {
-                        window.dispatchEvent(new CustomEvent('open-login-modal'));
+                        window.dispatchEvent(
+                            new CustomEvent('open-login-modal'),
+                        );
                     }
                 }}
                 class="shrink-0 relative w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition cursor-pointer"
@@ -300,14 +344,28 @@
             <!-- Profile/Login icon -->
             {#if auth}
                 <button
-                    onclick={(e) => { e.preventDefault(); e.stopPropagation(); window.dispatchEvent(new CustomEvent('toggle-profile-dropdown')); }}
+                    onclick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.dispatchEvent(
+                            new CustomEvent('toggle-profile-dropdown'),
+                        );
+                    }}
                     class="shrink-0 w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-[10px] text-white cursor-pointer"
                 >
-                    {auth.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
+                    {auth.name
+                        .split(' ')
+                        .map((n: string) => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()}
                 </button>
             {:else}
                 <button
-                    onclick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
+                    onclick={() =>
+                        window.dispatchEvent(
+                            new CustomEvent('open-login-modal'),
+                        )}
                     class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white active:scale-90 transition cursor-pointer"
                     aria-label="Masuk"
                 >
@@ -317,23 +375,24 @@
         </div>
 
         <!-- Sort pills row -->
-        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {#each [
-                { id: 'relevance', label: 'Terkait' },
-                { id: 'latest', label: 'Terbaru' },
-                { id: 'popular', label: 'Terlaris' },
-                { id: 'price_asc', label: 'Harga ↑' },
-                { id: 'price_desc', label: 'Harga ↓' },
-            ] as sortOpt}
+        <div
+            class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+            {#each [{ id: 'relevance', label: 'Terkait' }, { id: 'latest', label: 'Terbaru' }, { id: 'popular', label: 'Terlaris' }, { id: 'price_asc', label: 'Harga ↑' }, { id: 'price_desc', label: 'Harga ↓' }] as sortOpt}
                 <button
-                    onclick={() => { selectedSort = sortOpt.id; applyFilters(); }}
+                    onclick={() => {
+                        selectedSort = sortOpt.id;
+                        applyFilters();
+                    }}
                     class="shrink-0 px-3.5 py-1.5 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95"
                     class:text-white={selectedSort === sortOpt.id}
                     class:border-transparent={selectedSort === sortOpt.id}
                     class:bg-white={selectedSort !== sortOpt.id}
                     class:border-slate-200={selectedSort !== sortOpt.id}
                     class:text-slate-600={selectedSort !== sortOpt.id}
-                    style={selectedSort === sortOpt.id ? `background-color: ${primary};` : ''}
+                    style={selectedSort === sortOpt.id
+                        ? `background-color: ${primary};`
+                        : ''}
                 >
                     {sortOpt.label}
                 </button>
@@ -341,12 +400,20 @@
 
             <!-- Filter button at the end of sorting pills -->
             <button
-                onclick={() => showMobileFilters = true}
+                onclick={() => (showMobileFilters = true)}
                 class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95 flex items-center gap-1
-                       {selectedCategories.length > 0 || minPrice || maxPrice || promoOnly
-                           ? 'text-white border-transparent'
-                           : 'bg-white border-slate-200 text-slate-600'}"
-                style={selectedCategories.length > 0 || minPrice || maxPrice || promoOnly ? `background-color: ${secondary};` : ''}
+                       {selectedCategories.length > 0 ||
+                minPrice ||
+                maxPrice ||
+                promoOnly
+                    ? 'text-white border-transparent'
+                    : 'bg-white border-slate-200 text-slate-600'}"
+                style={selectedCategories.length > 0 ||
+                minPrice ||
+                maxPrice ||
+                promoOnly
+                    ? `background-color: ${secondary};`
+                    : ''}
                 aria-label="Filter"
             >
                 <i class="ti ti-adjustments-horizontal"></i>
@@ -358,11 +425,17 @@
     <!-- Spacer for mobile sticky bar (search row ~50px + sort row ~38px + extra breathing room) -->
     <div class="md:hidden h-[106px]"></div>
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow">
+    <div
+        class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow"
+    >
         <!-- Breadcrumbs / Top Bar (Desktop only) -->
-        <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div
+            class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"
+        >
             <div>
-                <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
+                <h1
+                    class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2"
+                >
                     <i class="ti ti-search" style="color: {primary};"></i>
                     {#if filters.q}
                         Hasil Pencarian untuk "{filters.q}"
@@ -375,47 +448,71 @@
             </div>
 
             <!-- Sorting & Mini Pagination (Desktop only) -->
-            <div class="hidden md:flex items-center gap-3.5 self-end md:self-auto">
+            <div
+                class="hidden md:flex items-center gap-3.5 self-end md:self-auto"
+            >
                 <!-- Sorting Tabs (Desktop) -->
                 <div class="flex items-center gap-2 z-20">
-                    <span class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1">Urutkan:</span>
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1"
+                        >Urutkan:</span
+                    >
 
                     <button
-                        onclick={() => { selectedSort = 'relevance'; applyFilters(); }}
+                        onclick={() => {
+                            selectedSort = 'relevance';
+                            applyFilters();
+                        }}
                         class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
                                {selectedSort === 'relevance'
-                                   ? 'text-white'
-                                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                        style={selectedSort === 'relevance' ? `background-color: ${primary}; border-color: ${primary};` : ''}
+                            ? 'text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                        style={selectedSort === 'relevance'
+                            ? `background-color: ${primary}; border-color: ${primary};`
+                            : ''}
                     >
                         Terkait
                     </button>
 
                     <button
-                        onclick={() => { selectedSort = 'latest'; applyFilters(); }}
+                        onclick={() => {
+                            selectedSort = 'latest';
+                            applyFilters();
+                        }}
                         class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
                                {selectedSort === 'latest'
-                                   ? 'text-white'
-                                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                        style={selectedSort === 'latest' ? `background-color: ${primary}; border-color: ${primary};` : ''}
+                            ? 'text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                        style={selectedSort === 'latest'
+                            ? `background-color: ${primary}; border-color: ${primary};`
+                            : ''}
                     >
                         Terbaru
                     </button>
 
                     <button
-                        onclick={() => { selectedSort = 'popular'; applyFilters(); }}
+                        onclick={() => {
+                            selectedSort = 'popular';
+                            applyFilters();
+                        }}
                         class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
                                {selectedSort === 'popular'
-                                   ? 'text-white'
-                                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                        style={selectedSort === 'popular' ? `background-color: ${primary}; border-color: ${primary};` : ''}
+                            ? 'text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                        style={selectedSort === 'popular'
+                            ? `background-color: ${primary}; border-color: ${primary};`
+                            : ''}
                     >
                         Terlaris
                     </button>
 
                     <div class="w-40">
                         <Select
-                            value={['price_asc', 'price_desc'].includes(selectedSort) ? selectedSort : ''}
+                            value={['price_asc', 'price_desc'].includes(
+                                selectedSort,
+                            )
+                                ? selectedSort
+                                : ''}
                             onchange={(val) => {
                                 selectedSort = val;
                                 applyFilters();
@@ -423,12 +520,11 @@
                             placeholder="Harga"
                             options={[
                                 { id: 'price_asc', name: 'Harga: Terendah' },
-                                { id: 'price_desc', name: 'Harga: Tertinggi' }
+                                { id: 'price_desc', name: 'Harga: Tertinggi' },
                             ]}
                         />
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -436,10 +532,19 @@
             <!-- ═══════════════════════════════════════════════════
              FILTER SIDEBAR (Desktop)
             ═══════════════════════════════════════════════════ -->
-            <aside class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <span class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                        <i class="ti ti-filter text-base" style="color: {primary};"></i> Filter
+            <aside
+                class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-3"
+                >
+                    <span
+                        class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
+                    >
+                        <i
+                            class="ti ti-filter text-base"
+                            style="color: {primary};"
+                        ></i> Filter
                     </span>
                     <button
                         onclick={resetFilters}
@@ -452,19 +557,34 @@
 
                 <!-- Kategori Filter -->
                 <div class="space-y-2.5">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kategori</span>
-                    <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                        >Kategori</span
+                    >
+                    <div
+                        class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
+                    >
                         {#each categories as cat}
                             <button
-                                onclick={() => selectCategoryDesktop(cat.slug || cat.id.toString())}
+                                onclick={() =>
+                                    selectCategoryDesktop(
+                                        cat.slug || cat.id.toString(),
+                                    )}
                                 class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                       {selectedCategories.includes(cat.slug || cat.id.toString())
-                                           ? 'bg-slate-50'
-                                           : 'text-slate-600 hover:text-slate-900'}"
-                                style={selectedCategories.includes(cat.slug || cat.id.toString()) ? `color: ${primary};` : ''}
+                                       {selectedCategories.includes(
+                                    cat.slug || cat.id.toString(),
+                                )
+                                    ? 'bg-slate-50'
+                                    : 'text-slate-600 hover:text-slate-900'}"
+                                style={selectedCategories.includes(
+                                    cat.slug || cat.id.toString(),
+                                )
+                                    ? `color: ${primary};`
+                                    : ''}
                             >
                                 <span class="flex items-center gap-2">
-                                    <i class="ti {cat.icon || 'ti-tag'} text-sm"></i>
+                                    <i class="ti {cat.icon || 'ti-tag'} text-sm"
+                                    ></i>
                                     {cat.name}
                                 </span>
                                 {#if selectedCategories.includes(cat.slug || cat.id.toString())}
@@ -479,7 +599,10 @@
 
                 <!-- Rentang Harga Filter -->
                 <div class="space-y-3">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                        >Rentang Harga</span
+                    >
                     <div class="space-y-3">
                         <InputCurrency
                             bind:value={minPrice}
@@ -506,16 +629,16 @@
                 <hr class="border-slate-100" />
 
                 <!-- Promo Toko Checkbox -->
-                <div 
+                <div
                     onclick={() => {
                         setTimeout(applyFilters, 0);
                     }}
                 >
-                    <Toggle 
-                        bind:checked={promoOnly} 
-                        label="Hanya Promo Toko" 
+                    <Toggle
+                        bind:checked={promoOnly}
+                        label="Hanya Promo Toko"
                         description="Tampilkan diskon aktif"
-                        icon="ti-tag" 
+                        icon="ti-tag"
                     />
                 </div>
             </aside>
@@ -525,20 +648,33 @@
             ═══════════════════════════════════════════════════ -->
             <div class="flex-grow flex flex-col min-w-0">
                 {#if allProducts.length === 0 && !isLoadingMore}
-                    <div class="bg-white md:border border-slate-900 md:rounded-[28px] py-24 md:py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-auto transition-all duration-300 min-h-[70vh] md:min-h-0 flex flex-col items-center justify-center">
+                    <div
+                        class="bg-white md:border border-slate-900 md:rounded-[28px] py-12 md:py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300"
+                    >
                         <!-- Circular Icon (similar to screenshot) -->
-                        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
-                            <i class="ti ti-package-off text-3xl sm:text-4xl"></i>
+                        <div
+                            class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300"
+                        >
+                            <i class="ti ti-package-off text-3xl sm:text-4xl"
+                            ></i>
                         </div>
-                        
+
                         <!-- Title (matching screenshot) -->
-                        <h3 class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight">Produk Tidak Ditemukan</h3>
-                        
+                        <h3
+                            class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight"
+                        >
+                            Produk Tidak Ditemukan
+                        </h3>
+
                         <!-- Description (matching screenshot) -->
-                        <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8">
-                            Kami tidak dapat menemukan produk yang cocok dengan pencarian atau filter Anda. Coba reset filter atau gunakan kata kunci lain.
+                        <p
+                            class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8"
+                        >
+                            Kami tidak dapat menemukan produk yang cocok dengan
+                            pencarian atau filter Anda. Coba reset filter atau
+                            gunakan kata kunci lain.
                         </p>
-                        
+
                         <!-- Button with dynamic theme color & blue shadow (matching screenshot) -->
                         <button
                             onclick={resetFilters}
@@ -550,27 +686,38 @@
                     </div>
                 {:else}
                     <!-- Product Grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div
+                        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                    >
                         {#each allProducts as product, index (product.id + '_' + index)}
                             {@const img = getProductImage(product)}
                             {@const isPromo = product.is_promo}
-                            {@const price = isPromo ? product.promo_price : (product.product_price?.price ?? 0)}
-                            {@const originalPrice = isPromo ? product.original_price : 0}
-                            {@const discountPercentage = isPromo ? product.discount_percentage : 0}
+                            {@const price = isPromo
+                                ? product.promo_price
+                                : (product.product_price?.price ?? 0)}
+                            {@const originalPrice = isPromo
+                                ? product.original_price
+                                : 0}
+                            {@const discountPercentage = isPromo
+                                ? product.discount_percentage
+                                : 0}
 
                             <Link
                                 href={`/products/${product.slug || product.id}`}
                                 prefetch
                                 class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer flex flex-col h-full"
                             >
-                                <div class="relative aspect-square overflow-hidden border-b border-slate-50">
+                                <div
+                                    class="relative aspect-square overflow-hidden border-b border-slate-50"
+                                >
                                     {#if img}
                                         <img
                                             src={img}
                                             alt={product.name}
                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                             onerror={(e) => {
-                                                e.currentTarget.src = '/noimage/image.png';
+                                                e.currentTarget.src =
+                                                    '/noimage/image.png';
                                             }}
                                         />
                                     {:else}
@@ -589,21 +736,34 @@
                                         </span>
                                     {/if}
                                 </div>
-                                <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
+                                <div
+                                    class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
+                                >
                                     <div>
-                                        <p class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1" style="color: {primary};">
+                                        <p
+                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                            style="color: {primary};"
+                                        >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
-                                        <p class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1" style="color: {primary};">
+                                        <p
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                            style="color: {primary};"
+                                        >
                                             {product.name}
                                         </p>
                                         <hr class="border-slate-100 my-2" />
                                         <div class="mb-3">
-                                            <p class="text-sm sm:text-base font-black leading-tight" style="color: {secondary};">
+                                            <p
+                                                class="text-sm sm:text-base font-black leading-tight"
+                                                style="color: {secondary};"
+                                            >
                                                 {formatPrice(price)}
                                             </p>
                                             {#if isPromo && originalPrice > price}
-                                                <p class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5">
+                                                <p
+                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                >
                                                     {formatPrice(originalPrice)}
                                                 </p>
                                             {/if}
@@ -614,7 +774,9 @@
                                             class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
                                             style="background-color: {primary};"
                                         >
-                                            <i class="ti ti-shopping-cart text-xs sm:text-sm"></i>
+                                            <i
+                                                class="ti ti-shopping-cart text-xs sm:text-sm"
+                                            ></i>
                                             + KERANJANG
                                         </span>
                                     </div>
@@ -624,7 +786,10 @@
                     </div>
 
                     <!-- Infinite scroll sentinel + loading indicator -->
-                    <div use:setupObserver class="py-8 flex flex-col items-center justify-center gap-3">
+                    <div
+                        use:setupObserver
+                        class="py-8 flex flex-col items-center justify-center gap-3"
+                    >
                         {#if isLoadingMore}
                             <!-- Modern pulsing indicator (same as Home.svelte) -->
                             <div
@@ -667,19 +832,28 @@
         <div class="fixed inset-0 z-50 flex justify-end md:hidden">
             <!-- Backdrop -->
             <button
-                onclick={() => showMobileFilters = false}
+                onclick={() => (showMobileFilters = false)}
                 class="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full cursor-default"
             ></button>
 
             <!-- Drawer body -->
-            <div class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between p-6 overflow-y-auto space-y-6">
+            <div
+                class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between p-6 overflow-y-auto space-y-6"
+            >
                 <div>
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
-                        <span class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="ti ti-filter text-base" style="color: {primary};"></i> Filter
+                    <div
+                        class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5"
+                    >
+                        <span
+                            class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
+                        >
+                            <i
+                                class="ti ti-filter text-base"
+                                style="color: {primary};"
+                            ></i> Filter
                         </span>
                         <button
-                            onclick={() => showMobileFilters = false}
+                            onclick={() => (showMobileFilters = false)}
                             class="text-slate-400 hover:text-slate-600"
                         >
                             <i class="ti ti-x text-lg"></i>
@@ -688,19 +862,34 @@
 
                     <!-- Kategori Filter -->
                     <div class="space-y-2.5">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kategori</span>
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                            >Kategori</span
+                        >
                         <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
                             {#each categories as cat}
                                 <button
-                                    onclick={() => selectCategory(cat.slug || cat.id.toString())}
+                                    onclick={() =>
+                                        selectCategory(
+                                            cat.slug || cat.id.toString(),
+                                        )}
                                     class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                           {selectedCategories.includes(cat.slug || cat.id.toString())
-                                               ? 'bg-slate-50'
-                                               : 'text-slate-600 hover:text-slate-900'}"
-                                    style={selectedCategories.includes(cat.slug || cat.id.toString()) ? `color: ${primary};` : ''}
+                                           {selectedCategories.includes(
+                                        cat.slug || cat.id.toString(),
+                                    )
+                                        ? 'bg-slate-50'
+                                        : 'text-slate-600 hover:text-slate-900'}"
+                                    style={selectedCategories.includes(
+                                        cat.slug || cat.id.toString(),
+                                    )
+                                        ? `color: ${primary};`
+                                        : ''}
                                 >
                                     <span class="flex items-center gap-2">
-                                        <i class="ti {cat.icon || 'ti-tag'} text-sm"></i>
+                                        <i
+                                            class="ti {cat.icon ||
+                                                'ti-tag'} text-sm"
+                                        ></i>
                                         {cat.name}
                                     </span>
                                     {#if selectedCategories.includes(cat.slug || cat.id.toString())}
@@ -715,7 +904,10 @@
 
                     <!-- Rentang Harga Filter -->
                     <div class="space-y-3">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                            >Rentang Harga</span
+                        >
                         <div class="space-y-3">
                             <InputCurrency
                                 bind:value={minPrice}
@@ -736,16 +928,18 @@
 
                     <!-- Promo Toko Checkbox -->
                     <div>
-                        <Toggle 
-                            bind:checked={promoOnly} 
-                            label="Hanya Promo Toko" 
+                        <Toggle
+                            bind:checked={promoOnly}
+                            label="Hanya Promo Toko"
                             description="Tampilkan diskon aktif"
-                            icon="ti-tag" 
+                            icon="ti-tag"
                         />
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
+                <div
+                    class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100"
+                >
                     <button
                         onclick={() => resetFilters(true)}
                         class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
