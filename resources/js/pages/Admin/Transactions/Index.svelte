@@ -206,11 +206,11 @@
                                     {@const paymentStatus = trx.payment?.status}
                                     <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100">
                                         <td class="py-6 px-6">
-                                            <p class="font-bold text-slate-800 font-mono text-xs">{trx.transaction_number}</p>
+                                            <p class="font-bold text-slate-800 font-mono text-xs break-all">{trx.transaction_number}</p>
                                         </td>
                                         <td class="py-6 px-6">
-                                            <p class="font-bold text-slate-800">{trx.user?.name ?? '-'}</p>
-                                            <p class="text-[11px] text-slate-400 font-bold mt-0.5">{trx.user?.email ?? ''}</p>
+                                            <p class="font-bold text-slate-800 whitespace-pre-wrap break-words">{trx.user?.name ?? '-'}</p>
+                                            <p class="text-[11px] text-slate-400 font-bold mt-0.5 break-all">{trx.user?.email ?? ''}</p>
                                         </td>
                                         <td class="py-6 px-6">
                                             <span class="text-slate-600 font-bold">{(trx.items ?? []).length} item</span>

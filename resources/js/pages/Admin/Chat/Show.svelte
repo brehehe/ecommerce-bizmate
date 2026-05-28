@@ -37,9 +37,12 @@
         stopPolling();
     });
 
+    let lastChatId = $state<number | null>(null);
+
     // Sync messages if chat ID changes (navigating between threads on desktop)
     $effect(() => {
-        if (chat.id) {
+        if (chat.id && chat.id !== lastChatId) {
+            lastChatId = chat.id;
             messages = initialMessages;
             attachedImage = null;
             attachedImageUrl = null;

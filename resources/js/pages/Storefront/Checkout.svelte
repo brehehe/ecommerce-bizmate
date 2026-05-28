@@ -295,7 +295,7 @@
                 <div class="lg:col-span-2 space-y-4">
 
                     <!-- Address Section -->
-                    <div class="bg-white w-full">
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                         <div class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100">
                             <div class="flex items-center gap-2">
                                 <i class="ti ti-map-pin text-lg" style="color:{primary}"></i>

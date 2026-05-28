@@ -24,7 +24,7 @@
     }
 
     function formatImagePath(path: string | null | undefined): string {
-        if (!path) return '/images/placeholder.png';
+        if (!path) return '/noimage/image.png';
         if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
             return path;
         }
@@ -40,13 +40,37 @@
         selesai: { bg: '#dcfce7', text: '#166534' },
         batal: { bg: '#fee2e2', text: '#991b1b' },
     };
+
+    let selectedStatus = $state('all');
+
+    const filteredTransactions = $derived(
+        selectedStatus === 'all'
+            ? transactions.data
+            : transactions.data.filter((trx: any) => {
+                if (selectedStatus === 'belum_bayar') return trx.status === 'belum_bayar';
+                if (selectedStatus === 'berjalan') return ['menunggu', 'diproses', 'dikemas', 'dikirim'].includes(trx.status);
+                if (selectedStatus === 'selesai') return trx.status === 'selesai';
+                if (selectedStatus === 'batal') return trx.status === 'batal';
+                return true;
+            })
+    );
 </script>
+
+<style>
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
 
 <StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+            <div class="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
                 <Link href="/" class="p-2 hover:bg-slate-100 rounded-full transition">
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                 </Link>
@@ -54,111 +78,180 @@
             </div>
         </div>
 
-        <div class="max-w-3xl mx-auto px-4 py-4 pb-12">
+        <div class="max-w-5xl mx-auto px-4 py-6 pb-12">
             {#if transactions.data.length === 0}
-                <div class="flex flex-col items-center justify-center py-20 text-center">
+                <div class="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm p-8 max-w-lg mx-auto">
                     <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                         <i class="ti ti-shopping-bag text-3xl text-slate-300"></i>
                     </div>
                     <p class="font-bold text-slate-700 text-lg mb-1">Belum ada pesanan</p>
-                    <p class="text-sm text-slate-400 mb-6">Mulai belanja dan pesananmu akan muncul di sini.</p>
+                    <p class="text-sm text-slate-400 mb-6 font-medium">Mulai belanja dan pesananmu akan muncul di sini.</p>
                     <Link
                         href="/"
-                        class="px-6 py-3 rounded-xl font-bold text-white transition"
+                        class="px-6 py-3 rounded-xl font-bold text-white transition active:scale-95 hover:opacity-95 shadow-md shadow-brand-blueRoyal/15"
                         style="background:{primary}"
                     >Mulai Belanja</Link>
                 </div>
             {:else}
-                <div class="space-y-3">
-                    {#each transactions.data as trx}
-                        {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
-                        <Link
-                            href="/transactions/{trx.id}"
-                            class="block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                            <!-- Transaction Header -->
-                            <div class="px-4 pt-3 pb-2 flex items-center justify-between border-b border-slate-50">
-                                <div>
-                                    <p class="text-xs font-bold text-slate-800">{trx.transaction_number}</p>
-                                    <p class="text-xs text-slate-400 mt-0.5">{fmtDate(trx.created_at)}</p>
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Left Sidebar (Desktop Only) -->
+                    <div class="hidden lg:block space-y-4">
+                        <!-- User Card -->
+                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md shadow-brand-blueRoyal/10" style="background:{primary}">
+                                    {(page.props.auth?.user?.name ?? 'C').substring(0, 2).toUpperCase()}
                                 </div>
-                                <span
-                                    class="text-[10px] font-black px-2.5 py-1 rounded-full"
-                                    style="background:{statusStyle.bg}; color:{statusStyle.text}"
-                                >
-                                    {statusLabels[trx.status] ?? trx.status}
-                                </span>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-slate-800 text-sm truncate">{page.props.auth?.user?.name ?? 'Pelanggan'}</p>
+                                    <p class="text-xs text-slate-400 font-medium truncate mt-0.5">{page.props.auth?.user?.email ?? ''}</p>
+                                </div>
                             </div>
+                        </div>
 
-                            <!-- Items Preview -->
-                            <div class="px-4 py-2">
-                                {#each (trx.items ?? []).slice(0, 2) as item}
-                                    <div class="flex items-center gap-2 py-1">
-                                        {#if item.product_image}
-                                            <img
-                                                src={formatImagePath(item.product_image)}
-                                                alt={item.product_name}
-                                                class="w-10 h-10 object-cover rounded-lg shrink-0 border border-slate-100"
-                                                onerror={(e: any) => { e.target.src = '/images/placeholder.png'; }}
-                                            />
-                                        {:else}
-                                            <div class="w-10 h-10 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center">
-                                                <i class="ti ti-package text-slate-300 text-sm"></i>
+                        <!-- Sidebar Menu -->
+                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-2">
+                            <Link href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition">
+                                <i class="ti ti-smart-home text-base text-slate-400"></i>
+                                Belanja Lagi
+                            </Link>
+                            <Link href="/chats?tanya=1" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition">
+                                <i class="ti ti-message-2 text-base text-slate-400"></i>
+                                Hubungi Penjual
+                            </Link>
+                        </div>
+                    </div>
+
+                    <!-- Right Main Content -->
+                    <div class="lg:col-span-3 space-y-4">
+                        <!-- Navigation Status Tabs -->
+                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5 overflow-x-auto scrollbar-none flex gap-1.5 sticky top-[56px] lg:top-auto z-20">
+                            {#each [
+                                { key: 'all', label: 'Semua', count: transactions.data.length },
+                                { key: 'belum_bayar', label: 'Belum Bayar', count: transactions.data.filter(t => t.status === 'belum_bayar').length },
+                                { key: 'berjalan', label: 'Dalam Proses', count: transactions.data.filter(t => ['menunggu', 'diproses', 'dikemas', 'dikirim'].includes(t.status)).length },
+                                { key: 'selesai', label: 'Selesai', count: transactions.data.filter(t => t.status === 'selesai').length },
+                                { key: 'batal', label: 'Dibatalkan', count: transactions.data.filter(t => t.status === 'batal').length }
+                            ] as tab}
+                                {@const isActive = selectedStatus === tab.key}
+                                <button
+                                    onclick={() => (selectedStatus = tab.key)}
+                                    class="px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer flex-grow text-center justify-center {isActive ? 'text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}"
+                                    style={isActive ? `background-color:${primary}; box-shadow: 0 4px 10px -2px ${primary}30;` : ''}
+                                >
+                                    {tab.label}
+                                    {#if tab.count > 0}
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-black leading-none {isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}">
+                                            {tab.count}
+                                        </span>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+
+                        <!-- Transactions Listing -->
+                        {#if filteredTransactions.length === 0}
+                            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center text-slate-400">
+                                <i class="ti ti-clipboard-text text-4xl text-slate-200 mb-2 block"></i>
+                                <p class="text-xs font-bold">Tidak ada transaksi dengan status ini</p>
+                            </div>
+                        {:else}
+                            <div class="space-y-4">
+                                {#each filteredTransactions as trx}
+                                    {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
+                                    <Link
+                                        href="/transactions/{trx.id}"
+                                        class="block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition duration-200"
+                                    >
+                                        <!-- Transaction Header -->
+                                        <div class="px-4 py-3 flex items-center justify-between border-b border-slate-50 bg-slate-50/20">
+                                            <div>
+                                                <p class="text-xs font-bold text-slate-800">{trx.transaction_number}</p>
+                                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{fmtDate(trx.created_at)}</p>
                                             </div>
-                                        {/if}
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-xs font-semibold text-slate-800 truncate">{item.product_name}</p>
-                                            {#if item.variant_name}
-                                                <p class="text-[10px] text-slate-400">{item.variant_name}</p>
+                                            <span
+                                                class="text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider border"
+                                                style="background:{statusStyle.bg}; color:{statusStyle.text}; border-color:{statusStyle.text}15;"
+                                            >
+                                                {statusLabels[trx.status] ?? trx.status}
+                                            </span>
+                                        </div>
+
+                                        <!-- Items Preview -->
+                                        <div class="px-4 py-3 divide-y divide-slate-50">
+                                            {#each (trx.items ?? []).slice(0, 2) as item}
+                                                <div class="flex items-center gap-3 py-2">
+                                                    {#if item.product_image}
+                                                        <img
+                                                            src={formatImagePath(item.product_image)}
+                                                            alt={item.product_name}
+                                                            class="w-12 h-12 object-cover rounded-xl shrink-0 border border-slate-100"
+                                                            onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
+                                                        />
+                                                    {:else}
+                                                        <div class="w-12 h-12 rounded-xl bg-slate-50 shrink-0 flex items-center justify-center border border-slate-100">
+                                                            <i class="ti ti-package text-slate-300 text-lg"></i>
+                                                        </div>
+                                                    {/if}
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-xs font-bold text-slate-800 whitespace-pre-wrap break-words leading-tight">{item.product_name}</p>
+                                                        {#if item.variant_name}
+                                                            <span class="inline-block text-[9px] font-bold px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-slate-500 mt-1">{item.variant_name}</span>
+                                                        {/if}
+                                                    </div>
+                                                    <div class="text-right shrink-0">
+                                                        <p class="text-xs text-slate-400 font-bold">x{item.quantity}</p>
+                                                        <p class="text-xs font-bold text-slate-700 mt-0.5">{fmt(item.harga_akhir ?? item.harga_jual)}</p>
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                            {#if (trx.items ?? []).length > 2}
+                                                <p class="text-xs text-slate-400 font-bold mt-2 pt-2 border-t border-slate-50">+{(trx.items ?? []).length - 2} produk lainnya</p>
                                             {/if}
                                         </div>
-                                        <span class="text-xs text-slate-500 shrink-0">x{item.quantity}</span>
-                                    </div>
+
+                                        <!-- Footer -->
+                                        <div class="px-4 py-3 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between">
+                                            <div>
+                                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pembayaran</span>
+                                                <p class="text-sm font-black mt-0.5" style="color:{primary}">{fmt(trx.grand_total)}</p>
+                                            </div>
+                                            <div class="flex items-center gap-1 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-50 hover:text-slate-700 hover:shadow-3xs transition">
+                                                <span>Lihat Detail</span>
+                                                <i class="ti ti-chevron-right text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </Link>
                                 {/each}
-                                {#if (trx.items ?? []).length > 2}
-                                    <p class="text-xs text-slate-400 mt-1">+{(trx.items ?? []).length - 2} produk lainnya</p>
+                            </div>
+                        {/if}
+
+                        <!-- Pagination -->
+                        {#if transactions.last_page > 1}
+                            <div class="flex items-center justify-center gap-2 mt-6">
+                                {#if transactions.prev_page_url}
+                                    <Link
+                                        href={transactions.prev_page_url}
+                                        class="px-4 py-2 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                                    >
+                                        <i class="ti ti-chevron-left"></i>
+                                    </Link>
+                                {/if}
+                                <span class="text-sm font-bold text-slate-500">
+                                    Halaman {transactions.current_page} dari {transactions.last_page}
+                                </span>
+                                {#if transactions.next_page_url}
+                                    <Link
+                                        href={transactions.next_page_url}
+                                        class="px-4 py-2 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                                    >
+                                        <i class="ti ti-chevron-right"></i>
+                                    </Link>
                                 {/if}
                             </div>
-
-                            <!-- Footer -->
-                            <div class="px-4 py-2.5 border-t border-slate-50 flex items-center justify-between">
-                                <div>
-                                    <span class="text-xs text-slate-500">Total Pembayaran</span>
-                                    <p class="text-sm font-black" style="color:{primary}">{fmt(trx.grand_total)}</p>
-                                </div>
-                                <div class="flex items-center gap-1 text-xs text-slate-500">
-                                    <span>Lihat Detail</span>
-                                    <i class="ti ti-chevron-right text-sm"></i>
-                                </div>
-                            </div>
-                        </Link>
-                    {/each}
-                </div>
-
-                <!-- Pagination -->
-                {#if transactions.last_page > 1}
-                    <div class="flex items-center justify-center gap-2 mt-6">
-                        {#if transactions.prev_page_url}
-                            <Link
-                                href={transactions.prev_page_url}
-                                class="px-4 py-2 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-                            >
-                                <i class="ti ti-chevron-left"></i>
-                            </Link>
-                        {/if}
-                        <span class="text-sm text-slate-500">
-                            Halaman {transactions.current_page} dari {transactions.last_page}
-                        </span>
-                        {#if transactions.next_page_url}
-                            <Link
-                                href={transactions.next_page_url}
-                                class="px-4 py-2 rounded-xl border-2 border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-                            >
-                                <i class="ti ti-chevron-right"></i>
-                            </Link>
                         {/if}
                     </div>
-                {/if}
+                </div>
             {/if}
         </div>
     </div>

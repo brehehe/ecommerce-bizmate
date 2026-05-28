@@ -116,6 +116,14 @@
             onFinish: () => { isUpdating = false; },
         });
     }
+
+    function formatImagePath(path: string | null | undefined): string {
+        if (!path) return '/noimage/image.png';
+        if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
+            return path;
+        }
+        return '/storage/' + path;
+    }
 </script>
 
 <AdminLayout>
@@ -190,7 +198,7 @@
                                 <div>
                                     <p class="font-outfit font-black text-rose-800 text-sm uppercase tracking-wider">Pesanan Dibatalkan</p>
                                     {#if transaction.cancel_reason}
-                                        <p class="text-xs text-rose-600/90 font-medium mt-1 leading-relaxed">{transaction.cancel_reason}</p>
+                                        <p class="text-xs text-rose-600/90 font-medium mt-1 leading-relaxed whitespace-pre-wrap break-words">{transaction.cancel_reason}</p>
                                     {/if}
                                 </div>
                             </div>
@@ -202,9 +210,9 @@
                         <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
                             <h3 class="font-outfit font-black text-slate-800 text-sm mb-4 uppercase tracking-wider">Bukti Pembayaran</h3>
                             <div class="flex flex-col sm:flex-row gap-5">
-                                <a href="/storage/{latestPayment.proof_image}" target="_blank" class="shrink-0 group relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm block">
+                                <a href={formatImagePath(latestPayment.proof_image)} target="_blank" class="shrink-0 group relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm block">
                                     <img
-                                        src="/storage/{latestPayment.proof_image}"
+                                        src={formatImagePath(latestPayment.proof_image)}
                                         alt="Bukti Bayar"
                                         class="w-36 h-36 object-cover hover:scale-105 transition duration-300"
                                     />
@@ -229,7 +237,7 @@
                                                 <div>
                                                     <p class="text-sm font-bold">Pembayaran Ditolak</p>
                                                     {#if latestPayment.notes}
-                                                        <p class="text-xs text-rose-500 font-medium mt-0.5 leading-relaxed">{latestPayment.notes}</p>
+                                                        <p class="text-xs text-rose-500 font-medium mt-0.5 leading-relaxed whitespace-pre-wrap break-words">{latestPayment.notes}</p>
                                                     {/if}
                                                 </div>
                                             </div>
@@ -273,10 +281,10 @@
                                 <div class="p-6 flex gap-4 hover:bg-slate-50/20 transition">
                                     {#if item.product_image}
                                         <img
-                                            src="/storage/{item.product_image}"
+                                            src={formatImagePath(item.product_image)}
                                             alt={item.product_name}
                                             class="w-16 h-16 object-cover rounded-2xl shrink-0 border border-slate-200/60 shadow-sm"
-                                            onerror={(e: any) => { e.target.src = '/images/placeholder.png'; }}
+                                            onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
                                         />
                                     {:else}
                                         <div class="w-16 h-16 rounded-2xl bg-slate-50 shrink-0 flex items-center justify-center border border-slate-200/60">
@@ -284,11 +292,11 @@
                                         </div>
                                     {/if}
                                     <div class="flex-1">
-                                        <p class="text-sm font-bold text-slate-800 leading-snug">{item.product_name}</p>
+                                        <p class="text-sm font-bold text-slate-800 leading-snug whitespace-pre-wrap break-words">{item.product_name}</p>
                                         {#if item.variant_name}
-                                            <span class="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded mt-1">{item.variant_name}</span>
+                                            <span class="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded mt-1 whitespace-pre-wrap break-words">{item.variant_name}</span>
                                         {/if}
-                                        <p class="text-[10px] text-slate-400 font-bold mt-1">SKU: {item.product_sku}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold mt-1 break-all">SKU: {item.product_sku}</p>
                                         <div class="grid grid-cols-4 gap-2 mt-3 text-xs">
                                             <div>
                                                 <p class="text-slate-400 font-bold text-[10px] uppercase">HPP</p>
@@ -334,9 +342,22 @@
                         </div>
                         {#if customerAddress}
                             <div class="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 text-xs space-y-1">
-                                <p class="font-bold text-slate-700">{customerAddress.receiver_name}</p>
-                                <p class="text-slate-500 font-semibold">{customerAddress.phone_number}</p>
-                                <p class="text-slate-600 leading-relaxed font-medium pt-1 border-t border-slate-100 mt-1">{customerAddress.full_address}</p>
+                                <p class="font-bold text-slate-700 whitespace-pre-wrap break-words">{customerAddress.receiver_name}</p>
+                                <p class="text-slate-500 font-semibold break-all">{customerAddress.phone_number}</p>
+                                <p class="text-slate-600 leading-relaxed font-medium pt-1 border-t border-slate-100 mt-1 whitespace-pre-wrap break-words">{customerAddress.full_address}</p>
+                                {#if customerAddress.regency_name}
+                                    <p class="text-[11px] text-slate-400 font-semibold mt-0.5">{customerAddress.district_name}, {customerAddress.regency_name}, {customerAddress.province_name} {customerAddress.postal_code}</p>
+                                {/if}
+                                {#if transaction.shipping_courier}
+                                    <div class="mt-2.5 pt-2.5 border-t border-slate-200/60 flex items-center gap-2 text-[11px] text-slate-500">
+                                        <i class="ti ti-truck text-slate-400 text-sm"></i>
+                                        <span class="font-bold uppercase text-slate-700">{transaction.shipping_courier}</span>
+                                        <span class="font-semibold text-slate-600">{transaction.shipping_service}</span>
+                                        {#if transaction.shipping_etd}
+                                            <span class="text-slate-400">· Est. {transaction.shipping_etd} hari</span>
+                                        {/if}
+                                    </div>
+                                {/if}
                             </div>
                         {/if}
                     </div>
@@ -397,7 +418,7 @@
                     {#if transaction.notes}
                         <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
                             <h3 class="font-outfit font-black text-slate-800 text-sm mb-2.5 uppercase tracking-wider">Catatan</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed font-medium">{transaction.notes}</p>
+                            <p class="text-xs text-slate-600 leading-relaxed font-medium whitespace-pre-wrap break-words">{transaction.notes}</p>
                         </div>
                     {/if}
                 </div>

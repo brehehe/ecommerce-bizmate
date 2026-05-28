@@ -138,11 +138,11 @@
                                     {@const typeStyle = typeColors[mov.type] ?? { bg: '#f1f5f9', text: '#475569', icon: 'ti-circle' }}
                                     <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100">
                                         <td class="py-6 px-6">
-                                            <p class="font-bold text-slate-800">{mov.product?.name ?? '-'}</p>
+                                            <p class="font-bold text-slate-800 whitespace-pre-wrap break-words">{mov.product?.name ?? '-'}</p>
                                             {#if mov.productVariant}
-                                                <p class="text-[11px] text-slate-400 font-bold mt-0.5">SKU: {mov.productVariant.sku}</p>
+                                                <p class="text-[11px] text-slate-400 font-bold mt-0.5 break-all">SKU: {mov.productVariant.sku}</p>
                                             {:else if mov.product?.sku}
-                                                <p class="text-[11px] text-slate-400 font-bold mt-0.5">SKU: {mov.product.sku}</p>
+                                                <p class="text-[11px] text-slate-400 font-bold mt-0.5 break-all">SKU: {mov.product.sku}</p>
                                             {/if}
                                         </td>
                                         <td class="py-6 px-6">
@@ -172,7 +172,7 @@
                                             {#if mov.transaction}
                                                 <a
                                                     href="/admin/transactions/{mov.transaction.id}"
-                                                    class="text-xs font-mono font-bold hover:underline"
+                                                    class="text-xs font-mono font-bold hover:underline break-all"
                                                     style="color:{primary}"
                                                 >
                                                     {mov.transaction.transaction_number}
@@ -182,7 +182,7 @@
                                             {/if}
                                         </td>
                                         <td class="py-6 px-6">
-                                            <span class="text-xs text-slate-500 font-bold">{mov.notes ?? '-'}</span>
+                                            <span class="text-xs text-slate-500 font-bold whitespace-pre-wrap break-words">{mov.notes ?? '-'}</span>
                                         </td>
                                         <td class="py-6 px-6">
                                             <span class="text-xs text-slate-500 font-bold">{fmtDate(mov.created_at)}</span>
