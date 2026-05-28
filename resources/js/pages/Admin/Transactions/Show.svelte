@@ -118,59 +118,61 @@
     }
 </script>
 
-<AdminLayout {storeName} {storeLogo}>
+<AdminLayout>
     <div class="space-y-6">
         <!-- Header -->
-        <div class="flex items-center gap-3">
-            <a
-                href="/admin/transactions"
-                class="p-2 hover:bg-slate-100 rounded-xl transition"
-            >
-                <i class="ti ti-arrow-left text-xl text-slate-700"></i>
-            </a>
-            <div class="flex-1">
-                <h1 class="text-xl font-black text-slate-800">{transaction.transaction_number}</h1>
-                <p class="text-sm text-slate-500">{fmtDate(transaction.created_at)}</p>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <a
+                    href="/admin/transactions"
+                    class="p-2.5 hover:bg-slate-100 rounded-xl border border-slate-200 text-slate-600 transition flex items-center justify-center"
+                >
+                    <i class="ti ti-arrow-left text-lg"></i>
+                </a>
+                <div>
+                    <h3 class="font-outfit font-black text-2xl text-slate-800 flex items-center gap-2">{transaction.transaction_number}</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">{fmtDate(transaction.created_at)}</p>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end">
                 <span
-                    class="text-xs font-black px-3 py-1.5 rounded-full"
-                    style="background:{(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).bg}; color:{(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).text}"
+                    class="text-[10px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider border"
+                    style="background:{(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).bg}; color:{(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).text}; border-color:{(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).text}20;"
                 >
                     {statusLabels[transaction.status] ?? transaction.status}
                 </span>
                 <button
                     onclick={() => (showStatusModal = true)}
-                    class="px-4 py-2 rounded-xl text-sm font-bold text-white transition"
-                    style="background:{primary}"
+                    class="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition font-outfit uppercase tracking-wider shadow-lg flex items-center gap-1.5"
+                    style="background:{primary}; box-shadow: 0 4px 12px -2px {primary}40;"
                 >
-                    <i class="ti ti-edit text-sm mr-1"></i>Ubah Status
+                    <i class="ti ti-edit text-sm"></i>Ubah Status
                 </button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Main Content -->
-            <div class="lg:col-span-2 space-y-4">
+            <div class="lg:col-span-2 space-y-6">
                 <!-- Status Tracker -->
                 {#if transaction.status !== 'batal'}
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                        <h3 class="font-bold text-slate-800 text-sm mb-4">Perjalanan Pesanan</h3>
-                        <div class="flex items-start justify-between relative">
-                            <div class="absolute left-4 right-4 top-4 h-0.5 bg-slate-200 z-0"></div>
+                    <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+                        <h3 class="font-outfit font-black text-slate-800 text-sm mb-5 uppercase tracking-wider">Perjalanan Pesanan</h3>
+                        <div class="flex items-start justify-between relative px-2">
+                            <div class="absolute left-6 right-6 top-4 h-0.5 bg-slate-100 z-0"></div>
                             {#each statusSteps as step, i}
                                 {@const isCompleted = statusIndex >= i}
                                 {@const isCurrent = statusIndex === i}
-                                <div class="flex flex-col items-center gap-1 z-10 flex-1">
+                                <div class="flex flex-col items-center gap-1.5 z-10 flex-1">
                                     <div
-                                        class="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all"
+                                        class="w-8.5 h-8.5 rounded-full flex items-center justify-center border-2 transition-all shadow-sm"
                                         style={isCompleted
                                             ? `background:${primary}; border-color:${primary}`
                                             : 'background:white; border-color:#e2e8f0'}
                                     >
                                         <i class="ti {step.icon} text-sm" style={isCompleted ? 'color:white' : 'color:#94a3b8'}></i>
                                     </div>
-                                    <span class="text-[9px] font-semibold text-center" style={isCurrent ? `color:${primary}` : isCompleted ? 'color:#64748b' : 'color:#94a3b8'}>
+                                    <span class="text-[9px] font-bold text-center uppercase tracking-wider" style={isCurrent ? `color:${primary}` : isCompleted ? 'color:#64748b' : 'color:#94a3b8'}>
                                         {step.label}
                                     </span>
                                 </div>
@@ -178,13 +180,15 @@
                         </div>
                     </div>
                 {:else}
-                    <div class="bg-red-50 border border-red-200 rounded-2xl p-4">
-                        <div class="flex items-center gap-3">
-                            <i class="ti ti-x text-2xl text-red-500"></i>
+                    <div class="bg-rose-50 border border-rose-200/60 rounded-3xl p-6">
+                        <div class="flex items-start gap-3">
+                            <div class="p-2 bg-rose-100 text-rose-600 rounded-xl">
+                                <i class="ti ti-circle-x text-2xl"></i>
+                            </div>
                             <div>
-                                <p class="font-bold text-red-700">Pesanan Dibatalkan</p>
+                                <p class="font-outfit font-black text-rose-800 text-sm uppercase tracking-wider">Pesanan Dibatalkan</p>
                                 {#if transaction.cancel_reason}
-                                    <p class="text-xs text-red-600">{transaction.cancel_reason}</p>
+                                    <p class="text-xs text-rose-600/90 font-medium mt-1 leading-relaxed">{transaction.cancel_reason}</p>
                                 {/if}
                             </div>
                         </div>
@@ -193,47 +197,62 @@
 
                 <!-- Payment Proof Review -->
                 {#if latestPayment?.proof_image}
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                        <h3 class="font-bold text-slate-800 text-sm mb-3">Bukti Pembayaran</h3>
-                        <div class="flex gap-4">
-                            <a href="/storage/{latestPayment.proof_image}" target="_blank" class="shrink-0">
+                    <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+                        <h3 class="font-outfit font-black text-slate-800 text-sm mb-4 uppercase tracking-wider">Bukti Pembayaran</h3>
+                        <div class="flex flex-col sm:flex-row gap-5">
+                            <a href="/storage/{latestPayment.proof_image}" target="_blank" class="shrink-0 group relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm block">
                                 <img
                                     src="/storage/{latestPayment.proof_image}"
                                     alt="Bukti Bayar"
-                                    class="w-32 h-32 object-cover rounded-xl border border-slate-200 hover:opacity-90 transition"
+                                    class="w-36 h-36 object-cover hover:scale-105 transition duration-300"
                                 />
+                                <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none">
+                                    <i class="ti ti-zoom-in text-lg mr-1"></i> Lihat
+                                </div>
                             </a>
-                            <div class="flex-1">
-                                <p class="text-xs text-slate-500">Diunggah: {fmtDate(latestPayment.proof_uploaded_at)}</p>
-                                {#if latestPayment.status === 'confirmed'}
-                                    <div class="mt-2 flex items-center gap-2 text-green-600">
-                                        <i class="ti ti-circle-check text-lg"></i>
-                                        <p class="text-sm font-bold">Dikonfirmasi oleh {latestPayment.confirmedByUser?.name}</p>
-                                    </div>
-                                    <p class="text-xs text-slate-400">{fmtDate(latestPayment.confirmed_at)}</p>
-                                {:else if latestPayment.status === 'rejected'}
-                                    <div class="mt-2 flex items-center gap-2 text-red-600">
-                                        <i class="ti ti-x text-lg"></i>
-                                        <p class="text-sm font-bold">Ditolak</p>
-                                    </div>
-                                    {#if latestPayment.notes}
-                                        <p class="text-xs text-red-500">{latestPayment.notes}</p>
+                            <div class="flex-1 flex flex-col justify-between">
+                                <div>
+                                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Tanggal Unggah</p>
+                                    <p class="text-xs text-slate-600 font-semibold mt-0.5">{fmtDate(latestPayment.proof_uploaded_at)}</p>
+                                    
+                                    {#if latestPayment.status === 'confirmed'}
+                                        <div class="mt-3 flex items-center gap-2 text-emerald-600">
+                                            <i class="ti ti-circle-check text-lg"></i>
+                                            <p class="text-sm font-bold">Dikonfirmasi oleh {latestPayment.confirmedByUser?.name}</p>
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 font-medium mt-0.5 ml-7">{fmtDate(latestPayment.confirmed_at)}</p>
+                                    {:else if latestPayment.status === 'rejected'}
+                                        <div class="mt-3 flex items-start gap-2 text-rose-600">
+                                            <i class="ti ti-circle-x text-lg mt-0.5"></i>
+                                            <div>
+                                                <p class="text-sm font-bold">Pembayaran Ditolak</p>
+                                                {#if latestPayment.notes}
+                                                    <p class="text-xs text-rose-500 font-medium mt-0.5 leading-relaxed">{latestPayment.notes}</p>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    {:else}
+                                        <div class="mt-3 flex items-center gap-1.5 text-amber-600">
+                                            <i class="ti ti-hourglass text-lg"></i>
+                                            <p class="text-sm font-bold uppercase tracking-wider">Menunggu Konfirmasi</p>
+                                        </div>
                                     {/if}
-                                {:else}
-                                    <p class="text-sm font-semibold text-amber-600 mt-1">Menunggu Konfirmasi</p>
-                                    <div class="flex gap-2 mt-3">
+                                </div>
+
+                                {#if latestPayment.status !== 'confirmed' && latestPayment.status !== 'rejected'}
+                                    <div class="flex gap-2 mt-4">
                                         <button
                                             onclick={confirmPayment}
                                             disabled={isUpdating}
-                                            class="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold text-white bg-green-500 hover:bg-green-600 transition disabled:opacity-50"
+                                            class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition shadow-md shadow-emerald-500/10 uppercase tracking-wider font-outfit disabled:opacity-50"
                                         >
-                                            <i class="ti ti-check text-sm"></i>Konfirmasi
+                                            <i class="ti ti-check text-base"></i>Konfirmasi
                                         </button>
                                         <button
                                             onclick={() => (showRejectModal = true)}
-                                            class="flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition"
+                                            class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 transition shadow-md shadow-rose-500/10 uppercase tracking-wider font-outfit"
                                         >
-                                            <i class="ti ti-x text-sm"></i>Tolak
+                                            <i class="ti ti-x text-base"></i>Tolak
                                         </button>
                                     </div>
                                 {/if}
@@ -243,53 +262,53 @@
                 {/if}
 
                 <!-- Items -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="px-4 pt-4 pb-2">
-                        <h3 class="font-bold text-slate-800 text-sm">Produk Dipesan</h3>
+                <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
+                    <div class="px-6 pt-5 pb-3 bg-slate-50/50 border-b border-slate-100">
+                        <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider">Produk Dipesan</h3>
                     </div>
-                    <div class="divide-y divide-slate-50">
+                    <div class="divide-y divide-slate-100">
                         {#each transaction.items ?? [] as item}
-                            <div class="px-4 py-3 flex gap-3">
+                            <div class="p-6 flex gap-4 hover:bg-slate-50/20 transition">
                                 {#if item.product_image}
                                     <img
                                         src="/storage/{item.product_image}"
                                         alt={item.product_name}
-                                        class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
+                                        class="w-16 h-16 object-cover rounded-2xl shrink-0 border border-slate-200/60 shadow-sm"
                                         onerror={(e: any) => { e.target.src = '/images/placeholder.png'; }}
                                     />
                                 {:else}
-                                    <div class="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center">
+                                    <div class="w-16 h-16 rounded-2xl bg-slate-50 shrink-0 flex items-center justify-center border border-slate-200/60">
                                         <i class="ti ti-package text-2xl text-slate-300"></i>
                                     </div>
                                 {/if}
                                 <div class="flex-1">
-                                    <p class="text-sm font-semibold text-slate-800">{item.product_name}</p>
+                                    <p class="text-sm font-bold text-slate-800 leading-snug">{item.product_name}</p>
                                     {#if item.variant_name}
-                                        <p class="text-xs text-slate-500">{item.variant_name}</p>
+                                        <span class="inline-block px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded mt-1">{item.variant_name}</span>
                                     {/if}
-                                    <p class="text-xs text-slate-400 mt-0.5">SKU: {item.product_sku}</p>
-                                    <div class="grid grid-cols-4 gap-2 mt-2 text-xs">
+                                    <p class="text-[10px] text-slate-400 font-bold mt-1">SKU: {item.product_sku}</p>
+                                    <div class="grid grid-cols-4 gap-2 mt-3 text-xs">
                                         <div>
-                                            <p class="text-slate-400">HPP</p>
-                                            <p class="font-semibold text-slate-700">{fmt(item.hpp)}</p>
+                                            <p class="text-slate-400 font-bold text-[10px] uppercase">HPP</p>
+                                            <p class="font-semibold text-slate-700 mt-0.5">{fmt(item.hpp)}</p>
                                         </div>
                                         <div>
-                                            <p class="text-slate-400">Harga Jual</p>
-                                            <p class="font-semibold text-slate-700">{fmt(item.harga_jual)}</p>
+                                            <p class="text-slate-400 font-bold text-[10px] uppercase">Harga</p>
+                                            <p class="font-semibold text-slate-700 mt-0.5">{fmt(item.harga_jual)}</p>
                                         </div>
                                         <div>
-                                            <p class="text-slate-400">Diskon</p>
-                                            <p class="font-semibold text-slate-700">{fmt(item.diskon_item)}</p>
+                                            <p class="text-slate-400 font-bold text-[10px] uppercase">Diskon</p>
+                                            <p class="font-semibold text-slate-700 mt-0.5">{fmt(item.diskon_item)}</p>
                                         </div>
                                         <div>
-                                            <p class="text-slate-400">Qty</p>
-                                            <p class="font-semibold text-slate-700">{item.quantity}</p>
+                                            <p class="text-slate-400 font-bold text-[10px] uppercase">Qty</p>
+                                            <p class="font-bold text-slate-800 mt-0.5">×{item.quantity}</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="text-right shrink-0">
-                                    <p class="text-xs text-slate-400">Subtotal</p>
-                                    <p class="text-sm font-black text-slate-800">{fmt(item.subtotal)}</p>
+                                <div class="text-right shrink-0 flex flex-col justify-center">
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase">Subtotal</p>
+                                    <p class="text-sm font-black text-slate-800 mt-0.5">{fmt(item.subtotal)}</p>
                                 </div>
                             </div>
                         {/each}
@@ -298,75 +317,75 @@
             </div>
 
             <!-- Sidebar -->
-            <div class="space-y-4">
+            <div class="space-y-6">
                 <!-- Customer Info -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                    <h3 class="font-bold text-slate-800 text-sm mb-3">Informasi Customer</h3>
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0" style="background:{primary}">
+                <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+                    <h3 class="font-outfit font-black text-slate-800 text-sm mb-4 uppercase tracking-wider">Customer</h3>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md shadow-brand-blueRoyal/10" style="background:{primary}">
                             {(transaction.user?.name ?? 'C').substring(0, 2).toUpperCase()}
                         </div>
                         <div>
-                            <p class="font-semibold text-slate-800 text-sm">{transaction.user?.name}</p>
-                            <p class="text-xs text-slate-500">{transaction.user?.email}</p>
+                            <p class="font-bold text-slate-800 text-sm">{transaction.user?.name}</p>
+                            <p class="text-xs text-slate-400 font-medium mt-0.5">{transaction.user?.email}</p>
                         </div>
                     </div>
                     {#if customerAddress}
-                        <div class="bg-slate-50 rounded-xl p-3 text-xs">
-                            <p class="font-semibold text-slate-700">{customerAddress.receiver_name}</p>
-                            <p class="text-slate-500">{customerAddress.phone_number}</p>
-                            <p class="text-slate-600 mt-1 leading-relaxed">{customerAddress.full_address}</p>
+                        <div class="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 text-xs space-y-1">
+                            <p class="font-bold text-slate-700">{customerAddress.receiver_name}</p>
+                            <p class="text-slate-500 font-semibold">{customerAddress.phone_number}</p>
+                            <p class="text-slate-600 leading-relaxed font-medium pt-1 border-t border-slate-100 mt-1">{customerAddress.full_address}</p>
                         </div>
                     {/if}
                 </div>
 
                 <!-- Payment Summary -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                    <h3 class="font-bold text-slate-800 text-sm mb-3">Rincian Pembayaran</h3>
-                    <div class="space-y-1.5 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Subtotal</span>
-                            <span class="font-semibold">{fmt(transaction.subtotal)}</span>
+                <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+                    <h3 class="font-outfit font-black text-slate-800 text-sm mb-4 uppercase tracking-wider">Rincian Pembayaran</h3>
+                    <div class="space-y-3 text-xs font-semibold">
+                        <div class="flex justify-between text-slate-500">
+                            <span>Subtotal</span>
+                            <span class="text-slate-800">{fmt(transaction.subtotal)}</span>
                         </div>
                         {#if transaction.discount_amount > 0}
-                            <div class="flex justify-between text-green-600">
+                            <div class="flex justify-between text-emerald-600">
                                 <span>Diskon Voucher</span>
-                                <span class="font-semibold">-{fmt(transaction.discount_amount)}</span>
+                                <span class="font-bold">-{fmt(transaction.discount_amount)}</span>
                             </div>
                         {/if}
-                        <div class="flex justify-between">
-                            <span class="text-slate-500">Ongkir ({transaction.shipping_courier?.toUpperCase()} {transaction.shipping_service})</span>
-                            <span class="font-semibold">{fmt(transaction.shipping_fee)}</span>
+                        <div class="flex justify-between text-slate-500">
+                            <span>Ongkir ({transaction.shipping_courier?.toUpperCase()} {transaction.shipping_service})</span>
+                            <span class="text-slate-800">{fmt(transaction.shipping_fee)}</span>
                         </div>
                         {#if transaction.shipping_discount > 0}
-                            <div class="flex justify-between text-green-600">
+                            <div class="flex justify-between text-emerald-600">
                                 <span>Diskon Ongkir</span>
-                                <span>-{fmt(transaction.shipping_discount)}</span>
+                                <span class="font-bold">-{fmt(transaction.shipping_discount)}</span>
                             </div>
                         {/if}
                         {#if transaction.admin_fee > 0}
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Biaya Admin</span>
-                                <span class="font-semibold">{fmt(transaction.admin_fee)}</span>
+                            <div class="flex justify-between text-slate-500">
+                                <span>Biaya Admin</span>
+                                <span class="text-slate-800">{fmt(transaction.admin_fee)}</span>
                             </div>
                         {/if}
                         {#if transaction.application_fee > 0}
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Biaya Aplikasi</span>
-                                <span class="font-semibold">{fmt(transaction.application_fee)}</span>
+                            <div class="flex justify-between text-slate-500">
+                                <span>Biaya Aplikasi</span>
+                                <span class="text-slate-800">{fmt(transaction.application_fee)}</span>
                             </div>
                         {/if}
-                        <div class="border-t border-slate-100 pt-2 flex justify-between">
-                            <span class="font-bold text-slate-800">Total</span>
-                            <span class="font-black text-base" style="color:{primary}">{fmt(transaction.grand_total)}</span>
+                        <div class="border-t border-slate-100 pt-3 flex justify-between items-center">
+                            <span class="font-outfit font-black text-slate-800 text-sm uppercase">Total</span>
+                            <span class="font-outfit font-black text-lg" style="color:{primary}">{fmt(transaction.grand_total)}</span>
                         </div>
                     </div>
                     {#if paymentMethod}
-                        <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                            <i class="ti ti-credit-card mr-1"></i>
-                            {paymentMethod.name}
+                        <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                            <i class="ti ti-credit-card text-sm text-slate-500"></i>
+                            <span class="text-slate-600 font-extrabold">{paymentMethod.name}</span>
                             {#if paymentMethod.type === 'manual' && paymentMethod.bank_name}
-                                · {paymentMethod.bank_name}
+                                <span class="text-slate-400">· {paymentMethod.bank_name}</span>
                             {/if}
                         </div>
                     {/if}
@@ -374,9 +393,9 @@
 
                 <!-- Notes -->
                 {#if transaction.notes}
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                        <h3 class="font-bold text-slate-800 text-sm mb-2">Catatan Customer</h3>
-                        <p class="text-sm text-slate-600">{transaction.notes}</p>
+                    <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+                        <h3 class="font-outfit font-black text-slate-800 text-sm mb-2.5 uppercase tracking-wider">Catatan</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed font-medium">{transaction.notes}</p>
                     </div>
                 {/if}
             </div>
@@ -385,13 +404,13 @@
 
     <!-- Update Status Modal -->
     {#if showStatusModal}
-        <div class="fixed inset-0 z-50 flex items-center justify-center" onclick={() => (showStatusModal = false)}>
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-            <div class="relative z-10 bg-white rounded-2xl p-6 w-full max-w-sm mx-4" onclick={(e: any) => e.stopPropagation()}>
-                <h3 class="font-bold text-slate-800 mb-4">Ubah Status Transaksi</h3>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => (showStatusModal = false)}>
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+            <div class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm" onclick={(e: any) => e.stopPropagation()}>
+                <h3 class="font-outfit font-black text-slate-800 text-lg mb-4 uppercase tracking-wider">Ubah Status</h3>
                 <select
                     bind:value={newStatus}
-                    class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none mb-3 appearance-none bg-white"
+                    class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition mb-4 appearance-none"
                 >
                     {#each Object.entries(statusLabels) as [key, label]}
                         <option value={key}>{label as string}</option>
@@ -401,18 +420,18 @@
                     <textarea
                         bind:value={cancelReason}
                         rows="3"
-                        placeholder="Alasan pembatalan (wajib)"
-                        class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none mb-3 resize-none"
+                        placeholder="Masukkan alasan pembatalan..."
+                        class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition mb-4 resize-none"
                     ></textarea>
                 {/if}
                 <div class="flex gap-3">
-                    <button onclick={() => (showStatusModal = false)} class="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                    <button onclick={() => (showStatusModal = false)} class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition uppercase tracking-wider font-outfit">
                         Batal
                     </button>
                     <button
                         onclick={updateStatus}
                         disabled={isUpdating || (newStatus === 'batal' && !cancelReason.trim())}
-                        class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50"
+                        class="flex-1 py-3 rounded-xl text-xs font-bold text-white transition uppercase tracking-wider font-outfit disabled:opacity-50"
                         style="background:{primary}"
                     >
                         {isUpdating ? 'Menyimpan...' : 'Simpan'}
@@ -424,27 +443,27 @@
 
     <!-- Reject Payment Modal -->
     {#if showRejectModal}
-        <div class="fixed inset-0 z-50 flex items-center justify-center" onclick={() => (showRejectModal = false)}>
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-            <div class="relative z-10 bg-white rounded-2xl p-6 w-full max-w-sm mx-4" onclick={(e: any) => e.stopPropagation()}>
-                <h3 class="font-bold text-slate-800 mb-4">Tolak Pembayaran</h3>
-                <p class="text-sm text-slate-500 mb-3">Masukkan alasan penolakan. Customer akan diminta upload ulang.</p>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => (showRejectModal = false)}>
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+            <div class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm" onclick={(e: any) => e.stopPropagation()}>
+                <h3 class="font-outfit font-black text-slate-800 text-lg mb-2 uppercase tracking-wider text-rose-600">Tolak Pembayaran</h3>
+                <p class="text-xs text-slate-500 mb-4 leading-relaxed font-semibold">Masukkan alasan penolakan. Customer akan diminta untuk mengunggah ulang bukti pembayaran.</p>
                 <textarea
                     bind:value={rejectNotes}
                     rows="3"
-                    placeholder="Alasan penolakan..."
-                    class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none mb-4 resize-none"
+                    placeholder="Masukkan alasan penolakan..."
+                    class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition mb-4 resize-none"
                 ></textarea>
                 <div class="flex gap-3">
-                    <button onclick={() => (showRejectModal = false)} class="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                    <button onclick={() => (showRejectModal = false)} class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition uppercase tracking-wider font-outfit">
                         Batal
                     </button>
                     <button
                         onclick={rejectPayment}
                         disabled={isUpdating}
-                        class="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 transition disabled:opacity-50"
+                        class="flex-1 py-3 rounded-xl text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 transition uppercase tracking-wider font-outfit disabled:opacity-50"
                     >
-                        {isUpdating ? 'Memproses...' : 'Tolak Pembayaran'}
+                        {isUpdating ? 'Memproses...' : 'Tolak'}
                     </button>
                 </div>
             </div>
