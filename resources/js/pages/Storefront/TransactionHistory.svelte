@@ -70,7 +70,7 @@
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
                 <Link href="/" class="p-2 hover:bg-slate-100 rounded-full transition">
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                 </Link>
@@ -78,7 +78,7 @@
             </div>
         </div>
 
-        <div class="max-w-5xl mx-auto px-4 py-6 pb-12">
+        <div class="max-w-6xl mx-auto px-4 py-6 pb-12">
             {#if transactions.data.length === 0}
                 <div class="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm p-8 max-w-lg mx-auto">
                     <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">

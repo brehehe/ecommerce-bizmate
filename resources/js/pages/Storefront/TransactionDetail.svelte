@@ -113,7 +113,7 @@
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
                 <Link href="/transactions" class="p-2 hover:bg-slate-100 rounded-full transition">
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                 </Link>
@@ -124,7 +124,7 @@
             </div>
         </div>
 
-        <div class="max-w-5xl mx-auto px-4 py-6 pb-12">
+        <div class="max-w-6xl mx-auto px-4 py-6 pb-12">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left/Main Column -->
                 <div class="lg:col-span-2 space-y-4">
