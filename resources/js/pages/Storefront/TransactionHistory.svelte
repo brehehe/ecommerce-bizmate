@@ -1,8 +1,15 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
-    import { page, Link } from '@inertiajs/svelte';
+    import { page, router, Link } from '@inertiajs/svelte';
 
-    let { transactions, statusLabels = {}, storeName = '', storeLogo = '' } = $props();
+    let {
+        transactions,
+        statusLabels = {},
+        storeName = '',
+        storeLogo = '',
+        currentStatus = 'all',
+        statusCounts = { all: 0, belum_bayar: 0, berjalan: 0, selesai: 0, batal: 0 }
+    } = $props();
 
     const primary = $derived((page.props as any).theme?.primary_color ?? '#ee4d2d');
 
@@ -41,19 +48,17 @@
         batal: { bg: '#fee2e2', text: '#991b1b' },
     };
 
-    let selectedStatus = $state('all');
+    const selectedStatus = $derived(currentStatus);
 
-    const filteredTransactions = $derived(
-        selectedStatus === 'all'
-            ? transactions.data
-            : transactions.data.filter((trx: any) => {
-                if (selectedStatus === 'belum_bayar') return trx.status === 'belum_bayar';
-                if (selectedStatus === 'berjalan') return ['menunggu', 'diproses', 'dikemas', 'dikirim'].includes(trx.status);
-                if (selectedStatus === 'selesai') return trx.status === 'selesai';
-                if (selectedStatus === 'batal') return trx.status === 'batal';
-                return true;
-            })
-    );
+    function switchTab(statusKey: string) {
+        router.get(
+            '/transactions',
+            { status: statusKey },
+            { preserveState: true, preserveScroll: true, replace: true }
+        );
+    }
+
+    const filteredTransactions = $derived(transactions.data);
 </script>
 
 <style>
@@ -79,7 +84,7 @@
         </div>
 
         <div class="max-w-6xl mx-auto px-4 py-6 pb-12">
-            {#if transactions.data.length === 0}
+            {#if statusCounts.all === 0}
                 <div class="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm p-8 max-w-lg mx-auto">
                     <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                         <i class="ti ti-shopping-bag text-3xl text-slate-300"></i>
@@ -127,15 +132,15 @@
                         <!-- Navigation Status Tabs -->
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5 overflow-x-auto scrollbar-none flex gap-1.5 sticky top-[56px] lg:top-auto z-20">
                             {#each [
-                                { key: 'all', label: 'Semua', count: transactions.data.length },
-                                { key: 'belum_bayar', label: 'Belum Bayar', count: transactions.data.filter(t => t.status === 'belum_bayar').length },
-                                { key: 'berjalan', label: 'Dalam Proses', count: transactions.data.filter(t => ['menunggu', 'diproses', 'dikemas', 'dikirim'].includes(t.status)).length },
-                                { key: 'selesai', label: 'Selesai', count: transactions.data.filter(t => t.status === 'selesai').length },
-                                { key: 'batal', label: 'Dibatalkan', count: transactions.data.filter(t => t.status === 'batal').length }
+                                { key: 'all', label: 'Semua', count: statusCounts.all },
+                                { key: 'belum_bayar', label: 'Belum Bayar', count: statusCounts.belum_bayar },
+                                { key: 'berjalan', label: 'Dalam Proses', count: statusCounts.berjalan },
+                                { key: 'selesai', label: 'Selesai', count: statusCounts.selesai },
+                                { key: 'batal', label: 'Dibatalkan', count: statusCounts.batal }
                             ] as tab}
                                 {@const isActive = selectedStatus === tab.key}
                                 <button
-                                    onclick={() => (selectedStatus = tab.key)}
+                                    onclick={() => switchTab(tab.key)}
                                     class="px-4 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer flex-grow text-center justify-center {isActive ? 'text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}"
                                     style={isActive ? `background-color:${primary}; box-shadow: 0 4px 10px -2px ${primary}30;` : ''}
                                 >
@@ -157,7 +162,7 @@
                             </div>
                         {:else}
                             <div class="space-y-4">
-                                {#each filteredTransactions as trx}
+                                {#each filteredTransactions as trx (trx.id)}
                                     {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
                                     <Link
                                         href="/transactions/{trx.id}"

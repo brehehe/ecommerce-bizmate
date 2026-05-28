@@ -1149,15 +1149,39 @@ class StorefrontController extends Controller
      */
     public function transactionHistory(Request $request)
     {
-        $transactions = Transaction::with([
+        $status = $request->input('status', 'all');
+
+        $query = Transaction::with([
             'paymentMethod:id,name,type',
             'payment',
             'items',
         ])
-            ->where('user_id', $request->user()->id)
-            ->latest()
+            ->where('user_id', $request->user()->id);
+
+        if ($status !== 'all') {
+            if ($status === 'belum_bayar') {
+                $query->where('status', 'belum_bayar');
+            } elseif ($status === 'berjalan') {
+                $query->whereIn('status', ['menunggu', 'diproses', 'dikemas', 'dikirim']);
+            } elseif ($status === 'selesai') {
+                $query->where('status', 'selesai');
+            } elseif ($status === 'batal') {
+                $query->where('status', 'batal');
+            }
+        }
+
+        $transactions = $query->latest()
             ->paginate(10)
             ->withQueryString();
+
+        // Count for all statuses to display in the header tabs accurately
+        $statusCounts = [
+            'all' => Transaction::where('user_id', $request->user()->id)->count(),
+            'belum_bayar' => Transaction::where('user_id', $request->user()->id)->where('status', 'belum_bayar')->count(),
+            'berjalan' => Transaction::where('user_id', $request->user()->id)->whereIn('status', ['menunggu', 'diproses', 'dikemas', 'dikirim'])->count(),
+            'selesai' => Transaction::where('user_id', $request->user()->id)->where('status', 'selesai')->count(),
+            'batal' => Transaction::where('user_id', $request->user()->id)->where('status', 'batal')->count(),
+        ];
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
@@ -1167,6 +1191,8 @@ class StorefrontController extends Controller
             'statusLabels' => Transaction::statusLabels(),
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'currentStatus' => $status,
+            'statusCounts' => $statusCounts,
         ]);
     }
 
