@@ -36,13 +36,11 @@
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
     
-    // Tampilan empty state: true untuk model card (mirip screenshot), false untuk tanpa card
-    let useCardStyle = $state(true);
 
     let initialPromoOnly = filters.promo || false;
 
     // Sync state if props change (Inertia navigate)
-    $effect(() => {
+    $effect(() => { 
         searchQ = filters.q || '';
         selectedCategories = getCategoriesFromFilter(filters.category);
         selectedSort = filters.sort || 'relevance';
@@ -527,11 +525,7 @@
             ═══════════════════════════════════════════════════ -->
             <div class="flex-grow flex flex-col min-w-0">
                 {#if allProducts.length === 0 && !isLoadingMore}
-                    <div 
-                        class={useCardStyle 
-                            ? "bg-white border border-slate-900 rounded-[28px] py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300" 
-                            : "py-12 sm:py-16 px-4 text-center max-w-2xl mx-auto w-full transition-all duration-300"}
-                    >
+                    <div class="bg-white md:border border-slate-900 md:rounded-[28px] py-24 md:py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-auto transition-all duration-300 min-h-[70vh] md:min-h-0 flex flex-col items-center justify-center">
                         <!-- Circular Icon (similar to screenshot) -->
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
                             <i class="ti ti-package-off text-3xl sm:text-4xl"></i>
@@ -553,24 +547,6 @@
                         >
                             Reset Filter
                         </button>
-
-                        <!-- Subtle developer/client option toggle at the bottom -->
-                        <div class="mt-8 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-300">
-                            <span>Opsi Tampilan:</span>
-                            <button 
-                                onclick={() => useCardStyle = true} 
-                                class="px-2 py-0.5 rounded transition {useCardStyle ? 'bg-slate-100 text-slate-600' : 'hover:text-slate-500'}"
-                            >
-                                Dengan Card (Screenshot)
-                            </button>
-                            <span class="text-slate-200">|</span>
-                            <button 
-                                onclick={() => useCardStyle = false} 
-                                class="px-2 py-0.5 rounded transition {!useCardStyle ? 'bg-slate-100 text-slate-600' : 'hover:text-slate-500'}"
-                            >
-                                Tanpa Card
-                            </button>
-                        </div>
                     </div>
                 {:else}
                     <!-- Product Grid -->
