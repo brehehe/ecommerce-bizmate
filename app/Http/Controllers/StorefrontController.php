@@ -1196,6 +1196,10 @@ class StorefrontController extends Controller
                     $invoiceId = $latestPayment->gateway_transaction_id;
                     $secretKey = $transaction->paymentMethod->api_secret ?: config('app.xendit.private_key');
 
+                    if (empty($secretKey)) {
+                        throw new \Exception('Xendit private key is not configured.');
+                    }
+
                     $baseUrl = ($transaction->paymentMethod->settings && isset($transaction->paymentMethod->settings['url']))
                         ? $transaction->paymentMethod->settings['url']
                         : config('app.xendit.url', 'https://api.xendit.co');

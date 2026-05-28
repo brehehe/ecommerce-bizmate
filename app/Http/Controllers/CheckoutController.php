@@ -354,6 +354,10 @@ class CheckoutController extends Controller
                 try {
                     $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
 
+                    if (empty($secretKey)) {
+                        throw new \Exception('Xendit private key is not configured.');
+                    }
+
                     $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
                         ? $paymentMethod->settings['url']
                         : config('app.xendit.url', 'https://api.xendit.co');
