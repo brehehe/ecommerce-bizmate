@@ -137,7 +137,13 @@
                 step = 'map';
             }
         } else if (step === 'list') {
-            router.visit('/');
+            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            const fromParam = urlParams ? urlParams.get('from') : null;
+            if (fromParam === 'checkout') {
+                router.visit('/checkout');
+            } else {
+                router.visit('/');
+            }
         }
     }
 
@@ -626,11 +632,19 @@
                             'success',
                             'top',
                         );
+                        const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+                        if (urlParams && urlParams.get('from') === 'checkout') {
+                            router.visit('/checkout');
+                        }
                     },
                 },
             );
         } else {
             showToast('Alamat utama berhasil dipilih.', 'success', 'top');
+            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+            if (urlParams && urlParams.get('from') === 'checkout') {
+                router.visit('/checkout');
+            }
         }
     }
 </script>
