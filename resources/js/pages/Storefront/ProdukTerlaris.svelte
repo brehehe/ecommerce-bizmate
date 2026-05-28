@@ -193,6 +193,14 @@
             }
         };
     }
+
+    function goBack() {
+        if (window.history.length > 1 && document.referrer && document.referrer.includes(window.location.host)) {
+            window.history.back();
+        } else {
+            router.visit('/');
+        }
+    }
 </script>
 
 <svelte:head>
@@ -211,7 +219,7 @@
         <div class="flex items-center gap-3 px-3 py-2.5 text-white" style="background-color: {primary};">
             <!-- Back button -->
             <button
-                onclick={() => history.back()}
+                onclick={goBack}
                 class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white active:scale-90 transition"
                 aria-label="Kembali"
             >

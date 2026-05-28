@@ -131,12 +131,68 @@ class StorefrontController extends Controller
             $this->applyPromotionsToProduct($rp, $activePromotions);
         }
 
+        // Fetch active bundling promotions that apply to this product (i.e. this product is in buy_items)
+        $bundlingPromos = $activePromotions->filter(function ($promo) use ($product) {
+            if ($promo->type !== 'bundling_gift') {
+                return false;
+            }
+            $bundle = $promo->settings['bundle'] ?? null;
+            if (! $bundle || ! isset($bundle['buy_items'])) {
+                return false;
+            }
+            foreach ($bundle['buy_items'] as $buyItem) {
+                if (isset($buyItem['product_id']) && $buyItem['product_id'] == $product->id) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        // Populate product info for the matched bundling promotions
+        $bundlingPromos->each(function ($promo) {
+            $bundle = $promo->settings['bundle'];
+
+            // Load buy_items products
+            if (isset($bundle['buy_items'])) {
+                foreach ($bundle['buy_items'] as &$buyItem) {
+                    if (! empty($buyItem['product_id'])) {
+                        $prod = Product::with(['productPrice', 'images'])->find($buyItem['product_id']);
+                        if ($prod) {
+                            $buyItem['product_name'] = $prod->name;
+                            $buyItem['product_slug'] = $prod->slug;
+                            $buyItem['product_image'] = $prod->images->first()?->url ?? $prod->images->first()?->path ?? $prod->image;
+                            $buyItem['product_price'] = (float) ($prod->productPrice?->price ?? 0);
+                        }
+                    }
+                }
+            }
+
+            // Load get_items products
+            if (isset($bundle['get_items'])) {
+                foreach ($bundle['get_items'] as &$getItem) {
+                    if (! empty($getItem['product_id'])) {
+                        $prod = Product::with(['productPrice', 'images'])->find($getItem['product_id']);
+                        if ($prod) {
+                            $getItem['product_name'] = $prod->name;
+                            $getItem['product_slug'] = $prod->slug;
+                            $getItem['product_image'] = $prod->images->first()?->url ?? $prod->images->first()?->path ?? $prod->image;
+                            $getItem['product_price'] = (float) ($prod->productPrice?->price ?? 0);
+                        }
+                    }
+                }
+            }
+
+            $promo->settings = array_merge($promo->settings, ['bundle' => $bundle]);
+        });
+
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
 
         return Inertia::render('Storefront/Product', [
             'product' => $product,
             'relatedProducts' => $relatedProducts,
             'storeName' => $storeName,
+            'bundlingPromos' => $bundlingPromos->values(),
         ]);
     }
 

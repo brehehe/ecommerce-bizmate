@@ -39,6 +39,45 @@ class CartController extends Controller
             ->where('end_time', '>=', now())
             ->get();
 
+        // Populate product info for bundling_gift promotions so the frontend has access to names, images, etc.
+        $activePromotions->each(function ($promo) {
+            if ($promo->type === 'bundling_gift' && isset($promo->settings['bundle'])) {
+                $bundle = $promo->settings['bundle'];
+
+                // Load buy_items products
+                if (isset($bundle['buy_items'])) {
+                    foreach ($bundle['buy_items'] as &$buyItem) {
+                        if (! empty($buyItem['product_id'])) {
+                            $prod = Product::with(['productPrice', 'images'])->find($buyItem['product_id']);
+                            if ($prod) {
+                                $buyItem['product_name'] = $prod->name;
+                                $buyItem['product_slug'] = $prod->slug;
+                                $buyItem['product_image'] = $prod->images->first()?->url ?? $prod->images->first()?->path ?? $prod->image;
+                                $buyItem['product_price'] = (float) ($prod->productPrice?->price ?? 0);
+                            }
+                        }
+                    }
+                }
+
+                // Load get_items products
+                if (isset($bundle['get_items'])) {
+                    foreach ($bundle['get_items'] as &$getItem) {
+                        if (! empty($getItem['product_id'])) {
+                            $prod = Product::with(['productPrice', 'images'])->find($getItem['product_id']);
+                            if ($prod) {
+                                $getItem['product_name'] = $prod->name;
+                                $getItem['product_slug'] = $prod->slug;
+                                $getItem['product_image'] = $prod->images->first()?->url ?? $prod->images->first()?->path ?? $prod->image;
+                                $getItem['product_price'] = (float) ($prod->productPrice?->price ?? 0);
+                            }
+                        }
+                    }
+                }
+
+                $promo->settings = array_merge($promo->settings, ['bundle' => $bundle]);
+            }
+        });
+
         // Calculate pricing dynamically for each cart item (applying any promotions or tier prices)
         foreach ($cartItems as $item) {
             $product = $item->product;
@@ -105,6 +144,7 @@ class CartController extends Controller
             'cartItems' => $cartItems,
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'activePromotions' => $activePromotions,
         ]);
     }
 
@@ -153,6 +193,7 @@ class CartController extends Controller
         $request->validate([
             'quantity' => 'nullable|integer|min:1',
             'product_variant_id' => 'nullable|exists:product_variants,id',
+            'is_checked' => 'nullable|boolean',
         ]);
 
         if ($cartItem->user_id !== $request->user()->id) {
@@ -162,6 +203,10 @@ class CartController extends Controller
         $data = [];
         if ($request->has('quantity')) {
             $data['quantity'] = $request->input('quantity');
+        }
+
+        if ($request->has('is_checked')) {
+            $data['is_checked'] = (bool) $request->input('is_checked');
         }
 
         if ($request->has('product_variant_id')) {
@@ -178,6 +223,8 @@ class CartController extends Controller
                 if ($existing) {
                     // Merge quantities and delete current item
                     $existing->quantity += $cartItem->quantity;
+                    // If either was checked, keep it checked
+                    $existing->is_checked = $existing->is_checked || ($data['is_checked'] ?? $cartItem->is_checked);
                     $existing->save();
                     $cartItem->delete();
 
@@ -189,6 +236,30 @@ class CartController extends Controller
         }
 
         $cartItem->update($data);
+
+        return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
+    }
+
+    /**
+     * Bulk update check status of cart items.
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'is_checked' => 'required|boolean',
+            'ids' => 'nullable|array',
+            'ids.*' => 'integer|exists:cart_items,id',
+        ]);
+
+        $query = CartItem::where('user_id', $request->user()->id);
+
+        if ($request->has('ids')) {
+            $query->whereIn('id', $request->input('ids'));
+        }
+
+        $query->update([
+            'is_checked' => (bool) $request->input('is_checked')
+        ]);
 
         return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
     }

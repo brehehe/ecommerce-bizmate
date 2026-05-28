@@ -4,7 +4,7 @@
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
-    let { product, relatedProducts = [], storeName = '' } = $props();
+    let { product, relatedProducts = [], storeName = '', bundlingPromos = [] } = $props();
 
     const page = usePage();
 
@@ -434,6 +434,25 @@
         return 'Rp ' + n.toLocaleString('id-ID');
     }
 
+    // Dynamic requirements text (e.g. "Beli 1 pcs Laptop ASUS untuk dapat hadiah...")
+    function getPromoRequirementsText(promo: any): string {
+        const bundle = promo.settings?.bundle;
+        if (!bundle || !bundle.buy_items) return 'Beli produk bundling untuk dapat hadiah!';
+        
+        const itemsText = bundle.buy_items.map((buyItem: any) => {
+            return `${buyItem.qty} pcs ${buyItem.product_name || 'produk syarat'}`;
+        });
+        
+        if (itemsText.length === 1) {
+            return `Beli ${itemsText[0]} untuk dapat hadiah bonus gratis!`;
+        } else if (itemsText.length === 2) {
+            return `Beli ${itemsText[0]} dan ${itemsText[1]} untuk dapat hadiah bonus gratis!`;
+        } else {
+            const last = itemsText.pop();
+            return `Beli ${itemsText.join(', ')}, dan ${last} untuk dapat hadiah bonus gratis!`;
+        }
+    }
+
     // ═══════════════════════════════════════
     //  FLASH SALE COUNTDOWN
     // ═══════════════════════════════════════
@@ -827,6 +846,14 @@
         if (slide.type !== 'variant') return false;
         return !slide.available;
     }
+
+    function goBack() {
+        if (window.history.length > 1 && document.referrer && document.referrer.includes(window.location.host)) {
+            window.history.back();
+        } else {
+            router.visit('/');
+        }
+    }
 </script>
 
 <svelte:head>
@@ -848,7 +875,7 @@
         <div class="flex items-center gap-3">
             <!-- Back Button -->
             <button
-                onclick={() => window.history.back()}
+                onclick={goBack}
                 class="w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-full transition active:scale-95 shrink-0"
                 aria-label="Kembali"
             >
@@ -1578,6 +1605,130 @@
                                 </p>
                             </div>
                         </div>
+                    {/if}
+
+                    <!-- Promo Bundling & Gift Section (Interactive & Shopee-style) -->
+                    {#if bundlingPromos && bundlingPromos.length > 0}
+                        {#each bundlingPromos as promo}
+                            {@const bundle = promo.settings.bundle}
+                            <div class="my-4 p-4 rounded-3xl bg-blue-50/40 border border-blue-100/70 space-y-3.5 shadow-sm text-xs animate-in fade-in slide-in-from-top-1 duration-200">
+                                <!-- Title Header -->
+                                <div class="flex items-center gap-2 font-bold text-slate-800">
+                                    <span class="w-6 h-6 rounded-full bg-brand-blueRoyal text-white flex items-center justify-center text-xs shadow-md animate-pulse shrink-0">
+                                        <i class="ti ti-gift"></i>
+                                    </span>
+                                    <div>
+                                        <span class="text-brand-blueRoyal font-extrabold uppercase tracking-wider text-[10px] block leading-none mb-0.5">Promo Bundling</span>
+                                        <span class="text-slate-850 font-black text-sm">{promo.name}</span>
+                                    </div>
+                                </div>
+
+                                <p class="text-slate-600 font-semibold leading-relaxed">
+                                    <strong>{getPromoRequirementsText(promo)}</strong>
+                                </p>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1.5 border-t border-slate-100">
+                                    <!-- Buy Checklist -->
+                                    <div class="space-y-2">
+                                        <span class="text-[9.5px] text-slate-450 font-black uppercase tracking-wider block">Produk Yang Harus Dibeli:</span>
+                                        <div class="space-y-2">
+                                            {#each bundle.buy_items as buyItem}
+                                                {@const isCurrent = Number(buyItem.product_id) === Number(product.id)}
+                                                <div class="flex items-center gap-2.5 p-2 rounded-2xl bg-white border border-slate-100 shadow-3xs hover:border-slate-200 transition duration-150 relative">
+                                                    <img
+                                                        src={buyItem.product_image ? (buyItem.product_image.startsWith('http') || buyItem.product_image.startsWith('/') ? buyItem.product_image : '/' + buyItem.product_image) : '/noimage/image.png'}
+                                                        alt={buyItem.product_name}
+                                                        class="w-9 h-9 rounded-lg object-cover bg-slate-50 border border-slate-100 shrink-0"
+                                                        onerror={(e) => { e.currentTarget.src = '/noimage/image.png'; }}
+                                                    />
+                                                    <div class="min-w-0 flex-grow pr-1">
+                                                        {#if isCurrent}
+                                                            <p class="font-black text-brand-blueRoyal truncate text-[10.5px] flex items-center gap-1">
+                                                                {buyItem.product_name || 'Produk Ini'}
+                                                                <span class="text-[8px] bg-brand-blueLight text-brand-blueRoyal px-1.5 py-0.25 rounded-md uppercase font-black tracking-wider">Produk Ini</span>
+                                                            </p>
+                                                        {:else}
+                                                            <a
+                                                                href={`/products/${buyItem.product_slug}`}
+                                                                class="font-bold text-slate-800 hover:text-brand-blueRoyal hover:underline truncate text-[10.5px] block"
+                                                            >
+                                                                {buyItem.product_name || 'Produk Lain'}
+                                                            </a>
+                                                        {/if}
+                                                        <p class="text-[9px] font-bold text-slate-400">
+                                                            Min. Beli: {buyItem.qty} pcs
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    </div>
+
+                                    <!-- Get Gifts List (Image 3 Style) -->
+                                    <div class="space-y-2">
+                                        <span class="text-[9.5px] text-slate-450 font-black uppercase tracking-wider block">Hadiah Bonus Yang Didapat:</span>
+                                        <div class="space-y-2">
+                                            {#each bundle.get_items as gift}
+                                                <div class="flex gap-2.5 p-2 rounded-2xl bg-white border border-slate-100 shadow-3xs relative">
+                                                    <img
+                                                        src={gift.product_image ? (gift.product_image.startsWith('http') || gift.product_image.startsWith('/') ? gift.product_image : '/' + gift.product_image) : '/noimage/image.png'}
+                                                        alt={gift.product_name}
+                                                        class="w-12 h-12 rounded-lg object-cover bg-slate-50 border border-slate-100 shrink-0"
+                                                        onerror={(e) => { e.currentTarget.src = '/noimage/image.png'; }}
+                                                    />
+                                                    <div class="min-w-0 flex-grow flex flex-col justify-center">
+                                                        <div>
+                                                            <span class="bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider mb-0.5 inline-block">
+                                                                Hadiah
+                                                            </span>
+                                                        </div>
+                                                        <p class="font-extrabold text-slate-800 truncate text-[10.5px] leading-tight mb-0.5">
+                                                            {gift.product_name || 'Hadiah Bonus'}
+                                                        </p>
+                                                        <p class="text-[9px] font-bold text-slate-400 mb-1 leading-none">
+                                                            Isi {gift.qty} pcs
+                                                        </p>
+                                                        <div class="flex items-center flex-wrap gap-1.5 text-[9px] leading-none">
+                                                            {#if gift.discount_type === 'free'}
+                                                                <span class="bg-red-50 text-red-500 text-[8px] font-black px-1 py-0.25 rounded border border-red-100 leading-none">
+                                                                    100%
+                                                                </span>
+                                                                <span class="text-[9px] text-slate-400 line-through font-bold font-mono">
+                                                                    {fmt(gift.product_price)}
+                                                                </span>
+                                                                <span class="text-red-500 font-black tracking-wide uppercase">
+                                                                    GRATIS
+                                                                </span>
+                                                            {:else if gift.discount_type === 'percentage'}
+                                                                <span class="bg-orange-50 text-orange-600 text-[8px] font-black px-1 py-0.25 rounded border border-orange-100 leading-none">
+                                                                    {gift.discount_value}%
+                                                                </span>
+                                                                <span class="text-[9px] text-slate-400 line-through font-bold font-mono">
+                                                                    {fmt(gift.product_price)}
+                                                                </span>
+                                                                <span class="text-orange-600 font-black tracking-wide">
+                                                                    {fmt(gift.product_price * (1 - gift.discount_value / 100))}
+                                                                </span>
+                                                            {:else}
+                                                                <span class="bg-orange-50 text-orange-600 text-[8px] font-black px-1 py-0.25 rounded border border-orange-100 leading-none">
+                                                                    POTONGAN
+                                                                </span>
+                                                                <span class="text-[9px] text-slate-400 line-through font-bold font-mono">
+                                                                    {fmt(gift.product_price)}
+                                                                </span>
+                                                                <span class="text-orange-600 font-black tracking-wide font-mono">
+                                                                    {fmt(gift.product_price - gift.discount_value)}
+                                                                </span>
+                                                            {/if}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {/each}
                     {/if}
 
                     <!-- Pengiriman -->
