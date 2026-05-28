@@ -442,7 +442,7 @@
                                     <i class="ti ti-alert-triangle mr-1"></i>
                                     Belum ada alamat.
                                     <a
-                                        href="/profile/addresses"
+                                        href="/profile/addresses?from=checkout"
                                         use:inertia
                                         class="font-black underline"
                                         >Tambah Alamat</a
@@ -1154,7 +1154,7 @@
                         </button>
                     {/each}
                     <a
-                        href="/profile/addresses"
+                        href="/profile/addresses?from=checkout"
                         class="flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 transition"
                     >
                         <i class="ti ti-plus text-lg"></i>
