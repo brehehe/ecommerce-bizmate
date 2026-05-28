@@ -28,12 +28,12 @@ class PaymentMethod extends Model
         'admin_fee' => 'decimal:2',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(function (Model $model) {
-            if (empty($model->order)) {
-                $model->order = static::withTrashed()->max('order') + 1;
-            }
-        });
-    }
+    // protected static function booted(): void
+    // {
+    //     static::creating(function (Model $model) {
+    //         if (empty($model->order)) {
+    //             $model->order = static::withTrashed()->max('order') + 1;
+    //         }
+    //     });
+    // }
 }

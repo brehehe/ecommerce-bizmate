@@ -6,10 +6,12 @@ use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +56,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/chats/{chat}/messages', [ChatController::class, 'store'])->name('chats.store');
     Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->name('chats.destroy');
     Route::delete('/chats/{chat}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
+
+    // Checkout
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::post('/checkout/apply-voucher', [CheckoutController::class, 'applyVoucher'])->name('checkout.apply-voucher');
+    Route::post('/checkout/shipping-cost', [CheckoutController::class, 'shippingCost'])->name('checkout.shipping-cost');
+    Route::get('/checkout/cities', [CheckoutController::class, 'cities'])->name('checkout.cities');
+
+    // Transaction (Customer)
+    Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
+    Route::get('/transactions/{transaction}', [StorefrontController::class, 'transactionDetail'])->name('transactions.show');
+    Route::post('/transactions/{transaction}/upload-proof', [CheckoutController::class, 'uploadProof'])->name('transactions.upload-proof');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
@@ -111,6 +125,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/chats/{chat}/reply', [AdminChatController::class, 'reply'])->name('chats.reply');
     Route::delete('/chats/{chat}', [AdminChatController::class, 'destroy'])->name('chats.destroy');
     Route::delete('/chats/{chat}/messages/{message}', [AdminChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
+
+    // Transactions (Admin)
+    Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/{transaction}', [AdminTransactionController::class, 'show'])->name('transactions.show');
+    Route::post('/transactions/{transaction}/status', [AdminTransactionController::class, 'updateStatus'])->name('transactions.update-status');
+    Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
+    Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
+
+    // Stock Movements
+    Route::get('/stock-movements', [AdminTransactionController::class, 'stockMovements'])->name('stock-movements.index');
 });
 
 Route::redirect('/admin', '/admin/dashboard');

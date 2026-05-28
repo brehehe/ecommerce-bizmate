@@ -1239,16 +1239,16 @@
                         </div>
 
                         <!-- Checkout Button (Image 1 Style) -->
-                        <button
-                            onclick={startCheckout}
+                        <Link
+                            href="/checkout"
                             disabled={selectedItems.length === 0}
                             style="background-color: {primary}; border-radius: 12px;"
                             class="w-full py-3.5 font-bold text-sm text-white flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition duration-200 cursor-pointer border-0"
                         >
                             <i class="ti ti-credit-card text-lg"></i>
                             Checkout ({selectedIds.length})
-                        </button>
-
+                        </Link>
+    
                         <p
                             class="text-center text-[10px] text-slate-400 font-bold"
                         >
@@ -1343,14 +1343,14 @@
                 </div>
 
                 <!-- Checkout Action button -->
-                <button
-                    onclick={startCheckout}
+                <Link
+                    href="/checkout"
                     disabled={selectedItems.length === 0}
                     class="px-5 py-2.5 font-bold text-xs text-white flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition cursor-pointer min-w-[120px] border-0"
                     style="border-radius: 4px; background-color: {primary};"
                 >
                     Checkout ({selectedTotalQuantity})
-                </button>
+                </Link>
             </div>
         </div>
     {/if}

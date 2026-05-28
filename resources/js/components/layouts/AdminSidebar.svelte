@@ -171,18 +171,62 @@
             Store Management
         </div>
         <div class="space-y-1 relative">
-            <a
-                href="#"
-                class="flex items-center justify-between px-4 py-3 mx-2 rounded-xl text-slate-600 hover:text-brand-blueRoyal hover:bg-slate-50 font-semibold transition duration-200 group"
-            >
-                <div class="flex items-center gap-3">
+            <div class="relative">
+                {#if isActive('/admin/transactions')}
+                    <div
+                        class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
+                        style="background-color: {secondaryColor};"
+                    ></div>
+                {/if}
+                <a
+                    href="/admin/transactions"
+                    use:inertia
+                    class="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
+                        '/admin/transactions',
+                    )
+                        ? 'bg-slate-50 font-bold'
+                        : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                    style={isActive('/admin/transactions')
+                        ? `color: ${primaryColor};`
+                        : ''}
+                >
                     <i
                         class="ti ti-shopping-cart text-xl group-hover:scale-110 transition"
+                        style={isActive('/admin/transactions')
+                            ? `color: ${primaryColor};`
+                            : ''}
                     ></i>
-                    <span>Pesanan</span>
-                </div>
-                <i class="ti ti-chevron-down text-sm text-slate-400"></i>
-            </a>
+                    <span>Transaksi</span>
+                </a>
+            </div>
+            <div class="relative">
+                {#if isActive('/admin/stock-movements')}
+                    <div
+                        class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
+                        style="background-color: {secondaryColor};"
+                    ></div>
+                {/if}
+                <a
+                    href="/admin/stock-movements"
+                    use:inertia
+                    class="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
+                        '/admin/stock-movements',
+                    )
+                        ? 'bg-slate-50 font-bold'
+                        : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                    style={isActive('/admin/stock-movements')
+                        ? `color: ${primaryColor};`
+                        : ''}
+                >
+                    <i
+                        class="ti ti-arrow-bar-to-down text-xl group-hover:scale-110 transition"
+                        style={isActive('/admin/stock-movements')
+                            ? `color: ${primaryColor};`
+                            : ''}
+                    ></i>
+                    <span>Stok Keluar</span>
+                </a>
+            </div>
             <div class="flex flex-col space-y-1">
                 <button
                     onclick={() => (isCatalogOpen = !isCatalogOpen)}

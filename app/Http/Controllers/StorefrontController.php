@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\Setting;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -1138,5 +1139,58 @@ class StorefrontController extends Controller
         $request->session()->regenerate();
 
         return redirect('/');
+    }
+
+    /**
+     * Display customer transaction history.
+     */
+    public function transactionHistory(Request $request)
+    {
+        $transactions = Transaction::with([
+            'paymentMethod:id,name,type',
+            'payment',
+            'items',
+        ])
+            ->where('user_id', $request->user()->id)
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/TransactionHistory', [
+            'transactions' => $transactions,
+            'statusLabels' => Transaction::statusLabels(),
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Display a single transaction detail for the customer.
+     */
+    public function transactionDetail(Request $request, Transaction $transaction)
+    {
+        if ($transaction->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $transaction->load([
+            'customerAddress',
+            'paymentMethod',
+            'items',
+            'payments',
+        ]);
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/TransactionDetail', [
+            'transaction' => $transaction,
+            'statusLabels' => Transaction::statusLabels(),
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
     }
 }

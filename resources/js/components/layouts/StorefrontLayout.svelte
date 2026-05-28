@@ -626,7 +626,7 @@
                                             <i class="ti ti-map-pin text-base"></i> Alamat Pengiriman
                                         </Link>
                                         <Link
-                                            href="/orders"
+                                            href="/transactions"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                         >
@@ -810,7 +810,7 @@
                     <i class="ti ti-map-pin text-lg"></i> Alamat Pengiriman
                 </Link>
                 <Link
-                    href="/orders"
+                    href="/transactions"
                     prefetch
                     class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                 >
@@ -833,7 +833,7 @@
     </main>
 
     <!-- ====== FOOTER ====== -->
-    <footer class="{hideMobileFooter ? 'hidden md:block' : ''} bg-slate-900 text-slate-400 mt-16 py-6">
+    <footer class="{hideMobileFooter ? 'hidden md:block' : ''} bg-slate-900 text-slate-400 mt-16 py-6 border-t border-slate-800">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div
                 class="flex flex-col sm:flex-row items-center justify-between gap-4"
