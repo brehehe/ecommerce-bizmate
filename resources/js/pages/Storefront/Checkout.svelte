@@ -891,7 +891,7 @@
                                                 <p
                                                     class="text-xs text-slate-500"
                                                 >
-                                                    Payment Gateway
+                                                    Pembayaran Otomatis Terverifikasi
                                                 </p>
                                             {/if}
                                         </div>

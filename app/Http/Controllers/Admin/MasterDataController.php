@@ -279,10 +279,23 @@ class MasterDataController extends Controller
             'account_name' => 'nullable|string|max:255|required_if:type,manual',
             'api_key' => 'nullable|string|max:255|required_if:type,gateway',
             'api_secret' => 'nullable|string|max:255',
+            'url' => 'nullable|url|max:255',
+            'webhook_token' => 'nullable|string|max:255',
             'admin_fee' => 'nullable|numeric|min:0',
         ]);
 
-        PaymentMethod::create(array_merge($validated, ['is_active' => true]));
+        $settings = null;
+        if ($validated['type'] === 'gateway') {
+            $settings = [
+                'url' => $request->url,
+                'webhook_token' => $request->webhook_token,
+            ];
+        }
+
+        $data = $validated;
+        $data['settings'] = $settings;
+
+        PaymentMethod::create(array_merge($data, ['is_active' => true]));
 
         return back()->with('success', 'Metode Pembayaran berhasil ditambahkan.');
     }
@@ -300,6 +313,8 @@ class MasterDataController extends Controller
             'account_name' => 'nullable|string|max:255|required_if:type,manual',
             'api_key' => 'nullable|string|max:255|required_if:type,gateway',
             'api_secret' => 'nullable|string|max:255',
+            'url' => 'nullable|url|max:255',
+            'webhook_token' => 'nullable|string|max:255',
             'admin_fee' => 'nullable|numeric|min:0',
         ]);
 
@@ -307,10 +322,15 @@ class MasterDataController extends Controller
         if ($validated['type'] === 'manual') {
             $validated['api_key'] = null;
             $validated['api_secret'] = null;
+            $validated['settings'] = null;
         } else {
             $validated['bank_name'] = null;
             $validated['account_number'] = null;
             $validated['account_name'] = null;
+            $validated['settings'] = [
+                'url' => $request->url,
+                'webhook_token' => $request->webhook_token,
+            ];
         }
 
         $paymentMethod->update($validated);

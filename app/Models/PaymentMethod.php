@@ -19,6 +19,7 @@ class PaymentMethod extends Model
         'account_name',
         'api_key',
         'api_secret',
+        'settings',
         'admin_fee',
         'is_active',
     ];
@@ -26,6 +27,7 @@ class PaymentMethod extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'admin_fee' => 'decimal:2',
+        'settings' => 'array',
     ];
 
     // protected static function booted(): void

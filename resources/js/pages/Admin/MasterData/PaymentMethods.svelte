@@ -39,6 +39,8 @@
         account_name: '',
         api_key: '',
         api_secret: '',
+        url: '',
+        webhook_token: '',
         admin_fee: 0,
     });
 
@@ -97,6 +99,8 @@
         form.account_name = method.account_name || '';
         form.api_key = method.api_key || '';
         form.api_secret = method.api_secret || '';
+        form.url = method.settings?.url || '';
+        form.webhook_token = method.settings?.webhook_token || '';
         form.admin_fee = method.admin_fee || 0;
         isModalOpen = true;
     }
@@ -288,6 +292,12 @@
                                             {:else}
                                                 <div class="text-[11px] text-slate-500 font-medium">
                                                     <strong>API Key:</strong> ••••••••
+                                                    {#if method.settings?.url}
+                                                        <br/><strong>URL:</strong> <span class="break-all">{method.settings.url}</span>
+                                                    {/if}
+                                                    {#if method.settings?.webhook_token}
+                                                        <br/><strong>Webhook Token:</strong> ••••••••
+                                                    {/if}
                                                 </div>
                                             {/if}
                                             {#if method.admin_fee > 0}
@@ -428,6 +438,20 @@
                         label="API Secret / Client Key (Opsional)"
                         placeholder="Masukkan API Secret Gateway jika diperlukan"
                         error={form.errors.api_secret}
+                    />
+                    <Input
+                        type="text"
+                        bind:value={form.url}
+                        label="Gateway API Base URL"
+                        placeholder="Contoh: https://api.xendit.co/"
+                        error={form.errors.url}
+                    />
+                    <Input
+                        type="text"
+                        bind:value={form.webhook_token}
+                        label="Webhook Verification Token"
+                        placeholder="Masukkan Token Webhook untuk validasi callback"
+                        error={form.errors.webhook_token}
                     />
                 {/if}
 

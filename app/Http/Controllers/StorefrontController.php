@@ -11,7 +11,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -1181,7 +1184,63 @@ class StorefrontController extends Controller
             'paymentMethod',
             'items',
             'payments',
+            'payment',
         ]);
+
+        // Auto-check Xendit invoice status if the transaction is still unpaid and is a gateway payment
+        if ($transaction->status === 'belum_bayar' && $transaction->paymentMethod?->type === 'gateway') {
+            $latestPayment = $transaction->payment;
+
+            if ($latestPayment && $latestPayment->gateway_transaction_id) {
+                try {
+                    $invoiceId = $latestPayment->gateway_transaction_id;
+                    $secretKey = $transaction->paymentMethod->api_secret ?: config('app.xendit.private_key');
+
+                    $baseUrl = ($transaction->paymentMethod->settings && isset($transaction->paymentMethod->settings['url']))
+                        ? $transaction->paymentMethod->settings['url']
+                        : config('app.xendit.url', 'https://api.xendit.co');
+
+                    $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices/'.$invoiceId;
+
+                    $response = Http::withBasicAuth($secretKey, '')
+                        ->timeout(10)
+                        ->get($xenditUrl);
+
+                    if ($response->successful()) {
+                        $responseData = $response->json();
+                        $status = strtoupper($responseData['status'] ?? '');
+
+                        if ($status === 'PAID' || $status === 'SETTLED') {
+                            DB::transaction(function () use ($transaction, $latestPayment, $status, $responseData) {
+                                // Update Transaction Payment
+                                $latestPayment->update([
+                                    'status' => 'confirmed',
+                                    'gateway_status' => $status,
+                                    'gateway_response' => json_encode($responseData),
+                                    'confirmed_at' => now(),
+                                ]);
+
+                                // Update Transaction Status
+                                $transaction->update([
+                                    'status' => 'diproses',
+                                ]);
+
+                                Log::info('Xendit Invoice Auto-verified on Page Load', [
+                                    'transaction_id' => $transaction->id,
+                                    'invoice_id' => $latestPayment->gateway_transaction_id,
+                                    'status' => $status,
+                                ]);
+                            });
+
+                            // Reload relations after update
+                            $transaction->load(['payments', 'payment']);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Xendit Auto-check Exception: '.$e->getMessage());
+                }
+            }
+        }
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');

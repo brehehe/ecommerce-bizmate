@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -341,12 +342,56 @@ class CheckoutController extends Controller
             }
 
             // Create transaction payment (pending)
-            TransactionPayment::create([
+            $paymentData = [
                 'transaction_id' => $transaction->id,
                 'payment_method_id' => $paymentMethod->id,
                 'amount' => $grandTotal,
                 'status' => 'pending',
-            ]);
+            ];
+
+            // If it's Xendit, call Xendit API to create an Invoice
+            if ($paymentMethod->type === 'gateway') {
+                try {
+                    $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
+
+                    $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                        ? $paymentMethod->settings['url']
+                        : config('app.xendit.url', 'https://api.xendit.co');
+
+                    $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices';
+
+                    $payload = [
+                        'external_id' => $transaction->transaction_number,
+                        'amount' => (float) $grandTotal,
+                        'payer_email' => $user->email,
+                        'description' => 'Pembayaran Pesanan #'.$transaction->transaction_number.' di '.config('app.name'),
+                        'success_redirect_url' => route('transactions.show', $transaction->id),
+                        'failure_redirect_url' => route('transactions.show', $transaction->id),
+                    ];
+
+                    $response = Http::withBasicAuth($secretKey, '')
+                        ->timeout(15)
+                        ->post($xenditUrl, $payload);
+
+                    if ($response->successful()) {
+                        $responseData = $response->json();
+                        $paymentData['gateway_transaction_id'] = $responseData['id'] ?? null;
+                        $paymentData['gateway_status'] = $responseData['status'] ?? 'PENDING';
+                        $paymentData['gateway_response'] = json_encode($responseData);
+                    } else {
+                        $errorMsg = $response->json('message') ?? 'Terjadi kesalahan saat menghubungkan ke Xendit.';
+                        Log::error('Xendit Invoice Creation Failed: '.$errorMsg);
+                        $paymentData['gateway_status'] = 'FAILED_API';
+                        $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Xendit Connection Exception: '.$e->getMessage());
+                    $paymentData['gateway_status'] = 'FAILED_API';
+                    $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                }
+            }
+
+            TransactionPayment::create($paymentData);
 
             // Update voucher used_count
             if ($voucherPromotion) {

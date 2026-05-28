@@ -128,4 +128,11 @@ return [
         'key' => env('RAJAONGKIR_KEY', '390d25e9d86ded71cb771c363778cccf'),
     ],
 
+    'xendit' => [
+        'url' => env('XENDIT_URL', 'https://api.xendit.co/'),
+        'private_key' => env('X_API_XENDIT_KEY_PRIVATE'),
+        'public_key' => env('X_API_XENDIT_KEY_PUBLIC_DEVELOPMENT'),
+        'webhook_token' => env('X_API_XENDIT_TOKEN_WEBHOO'),
+    ],
+
 ];
