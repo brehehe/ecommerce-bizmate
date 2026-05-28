@@ -352,7 +352,7 @@ class CheckoutController extends Controller
             // If it's Xendit, call Xendit API to create an Invoice
             if ($paymentMethod->type === 'gateway') {
                 try {
-                    $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
+                    $secretKey = $paymentMethod->api_secret ?: ($paymentMethod->api_key ?: config('app.xendit.private_key'));
 
                     if (empty($secretKey)) {
                         throw new \Exception('Xendit private key is not configured.');

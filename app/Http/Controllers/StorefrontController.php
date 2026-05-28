@@ -1194,7 +1194,7 @@ class StorefrontController extends Controller
             if ($latestPayment && $latestPayment->gateway_transaction_id) {
                 try {
                     $invoiceId = $latestPayment->gateway_transaction_id;
-                    $secretKey = $transaction->paymentMethod->api_secret ?: config('app.xendit.private_key');
+                    $secretKey = $transaction->paymentMethod->api_secret ?: ($transaction->paymentMethod->api_key ?: config('app.xendit.private_key'));
 
                     if (empty($secretKey)) {
                         throw new \Exception('Xendit private key is not configured.');
