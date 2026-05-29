@@ -349,45 +349,146 @@ class CheckoutController extends Controller
                 'status' => 'pending',
             ];
 
-            // If it's Xendit, call Xendit API to create an Invoice
+            // If it's gateway, detect whether it is Xendit or Midtrans
             if ($paymentMethod->type === 'gateway') {
-                try {
-                    $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
+                $isMidtrans = str_contains(strtolower($paymentMethod->name), 'midtrans');
 
-                    $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
-                        ? $paymentMethod->settings['url']
-                        : config('app.xendit.url', 'https://api.xendit.co');
+                if ($isMidtrans) {
+                    try {
+                        $serverKey = $paymentMethod->api_key ?: config('app.midtrans.server_key');
 
-                    $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices';
+                        $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                            ? $paymentMethod->settings['url']
+                            : config('app.midtrans.snap_url', 'https://app.sandbox.midtrans.com');
 
-                    $payload = [
-                        'external_id' => $transaction->transaction_number,
-                        'amount' => (float) $grandTotal,
-                        'payer_email' => $user->email,
-                        'description' => 'Pembayaran Pesanan #'.$transaction->transaction_number.' di '.config('app.name'),
-                        'success_redirect_url' => route('transactions.show', $transaction->id),
-                        'failure_redirect_url' => route('transactions.show', $transaction->id),
-                    ];
+                        $midtransUrl = rtrim($baseUrl, '/').'/snap/v1/transactions';
 
-                    $response = Http::withBasicAuth($secretKey, '')
-                        ->timeout(15)
-                        ->post($xenditUrl, $payload);
+                        $payload = [
+                            'transaction_details' => [
+                                'order_id' => $transaction->transaction_number,
+                                'gross_amount' => (int) $grandTotal,
+                            ],
+                            'customer_details' => [
+                                'first_name' => $user->name,
+                                'email' => $user->email,
+                            ],
+                            'callbacks' => [
+                                'finish' => route('transactions.show', $transaction->id),
+                                'unfinish' => route('transactions.show', $transaction->id),
+                                'error' => route('transactions.show', $transaction->id),
+                            ],
+                        ];
 
-                    if ($response->successful()) {
-                        $responseData = $response->json();
-                        $paymentData['gateway_transaction_id'] = $responseData['id'] ?? null;
-                        $paymentData['gateway_status'] = $responseData['status'] ?? 'PENDING';
-                        $paymentData['gateway_response'] = json_encode($responseData);
-                    } else {
-                        $errorMsg = $response->json('message') ?? 'Terjadi kesalahan saat menghubungkan ke Xendit.';
-                        Log::error('Xendit Invoice Creation Failed: '.$errorMsg);
+                        $response = Http::withBasicAuth($serverKey, '')
+                            ->timeout(15)
+                            ->post($midtransUrl, $payload);
+
+                        if ($response->successful()) {
+                            $responseData = $response->json();
+                            $paymentData['gateway_transaction_id'] = $responseData['token'] ?? null;
+                            $paymentData['gateway_status'] = 'PENDING';
+                            $paymentData['gateway_response'] = json_encode($responseData);
+                        } else {
+                            $errorMsg = $response->json('error_messages')[0] ?? 'Gagal menghubungi Midtrans Snap.';
+                            Log::error('Midtrans Snap Creation Failed: '.$errorMsg);
+                            $paymentData['gateway_status'] = 'FAILED_API';
+                            $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Midtrans Connection Exception: '.$e->getMessage());
                         $paymentData['gateway_status'] = 'FAILED_API';
-                        $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                        $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                     }
-                } catch (\Exception $e) {
-                    Log::error('Xendit Connection Exception: '.$e->getMessage());
-                    $paymentData['gateway_status'] = 'FAILED_API';
-                    $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                } elseif (str_contains(strtolower($paymentMethod->name), 'flip')) {
+                    try {
+                        $secretKey = $paymentMethod->api_key ?: config('app.flip.secret_key');
+
+                        $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                            ? $paymentMethod->settings['url']
+                            : config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
+
+                        $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/bill';
+
+                        $redirectUrl = env('FLIP_REDIRECT_URL') ?: route('transactions.show', $transaction->id);
+
+                        // If redirectUrl still has a transaction id placeholder, append it if needed
+                        if (str_ends_with($redirectUrl, '/')) {
+                            $redirectUrl .= $transaction->id;
+                        }
+
+                        if (preg_match('/localhost|127\.0\.0\.1|192\.168\./i', $redirectUrl) || str_contains($redirectUrl, ':8000')) {
+                            $redirectUrl = preg_replace('/^http:\/\/(?:localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(?::\d+)?/i', 'https://example.com', $redirectUrl);
+                        }
+
+                        $payload = [
+                            'title' => 'Pembayaran Pesanan #'.$transaction->transaction_number,
+                            'amount' => (int) $grandTotal,
+                            'type' => 'SINGLE',
+                            'redirect_url' => $redirectUrl,
+                            'sender_name' => $user->name,
+                            'sender_email' => $user->email,
+                        ];
+
+                        $response = Http::withBasicAuth($secretKey, '')
+                            ->timeout(15)
+                            ->asForm()
+                            ->post($flipUrl, $payload);
+
+                        if ($response->successful()) {
+                            $responseData = $response->json();
+                            $paymentData['gateway_transaction_id'] = $responseData['link_id'] ?? null;
+                            $paymentData['gateway_status'] = $responseData['status'] ?? 'ACTIVE';
+                            $paymentData['gateway_response'] = json_encode($responseData);
+                        } else {
+                            $errorMsg = $response->json('message') ?? 'Gagal menghubungi Flip API.';
+                            Log::error('Flip Bill Creation Failed: status='.$response->status().' body='.$response->body());
+                            $paymentData['gateway_status'] = 'FAILED_API';
+                            $paymentData['gateway_response'] = json_encode(['error' => $errorMsg, 'response_body' => $response->body()]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Flip Connection Exception: '.$e->getMessage());
+                        $paymentData['gateway_status'] = 'FAILED_API';
+                        $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                    }
+                } else {
+                    try {
+                        $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
+
+                        $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                            ? $paymentMethod->settings['url']
+                            : config('app.xendit.url', 'https://api.xendit.co');
+
+                        $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices';
+
+                        $payload = [
+                            'external_id' => $transaction->transaction_number,
+                            'amount' => (float) $grandTotal,
+                            'payer_email' => $user->email,
+                            'description' => 'Pembayaran Pesanan #'.$transaction->transaction_number.' di '.config('app.name'),
+                            'success_redirect_url' => route('transactions.show', $transaction->id),
+                            'failure_redirect_url' => route('transactions.show', $transaction->id),
+                        ];
+
+                        $response = Http::withBasicAuth($secretKey, '')
+                            ->timeout(15)
+                            ->post($xenditUrl, $payload);
+
+                        if ($response->successful()) {
+                            $responseData = $response->json();
+                            $paymentData['gateway_transaction_id'] = $responseData['id'] ?? null;
+                            $paymentData['gateway_status'] = $responseData['status'] ?? 'PENDING';
+                            $paymentData['gateway_response'] = json_encode($responseData);
+                        } else {
+                            $errorMsg = $response->json('message') ?? 'Terjadi kesalahan saat menghubungkan ke Xendit.';
+                            Log::error('Xendit Invoice Creation Failed: '.$errorMsg);
+                            $paymentData['gateway_status'] = 'FAILED_API';
+                            $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Xendit Connection Exception: '.$e->getMessage());
+                        $paymentData['gateway_status'] = 'FAILED_API';
+                        $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                    }
                 }
             }
 

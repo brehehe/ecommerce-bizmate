@@ -1213,57 +1213,150 @@ class StorefrontController extends Controller
             'payment',
         ]);
 
-        // Auto-check Xendit invoice status if the transaction is still unpaid and is a gateway payment
+        // Auto-check gateway payment status if the transaction is still unpaid and is a gateway payment
         if ($transaction->status === 'belum_bayar' && $transaction->paymentMethod?->type === 'gateway') {
             $latestPayment = $transaction->payment;
 
             if ($latestPayment && $latestPayment->gateway_transaction_id) {
-                try {
-                    $invoiceId = $latestPayment->gateway_transaction_id;
-                    $secretKey = $transaction->paymentMethod->api_secret ?: config('app.xendit.private_key');
+                $isMidtrans = str_contains(strtolower($transaction->paymentMethod->name), 'midtrans');
 
-                    $baseUrl = ($transaction->paymentMethod->settings && isset($transaction->paymentMethod->settings['url']))
-                        ? $transaction->paymentMethod->settings['url']
-                        : config('app.xendit.url', 'https://api.xendit.co');
+                if ($isMidtrans) {
+                    try {
+                        $serverKey = $transaction->paymentMethod->api_key ?: config('app.midtrans.server_key');
+                        $baseUrl = $transaction->paymentMethod->settings['url'] ?? config('app.midtrans.snap_url', 'https://app.sandbox.midtrans.com');
 
-                    $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices/'.$invoiceId;
+                        $isSandbox = str_contains($baseUrl, 'sandbox');
+                        $apiUrl = $isSandbox ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
+                        $midtransUrl = rtrim($apiUrl, '/').'/v2/'.$transaction->transaction_number.'/status';
 
-                    $response = Http::withBasicAuth($secretKey, '')
-                        ->timeout(10)
-                        ->get($xenditUrl);
+                        $response = Http::withBasicAuth($serverKey, '')
+                            ->timeout(10)
+                            ->get($midtransUrl);
 
-                    if ($response->successful()) {
-                        $responseData = $response->json();
-                        $status = strtoupper($responseData['status'] ?? '');
+                        if ($response->successful()) {
+                            $responseData = $response->json();
+                            $status = $responseData['transaction_status'] ?? '';
 
-                        if ($status === 'PAID' || $status === 'SETTLED') {
-                            DB::transaction(function () use ($transaction, $latestPayment, $status, $responseData) {
-                                // Update Transaction Payment
-                                $latestPayment->update([
-                                    'status' => 'confirmed',
-                                    'gateway_status' => $status,
-                                    'gateway_response' => json_encode($responseData),
-                                    'confirmed_at' => now(),
-                                ]);
+                            if ($status === 'settlement' || $status === 'capture') {
+                                DB::transaction(function () use ($transaction, $latestPayment, $status, $responseData) {
+                                    // Update Transaction Payment
+                                    $latestPayment->update([
+                                        'status' => 'confirmed',
+                                        'gateway_status' => $status,
+                                        'gateway_response' => json_encode($responseData),
+                                        'confirmed_at' => now(),
+                                    ]);
 
-                                // Update Transaction Status
-                                $transaction->update([
-                                    'status' => 'diproses',
-                                ]);
+                                    // Update Transaction Status
+                                    $transaction->update([
+                                        'status' => 'diproses',
+                                    ]);
 
-                                Log::info('Xendit Invoice Auto-verified on Page Load', [
-                                    'transaction_id' => $transaction->id,
-                                    'invoice_id' => $latestPayment->gateway_transaction_id,
-                                    'status' => $status,
-                                ]);
-                            });
+                                    Log::info('Midtrans Auto-verified on Page Load', [
+                                        'transaction_id' => $transaction->id,
+                                        'status' => $status,
+                                    ]);
+                                });
 
-                            // Reload relations after update
-                            $transaction->load(['payments', 'payment']);
+                                // Reload relations after update
+                                $transaction->load(['payments', 'payment']);
+                            }
                         }
+                    } catch (\Exception $e) {
+                        Log::error('Midtrans Auto-check Exception: '.$e->getMessage());
                     }
-                } catch (\Exception $e) {
-                    Log::error('Xendit Auto-check Exception: '.$e->getMessage());
+                } elseif (str_contains(strtolower($transaction->paymentMethod->name), 'flip')) {
+                    try {
+                        $secretKey = $transaction->paymentMethod->api_key ?: config('app.flip.secret_key');
+                        $baseUrl = $transaction->paymentMethod->settings['url'] ?? config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
+                        $billId = $latestPayment->gateway_transaction_id;
+
+                        $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/'.$billId.'/bill';
+
+                        $response = Http::withBasicAuth($secretKey, '')
+                            ->timeout(10)
+                            ->get($flipUrl);
+
+                        if ($response->successful()) {
+                            $responseData = $response->json();
+                            $status = $responseData['status'] ?? '';
+
+                            if ($status === 'SUCCESSFUL') {
+                                DB::transaction(function () use ($transaction, $latestPayment, $status, $responseData) {
+                                    // Update Transaction Payment
+                                    $latestPayment->update([
+                                        'status' => 'confirmed',
+                                        'gateway_status' => $status,
+                                        'gateway_response' => json_encode($responseData),
+                                        'confirmed_at' => now(),
+                                    ]);
+
+                                    // Update Transaction Status
+                                    $transaction->update([
+                                        'status' => 'diproses',
+                                    ]);
+
+                                    Log::info('Flip Auto-verified on Page Load', [
+                                        'transaction_id' => $transaction->id,
+                                        'status' => $status,
+                                    ]);
+                                });
+
+                                // Reload relations after update
+                                $transaction->load(['payments', 'payment']);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Flip Auto-check Exception: '.$e->getMessage());
+                    }
+                } else {
+                    try {
+                        $invoiceId = $latestPayment->gateway_transaction_id;
+                        $secretKey = $transaction->paymentMethod->api_secret ?: config('app.xendit.private_key');
+
+                        $baseUrl = ($transaction->paymentMethod->settings && isset($transaction->paymentMethod->settings['url']))
+                            ? $transaction->paymentMethod->settings['url']
+                            : config('app.xendit.url', 'https://api.xendit.co');
+
+                        $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices/'.$invoiceId;
+
+                        $response = Http::withBasicAuth($secretKey, '')
+                            ->timeout(10)
+                            ->get($xenditUrl);
+
+                        if ($response->successful()) {
+                            $responseData = $response->json();
+                            $status = strtoupper($responseData['status'] ?? '');
+
+                            if ($status === 'PAID' || $status === 'SETTLED') {
+                                DB::transaction(function () use ($transaction, $latestPayment, $status, $responseData) {
+                                    // Update Transaction Payment
+                                    $latestPayment->update([
+                                        'status' => 'confirmed',
+                                        'gateway_status' => $status,
+                                        'gateway_response' => json_encode($responseData),
+                                        'confirmed_at' => now(),
+                                    ]);
+
+                                    // Update Transaction Status
+                                    $transaction->update([
+                                        'status' => 'diproses',
+                                    ]);
+
+                                    Log::info('Xendit Invoice Auto-verified on Page Load', [
+                                        'transaction_id' => $transaction->id,
+                                        'invoice_id' => $latestPayment->gateway_transaction_id,
+                                        'status' => $status,
+                                    ]);
+                                });
+
+                                // Reload relations after update
+                                $transaction->load(['payments', 'payment']);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Xendit Auto-check Exception: '.$e->getMessage());
+                    }
                 }
             }
         }

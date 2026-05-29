@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             RoleAndUserSeeder::class,
             CategoryAndProductSeeder::class,
             SettingSeeder::class,
+            PaymentMethodSeeder::class,
         ]);
 
         // User::factory()->create([
