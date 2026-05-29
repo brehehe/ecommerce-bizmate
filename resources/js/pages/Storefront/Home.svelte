@@ -9,6 +9,9 @@
         newProducts = [],
         activeFlashSale = null,
         storeName = '',
+        heroBanners: incomingHeroBanners = [],
+        sideBanners: incomingSideBanners = [],
+        middleWideBanner = null,
     } = $props();
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
@@ -33,7 +36,7 @@
     // ──────────────────────────────────────────────────
     // HERO BANNER SLIDER
     // ──────────────────────────────────────────────────
-    const heroBanners = [
+    const defaultHeroBanners = [
         {
             image: '/banners/promo-main.png',
             alt: 'Promo Spesial Hari Ini',
@@ -51,7 +54,7 @@
         },
     ];
 
-    const sideBanners = [
+    const defaultSideBanners = [
         {
             image: '/banners/fashion.png',
             alt: 'Fashion Lokal Diskon 50%',
@@ -63,6 +66,14 @@
             link: '#',
         },
     ];
+
+    const heroBanners = $derived(incomingHeroBanners && incomingHeroBanners.length > 0 ? incomingHeroBanners : defaultHeroBanners);
+    const sideBanners = $derived(incomingSideBanners && incomingSideBanners.length > 0 ? incomingSideBanners : defaultSideBanners);
+    const middleWide = $derived(middleWideBanner && middleWideBanner.image ? middleWideBanner : {
+        image: '/banners/flash-sale.png',
+        alt: 'Flash Sale Promo',
+        link: '#',
+    });
 
     let activeHero = $state(0);
     let heroTimer: ReturnType<typeof setInterval>;
@@ -81,6 +92,27 @@
         activeHero = i;
         stopHeroTimer();
         startHeroTimer();
+    }
+
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    function handleTouchStart(e: TouchEvent) {
+        touchStartX = e.changedTouches[0].screenX;
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }
+
+    function handleSwipe() {
+        const threshold = 50;
+        if (touchEndX < touchStartX - threshold) {
+            goHero((activeHero + 1) % heroBanners.length);
+        } else if (touchEndX > touchStartX + threshold) {
+            goHero((activeHero - 1 + heroBanners.length) % heroBanners.length);
+        }
     }
 
     onMount(() => startHeroTimer());
@@ -400,12 +432,14 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->
-    <section class="bg-white px-3 sm:px-5 lg:px-8 pt-4 pb-3">
+    <section class="bg-white px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3">
                 <!-- Main slider (left, 2/3 width) -->
                 <div
-                    class="relative flex-[2] rounded-2xl overflow-hidden aspect-[16/9] lg:aspect-[2.1/1] w-full bg-slate-100 group cursor-pointer shrink-0"
+                    ontouchstart={handleTouchStart}
+                    ontouchend={handleTouchEnd}
+                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden aspect-[16/9] lg:aspect-[2.1/1] w-full bg-slate-100 group cursor-pointer shrink-0"
                 >
                     {#each heroBanners as banner, i}
                         <button
@@ -758,7 +792,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 5: SPECIAL DEAL BANNERS (4 small promo cards)
     ═══════════════════════════════════════════════════ -->
-    <section class="mt-2 px-3 sm:px-5 lg:px-8">
+    <!-- <section class="mt-2 px-3 sm:px-5 lg:px-8">
         <div class="max-w-6xl mx-auto">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {#each dealBanners as deal}
@@ -787,7 +821,7 @@
                 {/each}
             </div>
         </div>
-    </section>
+    </section> -->
 
     <!-- ═══════════════════════════════════════════════════
      SECTION 6: PRODUK TERLARIS
@@ -992,17 +1026,27 @@
         <div
             class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
         >
-            <button
-                onclick={() =>
-                    (activeLightboxImage = '/banners/flash-sale.png')}
-                class="w-full text-left"
-            >
-                <img
-                    src="/banners/flash-sale.png"
-                    alt="Flash Sale Promo"
-                    class="w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
-                />
-            </button>
+            {#if middleWide.link && middleWide.link !== '#'}
+                <Link href={middleWide.link} class="block w-full">
+                    <img
+                        src={middleWide.image}
+                        alt={middleWide.alt}
+                        class="w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                    />
+                </Link>
+            {:else}
+                <button
+                    onclick={() =>
+                        (activeLightboxImage = middleWide.image)}
+                    class="w-full text-left"
+                >
+                    <img
+                        src={middleWide.image}
+                        alt={middleWide.alt}
+                        class="w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                    />
+                </button>
+            {/if}
         </div>
     </section>
 

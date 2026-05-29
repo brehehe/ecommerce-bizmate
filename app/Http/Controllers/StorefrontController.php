@@ -92,6 +92,15 @@ class StorefrontController extends Controller
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
+        $heroBannersJson = Setting::where('key', 'hero_banners')->value('value');
+        $heroBanners = $heroBannersJson ? json_decode($heroBannersJson, true) : [];
+
+        $sideBannersJson = Setting::where('key', 'side_banners')->value('value');
+        $sideBanners = $sideBannersJson ? json_decode($sideBannersJson, true) : [];
+
+        $middleWideBannerJson = Setting::where('key', 'middle_wide_banner')->value('value');
+        $middleWideBanner = $middleWideBannerJson ? json_decode($middleWideBannerJson, true) : null;
+
         return Inertia::render('Storefront/Home', [
             'categories' => $categories,
             'featuredProducts' => $featuredProducts,
@@ -99,6 +108,9 @@ class StorefrontController extends Controller
             'activeFlashSale' => $activeFlashSale,
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'heroBanners' => $heroBanners,
+            'sideBanners' => $sideBanners,
+            'middleWideBanner' => $middleWideBanner,
         ]);
     }
 

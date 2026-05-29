@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
+use App\Http\Controllers\Admin\CmsController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -80,6 +81,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Settings
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+
+    // CMS Banners
+    Route::get('/cms/banners', [CmsController::class, 'banners'])->name('cms.banners');
+    Route::post('/cms/banners', [CmsController::class, 'updateBanners'])->name('cms.banners.update');
 
     // Categories
     Route::post('/categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');

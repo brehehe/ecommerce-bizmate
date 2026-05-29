@@ -10,6 +10,7 @@
     let isCatalogOpen = $state(false);
     let isMasterDataOpen = $state(false);
     let isReportsOpen = $state(false);
+    let isCmsOpen = $state(false);
     const user = $derived(page.props.auth?.user);
 
     const handleLogout = () => {
@@ -35,6 +36,9 @@
         }
         if (page.url.startsWith('/admin/reports')) {
             isReportsOpen = true;
+        }
+        if (page.url.startsWith('/admin/cms')) {
+            isCmsOpen = true;
         }
     });
 </script>
@@ -681,18 +685,74 @@
                     </div>
                 {/if}
             </div>
-            <a
-                href="#"
-                class="flex items-center justify-between px-4 py-3 mx-2 rounded-xl text-slate-600 hover:text-brand-blueRoyal hover:bg-slate-50 font-semibold transition duration-200 group"
-            >
-                <div class="flex items-center gap-3">
+            <!-- Konten (CMS) Dropdown -->
+            <div class="flex flex-col space-y-1">
+                <button
+                    onclick={() => (isCmsOpen = !isCmsOpen)}
+                    class="flex items-center justify-between px-4 py-3 mx-2 rounded-xl transition duration-200 group {page.url.startsWith(
+                        '/admin/cms',
+                    )
+                        ? 'bg-slate-50 font-bold'
+                        : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                    style={page.url.startsWith('/admin/cms')
+                        ? `color: ${primaryColor};`
+                        : ''}
+                >
+                    <div class="flex items-center gap-3">
+                        <i
+                            class="ti ti-layout-cards text-xl group-hover:scale-110 transition"
+                            style={page.url.startsWith('/admin/cms')
+                                ? `color: ${primaryColor};`
+                                : ''}
+                        ></i>
+                        <span>Konten (CMS)</span>
+                    </div>
                     <i
-                        class="ti ti-layout-cards text-xl group-hover:scale-110 transition"
+                        class="ti {isCmsOpen
+                            ? 'ti-chevron-up'
+                            : 'ti-chevron-down'} text-sm transition-transform"
+                        style={page.url.startsWith('/admin/cms')
+                            ? `color: ${primaryColor};`
+                            : 'color: #94a3b8;'}
                     ></i>
-                    <span>Konten (CMS)</span>
-                </div>
-                <i class="ti ti-chevron-down text-sm text-slate-400"></i>
-            </a>
+                </button>
+
+                {#if isCmsOpen}
+                    <div
+                        class="pl-7 pr-2 space-y-1"
+                        transition:slide={{ duration: 200 }}
+                    >
+                        <div class="relative">
+                            {#if isActive('/admin/cms/banners')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/cms/banners"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/cms/banners',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/cms/banners')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-photo text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/cms/banners')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Edit Banner</span>
+                            </a>
+                        </div>
+                    </div>
+                {/if}
+            </div>
             <div class="relative">
                 {#if isActive('/admin/settings')}
                     <div
