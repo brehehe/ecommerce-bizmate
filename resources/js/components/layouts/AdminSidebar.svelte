@@ -9,6 +9,7 @@
     let isProfileDropdownOpen = $state(false);
     let isCatalogOpen = $state(false);
     let isMasterDataOpen = $state(false);
+    let isReportsOpen = $state(false);
     const user = $derived(page.props.auth?.user);
 
     const handleLogout = () => {
@@ -31,6 +32,9 @@
         }
         if (isActive('/admin/master-data')) {
             isMasterDataOpen = true;
+        }
+        if (page.url.startsWith('/admin/reports')) {
+            isReportsOpen = true;
         }
     });
 </script>
@@ -135,36 +139,7 @@
                     {/if}
                 </span>
             </a>
-        </div>
-
-        <div class="relative">
-            {#if isActive('/admin/finance')}
-                <div
-                    class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
-                    style="background-color: {secondaryColor};"
-                ></div>
-            {/if}
-            <a
-                href="#"
-                class="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
-                    '/admin/finance',
-                )
-                    ? 'bg-slate-50 font-bold'
-                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
-                style={isActive('/admin/finance')
-                    ? `color: ${primaryColor};`
-                    : ''}
-            >
-                <i
-                    class="ti ti-chart-pie text-xl group-hover:scale-110 transition"
-                    style={isActive('/admin/finance')
-                        ? `color: ${primaryColor};`
-                        : ''}
-                ></i>
-                <span>Keuangan</span>
-            </a>
-        </div>
-
+        </div>  
         <div
             class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-8"
         >
@@ -383,6 +358,191 @@
                     ></i>
                     <span>Promosi</span>
                 </a>
+            </div>
+
+            <!-- Laporan Dropdown -->
+            <div class="flex flex-col space-y-1">
+                <button
+                    onclick={() => (isReportsOpen = !isReportsOpen)}
+                    class="flex items-center justify-between px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
+                        '/admin/reports',
+                    )
+                        ? 'bg-slate-50 font-bold'
+                        : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                    style={isActive('/admin/reports')
+                        ? `color: ${primaryColor};`
+                        : ''}
+                >
+                    <div class="flex items-center gap-3">
+                        <i
+                            class="ti ti-chart-bar text-xl group-hover:scale-110 transition"
+                            style={isActive('/admin/reports')
+                                ? `color: ${primaryColor};`
+                                : ''}
+                        ></i>
+                        <span>Laporan</span>
+                    </div>
+                    <i
+                        class="ti {isReportsOpen
+                            ? 'ti-chevron-up'
+                            : 'ti-chevron-down'} text-sm transition-transform"
+                        style={isActive('/admin/reports')
+                            ? `color: ${primaryColor};`
+                            : 'color: #94a3b8;'}
+                    ></i>
+                </button>
+
+                {#if isReportsOpen}
+                    <div
+                        class="pl-7 pr-2 space-y-1"
+                        transition:slide={{ duration: 200 }}
+                    >
+                        <div class="relative">
+                            {#if isActive('/admin/reports/sales')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/sales"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/sales',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/sales')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-cash text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/sales')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Penjualan</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/reports/products')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/products"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/products',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/products')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-package text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/products')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Penjualan Produk</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/reports/profit-loss')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/profit-loss"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/profit-loss',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/profit-loss')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-calculator text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/profit-loss')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Laba Rugi</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/reports/customers')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/customers"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/customers',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/customers')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-users text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/customers')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Pelanggan</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/reports/stocks')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/stocks"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/stocks',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/stocks')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-archive text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/stocks')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Stok & Inventaris</span>
+                            </a>
+                        </div>
+                    </div>
+                {/if}
             </div>
         </div>
 

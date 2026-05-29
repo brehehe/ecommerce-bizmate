@@ -221,9 +221,9 @@
 
     function startCheckout() {
         if (selectedItems.length === 0) {
-            alert(
+            showToast(
                 'Silakan pilih minimal satu produk untuk melakukan pembayaran.',
-            );
+            'success');
             return;
         }
         paymentModalOpen = true;
@@ -232,7 +232,7 @@
     function processPayment() {
         if (selectedMethod === 'cc') {
             if (!cardNumber || !cardExpiry || !cardCvv) {
-                alert('Silakan lengkapi informasi kartu kredit Anda.');
+                showToast('Silakan lengkapi informasi kartu kredit Anda.', 'error');
                 return;
             }
         }
@@ -444,6 +444,132 @@
             router.visit('/');
         }
     }
+
+    // Voucher & Promo Selection States
+    const activeVouchers = $derived.by(() => {
+        const base = (activePromotions || []).filter(
+            (p: any) => p.type === 'voucher_gratis_ongkir' || p.type === 'voucher_belanja',
+        );
+        const extra = [];
+        if (selectedShippingVoucher && !base.some((p: any) => p.id === selectedShippingVoucher.id)) {
+            extra.push(selectedShippingVoucher);
+        }
+        if (selectedDiscountVoucher && !base.some((p: any) => p.id === selectedDiscountVoucher.id)) {
+            extra.push(selectedDiscountVoucher);
+        }
+        return [...base, ...extra];
+    });
+
+    let voucherModalOpen = $state(false);
+    let selectedShippingVoucher = $state<any>(null);
+    let selectedDiscountVoucher = $state<any>(null);
+    let manualVoucherCode = $state('');
+
+    const shippingVouchers = $derived(
+        activeVouchers.filter((v: any) => v.type === 'voucher_gratis_ongkir')
+    );
+
+    const discountVouchers = $derived(
+        activeVouchers.filter((v: any) => v.type !== 'voucher_gratis_ongkir')
+    );
+
+    const checkoutUrl = $derived.by(() => {
+        const codes = [];
+        if (selectedShippingVoucher) codes.push(selectedShippingVoucher.code);
+        if (selectedDiscountVoucher) codes.push(selectedDiscountVoucher.code);
+        return codes.length > 0 ? `/checkout?voucher=${codes.join(',')}` : '/checkout';
+    });
+
+    const calculatedDiscount = $derived.by(() => {
+        if (!selectedDiscountVoucher) return 0;
+        if (selectedCartSubtotal < Number(selectedDiscountVoucher.min_purchase ?? 0)) return 0;
+        
+        const canStack = selectedDiscountVoucher.settings?.can_stack_with_promos !== false;
+        let eligibleSubtotal = selectedCartSubtotal;
+        
+        if (!canStack) {
+            eligibleSubtotal = selectedItems.reduce((acc: number, item: any) => {
+                const variant = item.product_variant ?? item.productVariant ?? null;
+                const product = item.product ?? null;
+                const isOnPromo = variant ? (variant.is_promo ?? false) : (product?.is_promo ?? false);
+                return isOnPromo ? acc : acc + (item.subtotal ?? 0);
+            }, 0);
+        }
+        
+        let amount = 0;
+        if (selectedDiscountVoucher.discount_type === 'percentage') {
+            amount = eligibleSubtotal * (Number(selectedDiscountVoucher.discount_value) / 100);
+        } else {
+            amount = Number(selectedDiscountVoucher.discount_value);
+        }
+        
+        amount = Math.min(amount, eligibleSubtotal);
+        
+        if (selectedDiscountVoucher.max_discount) {
+            amount = Math.min(amount, Number(selectedDiscountVoucher.max_discount));
+        }
+        
+        return amount;
+    });
+
+    const calculatedGrandTotal = $derived(
+        Math.max(0, selectedCartSubtotal - calculatedDiscount)
+    );
+
+    function toggleVoucher(promo: any) {
+        if (selectedCartSubtotal < Number(promo.min_purchase ?? 0)) {
+            showToast(`Belum memenuhi syarat minimal pembelian ${fmt(promo.min_purchase)}`, 'warning');
+            return;
+        }
+        if (promo.type === 'voucher_gratis_ongkir') {
+            if (selectedShippingVoucher?.id === promo.id) {
+                selectedShippingVoucher = null;
+                showToast('Voucher gratis ongkir dilepas.', 'info');
+            } else {
+                selectedShippingVoucher = promo;
+                showToast(`Voucher ${promo.code} diterapkan!`, 'success');
+            }
+        } else {
+            if (selectedDiscountVoucher?.id === promo.id) {
+                selectedDiscountVoucher = null;
+                showToast('Voucher belanja dilepas.', 'info');
+            } else {
+                selectedDiscountVoucher = promo;
+                showToast(`Voucher ${promo.code} diterapkan!`, 'success');
+            }
+        }
+    }
+
+    function applyManualCode() {
+        const code = manualVoucherCode.trim().toUpperCase();
+        if (!code) return;
+        
+        const found = (activePromotions || []).find(p => p.code && p.code.toUpperCase() === code);
+        if (found) {
+            toggleVoucher(found);
+            manualVoucherCode = '';
+        } else {
+            showToast('Kode voucher tidak ditemukan atau sudah kadaluarsa.', 'error');
+        }
+    }
+
+    function handleCheckout() {
+        if (selectedItems.length === 0) return;
+        const codes = [];
+        if (selectedShippingVoucher) codes.push(selectedShippingVoucher.code);
+        if (selectedDiscountVoucher) codes.push(selectedDiscountVoucher.code);
+
+        router.post('/cart/select-vouchers', {
+            vouchers: codes.length > 0 ? codes.join(',') : ''
+        }, {
+            onSuccess: () => {
+                router.visit('/checkout');
+            },
+            onError: () => {
+                router.visit('/checkout');
+            }
+        });
+    }
 </script>
 
 <svelte:head>
@@ -505,7 +631,7 @@
      MAIN WRAPPER
     ═══════════════════════════════════════════════════ -->
     <div
-        class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 pt-0 md:pt-4 pb-28 md:py-8 flex-grow bg-white md:bg-slate-50/50 w-full min-h-screen md:min-h-0"
+        class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 pt-0 md:pt-4 pb-28 md:py-8 bg-white md:bg-slate-50/50 w-full min-h-[calc(100dvh-53px)] md:min-h-0"
     >
         <!-- Desktop Page Title -->
         <h1
@@ -629,6 +755,10 @@
                                         : item.product.is_promo &&
                                           item.product.discount_percentage >
                                               0) || isItemFlashSale}
+                                {@const activePromo =
+                                    item.product_variant?.promo_rule ??
+                                    item.product?.promo_rule ??
+                                    null}
 
                                 <div
                                     class="flex flex-col gap-3 relative pt-4 border-t border-slate-100/60 first:pt-0 first:border-t-0"
@@ -801,6 +931,17 @@
                                                         Flash Sale
                                                     </span>
                                                 {/if}
+                                                {#if activePromo && activePromo.remaining_promo_stock !== null && activePromo.remaining_promo_stock !== undefined}
+                                                    <span
+                                                        class="text-[7.5px] font-black px-1.5 py-0.5 bg-orange-50 text-orange-600 border border-orange-200 rounded flex items-center gap-0.5"
+                                                    >
+                                                        <i
+                                                            class="ti ti-alert-circle text-[9px] text-orange-500 animate-pulse"
+                                                        ></i>
+                                                        Sisa Promo: {activePromo.remaining_promo_stock}
+                                                        pcs
+                                                    </span>
+                                                {/if}
                                             </div>
 
                                             <!-- Bottom row: Price (left) — Stepper + Trash (right) -->
@@ -820,7 +961,7 @@
                                                     {/if}
                                                     <span
                                                         class="text-xs font-black leading-tight"
-                                                        style="color: {secondary};"
+                                                        style="color: {primary};"
                                                     >
                                                         {fmt(item.unit_price)}
                                                     </span>
@@ -1175,11 +1316,15 @@
                         </div>
                         <!-- Inner Coupon Button (Image 1 Style) -->
                         <button
+                            onclick={() =>
+                                selectedIds.length > 0 &&
+                                (voucherModalOpen = true)}
+                            disabled={selectedIds.length === 0}
                             style="color: {primary}; border-color: {withOpacity(
                                 primary,
                                 0.2,
                             )}; background-color: {withOpacity(primary, 0.05)};"
-                            class="w-full flex items-center justify-between px-3 py-2.5 border rounded-xl text-left text-xs font-bold transition group cursor-pointer"
+                            class="w-full flex items-center justify-between px-3 py-2.5 border rounded-xl text-left text-xs font-bold transition group cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             <span class="flex items-center gap-2">
                                 <i class="ti ti-gift text-sm"></i>
@@ -1191,6 +1336,116 @@
                                 class="ti ti-chevron-right text-xs transition group-hover:translate-x-0.5"
                             ></i>
                         </button>
+
+                        {#if selectedDiscountVoucher || selectedShippingVoucher}
+                            <div
+                                class="space-y-1.5 pt-1.5 border-t border-slate-50"
+                            >
+                                <p
+                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-0.5"
+                                >
+                                    Promo yang digunakan:
+                                </p>
+                                <div class="flex flex-col gap-1.5">
+                                    {#if selectedShippingVoucher}
+                                        <div
+                                            class="flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all"
+                                            style="background: {withOpacity(
+                                                primary,
+                                                0.06,
+                                            )}; border-color: {withOpacity(
+                                                primary,
+                                                0.25,
+                                            )};"
+                                        >
+                                            <div
+                                                class="flex items-center gap-1.5 min-w-0"
+                                            >
+                                                <i
+                                                    class="ti ti-truck text-xs shrink-0"
+                                                    style="color: {primary};"
+                                                ></i>
+                                                <span
+                                                    class="shrink-0 font-black"
+                                                    style="color: {primary};"
+                                                >
+                                                    {selectedShippingVoucher.code}
+                                                </span>
+                                                <span
+                                                    class="text-[8.5px] text-slate-600 normal-case font-bold truncate"
+                                                >
+                                                    • {selectedShippingVoucher.name}
+                                                    (S/d {fmt(
+                                                        selectedShippingVoucher.discount_value,
+                                                    )})
+                                                </span>
+                                            </div>
+                                            <button
+                                                onclick={() =>
+                                                    (selectedShippingVoucher =
+                                                        null)}
+                                                class="text-slate-400 hover:text-slate-600 transition p-0.5 border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0 rounded-full hover:bg-slate-200/40 w-4 h-4 ml-1"
+                                                title="Lepas Voucher"
+                                            >
+                                                <i class="ti ti-x text-xs"></i>
+                                            </button>
+                                        </div>
+                                    {/if}
+                                    {#if selectedDiscountVoucher}
+                                        <div
+                                            class="flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all"
+                                            style="background: {withOpacity(
+                                                primary,
+                                                0.06,
+                                            )}; border-color: {withOpacity(
+                                                primary,
+                                                0.25,
+                                            )};"
+                                        >
+                                            <div
+                                                class="flex items-center gap-1.5 min-w-0"
+                                            >
+                                                <i
+                                                    class="ti ti-ticket text-xs shrink-0"
+                                                    style="color: {primary};"
+                                                ></i>
+                                                <span
+                                                    class="shrink-0 font-black"
+                                                    style="color: {primary};"
+                                                >
+                                                    {selectedDiscountVoucher.code}
+                                                </span>
+                                                <span
+                                                    class="text-[8.5px] text-slate-600 normal-case font-bold truncate"
+                                                >
+                                                    • {selectedDiscountVoucher.name}
+                                                    ({selectedDiscountVoucher.discount_type ===
+                                                    'percentage'
+                                                        ? Number(
+                                                              selectedDiscountVoucher.discount_value,
+                                                          ) + '%'
+                                                        : fmt(
+                                                              selectedDiscountVoucher.discount_value,
+                                                          )}{#if calculatedDiscount > 0}
+                                                        - Hemat {fmt(
+                                                            calculatedDiscount,
+                                                        )}{/if})
+                                                </span>
+                                            </div>
+                                            <button
+                                                onclick={() =>
+                                                    (selectedDiscountVoucher =
+                                                        null)}
+                                                class="text-slate-400 hover:text-slate-600 transition p-0.5 border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0 rounded-full hover:bg-slate-200/40 w-4 h-4 ml-1"
+                                                title="Lepas Voucher"
+                                            >
+                                                <i class="ti ti-x text-xs"></i>
+                                            </button>
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
                     </div>
 
                     <!-- Summary details card (Image 1 Style) -->
@@ -1218,7 +1473,7 @@
                             <div class="flex items-center justify-between">
                                 <span>Total Diskon</span>
                                 <span class="font-bold text-emerald-600"
-                                    >-Rp0</span
+                                    >-{fmt(calculatedDiscount)}</span
                                 >
                             </div>
 
@@ -1232,23 +1487,23 @@
                                 >
                                 <span
                                     class="text-base font-black"
-                                    style="color: {secondary};"
-                                    >{fmt(selectedCartSubtotal)}</span
+                                    style="color: {primary};"
+                                    >{fmt(calculatedGrandTotal)}</span
                                 >
                             </div>
                         </div>
 
                         <!-- Checkout Button (Image 1 Style) -->
-                        <Link
-                            href="/checkout"
+                        <button
+                            onclick={handleCheckout}
                             disabled={selectedItems.length === 0}
                             style="background-color: {primary}; border-radius: 12px;"
                             class="w-full py-3.5 font-bold text-sm text-white flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition duration-200 cursor-pointer border-0"
                         >
                             <i class="ti ti-credit-card text-lg"></i>
                             Checkout ({selectedIds.length})
-                        </Link>
-    
+                        </button>
+
                         <p
                             class="text-center text-[10px] text-slate-400 font-bold"
                         >
@@ -1282,6 +1537,8 @@
         >
             <!-- Row 1: Voucher Select (Image 2 style) -->
             <button
+                onclick={() =>
+                    selectedIds.length > 0 && (voucherModalOpen = true)}
                 class="w-full bg-white border-b border-slate-100 py-2.5 px-3 flex items-center justify-between text-left transition hover:bg-slate-50 cursor-pointer border-0"
             >
                 <span
@@ -1294,7 +1551,36 @@
                 <span
                     class="text-[10px] text-slate-400 flex items-center gap-1 font-bold"
                 >
-                    Gunakan/masukkan kode
+                    {#if selectedDiscountVoucher || selectedShippingVoucher}
+                        <div class="flex items-center gap-1">
+                            {#if selectedDiscountVoucher}
+                                <span
+                                    class="font-extrabold text-[8.5px] px-1.5 py-0.5 rounded border uppercase tracking-wider bg-white"
+                                    style="color: {primary}; border-color: {withOpacity(
+                                        primary,
+                                        0.35,
+                                    )};"
+                                >
+                                    {selectedDiscountVoucher.code}
+                                </span>
+                            {/if}
+                            {#if selectedShippingVoucher}
+                                <span
+                                    class="font-extrabold text-[8.5px] px-1.5 py-0.5 rounded border uppercase tracking-wider bg-white"
+                                    style="color: {primary}; border-color: {withOpacity(
+                                        primary,
+                                        0.35,
+                                    )};"
+                                >
+                                    {selectedShippingVoucher.code}
+                                </span>
+                            {/if}
+                        </div>
+                    {:else if selectedIds.length > 0}
+                        Gunakan/masukkan kode
+                    {:else}
+                        Pilih produk dulu
+                    {/if}
                     <i class="ti ti-chevron-right text-[10px]"></i>
                 </span>
             </button>
@@ -1334,23 +1620,20 @@
                         class="text-[9.5px] text-slate-400 font-bold leading-none mb-0.5"
                         >Total Harga</span
                     >
-                    <span
-                        class="text-sm font-black"
-                        style="color: {secondary};"
-                    >
-                        {fmt(selectedCartSubtotal)}
+                    <span class="text-sm font-black" style="color: {primary};">
+                        {fmt(calculatedGrandTotal)}
                     </span>
                 </div>
 
                 <!-- Checkout Action button -->
-                <Link
-                    href="/checkout"
+                <button
+                    onclick={handleCheckout}
                     disabled={selectedItems.length === 0}
                     class="px-5 py-2.5 font-bold text-xs text-white flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition cursor-pointer min-w-[120px] border-0"
                     style="border-radius: 4px; background-color: {primary};"
                 >
                     Checkout ({selectedTotalQuantity})
-                </Link>
+                </button>
             </div>
         </div>
     {/if}
@@ -1799,7 +2082,7 @@
                         >
                         <span
                             class="font-black text-sm"
-                            style="color: {secondary};"
+                            style="color: {primary};"
                             >{fmt(checkoutSuccessData.totalAmount)}</span
                         >
                     </div>
@@ -1888,6 +2171,413 @@
                     >
                         Ya, Hapus
                     </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- ═══════════════════════════════════════════════════
+     VOUCHER SELECTION MODAL (Premium Ticket Style)
+    ═══════════════════════════════════════════════════ -->
+    {#if voucherModalOpen}
+        <div
+            class="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4"
+            transition:fade={{ duration: 150 }}
+        >
+            <!-- Backdrop -->
+            <div
+                class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+                onclick={() => (voucherModalOpen = false)}
+            ></div>
+
+            <!-- Modal Box -->
+            <div
+                class="relative bg-white rounded-t-3xl lg:rounded-3xl shadow-2xl w-full lg:max-w-md overflow-hidden z-10 animate-in slide-in-from-bottom lg:zoom-in-95 duration-200 flex flex-col max-h-[85vh] lg:max-h-[80vh]"
+            >
+                <!-- Header -->
+                <div
+                    class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0"
+                >
+                    <div class="flex items-center gap-2.5">
+                        <div
+                            class="w-7 h-7 rounded-lg bg-orange-500 text-white flex items-center justify-center text-xs shadow-sm font-black"
+                            style="background-color: {primary};"
+                        >
+                            <i class="ti ti-ticket text-sm"></i>
+                        </div>
+                        <div>
+                            <h3
+                                class="text-[11px] font-black text-slate-800 tracking-tight uppercase"
+                            >
+                                Voucher & Promo Toko
+                            </h3>
+                            <p
+                                class="text-[8px] text-slate-400 font-bold uppercase leading-none"
+                            >
+                                Pilih promo terbaik untuk belanjamu
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onclick={() => (voucherModalOpen = false)}
+                        class="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-650 transition cursor-pointer border-0 bg-transparent rounded-full hover:bg-slate-100/80"
+                    >
+                        <i class="ti ti-x text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div
+                    class="p-3.5 overflow-y-auto space-y-3 flex-grow bg-slate-50/50"
+                >
+                    <!-- Manual Voucher Code Input Search Block -->
+                    <div
+                        class="bg-white border border-slate-200 rounded-xl p-2 flex gap-2 items-center shadow-3xs mb-1.5"
+                    >
+                        <div class="relative flex-grow">
+                            <i
+                                class="ti ti-ticket absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
+                            ></i>
+                            <input
+                                type="text"
+                                bind:value={manualVoucherCode}
+                                placeholder="Masukkan kode voucher..."
+                                class="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-[10.5px] font-semibold text-slate-700 h-8 uppercase"
+                                onkeydown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        applyManualCode();
+                                    }
+                                }}
+                            />
+                        </div>
+                        <button
+                            onclick={applyManualCode}
+                            disabled={!manualVoucherCode.trim()}
+                            class="px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-[10.5px] font-black rounded-lg uppercase tracking-wider transition duration-200 h-8 cursor-pointer border-0 shrink-0 disabled:opacity-50"
+                            style="background-color: {primary};"
+                        >
+                            Pakai
+                        </button>
+                    </div>
+
+                    {#if activeVouchers.length === 0}
+                        <div
+                            class="flex flex-col items-center justify-center py-10 px-4 text-center"
+                        >
+                            <div
+                                class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-2.5"
+                            >
+                                <i class="ti ti-ticket-off text-xl"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-500">
+                                Tidak Ada Voucher Tersedia
+                            </p>
+                            <p
+                                class="text-[9px] text-slate-400 mt-1 max-w-xs leading-normal"
+                            >
+                                Saat ini tidak ada voucher gratis ongkir atau
+                                belanja yang sedang aktif di toko.
+                            </p>
+                        </div>
+                    {:else}
+                        <!-- Section 1: Gratis Ongkir -->
+                        {#if shippingVouchers.length > 0}
+                            <div class="space-y-1.5">
+                                <h4
+                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 px-1"
+                                >
+                                    <i
+                                        class="ti ti-truck text-xs"
+                                        style="color: {primary};"
+                                    ></i> Voucher Gratis Ongkir
+                                </h4>
+                                <div class="space-y-1.5">
+                                    {#each shippingVouchers as voucher (voucher.id)}
+                                        {@const minMet =
+                                            selectedCartSubtotal >=
+                                            Number(voucher.min_purchase ?? 0)}
+                                        {@const isSelected =
+                                            selectedShippingVoucher?.id ===
+                                            voucher.id}
+
+                                        <div
+                                            class="relative flex items-stretch bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
+                                            class:opacity-60={!minMet}
+                                        >
+                                            <!-- Left side color ribbon -->
+                                            <div
+                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                    primary,
+                                                    0.8,
+                                                )});"
+                                            >
+                                                <i
+                                                    class="ti ti-truck text-base mb-0.5 shrink-0"
+                                                ></i>
+                                                <span
+                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                >
+                                                    Free
+                                                </span>
+                                            </div>
+
+                                            <!-- Dashed Ticket Divider line -->
+                                            <div
+                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                            ></div>
+                                            <!-- Ticket Top & Bottom cutouts -->
+                                            <div
+                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+                                            <div
+                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+
+                                            <!-- Right side content -->
+                                            <div
+                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                            >
+                                                <div class="min-w-0">
+                                                    <div
+                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
+                                                    >
+                                                        <span
+                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                            style="color: {primary}; border-color: {withOpacity(
+                                                                primary,
+                                                                0.35,
+                                                            )}; background: {withOpacity(
+                                                                primary,
+                                                                0.06,
+                                                            )};"
+                                                        >
+                                                            {voucher.code}
+                                                        </span>
+                                                        {#if isSelected}
+                                                            <span
+                                                                class="bg-emerald-550 text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                style="background-color: {primary};"
+                                                                >TERPASANG</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                    <h4
+                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                    >
+                                                        {voucher.name}
+                                                    </h4>
+                                                    <p
+                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                    >
+                                                        Gratis Ongkir s/d {fmt(
+                                                            voucher.discount_value,
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                <div
+                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                >
+                                                    <span
+                                                        class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none shrink-0"
+                                                    >
+                                                        Min. {fmt(
+                                                            voucher.min_purchase,
+                                                        )}
+                                                    </span>
+
+                                                    {#if minMet}
+                                                        <button
+                                                            onclick={() =>
+                                                                toggleVoucher(
+                                                                    voucher,
+                                                                )}
+                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                            style="background: {isSelected
+                                                                ? '#cbd5e1'
+                                                                : primary}; color: {isSelected
+                                                                ? '#475569'
+                                                                : 'white'};"
+                                                        >
+                                                            {isSelected
+                                                                ? 'Lepas'
+                                                                : 'Pakai'}
+                                                        </button>
+                                                    {:else}
+                                                        <span
+                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                        >
+                                                            Kurang {fmt(
+                                                                Number(
+                                                                    voucher.min_purchase,
+                                                                ) -
+                                                                    selectedCartSubtotal,
+                                                            )}
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Section 2: Voucher Belanja -->
+                        {#if discountVouchers.length > 0}
+                            <div
+                                class="space-y-1.5 {shippingVouchers.length > 0
+                                    ? 'mt-3.5'
+                                    : ''}"
+                            >
+                                <h4
+                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 px-1"
+                                >
+                                    <i
+                                        class="ti ti-ticket text-xs"
+                                        style="color: {primary};"
+                                    ></i> Voucher Belanja
+                                </h4>
+                                <div class="space-y-1.5">
+                                    {#each discountVouchers as voucher (voucher.id)}
+                                        {@const minMet =
+                                            selectedCartSubtotal >=
+                                            Number(voucher.min_purchase ?? 0)}
+                                        {@const isSelected =
+                                            selectedDiscountVoucher?.id ===
+                                            voucher.id}
+
+                                        <div
+                                            class="relative flex items-stretch bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
+                                            class:opacity-60={!minMet}
+                                        >
+                                            <!-- Left side color ribbon -->
+                                            <div
+                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                    primary,
+                                                    0.8,
+                                                )});"
+                                            >
+                                                <i
+                                                    class="ti ti-ticket text-base mb-0.5 shrink-0"
+                                                ></i>
+                                                <span
+                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                >
+                                                    Diskon
+                                                </span>
+                                            </div>
+
+                                            <!-- Dashed Ticket Divider line -->
+                                            <div
+                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                            ></div>
+                                            <!-- Ticket Top & Bottom cutouts -->
+                                            <div
+                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+                                            <div
+                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+
+                                            <!-- Right side content -->
+                                            <div
+                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                            >
+                                                <div class="min-w-0">
+                                                    <div
+                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
+                                                    >
+                                                        <span
+                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                            style="color: {primary}; border-color: {withOpacity(
+                                                                primary,
+                                                                0.35,
+                                                            )}; background: {withOpacity(
+                                                                primary,
+                                                                0.06,
+                                                            )};"
+                                                        >
+                                                            {voucher.code}
+                                                        </span>
+                                                        {#if isSelected}
+                                                            <span
+                                                                class="bg-emerald-550 text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                style="background-color: {primary};"
+                                                                >TERPASANG</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                    <h4
+                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                    >
+                                                        {voucher.name}
+                                                    </h4>
+                                                    <p
+                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                    >
+                                                        Potongan {#if voucher.discount_type === 'percentage'}{Number(
+                                                                voucher.discount_value,
+                                                            )}%{:else}{fmt(
+                                                                voucher.discount_value,
+                                                            )}{/if}
+                                                        {#if voucher.max_discount}s/d
+                                                            {fmt(
+                                                                voucher.max_discount,
+                                                            )}{/if}
+                                                    </p>
+                                                </div>
+
+                                                <div
+                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                >
+                                                    <span
+                                                        class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none shrink-0"
+                                                    >
+                                                        Min. {fmt(
+                                                            voucher.min_purchase,
+                                                        )}
+                                                    </span>
+
+                                                    {#if minMet}
+                                                        <button
+                                                            onclick={() =>
+                                                                toggleVoucher(
+                                                                    voucher,
+                                                                )}
+                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                            style="background: {isSelected
+                                                                ? '#cbd5e1'
+                                                                : primary}; color: {isSelected
+                                                                ? '#475569'
+                                                                : 'white'};"
+                                                        >
+                                                            {isSelected
+                                                                ? 'Lepas'
+                                                                : 'Pakai'}
+                                                        </button>
+                                                    {:else}
+                                                        <span
+                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                        >
+                                                            Kurang {fmt(
+                                                                Number(
+                                                                    voucher.min_purchase,
+                                                                ) -
+                                                                    selectedCartSubtotal,
+                                                            )}
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+                    {/if}
                 </div>
             </div>
         </div>

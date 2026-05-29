@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { page } from '@inertiajs/svelte';
+    import { page, router, Link } from '@inertiajs/svelte';
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
@@ -8,14 +8,24 @@
     import Chart from 'chart.js/auto';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
 
-    let { stats, orderStats, recentOrders, topProducts, chartData } = $props();
+    let { stats, orderStats, recentOrders, topProducts, chartData, currentFilter = '7_hari' } = $props();
 
+    let selectedFilter = $state(currentFilter);
     let canvas: HTMLCanvasElement;
+    let chartInstance: Chart | null = null;
 
-    onMount(() => {
-        if (canvas) {
+    $effect(() => {
+        selectedFilter = currentFilter;
+    });
+
+    $effect(() => {
+        if (canvas && chartData && chartData.labels) {
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
 
             const primaryColor = page.props.theme?.primary_color || '#0c4cb4';
 
@@ -23,7 +33,7 @@
             gradient.addColorStop(0, primaryColor + '33'); // 20% opacity
             gradient.addColorStop(1, primaryColor + '00'); // 0% opacity
 
-            new Chart(ctx, {
+            chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: [...chartData.labels],
@@ -92,6 +102,19 @@
             });
         }
     });
+
+    onMount(() => {
+        return () => {
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+        };
+    });
+
+    function handleFilterChange(e: Event) {
+        const value = (e.target as HTMLSelectElement).value;
+        router.get('/admin/dashboard', { filter: value }, { preserveState: true });
+    }
 </script>
 
 <svelte:head>
@@ -119,12 +142,15 @@
             <div class="flex items-center gap-3 w-full sm:w-auto">
                 <div class="relative w-full sm:w-auto">
                     <select
+                        value={selectedFilter}
+                        onchange={handleFilterChange}
                         class="w-full sm:w-auto appearance-none bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 transition cursor-pointer"
                     >
-                        <option>Hari Ini</option>
-                        <option>7 Hari Terakhir</option>
-                        <option selected>30 Hari Terakhir</option>
-                        <option>Tahun Ini</option>
+                        <option value="hari_ini">Hari Ini</option>
+                        <option value="7_hari">7 Hari</option>
+                        <option value="1_bulan">1 Bulan</option>
+                        <option value="1_tahun">1 Tahun</option>
+                        <option value="tahun_lalu">Tahun Lalu</option>
                     </select>
                     <i
                         class="ti ti-calendar absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
@@ -152,11 +178,25 @@
                     >
                         <i class="ti ti-wallet"></i>
                     </div>
-                    <span
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
-                    >
-                        <i class="ti ti-trending-up text-sm"></i> +12.5%
-                    </span>
+                    {#if stats.revenueChange.type === 'up'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-up text-sm"></i> {stats.revenueChange.value}
+                        </span>
+                    {:else if stats.revenueChange.type === 'down'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-down text-sm"></i> {stats.revenueChange.value}
+                        </span>
+                    {:else}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-minus text-sm"></i> {stats.revenueChange.value}
+                        </span>
+                    {/if}
                 </div>
                 <p
                     class="text-xs font-bold text-slate-500 uppercase tracking-widest font-outfit mb-1"
@@ -181,11 +221,25 @@
                     >
                         <i class="ti ti-shopping-cart"></i>
                     </div>
-                    <span
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
-                    >
-                        <i class="ti ti-trending-up text-sm"></i> +5.2%
-                    </span>
+                    {#if stats.ordersChange.type === 'up'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-up text-sm"></i> {stats.ordersChange.value}
+                        </span>
+                    {:else if stats.ordersChange.type === 'down'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-down text-sm"></i> {stats.ordersChange.value}
+                        </span>
+                    {:else}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-minus text-sm"></i> {stats.ordersChange.value}
+                        </span>
+                    {/if}
                 </div>
                 <p
                     class="text-xs font-bold text-slate-500 uppercase tracking-widest font-outfit mb-1"
@@ -209,11 +263,25 @@
                     >
                         <i class="ti ti-box"></i>
                     </div>
-                    <span
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
-                    >
-                        <i class="ti ti-minus text-sm"></i> 0.0%
-                    </span>
+                    {#if stats.productsChange.type === 'up'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-up text-sm"></i> {stats.productsChange.value}
+                        </span>
+                    {:else if stats.productsChange.type === 'down'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-down text-sm"></i> {stats.productsChange.value}
+                        </span>
+                    {:else}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-minus text-sm"></i> {stats.productsChange.value}
+                        </span>
+                    {/if}
                 </div>
                 <p
                     class="text-xs font-bold text-slate-500 uppercase tracking-widest font-outfit mb-1"
@@ -237,11 +305,25 @@
                     >
                         <i class="ti ti-users"></i>
                     </div>
-                    <span
-                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
-                    >
-                        <i class="ti ti-trending-up text-sm"></i> +18.4%
-                    </span>
+                    {#if stats.customersChange.type === 'up'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-up text-sm"></i> {stats.customersChange.value}
+                        </span>
+                    {:else if stats.customersChange.type === 'down'}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-trending-down text-sm"></i> {stats.customersChange.value}
+                        </span>
+                    {:else}
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
+                        >
+                            <i class="ti ti-minus text-sm"></i> {stats.customersChange.value}
+                        </span>
+                    {/if}
                 </div>
                 <p
                     class="text-xs font-bold text-slate-500 uppercase tracking-widest font-outfit mb-1"
@@ -268,13 +350,13 @@
                     ></i>
                     Status Operasional Pesanan
                 </h2>
-                <a
-                    href="#"
+                <Link
+                    href="/admin/transactions"
                     class="text-xs font-bold hover:underline flex items-center gap-1"
                     style="color: {primaryColor};"
                 >
                     Kelola Pesanan <i class="ti ti-arrow-right"></i>
-                </a>
+                </Link>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -414,10 +496,10 @@
                             Berdasarkan volume penjualan
                         </p>
                     </div>
-                    <a
-                        href="#"
+                    <Link
+                        href="/admin/products"
                         class="text-xs font-bold hover:underline"
-                        style="color: {primaryColor};">Lihat Semua</a
+                        style="color: {primaryColor};">Lihat Semua</Link
                     >
                 </div>
 
@@ -458,13 +540,13 @@
 
                 <!-- Quick Action -->
                 <div class="mt-6 pt-6 border-t border-slate-100">
-                    <a
-                        href="#"
+                    <Link
+                        href="/admin/products"
                         class="w-full py-3 text-white font-bold rounded-xl text-xs transition duration-200 flex items-center justify-center gap-2 shadow-lg font-outfit uppercase tracking-wider"
                         style="background-color: {primaryColor};"
                     >
                         <i class="ti ti-box text-sm"></i> Kelola Semua Produk
-                    </a>
+                    </Link>
                 </div>
             </div>
         </div>
@@ -485,10 +567,10 @@
                     </p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a
-                        href="#"
+                    <Link
+                        href="/admin/transactions"
                         class="px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-600 font-bold text-xs rounded-lg transition"
-                        >View All Orders</a
+                        >View All Orders</Link
                     >
                 </div>
             </div>
@@ -587,11 +669,12 @@
                                     {/if}
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <button
-                                        class="p-2 text-slate-400 rounded-lg transition hover:text-[var(--hover-color)]"
+                                    <Link
+                                        href="/admin/transactions/{order.raw_id}"
+                                        class="inline-block p-2 text-slate-400 rounded-lg transition hover:text-[var(--hover-color)]"
                                         style="--hover-color: {primaryColor};"
                                         title="View Detail"
-                                        ><i class="ti ti-eye"></i></button
+                                        ><i class="ti ti-eye"></i></Link
                                     >
                                 </td>
                             </tr>

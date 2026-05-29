@@ -355,7 +355,7 @@
     <!-- Spacer for mobile sticky bar -->
     <div class="md:hidden h-[134px]"></div>
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 min-h-[calc(100dvh-134px)] md:min-h-0">
         <!-- Desktop Header -->
         <div class="hidden md:block mb-6">
             <div class="flex items-center justify-between mb-4">

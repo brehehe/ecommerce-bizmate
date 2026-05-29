@@ -85,6 +85,9 @@
         is_active: true,
         settings: {
             keep_tier_prices: false,
+            max_uses_per_user: '',
+            min_qty: 1,
+            can_stack_with_promos: true,
             bundle: {
                 buy_items: [
                     { product_id: '', product_variant_id: '', qty: 1 }
@@ -275,10 +278,11 @@
 
 
     $effect(() => {
-        // Reset code if not voucher type
+        // Reset code if not voucher or promo_toko type
         if (
             form.type !== 'voucher_belanja' &&
-            form.type !== 'voucher_gratis_ongkir'
+            form.type !== 'voucher_gratis_ongkir' &&
+            form.type !== 'promo_toko'
         ) {
             form.code = '';
         }
@@ -472,6 +476,7 @@
     }
 
     const typeOptions = [
+        { id: 'promo_produk', name: 'Promo Produk (Diskon Produk Langsung)' },
         { id: 'promo_toko', name: 'Promo Toko (Diskon Produk)' },
         { id: 'voucher_belanja', name: 'Voucher Belanja (Diskon Belanja)' },
         { id: 'voucher_gratis_ongkir', name: 'Voucher Gratis Ongkir' },
@@ -562,14 +567,14 @@
                             />
                         </div>
 
-                        {#if form.type === 'voucher_belanja' || form.type === 'voucher_gratis_ongkir'}
+                        {#if form.type === 'voucher_belanja' || form.type === 'voucher_gratis_ongkir' || form.type === 'promo_toko'}
                             <div>
                                 <Input
                                     id="promo-code"
                                     bind:value={form.code}
-                                    label="Kode Voucher"
-                                    placeholder="Contoh: GAJIANMAI10"
-                                    required={true}
+                                    label={form.type === 'promo_toko' ? 'Kode Voucher (Opsional)' : 'Kode Voucher'}
+                                    placeholder={form.type === 'promo_toko' ? 'Contoh: TOKOPROMO (Kosongkan jika otomatis)' : 'Contoh: GAJIANMAI10'}
+                                    required={form.type !== 'promo_toko'}
                                     error={form.errors.code}
                                 />
                             </div>
@@ -648,10 +653,35 @@
                         </div>
                     {/if}
 
-                    <!-- Vouchers Terms (Min Purchase, Max Discount, Quota) -->
-                    {#if form.type === 'voucher_belanja' || form.type === 'voucher_gratis_ongkir'}
+                    <!-- Promo Produk Custom Settings (Min Qty) -->
+                    {#if form.type === 'promo_produk'}
                         <div
-                            class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-3 border-t border-slate-100"
+                            class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-slate-100"
+                        >
+                            <div>
+                                <Input
+                                    id="min-qty"
+                                    bind:value={form.settings.min_qty}
+                                    type="number"
+                                    label="Minimal Jumlah Pembelian Produk (Qty)"
+                                    placeholder="Contoh: 1"
+                                    min="1"
+                                    required={true}
+                                    error={form.errors['settings.min_qty']}
+                                />
+                            </div>
+                            <div class="flex items-center pt-6">
+                                <p class="text-xs text-slate-500 font-medium">
+                                    Diskon hanya akan berlaku jika pembeli menambahkan minimal jumlah produk ini di keranjang belanja.
+                                </p>
+                            </div>
+                        </div>
+                    {/if}
+
+                    <!-- Vouchers Terms (Min Purchase, Max Discount, Quota, Max Uses Per User) -->
+                    {#if form.type === 'voucher_belanja' || form.type === 'voucher_gratis_ongkir' || form.type === 'promo_toko'}
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-4 gap-6 pt-3 border-t border-slate-100"
                         >
                             <div>
                                 <InputCurrency
@@ -687,6 +717,27 @@
                                     error={form.errors.quota}
                                 />
                             </div>
+
+                            <div>
+                                <Input
+                                    id="max-uses-per-user"
+                                    bind:value={form.settings.max_uses_per_user}
+                                    type="number"
+                                    label="Batas per User"
+                                    placeholder="Contoh: 1 (Opsional)"
+                                    min="0"
+                                    error={form.errors['settings.max_uses_per_user']}
+                                />
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 mt-4">
+                            <Toggle
+                                bind:checked={form.settings.can_stack_with_promos}
+                                label="Izinkan Penggabungan Promo"
+                                description="Jika dinonaktifkan, potongan voucher ini hanya dihitung dari barang berharga normal (tanpa promo)."
+                                icon="ti-layers-intersect"
+                            />
                         </div>
                     {/if}
                 </div>
@@ -1070,7 +1121,7 @@
             </div>
 
             <!-- Product Targets Section (Spanning full layout below side-by-side columns!) -->
-            {#if form.type !== 'bundling_gift' && form.type !== 'voucher_gratis_ongkir'}
+            {#if form.type !== 'bundling_gift' && form.type !== 'voucher_gratis_ongkir' && form.type !== 'promo_toko' && form.type !== 'voucher_belanja'}
                 <div class="lg:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-card p-6 sm:p-8 space-y-6 w-full">
                     <!-- Section Header -->
                     <div class="flex items-center gap-3 pb-3 border-b border-slate-100">

@@ -1,17 +1,20 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
-    import { page, router } from '@inertiajs/svelte';
+    import { page, router, Link } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
+    import { fade } from 'svelte/transition';
 
     let {
         cartItems = [],
         addresses = [],
         paymentMethods = [],
         activePromotions = [],
+        vouchers = [],
         storeName = '',
         storeLogo = '',
         storeOriginCity = null,
         appFee = 0,
+        appliedVoucher: initialAppliedVoucher = null,
     } = $props();
 
     const primary = $derived(
@@ -20,6 +23,47 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
+
+    const visibleVouchers = $derived.by(() => {
+        const base = (vouchers || []).filter(
+            (v: any) =>
+                v.type === 'voucher_gratis_ongkir' ||
+                v.type === 'voucher_belanja',
+        );
+        const extra = [];
+        if (appliedVoucher && Array.isArray(appliedVoucher.promotions)) {
+            for (const p of appliedVoucher.promotions) {
+                if (!base.some((b) => b.id === p.id)) {
+                    extra.push(p);
+                }
+            }
+        } else if (appliedVoucher && appliedVoucher.promotion) {
+            const p = appliedVoucher.promotion;
+            if (!base.some((b) => b.id === p.id)) {
+                extra.push(p);
+            }
+        }
+        return [...base, ...extra];
+    });
+
+    const shippingVouchers = $derived(
+        visibleVouchers.filter((v: any) => v.type === 'voucher_gratis_ongkir'),
+    );
+
+    const discountVouchers = $derived(
+        visibleVouchers.filter((v: any) => v.type !== 'voucher_gratis_ongkir'),
+    );
+
+    const activeAppliedVouchers = $derived.by(() => {
+        if (!appliedVoucher) return [];
+        let list: any[] = [];
+        if (Array.isArray(appliedVoucher.promotions)) {
+            list = appliedVoucher.promotions;
+        } else if (appliedVoucher.promotion) {
+            list = [appliedVoucher.promotion];
+        }
+        return list;
+    });
 
     // Selected address
     let selectedAddressId = $state(
@@ -36,45 +80,158 @@
     );
 
     // Shipping
-    let availableCouriers = [
+    const availableCouriers = [
         'jne',
-        'tiki',
-        'pos',
-        'jnt',
         'sicepat',
-        'ninja',
         'ide',
         'sap',
-        'wahana',
+        'jnt',
+        'ninja',
+        'tiki',
         'lion',
+        'anteraja',
+        'pos',
+        'ncs',
         'rex',
+        'rpx',
         'sentral',
+        'star',
+        'wahana',
+        'dse',
+        'gojek',
+        'grab',
     ];
+
     const courierLabels: Record<string, string> = {
         jne: 'JNE',
-        tiki: 'TIKI',
-        pos: 'POS Indonesia',
-        jnt: 'J&T Express',
-        sicepat: 'SiCepat',
-        ninja: 'Ninja Xpress',
+        sicepat: 'SiCepat Express',
         ide: 'ID Express',
         sap: 'SAP Express',
-        wahana: 'Wahana Express',
+        jnt: 'J&T Express',
+        ninja: 'Ninja Xpress',
+        tiki: 'TIKI',
         lion: 'Lion Parcel',
-        rex: 'REX',
+        anteraja: 'AnterAja',
+        pos: 'POS Indonesia',
+        ncs: 'NCS',
+        rex: 'REX Express',
+        rpx: 'RPX',
         sentral: 'Sentral Cargo',
+        star: 'Star Cargo',
+        wahana: 'Wahana Express',
+        dse: '21 Express (DSE)',
+        gojek: 'GoSend (Instant)',
+        grab: 'GrabExpress (Instant)',
     };
+
     let selectedCourier = $state('');
+    let searchCourierQuery = $state('');
+    let showCourierDropdown = $state(false);
+    function closeCourierDropdown(e: MouseEvent) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.courier-select-container')) {
+            showCourierDropdown = false;
+        }
+    }
     let shippingOptions: any[] = $state([]);
     let selectedShipping: any = $state(null);
     let loadingShipping = $state(false);
     let shippingError = $state('');
 
     // Voucher
-    let voucherInputCode = $state('');
-    let appliedVoucher: any = $state(null);
+    let initialVoucherCode = $derived.by(() => {
+        if (!initialAppliedVoucher) return '';
+        if (Array.isArray(initialAppliedVoucher.promotions)) {
+            return initialAppliedVoucher.promotions
+                .map((p: any) => p.code)
+                .join(',');
+        } else if (initialAppliedVoucher.promotion) {
+            return initialAppliedVoucher.promotion.code;
+        }
+        return '';
+    });
+
+    let voucherInputCode = $state(initialVoucherCode);
+    let manualPromoCode = $state('');
+    let appliedVoucher: any = $state(initialAppliedVoucher);
     let voucherError = $state('');
     let voucherLoading = $state(false);
+    let voucherModalOpen = $state(false);
+
+    // Read query parameter and apply voucher reactively using page.url to prevent SPA race conditions
+    const queryVoucher = $derived.by(() => {
+        const urlStr = page.url;
+        if (!urlStr) return '';
+        try {
+            const url = new URL(urlStr, 'http://localhost');
+            return url.searchParams.get('voucher') ?? '';
+        } catch {
+            return '';
+        }
+    });
+
+    let lastAppliedQueryVoucher = $state(initialVoucherCode);
+    $effect(() => {
+        const currentQuery = queryVoucher;
+        if (currentQuery && currentQuery !== lastAppliedQueryVoucher) {
+            lastAppliedQueryVoucher = currentQuery;
+            voucherInputCode = currentQuery;
+            applyVoucherCodes(currentQuery);
+        }
+    });
+
+    // Reactive effect to re-apply vouchers if shipping fee changes to ensure shipping discounts calculate correctly
+    $effect(() => {
+        if (voucherInputCode && shippingFee > 0) {
+            applyVoucherCodes(voucherInputCode);
+        }
+    });
+
+    function selectVoucher(voucher: any) {
+        let codes = voucherInputCode
+            .split(',')
+            .map((c) => c.trim().toUpperCase())
+            .filter(Boolean);
+
+        if (voucher.type === 'voucher_gratis_ongkir') {
+            const existingShipping = vouchers.find(
+                (v) =>
+                    v.type === 'voucher_gratis_ongkir' &&
+                    codes.includes(v.code.toUpperCase()),
+            );
+            if (existingShipping) {
+                codes = codes.filter(
+                    (c) => c !== existingShipping.code.toUpperCase(),
+                );
+            }
+            codes.push(voucher.code.toUpperCase());
+        } else {
+            const existingDiscount = vouchers.find(
+                (v) =>
+                    v.type !== 'voucher_gratis_ongkir' &&
+                    codes.includes(v.code.toUpperCase()),
+            );
+            if (existingDiscount) {
+                codes = codes.filter(
+                    (c) => c !== existingDiscount.code.toUpperCase(),
+                );
+            }
+            codes.push(voucher.code.toUpperCase());
+        }
+
+        voucherInputCode = codes.join(',');
+        applyVoucherCodes(voucherInputCode);
+    }
+
+    function deselectVoucher(voucher: any) {
+        let codes = voucherInputCode
+            .split(',')
+            .map((c) => c.trim().toUpperCase())
+            .filter(Boolean);
+        codes = codes.filter((c) => c !== voucher.code.toUpperCase());
+        voucherInputCode = codes.join(',');
+        applyVoucherCodes(voucherInputCode);
+    }
 
     // Notes
     let orderNotes = $state('');
@@ -88,6 +245,23 @@
             currency: 'IDR',
             minimumFractionDigits: 0,
         }).format(Number(price) || 0);
+    }
+
+    function withOpacity(hex: string, alpha: number) {
+        if (!hex) return `rgba(0, 0, 0, ${alpha})`;
+        let r = 0,
+            g = 0,
+            b = 0;
+        if (hex.length === 4) {
+            r = parseInt(hex[1] + hex[1], 16);
+            g = parseInt(hex[2] + hex[2], 16);
+            b = parseInt(hex[3] + hex[3], 16);
+        } else if (hex.length === 7) {
+            r = parseInt(hex.substring(1, 3), 16);
+            g = parseInt(hex.substring(3, 5), 16);
+            b = parseInt(hex.substring(5, 7), 16);
+        }
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
     /**
@@ -203,6 +377,16 @@
         }, 0),
     );
 
+    function getEtdLabel(etd: any): string {
+        if (!etd) return 'Estimasi tidak tersedia';
+        const clean = etd.toString().toLowerCase().replace(/days?|hari/gi, '').trim();
+        if (clean === '' || clean === '-') return 'Estimasi tidak tersedia';
+        if (clean === '0' || clean === '0-0' || clean === '0-0 hari' || clean === '0 - 0') {
+            return 'Hari yang sama (Same Day)';
+        }
+        return `Estimasi: ${clean} hari`;
+    }
+
     async function fetchShipping() {
         if (!selectedAddress || !selectedCourier) return;
 
@@ -236,11 +420,12 @@
             });
 
             const data = await resp.json();
-            if (data.results && data.results.length > 0) {
+            if (resp.ok && data.results && data.results.length > 0) {
                 const services = data.results[0]?.costs ?? [];
                 shippingOptions = services;
             } else {
-                shippingError = 'Tidak ada layanan pengiriman tersedia.';
+                shippingError =
+                    data.error ?? 'Tidak ada layanan pengiriman tersedia.';
             }
         } catch {
             shippingError = 'Gagal memuat ongkir. Coba lagi.';
@@ -249,11 +434,14 @@
         }
     }
 
-    async function applyVoucher() {
-        if (!voucherInputCode.trim()) return;
+    async function applyVoucherCodes(codesStr: string) {
+        if (!codesStr.trim()) {
+            appliedVoucher = null;
+            voucherInputCode = '';
+            return;
+        }
         voucherLoading = true;
         voucherError = '';
-        appliedVoucher = null;
 
         try {
             const resp = await fetch('/checkout/apply-voucher', {
@@ -269,7 +457,7 @@
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    code: voucherInputCode,
+                    code: codesStr,
                     subtotal: subtotal,
                     shipping_fee: shippingFee,
                 }),
@@ -278,6 +466,60 @@
             const data = await resp.json();
             if (data.valid) {
                 appliedVoucher = data;
+                voucherInputCode = codesStr;
+            } else {
+                voucherError = data.message ?? 'Voucher tidak valid.';
+            }
+        } catch {
+            voucherError = 'Gagal memvalidasi voucher.';
+        } finally {
+            voucherLoading = false;
+        }
+    }
+
+    async function applyVoucher() {
+        const codeToApply = manualPromoCode.trim().toUpperCase();
+        if (!codeToApply) return;
+
+        voucherLoading = true;
+        voucherError = '';
+
+        // Add codeToApply to the comma-separated list
+        let codes = voucherInputCode
+            .split(',')
+            .map((c) => c.trim().toUpperCase())
+            .filter(Boolean);
+        if (!codes.includes(codeToApply)) {
+            codes.push(codeToApply);
+        }
+
+        const newCodesStr = codes.join(',');
+
+        try {
+            const resp = await fetch('/checkout/apply-voucher', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as any
+                        )?.content ?? '',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    code: newCodesStr,
+                    subtotal: subtotal,
+                    shipping_fee: shippingFee,
+                }),
+            });
+
+            const data = await resp.json();
+            if (data.valid) {
+                appliedVoucher = data;
+                voucherInputCode = newCodesStr;
+                manualPromoCode = ''; // Clear manual input upon success!
                 showToast(
                     data.message ?? 'Voucher berhasil diterapkan!',
                     'success',
@@ -296,6 +538,7 @@
         appliedVoucher = null;
         voucherInputCode = '';
         voucherError = '';
+        manualPromoCode = '';
     }
 
     function submitCheckout() {
@@ -323,8 +566,7 @@
                 shipping_service: selectedShipping?.service,
                 shipping_etd: selectedShipping?.cost?.[0]?.etd ?? '',
                 shipping_fee: shippingFee,
-                voucher_code:
-                    appliedVoucher?.promotion?.code ?? voucherInputCode ?? '',
+                voucher_code: voucherInputCode ?? '',
                 notes: orderNotes,
             },
             {
@@ -353,8 +595,10 @@
     };
 </script>
 
+<svelte:window onclick={closeCourierDropdown} />
+
 <StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-dvh bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
@@ -441,11 +685,10 @@
                                 >
                                     <i class="ti ti-alert-triangle mr-1"></i>
                                     Belum ada alamat.
-                                    <a
+                                    <Link
                                         href="/profile/addresses?from=checkout"
-                                        use:inertia
                                         class="font-black underline"
-                                        >Tambah Alamat</a
+                                        >Tambah Alamat</Link
                                     >
                                 </div>
                             </div>
@@ -614,7 +857,7 @@
 
                     <!-- Shipping Section -->
                     <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                        class="bg-white rounded-2xl shadow-sm border border-slate-100"
                     >
                         <div class="px-4 pt-4 pb-3">
                             <div class="flex items-center gap-2 mb-3">
@@ -634,75 +877,229 @@
                                 </p>
                             {:else}
                                 <!-- Courier selection -->
-                                <div class="mb-3">
+                                <div
+                                    class="mb-3 relative courier-select-container"
+                                >
                                     <p
-                                        class="text-xs font-semibold text-slate-600 mb-2"
+                                        class="text-xs font-semibold text-slate-500 mb-2"
                                     >
                                         Pilih Kurir
                                     </p>
-                                    <div class="flex flex-wrap gap-2">
-                                        {#each availableCouriers as courier}
-                                            <button
-                                                onclick={() => {
-                                                    selectedCourier = courier;
-                                                    fetchShipping();
-                                                }}
-                                                class="px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition {selectedCourier ===
-                                                courier
-                                                    ? 'text-white border-transparent'
-                                                    : 'border-slate-200 text-slate-600 hover:border-slate-300'}"
-                                                style={selectedCourier ===
-                                                courier
-                                                    ? `background-color:${primary}; border-color:${primary}`
-                                                    : ''}
-                                                >{courierLabels[courier] ??
-                                                    courier.toUpperCase()}</button
+
+                                    <!-- Dropdown Trigger -->
+                                    <button
+                                        onclick={() =>
+                                            (showCourierDropdown =
+                                                !showCourierDropdown)}
+                                        class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 text-left bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 active:scale-[0.99] {showCourierDropdown
+                                            ? 'border-slate-300 bg-white ring-2 ring-slate-100'
+                                            : 'border-slate-100'}"
+                                    >
+                                        <div class="flex items-center gap-2.5">
+                                            <i
+                                                class="ti ti-truck text-base text-slate-500"
+                                            ></i>
+                                            {#if selectedCourier}
+                                                <span
+                                                    class="text-xs font-bold text-slate-800"
+                                                >
+                                                    {courierLabels[
+                                                        selectedCourier
+                                                    ] ??
+                                                        selectedCourier.toUpperCase()}
+                                                </span>
+                                            {:else}
+                                                <span
+                                                    class="text-xs font-medium text-slate-400"
+                                                >
+                                                    Pilih kurir pengiriman...
+                                                </span>
+                                            {/if}
+                                        </div>
+                                        <i
+                                            class="ti ti-chevron-down text-xs text-slate-400 transition-transform duration-200 {showCourierDropdown
+                                                ? 'rotate-180'
+                                                : ''}"
+                                        ></i>
+                                    </button>
+
+                                    <!-- Dropdown Panel -->
+                                    {#if showCourierDropdown}
+                                        <div
+                                            class="absolute z-50 left-0 right-0 mt-1.5 bg-white rounded-2xl border border-slate-100 shadow-xl overflow-hidden"
+                                            transition:fade={{ duration: 100 }}
+                                        >
+                                            <!-- Search input -->
+                                            <div
+                                                class="p-2 border-b border-slate-50 sticky top-0 bg-white z-10"
                                             >
-                                        {/each}
-                                    </div>
+                                                <div class="relative">
+                                                    <i
+                                                        class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                                                    ></i>
+                                                    <input
+                                                        type="text"
+                                                        bind:value={
+                                                            searchCourierQuery
+                                                        }
+                                                        placeholder="Cari kurir..."
+                                                        class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-100 transition-all font-medium text-slate-700"
+                                                    />
+                                                    {#if searchCourierQuery}
+                                                        <button
+                                                            onclick={() =>
+                                                                (searchCourierQuery =
+                                                                    '')}
+                                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                                                        >
+                                                            <i
+                                                                class="ti ti-x text-xs"
+                                                            ></i>
+                                                        </button>
+                                                    {/if}
+                                                </div>
+                                            </div>
+
+                                            <!-- Options List -->
+                                            <div
+                                                class="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin"
+                                            >
+                                                {#each availableCouriers.filter( (c) => courierLabels[c]
+                                                            .toLowerCase()
+                                                            .includes(searchCourierQuery.toLowerCase()), ) as courier}
+                                                    <button
+                                                        onclick={() => {
+                                                            selectedCourier =
+                                                                courier;
+                                                            showCourierDropdown = false;
+                                                            searchCourierQuery =
+                                                                '';
+                                                            fetchShipping();
+                                                        }}
+                                                        class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition active:scale-[0.99] {selectedCourier ===
+                                                        courier
+                                                            ? 'text-white font-bold shadow-sm'
+                                                            : 'text-slate-700 hover:bg-slate-50'}"
+                                                        style={selectedCourier ===
+                                                        courier
+                                                            ? `background-color:${primary};`
+                                                            : ''}
+                                                    >
+                                                        <span
+                                                            >{courierLabels[
+                                                                courier
+                                                            ]}</span
+                                                        >
+                                                        {#if selectedCourier === courier}
+                                                            <i
+                                                                class="ti ti-check text-xs font-bold text-white"
+                                                            ></i>
+                                                        {/if}
+                                                    </button>
+                                                {:else}
+                                                    <div
+                                                        class="py-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-1.5"
+                                                    >
+                                                        <i
+                                                            class="ti ti-search-off text-lg text-slate-300"
+                                                        ></i>
+                                                        <span
+                                                            >Kurir "{searchCourierQuery}"
+                                                            tidak ditemukan</span
+                                                        >
+                                                    </div>
+                                                {/each}
+                                            </div>
+                                        </div>
+                                    {/if}
                                 </div>
 
                                 {#if loadingShipping}
-                                    <div class="space-y-2">
+                                    <div class="space-y-2 mt-3">
                                         {#each [1, 2, 3] as _}
                                             <div
-                                                class="h-14 bg-slate-100 rounded-xl animate-pulse"
-                                            ></div>
+                                                class="h-16 bg-slate-50 border border-slate-100 rounded-2xl animate-pulse flex items-center justify-between px-4"
+                                            >
+                                                <div class="space-y-2 w-2/3">
+                                                    <div
+                                                        class="h-4 bg-slate-200/80 rounded-md w-1/2"
+                                                    ></div>
+                                                    <div
+                                                        class="h-3 bg-slate-200/80 rounded-md w-3/4"
+                                                    ></div>
+                                                </div>
+                                                <div
+                                                    class="h-5 bg-slate-200/80 rounded-md w-16"
+                                                ></div>
+                                            </div>
                                         {/each}
                                     </div>
                                 {:else if shippingError}
-                                    <p class="text-xs text-red-500">
-                                        {shippingError}
-                                    </p>
+                                    <div
+                                        class="mt-3 p-3 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-medium flex items-center gap-2"
+                                    >
+                                        <i class="ti ti-alert-circle text-base"
+                                        ></i>
+                                        <span>{shippingError}</span>
+                                    </div>
                                 {:else if shippingOptions.length > 0}
-                                    <div class="space-y-2">
+                                    <div class="space-y-2 mt-3">
                                         {#each shippingOptions as opt}
                                             <button
                                                 onclick={() =>
                                                     (selectedShipping = opt)}
-                                                class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border-2 text-left transition {selectedShipping?.service ===
+                                                class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.99] {selectedShipping?.service ===
                                                 opt.service
-                                                    ? 'border-transparent'
-                                                    : 'border-slate-200 hover:border-slate-300'}"
+                                                    ? 'shadow-sm border-transparent'
+                                                    : 'border-slate-100 hover:border-slate-200 bg-slate-50/30'}"
                                                 style={selectedShipping?.service ===
                                                 opt.service
-                                                    ? `border-color:${primary}; background-color:${primary}10`
+                                                    ? `border-color:${primary}; background-color:${primary}08`
                                                     : ''}
                                             >
-                                                <div>
-                                                    <p
-                                                        class="text-sm font-bold text-slate-800"
+                                                <div
+                                                    class="flex items-center gap-3"
+                                                >
+                                                    <div
+                                                        class="w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 shrink-0"
+                                                        style={selectedShipping?.service ===
+                                                        opt.service
+                                                            ? `border-color:${primary}; background-color:${primary}`
+                                                            : 'border-slate-300 bg-white'}
                                                     >
-                                                        {selectedCourier.toUpperCase()}
-                                                        {opt.service}
-                                                    </p>
-                                                    <p
-                                                        class="text-xs text-slate-500"
-                                                    >
-                                                        {opt.description} • Estimasi
-                                                        {opt.cost?.[0]?.etd ??
-                                                            '-'} hari
-                                                    </p>
+                                                        {#if selectedShipping?.service === opt.service}
+                                                            <i
+                                                                class="ti ti-check text-[10px] text-white"
+                                                            ></i>
+                                                        {/if}
+                                                    </div>
+                                                    <div>
+                                                        <p
+                                                            class="text-sm font-bold text-slate-800 flex items-center gap-1.5"
+                                                        >
+                                                            <span
+                                                                class="uppercase px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500"
+                                                            >
+                                                                {selectedCourier}
+                                                            </span>
+                                                            {opt.service}
+                                                        </p>
+                                                        <p
+                                                            class="text-xs text-slate-500 mt-0.5"
+                                                        >
+                                                            {opt.description}
+                                                        </p>
+                                                        <p
+                                                            class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"
+                                                        >
+                                                            <i
+                                                                class="ti ti-clock text-xs"
+                                                            ></i>
+                                                            <span
+                                                                >{getEtdLabel(opt.cost?.[0]?.etd)}</span
+                                                            >
+                                                        </p>
+                                                    </div>
                                                 </div>
                                                 <div class="text-right">
                                                     <p
@@ -714,24 +1111,46 @@
                                                                 ?.value ?? 0,
                                                         )}
                                                     </p>
-                                                    {#if selectedShipping?.service === opt.service}
-                                                        <i
-                                                            class="ti ti-check text-xs"
-                                                            style="color:{primary}"
-                                                        ></i>
-                                                    {/if}
                                                 </div>
                                             </button>
                                         {/each}
                                     </div>
                                 {:else if selectedCourier}
-                                    <p class="text-xs text-slate-400 italic">
-                                        Memilih kurir untuk melihat layanan...
-                                    </p>
+                                    <div
+                                        class="flex flex-col items-center justify-center py-6 px-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center mt-3"
+                                    >
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-2 animate-bounce"
+                                        >
+                                            <i
+                                                class="ti ti-loader text-lg text-slate-500"
+                                            ></i>
+                                        </div>
+                                        <p
+                                            class="text-xs font-medium text-slate-500"
+                                        >
+                                            Memilih kurir untuk melihat
+                                            layanan...
+                                        </p>
+                                    </div>
                                 {:else}
-                                    <p class="text-xs text-slate-400 italic">
-                                        Pilih kurir pengiriman di atas.
-                                    </p>
+                                    <div
+                                        class="flex flex-col items-center justify-center py-6 px-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center mt-3"
+                                    >
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-2"
+                                        >
+                                            <i
+                                                class="ti ti-truck-delivery text-lg text-slate-400"
+                                            ></i>
+                                        </div>
+                                        <p
+                                            class="text-xs font-medium text-slate-500"
+                                        >
+                                            Pilih kurir di atas untuk melihat
+                                            pilihan layanan & ongkir.
+                                        </p>
+                                    </div>
                                 {/if}
                             {/if}
                         </div>
@@ -739,76 +1158,132 @@
 
                     <!-- Voucher Section -->
                     <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-3"
                     >
-                        <div class="px-4 pt-4 pb-4">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i
-                                    class="ti ti-ticket text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Voucher</span
-                                >
-                            </div>
-
-                            {#if appliedVoucher}
-                                <div
-                                    class="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5"
-                                >
-                                    <div>
-                                        <p
-                                            class="text-sm font-bold text-green-700"
-                                        >
-                                            {appliedVoucher.promotion_name}
-                                        </p>
-                                        <p class="text-xs text-green-600">
-                                            {#if appliedVoucher.discount_amount > 0}
-                                                Hemat {fmt(
-                                                    appliedVoucher.discount_amount,
-                                                )}
-                                            {:else if appliedVoucher.shipping_discount > 0}
-                                                Gratis ongkir {fmt(
-                                                    appliedVoucher.shipping_discount,
-                                                )}
-                                            {/if}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onclick={removeVoucher}
-                                        class="text-green-600 hover:text-green-800 p-1"
-                                    >
-                                        <i class="ti ti-x"></i>
-                                    </button>
-                                </div>
-                            {:else}
-                                <div class="flex gap-2">
-                                    <input
-                                        type="text"
-                                        bind:value={voucherInputCode}
-                                        placeholder="Masukkan kode voucher"
-                                        class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent uppercase"
-                                        style="--tw-ring-color:{primary}"
-                                        onkeydown={(e: any) =>
-                                            e.key === 'Enter' && applyVoucher()}
-                                    />
-                                    <button
-                                        onclick={applyVoucher}
-                                        disabled={voucherLoading ||
-                                            !voucherInputCode.trim()}
-                                        class="px-4 py-2 rounded-xl text-sm font-bold text-white transition disabled:opacity-50"
-                                        style="background:{primary}"
-                                    >
-                                        {voucherLoading ? '...' : 'Pakai'}
-                                    </button>
-                                </div>
-                                {#if voucherError}
-                                    <p class="text-xs text-red-500 mt-1">
-                                        {voucherError}
-                                    </p>
-                                {/if}
-                            {/if}
+                        <div class="flex items-center gap-2">
+                            <i
+                                class="ti ti-ticket text-xl"
+                                style="color: {primary};"
+                            ></i>
+                            <h3
+                                class="font-outfit font-black text-xs uppercase tracking-wider text-slate-400"
+                            >
+                                Voucher & Promo
+                            </h3>
                         </div>
+
+                        <!-- Inner Coupon Button (Image 1 Style for modal triggers) -->
+                        <button
+                            onclick={() => (voucherModalOpen = true)}
+                            style="color: {primary}; border-color: {primary}30; background-color: {primary}08;"
+                            class="w-full flex items-center justify-between px-3 py-2.5 border rounded-xl text-left text-xs font-bold transition group cursor-pointer"
+                        >
+                            <span class="flex items-center gap-2">
+                                <i class="ti ti-gift text-sm"></i>
+                                {visibleVouchers.length > 0
+                                    ? 'Pilih promo yang tersedia'
+                                    : 'Tidak ada promo tersedia'}
+                            </span>
+                            <i
+                                class="ti ti-chevron-right text-xs transition group-hover:translate-x-0.5"
+                            ></i>
+                        </button>
+
+                        {#if activeAppliedVouchers.length > 0}
+                            <div
+                                class="space-y-1.5 pt-1.5 border-t border-slate-50"
+                            >
+                                <p
+                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-0.5"
+                                >
+                                    Promo yang digunakan:
+                                </p>
+                                <div class="flex flex-col gap-1.5">
+                                    {#each activeAppliedVouchers as voucher}
+                                        {@const isShipping =
+                                            voucher.type ===
+                                            'voucher_gratis_ongkir'}
+                                        <div
+                                            class="flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all"
+                                            style="background: {withOpacity(
+                                                isShipping ? primary : primary,
+                                                0.06,
+                                            )}; border-color: {withOpacity(
+                                                isShipping ? primary : primary,
+                                                0.25,
+                                            )};"
+                                        >
+                                            <div
+                                                class="flex items-center gap-1.5 min-w-0"
+                                            >
+                                                <i
+                                                    class="ti {isShipping
+                                                        ? 'ti-truck'
+                                                        : 'ti-ticket'} text-xs shrink-0"
+                                                    style="color: {isShipping
+                                                        ? primary
+                                                        : primary};"
+                                                ></i>
+                                                <span
+                                                    class="shrink-0 font-black"
+                                                    style="color: {isShipping
+                                                        ? primary
+                                                        : primary};"
+                                                >
+                                                    {voucher.code}
+                                                </span>
+                                                <span
+                                                    class="text-[8.5px] text-slate-600 normal-case font-bold truncate"
+                                                >
+                                                    • {voucher.name} (
+                                                    {#if isShipping}
+                                                        S/d {fmt(
+                                                            voucher.discount_value,
+                                                        )}
+                                                        {#if shippingDiscount > 0}
+                                                            - Hemat {fmt(
+                                                                shippingDiscount,
+                                                            )}
+                                                        {/if}
+                                                    {:else}
+                                                        {voucher.discount_type ===
+                                                        'percentage'
+                                                            ? Number(
+                                                                  voucher.discount_value,
+                                                              ) + '%'
+                                                            : fmt(
+                                                                  voucher.discount_value,
+                                                              )}
+                                                        {#if discountAmount > 0}
+                                                            - Hemat {fmt(
+                                                                discountAmount,
+                                                            )}
+                                                        {/if}
+                                                    {/if}
+                                                    )
+                                                </span>
+                                            </div>
+                                            <button
+                                                onclick={() =>
+                                                    deselectVoucher(voucher)}
+                                                class="text-slate-400 hover:text-slate-655 transition p-0.5 border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0 rounded-full hover:bg-slate-200/40 w-4 h-4 ml-1"
+                                                title="Lepas Voucher"
+                                            >
+                                                <i class="ti ti-x text-xs"></i>
+                                            </button>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+
+                        {#if voucherError}
+                            <p
+                                class="text-[10.5px] text-red-500 font-bold mt-1"
+                            >
+                                {voucherError}
+                            </p>
+                        {/if}
                     </div>
 
                     <!-- Notes -->
@@ -891,7 +1366,8 @@
                                                 <p
                                                     class="text-xs text-slate-500"
                                                 >
-                                                    Pembayaran Otomatis Terverifikasi
+                                                    Pembayaran Otomatis
+                                                    Terverifikasi
                                                 </p>
                                             {/if}
                                         </div>
@@ -1037,7 +1513,7 @@
                                     !selectedPaymentMethodId ||
                                     !selectedShipping}
                                 class="hidden lg:flex w-full mt-4 items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                style="background:linear-gradient(to right, {primary}, {secondary})"
+                                style="background:linear-gradient(to right, {primary}, {primary})"
                             >
                                 {#if isSubmitting}
                                     <i class="ti ti-loader-2 animate-spin"></i>
@@ -1071,7 +1547,7 @@
                         !selectedPaymentMethodId ||
                         !selectedShipping}
                     class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    style="background:linear-gradient(to right, {primary}, {secondary})"
+                    style="background:linear-gradient(to right, {primary}, {primary})"
                 >
                     {#if isSubmitting}
                         <i class="ti ti-loader-2 animate-spin"></i>
@@ -1153,13 +1629,468 @@
                             {/if}
                         </button>
                     {/each}
-                    <a
+                    <Link
                         href="/profile/addresses?from=checkout"
                         class="flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 transition"
                     >
                         <i class="ti ti-plus text-lg"></i>
                         Tambah Alamat Baru
-                    </a>
+                    </Link>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- ═══════════════════════════════════════════════════
+     VOUCHER SELECTION MODAL (Premium Ticket Style)
+    ═══════════════════════════════════════════════════ -->
+    {#if voucherModalOpen}
+        <div
+            class="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4"
+            transition:fade={{ duration: 150 }}
+        >
+            <!-- Backdrop -->
+            <div
+                class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+                onclick={() => (voucherModalOpen = false)}
+            ></div>
+
+            <!-- Modal Box -->
+            <div
+                class="relative bg-white rounded-t-3xl lg:rounded-3xl shadow-2xl w-full lg:max-w-md overflow-hidden z-10 animate-in slide-in-from-bottom lg:zoom-in-95 duration-200 flex flex-col max-h-[85vh] lg:max-h-[80vh]"
+            >
+                <!-- Header -->
+                <div
+                    class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0"
+                >
+                    <div class="flex items-center gap-2.5">
+                        <div
+                            class="w-7 h-7 rounded-lg text-white flex items-center justify-center text-xs shadow-sm font-black"
+                            style="background-color: {primary};"
+                        >
+                            <i class="ti ti-ticket text-sm"></i>
+                        </div>
+                        <div>
+                            <h3
+                                class="text-[11px] font-black text-slate-800 tracking-tight uppercase"
+                            >
+                                Voucher & Promo Toko
+                            </h3>
+                            <p
+                                class="text-[8px] text-slate-400 font-bold uppercase leading-none"
+                            >
+                                Pilih promo terbaik untuk belanjamu
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onclick={() => (voucherModalOpen = false)}
+                        class="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-650 transition cursor-pointer border-0 bg-transparent rounded-full hover:bg-slate-100/80"
+                    >
+                        <i class="ti ti-x text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div
+                    class="p-3.5 overflow-y-auto space-y-3 flex-grow bg-slate-50/50"
+                >
+                    <!-- Manual Voucher Code Input Search Block -->
+                    <div
+                        class="bg-white border border-slate-200 rounded-xl p-2 flex gap-2 items-center shadow-3xs mb-1.5"
+                    >
+                        <div class="relative flex-grow">
+                            <i
+                                class="ti ti-ticket absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
+                            ></i>
+                            <input
+                                type="text"
+                                bind:value={manualPromoCode}
+                                placeholder="Masukkan kode voucher..."
+                                class="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-glow)] focus:border-[var(--primary)] text-[10.5px] font-semibold text-slate-700 h-8 uppercase"
+                                style="--primary-glow: {primary}30; --primary: {primary};"
+                                onkeydown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        applyVoucher();
+                                    }
+                                }}
+                            />
+                        </div>
+                        <button
+                            onclick={applyVoucher}
+                            disabled={voucherLoading || !manualPromoCode.trim()}
+                            style="background-color: {primary};"
+                            class="px-3.5 py-1.5 hover:opacity-90 text-white text-[10.5px] font-black rounded-lg uppercase tracking-wider transition duration-200 h-8 cursor-pointer border-0 shrink-0 disabled:opacity-50"
+                        >
+                            {voucherLoading ? '...' : 'Pakai'}
+                        </button>
+                    </div>
+
+                    {#if visibleVouchers.length === 0}
+                        <div
+                            class="flex flex-col items-center justify-center py-10 px-4 text-center"
+                        >
+                            <div
+                                class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-2.5"
+                            >
+                                <i class="ti ti-ticket-off text-xl"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-500">
+                                Tidak Ada Voucher Tersedia
+                            </p>
+                            <p
+                                class="text-[9px] text-slate-400 mt-1 max-w-xs leading-normal"
+                            >
+                                Saat ini tidak ada voucher gratis ongkir atau
+                                belanja yang sedang aktif di toko.
+                            </p>
+                        </div>
+                    {:else}
+                        <!-- Section 1: Gratis Ongkir -->
+                        {#if shippingVouchers.length > 0}
+                            <div class="space-y-1.5">
+                                <h4
+                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 px-1"
+                                >
+                                    <i
+                                        class="ti ti-truck text-xs"
+                                        style="color: {primary};"
+                                    ></i> Voucher Gratis Ongkir
+                                </h4>
+                                <div class="space-y-1.5">
+                                    {#each shippingVouchers as voucher (voucher.id)}
+                                        {@const minMet =
+                                            subtotal >=
+                                            Number(voucher.min_purchase ?? 0)}
+                                        {@const isSelected =
+                                            appliedVoucher &&
+                                            ((Array.isArray(
+                                                appliedVoucher.promotions,
+                                            ) &&
+                                                appliedVoucher.promotions.some(
+                                                    (p) => p.id === voucher.id,
+                                                )) ||
+                                                (appliedVoucher.promotion &&
+                                                    appliedVoucher.promotion
+                                                        .id === voucher.id) ||
+                                                voucherInputCode
+                                                    .split(',')
+                                                    .map((c) =>
+                                                        c.trim().toUpperCase(),
+                                                    )
+                                                    .includes(
+                                                        voucher.code.toUpperCase(),
+                                                    ))}
+
+                                        <div
+                                            class="relative flex items-stretch bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
+                                            class:opacity-60={!minMet}
+                                        >
+                                            <!-- Left side color ribbon -->
+                                            <div
+                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                    primary,
+                                                    0.85,
+                                                )});"
+                                            >
+                                                <i
+                                                    class="ti ti-truck text-base mb-0.5 shrink-0"
+                                                ></i>
+                                                <span
+                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                >
+                                                    Free Ongkir
+                                                </span>
+                                            </div>
+
+                                            <!-- Dashed Ticket Divider line -->
+                                            <div
+                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                            ></div>
+                                            <!-- Ticket Top & Bottom cutouts -->
+                                            <div
+                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+                                            <div
+                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+
+                                            <!-- Right side content -->
+                                            <div
+                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                            >
+                                                <div class="min-w-0">
+                                                    <div
+                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
+                                                    >
+                                                        <span
+                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                            style="color: {primary}; border-color: {withOpacity(
+                                                                primary,
+                                                                0.35,
+                                                            )}; background: {withOpacity(
+                                                                primary,
+                                                                0.06,
+                                                            )};"
+                                                        >
+                                                            {voucher.code}
+                                                        </span>
+                                                        {#if isSelected}
+                                                            <span
+                                                                class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                style="background-color: {primary};"
+                                                                >TERPASANG</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                    <h4
+                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                    >
+                                                        {voucher.name}
+                                                    </h4>
+                                                    <p
+                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                    >
+                                                        Gratis Ongkir s/d {fmt(
+                                                            voucher.max_discount ??
+                                                                0,
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                <div
+                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                >
+                                                    <span
+                                                        class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none shrink-0"
+                                                    >
+                                                        Min. {fmt(
+                                                            voucher.min_purchase,
+                                                        )}
+                                                    </span>
+
+                                                    {#if minMet}
+                                                        <button
+                                                            onclick={() => {
+                                                                if (
+                                                                    isSelected
+                                                                ) {
+                                                                    deselectVoucher(
+                                                                        voucher,
+                                                                    );
+                                                                } else {
+                                                                    selectVoucher(
+                                                                        voucher,
+                                                                    );
+                                                                }
+                                                            }}
+                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                            style="background: {isSelected
+                                                                ? '#cbd5e1'
+                                                                : primary}; color: {isSelected
+                                                                ? '#475569'
+                                                                : 'white'};"
+                                                        >
+                                                            {isSelected
+                                                                ? 'Lepas'
+                                                                : 'Pakai'}
+                                                        </button>
+                                                    {:else}
+                                                        <span
+                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                        >
+                                                            Kurang {fmt(
+                                                                Number(
+                                                                    voucher.min_purchase,
+                                                                ) - subtotal,
+                                                            )}
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Section 2: Voucher Belanja -->
+                        {#if discountVouchers.length > 0}
+                            <div
+                                class="space-y-1.5 {shippingVouchers.length > 0
+                                    ? 'mt-3.5'
+                                    : ''}"
+                            >
+                                <h4
+                                    class="text-[9px] font-black text-slate-450 uppercase tracking-widest flex items-center gap-1 px-1"
+                                >
+                                    <i
+                                        class="ti ti-ticket text-xs"
+                                        style="color: {primary};"
+                                    ></i> Voucher Belanja
+                                </h4>
+                                <div class="space-y-1.5">
+                                    {#each discountVouchers as voucher (voucher.id)}
+                                        {@const minMet =
+                                            subtotal >=
+                                            Number(voucher.min_purchase ?? 0)}
+                                        {@const isSelected =
+                                            appliedVoucher &&
+                                            ((Array.isArray(
+                                                appliedVoucher.promotions,
+                                            ) &&
+                                                appliedVoucher.promotions.some(
+                                                    (p) => p.id === voucher.id,
+                                                )) ||
+                                                (appliedVoucher.promotion &&
+                                                    appliedVoucher.promotion
+                                                        .id === voucher.id) ||
+                                                voucherInputCode
+                                                    .split(',')
+                                                    .map((c) =>
+                                                        c.trim().toUpperCase(),
+                                                    )
+                                                    .includes(
+                                                        voucher.code.toUpperCase(),
+                                                    ))}
+
+                                        <div
+                                            class="relative flex items-stretch bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
+                                            class:opacity-60={!minMet}
+                                        >
+                                            <!-- Left side color ribbon -->
+                                            <div
+                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                    primary,
+                                                    0.85,
+                                                )});"
+                                            >
+                                                <i
+                                                    class="ti ti-ticket text-base mb-0.5 shrink-0"
+                                                ></i>
+                                                <span
+                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                >
+                                                    Diskon
+                                                </span>
+                                            </div>
+
+                                            <!-- Dashed Ticket Divider line -->
+                                            <div
+                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                            ></div>
+                                            <!-- Ticket Top & Bottom cutouts -->
+                                            <div
+                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+                                            <div
+                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                            ></div>
+
+                                            <!-- Right side content -->
+                                            <div
+                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                            >
+                                                <div class="min-w-0">
+                                                    <div
+                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
+                                                    >
+                                                        <span
+                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                            style="color: {primary}; border-color: {withOpacity(
+                                                                primary,
+                                                                0.35,
+                                                            )}; background: {withOpacity(
+                                                                primary,
+                                                                0.06,
+                                                            )};"
+                                                        >
+                                                            {voucher.code}
+                                                        </span>
+                                                        {#if isSelected}
+                                                            <span
+                                                                class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                style="background-color: {primary};"
+                                                                >TERPASANG</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                    <h4
+                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                    >
+                                                        {voucher.name}
+                                                    </h4>
+                                                    <p
+                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                    >
+                                                        Potongan {#if voucher.discount_type === 'percentage'}{Number(voucher.discount_value)}%{:else}{fmt(
+                                                                voucher.discount_value,
+                                                            )}{/if}
+                                                        {#if voucher.max_discount}s/d
+                                                            {fmt(
+                                                                voucher.max_discount,
+                                                            )}{/if}
+                                                    </p>
+                                                </div>
+
+                                                <div
+                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                >
+                                                    <span
+                                                        class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none shrink-0"
+                                                    >
+                                                        Min. {fmt(
+                                                            voucher.min_purchase,
+                                                        )}
+                                                    </span>
+
+                                                    {#if minMet}
+                                                        <button
+                                                            onclick={() => {
+                                                                if (
+                                                                    isSelected
+                                                                ) {
+                                                                    deselectVoucher(
+                                                                        voucher,
+                                                                    );
+                                                                } else {
+                                                                    selectVoucher(
+                                                                        voucher,
+                                                                    );
+                                                                }
+                                                            }}
+                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                            style="background: {isSelected
+                                                                ? '#cbd5e1'
+                                                                : primary}; color: {isSelected
+                                                                ? '#475569'
+                                                                : 'white'};"
+                                                        >
+                                                            {isSelected
+                                                                ? 'Lepas'
+                                                                : 'Pakai'}
+                                                        </button>
+                                                    {:else}
+                                                        <span
+                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                        >
+                                                            Kurang {fmt(
+                                                                Number(
+                                                                    voucher.min_purchase,
+                                                                ) - subtotal,
+                                                            )}
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {/if}
+                    {/if}
                 </div>
             </div>
         </div>

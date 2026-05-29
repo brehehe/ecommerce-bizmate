@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\Promotion;
+use App\Models\PromotionItem;
 use App\Models\Setting;
+use App\Models\TransactionItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class CartController extends Controller
@@ -84,7 +87,7 @@ class CartController extends Controller
             $variant = $item->productVariant;
 
             // Apply promotions first
-            $this->applyPromotionsToProduct($product, $activePromotions);
+            $this->applyPromotionsToProduct($product, $activePromotions, $item->quantity);
 
             if ($variant) {
                 // Find matching variant from loaded product variants to get applied promotion fields
@@ -136,6 +139,16 @@ class CartController extends Controller
             $item->stock = $stock;
             $item->is_unlimited = $isUnlimited;
         }
+
+        $cartPromoPrices = [];
+        foreach ($cartItems as $item) {
+            $key = $item->product_variant_id ? "v_{$item->product_variant_id}" : "p_{$item->product_id}";
+            $cartPromoPrices[$key] = [
+                'price' => (float) $item->unit_price,
+                'is_promo' => (bool) ($item->productVariant ? ($item->productVariant->is_promo ?? false) : ($item->product->is_promo ?? false)),
+            ];
+        }
+        session(['cart_promo_prices' => $cartPromoPrices]);
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
@@ -237,7 +250,7 @@ class CartController extends Controller
 
         $cartItem->update($data);
 
-        return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
+        return redirect()->back();
     }
 
     /**
@@ -258,10 +271,10 @@ class CartController extends Controller
         }
 
         $query->update([
-            'is_checked' => (bool) $request->input('is_checked')
+            'is_checked' => (bool) $request->input('is_checked'),
         ]);
 
-        return redirect()->back()->with('success', 'Keranjang berhasil diperbarui!');
+        return redirect()->back();
     }
 
     /**
@@ -281,28 +294,144 @@ class CartController extends Controller
     /**
      * Helper to apply active promotions on a product and its variants.
      */
-    private function applyPromotionsToProduct(Product $product, $activePromotions): void
+    private function applyPromotionsToProduct(Product $product, $activePromotions, int $quantity = 1): void
     {
         $basePrice = (float) ($product->productPrice?->price ?? 0);
+
+        // Find if this product is in any active Flash Sale
+        $flashSalePromo = $activePromotions->first(function ($promo) use ($product) {
+            if ($promo->type !== 'flash_sale') {
+                return false;
+            }
+            if ($promo->items->isEmpty()) {
+                return true; // Store-wide
+            }
+
+            return $promo->items->contains(function ($i) use ($product) {
+                return $i->product_id === $product->id;
+            });
+        });
+
+        // Find if this product is in any active Promo Bundling
+        $isBundlingActive = $activePromotions->contains(function ($promo) use ($product) {
+            if ($promo->type !== 'bundling_gift') {
+                return false;
+            }
+            $bundle = $promo->settings['bundle'] ?? null;
+            if (! $bundle || empty($bundle['buy_items'])) {
+                return false;
+            }
+            foreach ($bundle['buy_items'] as $bi) {
+                if ($bi['product_id'] == $product->id) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
         $appliedPromo = null;
         $appliedItem = null;
 
-        // Search for matching promotions
-        foreach ($activePromotions as $promo) {
-            if ($promo->items->isEmpty()) {
-                // Scope: all store products
-                if (! $appliedPromo) {
-                    $appliedPromo = $promo;
+        // Clear out any previous promo rule
+        $product->promo_rule = null;
+        $product->applied_promotion_id = null;
+        $product->promo_quantity_used = null;
+
+        if ($flashSalePromo) {
+            // Priority 1: Flash Sale
+            $remainingStock = $this->getRemainingPromoStock($flashSalePromo->id, $product->id, null);
+            if (! is_null($remainingStock)) {
+                $product->promo_rule = [
+                    'id' => $flashSalePromo->id,
+                    'name' => $flashSalePromo->name,
+                    'type' => $flashSalePromo->type,
+                    'min_qty' => 1,
+                    'remaining_promo_stock' => $remainingStock,
+                ];
+            }
+
+            if (is_null($remainingStock) || $remainingStock > 0) {
+                $appliedPromo = $flashSalePromo;
+                if ($appliedPromo->items->isNotEmpty()) {
+                    $appliedItem = $appliedPromo->items->first(function ($i) use ($product) {
+                        return $i->product_id === $product->id && is_null($i->product_variant_id);
+                    });
+                }
+            }
+        } elseif ($isBundlingActive) {
+            // Priority 2: Promo Bundling is active, so we skip Promo Produk entirely!
+            $appliedPromo = null;
+        } else {
+            // Priority 3: Promo Produk (and other general store promos like promo_toko if any)
+            $promoProduk = $activePromotions->first(function ($promo) use ($product) {
+                if ($promo->type !== 'promo_produk') {
+                    return false;
+                }
+                if ($promo->items->isEmpty()) {
+                    return true;
+                }
+
+                return $promo->items->contains(function ($i) use ($product) {
+                    return $i->product_id === $product->id;
+                });
+            });
+
+            if ($promoProduk) {
+                $minQty = $promoProduk->settings['min_qty'] ?? 1;
+
+                $appliedItem = null;
+                if ($promoProduk->items->isNotEmpty()) {
+                    $appliedItem = $promoProduk->items->first(function ($i) use ($product) {
+                        return $i->product_id === $product->id && is_null($i->product_variant_id);
+                    });
+                }
+
+                $resolvedDiscountType = $appliedItem ? ($appliedItem->discount_type ?? $promoProduk->discount_type) : $promoProduk->discount_type;
+                $resolvedDiscountValue = $appliedItem ? ($appliedItem->discount_value ?? $promoProduk->discount_value) : $promoProduk->discount_value;
+                $resolvedPromoPrice = $appliedItem?->promo_price;
+
+                $remainingStock = $this->getRemainingPromoStock($promoProduk->id, $product->id, null);
+
+                // Expose the promo rule regardless of min_qty so frontend can see it
+                $product->promo_rule = [
+                    'id' => $promoProduk->id,
+                    'name' => $promoProduk->name,
+                    'type' => $promoProduk->type,
+                    'min_qty' => (int) $minQty,
+                    'discount_type' => $resolvedDiscountType,
+                    'discount_value' => $resolvedDiscountValue,
+                    'promo_price' => $resolvedPromoPrice ? (float) $resolvedPromoPrice : null,
+                    'remaining_promo_stock' => $remainingStock,
+                ];
+
+                if ($quantity >= $minQty && (is_null($remainingStock) || $remainingStock > 0)) {
+                    $appliedPromo = $promoProduk;
+                } else {
+                    $appliedPromo = null;
                 }
             } else {
-                // Scope: specific products
-                $item = $promo->items->first(function ($i) use ($product) {
-                    return $i->product_id === $product->id && is_null($i->product_variant_id);
+                // Fallback to promo_toko
+                $promoToko = $activePromotions->first(function ($promo) use ($product) {
+                    if ($promo->type !== 'promo_toko' && $promo->type !== 'special_deals') {
+                        return false;
+                    }
+                    if ($promo->items->isEmpty()) {
+                        return true;
+                    }
+
+                    return $promo->items->contains(function ($i) use ($product) {
+                        return $i->product_id === $product->id;
+                    });
                 });
-                if ($item) {
-                    $appliedPromo = $promo;
-                    $appliedItem = $item;
-                    break;
+
+                if ($promoToko) {
+                    $appliedPromo = $promoToko;
+                    if ($appliedPromo->items->isNotEmpty()) {
+                        $appliedItem = $appliedPromo->items->first(function ($i) use ($product) {
+                            return $i->product_id === $product->id && is_null($i->product_variant_id);
+                        });
+                    }
                 }
             }
         }
@@ -312,27 +441,47 @@ class CartController extends Controller
             $discountValue = $appliedItem ? ($appliedItem->discount_value ?? $appliedPromo->discount_value) : $appliedPromo->discount_value;
             $promoPrice = $appliedItem?->promo_price;
 
+            // Calculate direct promo unit price
             if ($promoPrice && $promoPrice > 0) {
-                $finalPrice = (float) $promoPrice;
+                $rawPromoPrice = (float) $promoPrice;
             } else {
                 if ($discountType === 'percentage') {
-                    $finalPrice = $basePrice - ($basePrice * ($discountValue / 100));
+                    $rawPromoPrice = $basePrice - ($basePrice * ($discountValue / 100));
                 } elseif ($discountType === 'fixed') {
-                    $finalPrice = $basePrice - $discountValue;
+                    $rawPromoPrice = $basePrice - $discountValue;
                 } else {
+                    $rawPromoPrice = $basePrice;
+                }
+            }
+            $rawPromoPrice = max(0, $rawPromoPrice);
+
+            // Handle Promo Stock & Split Pricing
+            $promoQtyUsed = $quantity;
+            $finalPrice = $rawPromoPrice;
+
+            if (isset($remainingStock) && ! is_null($remainingStock)) {
+                if ($remainingStock <= 0) {
+                    // Fully exhausted, revert to normal
+                    $appliedPromo = null;
                     $finalPrice = $basePrice;
+                    $promoQtyUsed = 0;
+                } elseif ($remainingStock < $quantity) {
+                    // Split pricing!
+                    $promoQtyUsed = $remainingStock;
+                    $normalQty = $quantity - $promoQtyUsed;
+                    $finalPrice = (($promoQtyUsed * $rawPromoPrice) + ($normalQty * $basePrice)) / $quantity;
                 }
             }
 
-            $finalPrice = max(0, $finalPrice);
-
-            if ($finalPrice < $basePrice) {
+            if ($appliedPromo && $finalPrice < $basePrice) {
                 $product->is_promo = true;
                 $product->promo_price = $finalPrice;
                 $product->original_price = $basePrice;
                 $product->promo_type = $appliedPromo->type;
                 $product->promo_end_time = $appliedPromo->end_time?->toIso8601String();
                 $product->keep_tier_prices = $appliedPromo->settings['keep_tier_prices'] ?? false;
+                $product->applied_promotion_id = $appliedPromo->id;
+                $product->promo_quantity_used = $promoQtyUsed;
                 if ($basePrice > 0) {
                     $product->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
                 } else {
@@ -363,26 +512,87 @@ class CartController extends Controller
                 $vPrice = (float) ($variant->productPrice?->price ?? 0);
                 $vAppliedPromo = null;
                 $vAppliedItem = null;
+                $variant->promo_rule = null;
+                $variant->applied_promotion_id = null;
+                $variant->promo_quantity_used = null;
 
-                foreach ($activePromotions as $promo) {
-                    if ($promo->items->isEmpty()) {
-                        if (! $vAppliedPromo) {
-                            $vAppliedPromo = $promo;
+                if ($flashSalePromo) {
+                    $vRemainingStock = $this->getRemainingPromoStock($flashSalePromo->id, $product->id, $variant->id);
+                    if (! is_null($vRemainingStock)) {
+                        $variant->promo_rule = [
+                            'id' => $flashSalePromo->id,
+                            'name' => $flashSalePromo->name,
+                            'type' => $flashSalePromo->type,
+                            'min_qty' => 1,
+                            'remaining_promo_stock' => $vRemainingStock,
+                        ];
+                    }
+
+                    if (is_null($vRemainingStock) || $vRemainingStock > 0) {
+                        $vAppliedPromo = $flashSalePromo;
+                        if ($vAppliedPromo->items->isNotEmpty()) {
+                            $vAppliedItem = $vAppliedPromo->items->first(function ($i) use ($product, $variant) {
+                                return $i->product_id === $product->id && $i->product_variant_id === $variant->id;
+                            });
+                            if (! $vAppliedItem) {
+                                $vAppliedItem = $vAppliedPromo->items->first(function ($i) use ($product) {
+                                    return $i->product_id === $product->id && is_null($i->product_variant_id);
+                                });
+                            }
+                        }
+                    }
+                } elseif ($isBundlingActive) {
+                    $vAppliedPromo = null;
+                } else {
+                    if (isset($promoProduk)) {
+                        $minQty = $promoProduk->settings['min_qty'] ?? 1;
+                        $vRemainingStock = $this->getRemainingPromoStock($promoProduk->id, $product->id, $variant->id);
+
+                        if ($quantity >= $minQty) {
+                            $vAppliedPromo = $promoProduk;
+                            if ($vAppliedPromo->items->isNotEmpty()) {
+                                $vAppliedItem = $vAppliedPromo->items->first(function ($i) use ($product, $variant) {
+                                    return $i->product_id === $product->id && $i->product_variant_id === $variant->id;
+                                });
+                                if (! $vAppliedItem) {
+                                    $vAppliedItem = $vAppliedPromo->items->first(function ($i) use ($product) {
+                                        return $i->product_id === $product->id && is_null($i->product_variant_id);
+                                    });
+                                }
+                            }
+                        }
+
+                        $vResolvedDiscountType = $vAppliedItem ? ($vAppliedItem->discount_type ?? $promoProduk->discount_type) : $promoProduk->discount_type;
+                        $vResolvedDiscountValue = $vAppliedItem ? ($vAppliedItem->discount_value ?? $promoProduk->discount_value) : $promoProduk->discount_value;
+                        $vResolvedPromoPrice = $vAppliedItem?->promo_price;
+
+                        $variant->promo_rule = [
+                            'id' => $promoProduk->id,
+                            'name' => $promoProduk->name,
+                            'type' => $promoProduk->type,
+                            'min_qty' => (int) $minQty,
+                            'discount_type' => $vResolvedDiscountType,
+                            'discount_value' => $vResolvedDiscountValue,
+                            'promo_price' => $vResolvedPromoPrice ? (float) $vResolvedPromoPrice : null,
+                            'remaining_promo_stock' => $vRemainingStock,
+                        ];
+
+                        if ($quantity < $minQty || (! is_null($vRemainingStock) && $vRemainingStock <= 0)) {
+                            $vAppliedPromo = null;
                         }
                     } else {
-                        // Check if specific variant matches
-                        $item = $promo->items->first(function ($i) use ($product, $variant) {
-                            return $i->product_id === $product->id && $i->product_variant_id === $variant->id;
-                        });
-                        if (! $item) {
-                            $item = $promo->items->first(function ($i) use ($product) {
-                                return $i->product_id === $product->id && is_null($i->product_variant_id);
-                            });
-                        }
-                        if ($item) {
-                            $vAppliedPromo = $promo;
-                            $vAppliedItem = $item;
-                            break;
+                        if (isset($promoToko)) {
+                            $vAppliedPromo = $promoToko;
+                            if ($vAppliedPromo->items->isNotEmpty()) {
+                                $vAppliedItem = $vAppliedPromo->items->first(function ($i) use ($product, $variant) {
+                                    return $i->product_id === $product->id && $i->product_variant_id === $variant->id;
+                                });
+                                if (! $vAppliedItem) {
+                                    $vAppliedItem = $vAppliedPromo->items->first(function ($i) use ($product) {
+                                        return $i->product_id === $product->id && is_null($i->product_variant_id);
+                                    });
+                                }
+                            }
                         }
                     }
                 }
@@ -393,26 +603,42 @@ class CartController extends Controller
                     $vPromoPrice = $vAppliedItem?->promo_price;
 
                     if ($vPromoPrice && $vPromoPrice > 0) {
-                        $vFinalPrice = (float) $vPromoPrice;
+                        $vRawPromoPrice = (float) $vPromoPrice;
                     } else {
                         if ($vDiscountType === 'percentage') {
-                            $vFinalPrice = $vPrice - ($vPrice * ($vDiscountValue / 100));
+                            $vRawPromoPrice = $vPrice - ($vPrice * ($vDiscountValue / 100));
                         } elseif ($vDiscountType === 'fixed') {
-                            $vFinalPrice = $vPrice - $vDiscountValue;
+                            $vRawPromoPrice = $vPrice - $vDiscountValue;
                         } else {
+                            $vRawPromoPrice = $vPrice;
+                        }
+                    }
+                    $vRawPromoPrice = max(0, $vRawPromoPrice);
+
+                    $vPromoQtyUsed = $quantity;
+                    $vFinalPrice = $vRawPromoPrice;
+
+                    if (isset($vRemainingStock) && ! is_null($vRemainingStock)) {
+                        if ($vRemainingStock <= 0) {
+                            $vAppliedPromo = null;
                             $vFinalPrice = $vPrice;
+                            $vPromoQtyUsed = 0;
+                        } elseif ($vRemainingStock < $quantity) {
+                            $vPromoQtyUsed = $vRemainingStock;
+                            $vNormalQty = $quantity - $vPromoQtyUsed;
+                            $vFinalPrice = (($vPromoQtyUsed * $vRawPromoPrice) + ($vNormalQty * $vPrice)) / $quantity;
                         }
                     }
 
-                    $vFinalPrice = max(0, $vFinalPrice);
-
-                    if ($vFinalPrice < $vPrice) {
+                    if ($vAppliedPromo && $vFinalPrice < $vPrice) {
                         $variant->is_promo = true;
                         $variant->promo_price = $vFinalPrice;
                         $variant->original_price = $vPrice;
                         $variant->promo_type = $vAppliedPromo->type;
                         $variant->promo_end_time = $vAppliedPromo->end_time?->toIso8601String();
                         $variant->keep_tier_prices = $vAppliedPromo->settings['keep_tier_prices'] ?? false;
+                        $variant->applied_promotion_id = $vAppliedPromo->id;
+                        $variant->promo_quantity_used = $vPromoQtyUsed;
                         if ($vPrice > 0) {
                             $variant->discount_percentage = round((($vPrice - $vFinalPrice) / $vPrice) * 100);
                         } else {
@@ -457,5 +683,57 @@ class CartController extends Controller
                 }
             }
         }
+    }
+
+    public function selectVouchers(Request $request)
+    {
+        $vouchers = $request->input('vouchers');
+        $user = $request->user();
+
+        if ($vouchers !== null) {
+            Cache::put("user_{$user->id}_selected_vouchers", $vouchers, 3600);
+        } else {
+            Cache::forget("user_{$user->id}_selected_vouchers");
+        }
+
+        return redirect()->back();
+    }
+
+    /**
+     * Get remaining promo stock for a promotion and product/variant.
+     */
+    private function getRemainingPromoStock($promotionId, $productId, $variantId = null): ?int
+    {
+        $promoItem = PromotionItem::where('promotion_id', $promotionId)
+            ->where('product_id', $productId)
+            ->where('product_variant_id', $variantId)
+            ->first();
+
+        if (! $promoItem && $variantId) {
+            $promoItem = PromotionItem::where('promotion_id', $promotionId)
+                ->where('product_id', $productId)
+                ->whereNull('product_variant_id')
+                ->first();
+        }
+
+        if (! $promoItem || is_null($promoItem->promo_stock)) {
+            return null;
+        }
+
+        $soldPromoQty = TransactionItem::where('applied_promotion_id', $promotionId)
+            ->where('product_id', $productId)
+            ->where(function ($q) use ($variantId) {
+                if ($variantId) {
+                    $q->where('product_variant_id', $variantId);
+                } else {
+                    $q->whereNull('product_variant_id');
+                }
+            })
+            ->whereHas('transaction', function ($q) {
+                $q->where('status', '!=', 'batal');
+            })
+            ->sum('promo_quantity_used');
+
+        return max(0, $promoItem->promo_stock - $soldPromoQty);
     }
 }

@@ -82,7 +82,7 @@ class PromotionController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:promo_toko,voucher_belanja,voucher_gratis_ongkir,flash_sale,bundling_gift,special_deals'],
+            'type' => ['required', 'string', 'in:promo_produk,promo_toko,voucher_belanja,voucher_gratis_ongkir,flash_sale,bundling_gift,special_deals'],
             'code' => ['nullable', 'string', 'max:50', Rule::unique('promotions', 'code')],
             'discount_type' => ['nullable', 'string', 'in:percentage,fixed'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
@@ -111,7 +111,7 @@ class PromotionController extends Controller
 
             $promotion = Promotion::create($promotionData);
 
-            if (! empty($validated['items']) && in_array($validated['type'], ['promo_toko', 'flash_sale', 'special_deals', 'voucher_belanja'])) {
+            if (! empty($validated['items']) && in_array($validated['type'], ['promo_produk', 'promo_toko', 'flash_sale', 'special_deals', 'voucher_belanja'])) {
                 foreach ($validated['items'] as $item) {
                     $promotion->items()->create([
                         'product_id' => $item['product_id'],
@@ -149,7 +149,7 @@ class PromotionController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'string', 'in:promo_toko,voucher_belanja,voucher_gratis_ongkir,flash_sale,bundling_gift,special_deals'],
+            'type' => ['required', 'string', 'in:promo_produk,promo_toko,voucher_belanja,voucher_gratis_ongkir,flash_sale,bundling_gift,special_deals'],
             'code' => ['nullable', 'string', 'max:50', Rule::unique('promotions', 'code')->ignore($promotion->id)],
             'discount_type' => ['nullable', 'string', 'in:percentage,fixed'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
@@ -180,7 +180,7 @@ class PromotionController extends Controller
             // Sync items (delete old, insert current ones)
             $promotion->items()->delete();
 
-            if (! empty($validated['items']) && in_array($validated['type'], ['promo_toko', 'flash_sale', 'special_deals', 'voucher_belanja'])) {
+            if (! empty($validated['items']) && in_array($validated['type'], ['promo_produk', 'promo_toko', 'flash_sale', 'special_deals', 'voucher_belanja'])) {
                 foreach ($validated['items'] as $item) {
                     $promotion->items()->create([
                         'product_id' => $item['product_id'],

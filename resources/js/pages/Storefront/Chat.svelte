@@ -279,7 +279,7 @@
 </svelte:head>
 
 <StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
-    <div class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 py-0 md:py-8 flex-grow w-full min-h-screen md:min-h-0 flex flex-col">
+    <div class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 py-0 md:py-8 w-full flex flex-col">
         
         <!-- Desktop Header Title -->
         <h1 class="hidden md:flex font-outfit font-black text-2xl sm:text-3xl text-slate-800 items-center gap-2.5 mb-6">

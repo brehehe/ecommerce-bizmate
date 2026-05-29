@@ -331,39 +331,105 @@
     //  - Else → base product price
     // ═══════════════════════════════════════
     const basePrice = $derived(product.product_price?.price ?? 0);
-    const currentPrice = $derived(
-        matchingVariant
-            ? matchingVariant.is_promo
-                ? Number(matchingVariant.promo_price)
-                : Number(matchingVariant.product_price?.price ?? basePrice)
-            : product.is_promo
-              ? Number(product.promo_price)
-              : Number(basePrice),
+
+    const activePromoRule = $derived(
+        matchingVariant?.promo_rule ?? product.promo_rule ?? null
     );
-    const originalPrice = $derived(
-        matchingVariant
-            ? matchingVariant.is_promo
-                ? Number(matchingVariant.original_price)
-                : null
-            : product.is_promo
-              ? Number(product.original_price)
-              : null,
+
+    const isPromoRuleSatisfied = $derived(
+        activePromoRule ? (qty >= activePromoRule.min_qty) : false
     );
-    const discountPercentage = $derived(
-        matchingVariant
-            ? matchingVariant.is_promo
-                ? Number(matchingVariant.discount_percentage)
-                : 0
-            : product.is_promo
-              ? Number(product.discount_percentage)
-              : 0,
-    );
+
+    const derivedPromoPrice = $derived.by(() => {
+        if (!activePromoRule) return null;
+        if (activePromoRule.promo_price !== null && activePromoRule.promo_price !== undefined) {
+            return Number(activePromoRule.promo_price);
+        }
+        const normalPrice = matchingVariant 
+            ? Number(matchingVariant.product_price?.price ?? basePrice)
+            : Number(basePrice);
+            
+        if (activePromoRule.discount_type === 'percentage') {
+            return normalPrice - (normalPrice * (Number(activePromoRule.discount_value) / 100));
+        } else if (activePromoRule.discount_type === 'fixed') {
+            return normalPrice - Number(activePromoRule.discount_value);
+        }
+        return normalPrice;
+    });
+
+    const currentPrice = $derived.by(() => {
+        if (matchingVariant) {
+            if (matchingVariant.is_promo) {
+                return Number(matchingVariant.promo_price);
+            }
+            if (isPromoRuleSatisfied && derivedPromoPrice !== null) {
+                return Math.max(0, derivedPromoPrice);
+            }
+            return Number(matchingVariant.product_price?.price ?? basePrice);
+        } else {
+            if (product.is_promo) {
+                return Number(product.promo_price);
+            }
+            if (isPromoRuleSatisfied && derivedPromoPrice !== null) {
+                return Math.max(0, derivedPromoPrice);
+            }
+            return Number(basePrice);
+        }
+    });
+
+    const originalPrice = $derived.by(() => {
+        if (matchingVariant) {
+            if (matchingVariant.is_promo) {
+                return Number(matchingVariant.original_price);
+            }
+            if (isPromoRuleSatisfied && derivedPromoPrice !== null) {
+                return Number(matchingVariant.product_price?.price ?? basePrice);
+            }
+            return null;
+        } else {
+            if (product.is_promo) {
+                return Number(product.original_price);
+            }
+            if (isPromoRuleSatisfied && derivedPromoPrice !== null) {
+                return Number(basePrice);
+            }
+            return null;
+        }
+    });
+
+    const discountPercentage = $derived.by(() => {
+        if (matchingVariant) {
+            if (matchingVariant.is_promo) {
+                return Number(matchingVariant.discount_percentage);
+            }
+            if (isPromoRuleSatisfied && derivedPromoPrice !== null) {
+                const normal = Number(matchingVariant.product_price?.price ?? basePrice);
+                if (normal > 0) {
+                    return Math.round(((normal - derivedPromoPrice) / normal) * 100);
+                }
+            }
+            return 0;
+        } else {
+            if (product.is_promo) {
+                return Number(product.discount_percentage);
+            }
+            if (isPromoRuleSatisfied && derivedPromoPrice !== null) {
+                const normal = Number(basePrice);
+                if (normal > 0) {
+                    return Math.round(((normal - derivedPromoPrice) / normal) * 100);
+                }
+            }
+            return 0;
+        }
+    });
 
     // ═══════════════════════════════════════
     //  TIER PRICING (WHOLESALE / GROSIR)
     // ═══════════════════════════════════════
     const isPromoActive = $derived(
-        matchingVariant ? matchingVariant.is_promo : product.is_promo,
+        matchingVariant 
+            ? (matchingVariant.is_promo || isPromoRuleSatisfied) 
+            : (product.is_promo || isPromoRuleSatisfied),
     );
 
     const shouldKeepTierPricesDuringPromo = $derived(
@@ -1307,6 +1373,42 @@
                         </div>
                     {/if}
 
+                    <!-- Promo Produk Tiered Info Banner (Mobile) -->
+                    {#if activePromoRule && activePromoRule.min_qty > 1}
+                        <div
+                            class="md:hidden flex items-start gap-3 p-4 rounded-2xl border text-xs my-3 shadow-xs transition duration-200"
+                            style="background-color: #f0f7ff; border-color: #bfdbfe;"
+                        >
+                            <div
+                                class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 animate-pulse"
+                            >
+                                <i
+                                    class="ti ti-gift text-blue-600 text-base"
+                                ></i>
+                            </div>
+                            <div class="flex-grow text-[11px] leading-relaxed">
+                                <span class="font-bold text-blue-950 block text-xs">Promo Beli Banyak Lebih Hemat!</span>
+                                <p class="text-blue-800 mt-0.5">
+                                    Beli minimal <strong class="text-blue-950">{activePromoRule.min_qty} pcs</strong> untuk mendapatkan harga 
+                                    <strong class="text-blue-950">
+                                        {#if activePromoRule.promo_price}
+                                            {fmt(activePromoRule.promo_price)}
+                                        {:else if activePromoRule.discount_type === 'percentage'}
+                                            Diskon {Number(activePromoRule.discount_value)}%
+                                        {:else}
+                                            Potongan {fmt(activePromoRule.discount_value)}
+                                        {/if}
+                                    </strong> per produk!
+                                    {#if activePromoRule.remaining_promo_stock !== null && activePromoRule.remaining_promo_stock !== undefined}
+                                        <span class="block mt-1.5 font-black text-orange-600 bg-orange-50/80 px-2 py-0.5 rounded-md border border-orange-200/80 w-fit text-[9px] uppercase tracking-wide">
+                                            Sisa Stok Promo: {activePromoRule.remaining_promo_stock} pcs
+                                        </span>
+                                    {/if}
+                                </p>
+                            </div>
+                        </div>
+                    {/if}
+
                     <!-- Desktop Gallery (with Zoom and Thumbnails) -->
                     <div class="hidden md:flex flex-col gap-3">
                         <div
@@ -1607,6 +1709,53 @@
                         </div>
                     {/if}
 
+                    <!-- Promo Produk Tiered Info Banner (Desktop) -->
+                    {#if activePromoRule && activePromoRule.min_qty > 1}
+                        <div
+                            class="hidden md:flex items-start gap-3 p-4 rounded-2xl border text-xs my-4 shadow-sm transition duration-200"
+                            style="background-color: #f0f7ff; border-color: #bfdbfe;"
+                        >
+                            <div
+                                class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 animate-bounce"
+                            >
+                                <i
+                                    class="ti ti-gift text-blue-600 text-base"
+                                ></i>
+                            </div>
+                            <div>
+                                <h4 class="font-outfit font-black text-xs text-blue-800 uppercase tracking-wider">
+                                    Promo Spesial Beli Banyak Lebih Hemat!
+                                </h4>
+                                <p class="text-[11px] text-blue-650 font-bold mt-0.5 leading-relaxed">
+                                    Beli minimal <strong>{activePromoRule.min_qty} pcs</strong> untuk mendapatkan potongan harga menjadi 
+                                    <strong class="text-blue-900 font-extrabold">
+                                        {#if activePromoRule.promo_price}
+                                            {fmt(activePromoRule.promo_price)}
+                                        {:else if activePromoRule.discount_type === 'percentage'}
+                                            Diskon {Number(activePromoRule.discount_value)}%
+                                        {:else}
+                                            Potongan {fmt(activePromoRule.discount_value)}
+                                        {/if}
+                                    </strong> per produk!
+                                </p>
+                                {#if activePromoRule.remaining_promo_stock !== null && activePromoRule.remaining_promo_stock !== undefined}
+                                    <div class="mt-2 text-[10px] text-orange-700 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg inline-block font-extrabold uppercase tracking-wide">
+                                        Sisa Stok Promo: {activePromoRule.remaining_promo_stock} pcs
+                                    </div>
+                                {/if}
+                                {#if qty < activePromoRule.min_qty}
+                                    <div class="mt-2 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg inline-block font-semibold">
+                                        Tambah {activePromoRule.min_qty - qty} pcs lagi untuk mengaktifkan promo ini!
+                                    </div>
+                                {:else}
+                                    <div class="mt-2 text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg inline-block font-bold">
+                                        Selamat! Promo Beli Banyak Aktif 🎉
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
+
                     <!-- Promo Bundling & Gift Section (Interactive & Shopee-style) -->
                     {#if bundlingPromos && bundlingPromos.length > 0}
                         {#each bundlingPromos as promo}
@@ -1701,7 +1850,7 @@
                                                                 </span>
                                                             {:else if gift.discount_type === 'percentage'}
                                                                 <span class="bg-orange-50 text-orange-600 text-[8px] font-black px-1 py-0.25 rounded border border-orange-100 leading-none">
-                                                                    {gift.discount_value}%
+                                                                    {Number(gift.discount_value)}%
                                                                 </span>
                                                                 <span class="text-[9px] text-slate-400 line-through font-bold font-mono">
                                                                     {fmt(gift.product_price)}
@@ -2843,13 +2992,7 @@
                 <!-- Fraud warning banner -->
                 <div class="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-xs text-amber-800 leading-relaxed text-center">
                     ⚠️ Hati-hati penipuan! Jangan bertransaksi di luar platform dan jangan berikan data pribadi kepada penjual.
-                </div>
-
-                <!-- Info free shipping -->
-                <div class="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-start gap-2 text-xs text-blue-800">
-                    <i class="ti ti-info-circle text-blue-400 shrink-0 mt-0.5"></i>
-                    <span>Gratis Ongkir untuk 1 pesanan/transaksi di toko ini! <span class="font-bold underline">Cek Info Terbaru</span></span>
-                </div>
+                </div>  
 
                 <!-- Messages -->
                 {#each chatMessages as msg (msg.id)}

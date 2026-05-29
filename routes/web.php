@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\AdminDashboardController;
@@ -36,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cart/bulk-update', [CartController::class, 'bulkUpdate'])->name('cart.bulk-update');
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/cart/select-vouchers', [CartController::class, 'selectVouchers'])->name('cart.select-vouchers');
 
     // Customer Shipping Addresses
     Route::get('/profile/addresses', [CustomerAddressController::class, 'index'])->name('profile.addresses.index');
@@ -68,6 +70,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
     Route::get('/transactions/{transaction}', [StorefrontController::class, 'transactionDetail'])->name('transactions.show');
     Route::post('/transactions/{transaction}/upload-proof', [CheckoutController::class, 'uploadProof'])->name('transactions.upload-proof');
+    Route::post('/transactions/{transaction}/cancel', [StorefrontController::class, 'cancelTransaction'])->name('transactions.cancel');
+    Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
@@ -135,6 +139,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     // Stock Movements
     Route::get('/stock-movements', [AdminTransactionController::class, 'stockMovements'])->name('stock-movements.index');
+
+    // Reports
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/sales', [ReportController::class, 'sales'])->name('sales');
+        Route::get('/products', [ReportController::class, 'products'])->name('products');
+        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
+        Route::get('/stocks', [ReportController::class, 'stocks'])->name('stocks');
+    });
 });
 
 Route::redirect('/admin', '/admin/dashboard');

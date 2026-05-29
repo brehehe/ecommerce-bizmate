@@ -257,7 +257,11 @@
     }
 
     function goBack() {
-        if (window.history.length > 1 && document.referrer && document.referrer.includes(window.location.host)) {
+        if (
+            window.history.length > 1 &&
+            document.referrer &&
+            document.referrer.includes(window.location.host)
+        ) {
             window.history.back();
         } else {
             router.visit('/');
@@ -430,427 +434,129 @@
         </div>
     </div>
 
-    <!-- Spacer for mobile sticky bar (search row ~50px + sort row ~38px + extra breathing room) -->
-    <div class="md:hidden h-[106px]"></div>
+    <!-- Full-height wrapper on mobile (no bottom nav) -->
+    <div class="md:contents min-h-dvh flex flex-col">
+        <!-- Spacer for mobile sticky bar (search row ~50px + sort row ~38px + extra breathing room) -->
+        <div class="md:hidden h-[106px]"></div>
 
-    <div
-        class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow"
-    >
-        <!-- Breadcrumbs / Top Bar (Desktop only) -->
         <div
-            class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"
+            class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full"
         >
-            <div>
-                <h1
-                    class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2"
-                >
-                    <i class="ti ti-search" style="color: {primary};"></i>
-                    {#if filters.q}
-                        Hasil Pencarian untuk "{filters.q}"
-                    {:else if selectedCategories.length > 0}
-                        Katalog Kategori
-                    {:else}
-                        Semua Produk
-                    {/if}
-                </h1>
-            </div>
-
-            <!-- Sorting & Mini Pagination (Desktop only) -->
+            <!-- Breadcrumbs / Top Bar (Desktop only) -->
             <div
-                class="hidden md:flex items-center gap-3.5 self-end md:self-auto"
-            >
-                <!-- Sorting Tabs (Desktop) -->
-                <div class="flex items-center gap-2 z-20">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1"
-                        >Urutkan:</span
-                    >
-
-                    <button
-                        onclick={() => {
-                            selectedSort = 'relevance';
-                            applyFilters();
-                        }}
-                        class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'relevance'
-                            ? 'text-white'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                        style={selectedSort === 'relevance'
-                            ? `background-color: ${primary}; border-color: ${primary};`
-                            : ''}
-                    >
-                        Terkait
-                    </button>
-
-                    <button
-                        onclick={() => {
-                            selectedSort = 'latest';
-                            applyFilters();
-                        }}
-                        class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'latest'
-                            ? 'text-white'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                        style={selectedSort === 'latest'
-                            ? `background-color: ${primary}; border-color: ${primary};`
-                            : ''}
-                    >
-                        Terbaru
-                    </button>
-
-                    <button
-                        onclick={() => {
-                            selectedSort = 'popular';
-                            applyFilters();
-                        }}
-                        class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'popular'
-                            ? 'text-white'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                        style={selectedSort === 'popular'
-                            ? `background-color: ${primary}; border-color: ${primary};`
-                            : ''}
-                    >
-                        Terlaris
-                    </button>
-
-                    <div class="w-40">
-                        <Select
-                            value={['price_asc', 'price_desc'].includes(
-                                selectedSort,
-                            )
-                                ? selectedSort
-                                : ''}
-                            onchange={(val) => {
-                                selectedSort = val;
-                                applyFilters();
-                            }}
-                            placeholder="Harga"
-                            options={[
-                                { id: 'price_asc', name: 'Harga: Terendah' },
-                                { id: 'price_desc', name: 'Harga: Tertinggi' },
-                            ]}
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex gap-8 items-start">
-            <!-- ═══════════════════════════════════════════════════
-             FILTER SIDEBAR (Desktop)
-            ═══════════════════════════════════════════════════ -->
-            <aside
-                class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6"
-            >
-                <div
-                    class="flex items-center justify-between border-b border-slate-100 pb-3"
-                >
-                    <span
-                        class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
-                    >
-                        <i
-                            class="ti ti-filter text-base"
-                            style="color: {primary};"
-                        ></i> Filter
-                    </span>
-                    <button
-                        onclick={resetFilters}
-                        class="text-[10px] font-black uppercase tracking-wider hover:underline"
-                        style="color: {secondary};"
-                    >
-                        Reset
-                    </button>
-                </div>
-
-                <!-- Kategori Filter -->
-                <div class="space-y-2.5">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >Kategori</span
-                    >
-                    <div
-                        class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
-                    >
-                        {#each categories as cat}
-                            <button
-                                onclick={() =>
-                                    selectCategoryDesktop(
-                                        cat.slug || cat.id.toString(),
-                                    )}
-                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                       {selectedCategories.includes(
-                                    cat.slug || cat.id.toString(),
-                                )
-                                    ? 'bg-slate-50'
-                                    : 'text-slate-600 hover:text-slate-900'}"
-                                style={selectedCategories.includes(
-                                    cat.slug || cat.id.toString(),
-                                )
-                                    ? `color: ${primary};`
-                                    : ''}
-                            >
-                                <span class="flex items-center gap-2">
-                                    <i class="ti {cat.icon || 'ti-tag'} text-sm"
-                                    ></i>
-                                    {cat.name}
-                                </span>
-                                {#if selectedCategories.includes(cat.slug || cat.id.toString())}
-                                    <i class="ti ti-check text-xs"></i>
-                                {/if}
-                            </button>
-                        {/each}
-                    </div>
-                </div>
-
-                <hr class="border-slate-100" />
-
-                <!-- Rentang Harga Filter -->
-                <div class="space-y-3">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >Rentang Harga</span
-                    >
-                    <div class="space-y-3">
-                        <InputCurrency
-                            bind:value={minPrice}
-                            placeholder="0"
-                            prefix="Rp"
-                            label="Harga Minimum"
-                        />
-                        <InputCurrency
-                            bind:value={maxPrice}
-                            placeholder="Maks"
-                            prefix="Rp"
-                            label="Harga Maksimum"
-                        />
-                    </div>
-                    <button
-                        onclick={applyFilters}
-                        class="w-full py-2 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
-                        style="background-color: {primary};"
-                    >
-                        Terapkan Harga
-                    </button>
-                </div>
-
-                <hr class="border-slate-100" />
-
-                <!-- Promo Toko Checkbox -->
-                <div
-                    onclick={() => {
-                        setTimeout(applyFilters, 0);
-                    }}
-                >
-                    <Toggle
-                        bind:checked={promoOnly}
-                        label="Hanya Promo Toko"
-                        description="Tampilkan diskon aktif"
-                        icon="ti-tag"
-                    />
-                </div>
-            </aside>
-
-            <!-- ═══════════════════════════════════════════════════
-             PRODUCT GRID (Right Column)
-            ═══════════════════════════════════════════════════ -->
-            <div class="flex-grow flex flex-col min-w-0">
-                {#if allProducts.length === 0 && !isLoadingMore}
-                    <div
-                        class="bg-white md:border border-slate-900 md:rounded-[28px] py-12 md:py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300"
-                    >
-                        <!-- Circular Icon (similar to screenshot) -->
-                        <div
-                            class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300"
-                        >
-                            <i class="ti ti-package-off text-3xl sm:text-4xl"
-                            ></i>
-                        </div>
-
-                        <!-- Title (matching screenshot) -->
-                        <h3
-                            class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight"
-                        >
-                            Produk Tidak Ditemukan
-                        </h3>
-
-                        <!-- Description (matching screenshot) -->
-                        <p
-                            class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8"
-                        >
-                            Kami tidak dapat menemukan produk yang cocok dengan
-                            pencarian atau filter Anda. Coba reset filter atau
-                            gunakan kata kunci lain.
-                        </p>
-
-                        <!-- Button with dynamic theme color & blue shadow (matching screenshot) -->
-                        <button
-                            onclick={resetFilters}
-                            class="px-8 py-3 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-95 shadow-lg shadow-blue-600/25 hover:shadow-blue-600/35"
-                            style="background-color: {primary};"
-                        >
-                            Reset Filter
-                        </button>
-                    </div>
-                {:else}
-                    <!-- Product Grid -->
-                    <div
-                        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
-                    >
-                        {#each allProducts as product, index (product.id + '_' + index)}
-                            {@const img = getProductImage(product)}
-                            {@const isPromo = product.is_promo}
-                            {@const price = isPromo
-                                ? product.promo_price
-                                : (product.product_price?.price ?? 0)}
-                            {@const originalPrice = isPromo
-                                ? product.original_price
-                                : 0}
-                            {@const discountPercentage = isPromo
-                                ? product.discount_percentage
-                                : 0}
-
-                            <Link
-                                href={`/products/${product.slug || product.id}`}
-                                prefetch
-                                class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer flex flex-col h-full"
-                            >
-                                <div
-                                    class="relative aspect-square overflow-hidden border-b border-slate-50"
-                                >
-                                    {#if img}
-                                        <img
-                                            src={img}
-                                            alt={product.name}
-                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                            onerror={(e) => {
-                                                e.currentTarget.src =
-                                                    '/noimage/image.png';
-                                            }}
-                                        />
-                                    {:else}
-                                        <img
-                                            src="/noimage/image.png"
-                                            alt="No Image"
-                                            class="w-full h-full object-cover"
-                                        />
-                                    {/if}
-                                    {#if isPromo && discountPercentage > 0}
-                                        <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                            style="background-color: {secondary};"
-                                        >
-                                            -{discountPercentage}%
-                                        </span>
-                                    {/if}
-                                </div>
-                                <div
-                                    class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
-                                >
-                                    <div>
-                                        <p
-                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
-                                            style="color: {primary};"
-                                        >
-                                            {product.category?.name || 'PRODUK'}
-                                        </p>
-                                        <p
-                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
-                                            style="color: {primary};"
-                                        >
-                                            {product.name}
-                                        </p>
-                                        <hr class="border-slate-100 my-2" />
-                                        <div class="mb-3">
-                                            <p
-                                                class="text-sm sm:text-base font-black leading-tight"
-                                                style="color: {secondary};"
-                                            >
-                                                {formatPrice(price)}
-                                            </p>
-                                            {#if isPromo && originalPrice > price}
-                                                <p
-                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
-                                                >
-                                                    {formatPrice(originalPrice)}
-                                                </p>
-                                            {/if}
-                                        </div>
-                                    </div>
-                                    <div class="pt-3">
-                                        <span
-                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
-                                            style="background-color: {primary};"
-                                        >
-                                            <i
-                                                class="ti ti-shopping-cart text-xs sm:text-sm"
-                                            ></i>
-                                            + KERANJANG
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-                        {/each}
-                    </div>
-
-                    <!-- Infinite scroll sentinel + loading indicator -->
-                    <div
-                        use:setupObserver
-                        class="py-8 flex flex-col items-center justify-center gap-3"
-                    >
-                        {#if isLoadingMore}
-                            <!-- Modern pulsing indicator (same as Home.svelte) -->
-                            <div
-                                class="flex items-center gap-2 mt-4 text-slate-500 font-medium text-xs sm:text-sm animate-pulse"
-                            >
-                                <svg
-                                    class="animate-spin h-5 w-5"
-                                    style="color: {primary};"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        class="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        stroke-width="4"
-                                    ></circle>
-                                    <path
-                                        class="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                </svg>
-                                Memuat lebih banyak...
-                            </div>
-                        {/if}
-                    </div>
-                {/if}
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════
-     MOBILE FILTER DRAWER (Mobile)
-    ═══════════════════════════════════════════════════ -->
-    {#if showMobileFilters}
-        <div class="fixed inset-0 z-50 flex justify-end md:hidden">
-            <!-- Backdrop -->
-            <button
-                onclick={() => (showMobileFilters = false)}
-                class="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full cursor-default"
-            ></button>
-
-            <!-- Drawer body -->
-            <div
-                class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between p-6 overflow-y-auto space-y-6"
+                class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"
             >
                 <div>
+                    <h1
+                        class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2"
+                    >
+                        <i class="ti ti-search" style="color: {primary};"></i>
+                        {#if filters.q}
+                            Hasil Pencarian untuk "{filters.q}"
+                        {:else if selectedCategories.length > 0}
+                            Katalog Kategori
+                        {:else}
+                            Semua Produk
+                        {/if}
+                    </h1>
+                </div>
+
+                <!-- Sorting & Mini Pagination (Desktop only) -->
+                <div
+                    class="hidden md:flex items-center gap-3.5 self-end md:self-auto"
+                >
+                    <!-- Sorting Tabs (Desktop) -->
+                    <div class="flex items-center gap-2 z-20">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1"
+                            >Urutkan:</span
+                        >
+
+                        <button
+                            onclick={() => {
+                                selectedSort = 'relevance';
+                                applyFilters();
+                            }}
+                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
+                               {selectedSort === 'relevance'
+                                ? 'text-white'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            style={selectedSort === 'relevance'
+                                ? `background-color: ${primary}; border-color: ${primary};`
+                                : ''}
+                        >
+                            Terkait
+                        </button>
+
+                        <button
+                            onclick={() => {
+                                selectedSort = 'latest';
+                                applyFilters();
+                            }}
+                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
+                               {selectedSort === 'latest'
+                                ? 'text-white'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            style={selectedSort === 'latest'
+                                ? `background-color: ${primary}; border-color: ${primary};`
+                                : ''}
+                        >
+                            Terbaru
+                        </button>
+
+                        <button
+                            onclick={() => {
+                                selectedSort = 'popular';
+                                applyFilters();
+                            }}
+                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
+                               {selectedSort === 'popular'
+                                ? 'text-white'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            style={selectedSort === 'popular'
+                                ? `background-color: ${primary}; border-color: ${primary};`
+                                : ''}
+                        >
+                            Terlaris
+                        </button>
+
+                        <div class="w-40">
+                            <Select
+                                value={['price_asc', 'price_desc'].includes(
+                                    selectedSort,
+                                )
+                                    ? selectedSort
+                                    : ''}
+                                onchange={(val) => {
+                                    selectedSort = val;
+                                    applyFilters();
+                                }}
+                                placeholder="Harga"
+                                options={[
+                                    {
+                                        id: 'price_asc',
+                                        name: 'Harga: Terendah',
+                                    },
+                                    {
+                                        id: 'price_desc',
+                                        name: 'Harga: Tertinggi',
+                                    },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-8 items-start">
+                <!-- ═══════════════════════════════════════════════════
+             FILTER SIDEBAR (Desktop)
+            ═══════════════════════════════════════════════════ -->
+                <aside
+                    class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6"
+                >
                     <div
-                        class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5"
+                        class="flex items-center justify-between border-b border-slate-100 pb-3"
                     >
                         <span
                             class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
@@ -861,10 +567,11 @@
                             ></i> Filter
                         </span>
                         <button
-                            onclick={() => (showMobileFilters = false)}
-                            class="text-slate-400 hover:text-slate-600"
+                            onclick={resetFilters}
+                            class="text-[10px] font-black uppercase tracking-wider hover:underline"
+                            style="color: {secondary};"
                         >
-                            <i class="ti ti-x text-lg"></i>
+                            Reset
                         </button>
                     </div>
 
@@ -874,15 +581,17 @@
                             class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
                             >Kategori</span
                         >
-                        <div class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                        <div
+                            class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
+                        >
                             {#each categories as cat}
                                 <button
                                     onclick={() =>
-                                        selectCategory(
+                                        selectCategoryDesktop(
                                             cat.slug || cat.id.toString(),
                                         )}
                                     class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                           {selectedCategories.includes(
+                                       {selectedCategories.includes(
                                         cat.slug || cat.id.toString(),
                                     )
                                         ? 'bg-slate-50'
@@ -908,7 +617,7 @@
                         </div>
                     </div>
 
-                    <hr class="border-slate-100 my-5" />
+                    <hr class="border-slate-100" />
 
                     <!-- Rentang Harga Filter -->
                     <div class="space-y-3">
@@ -930,12 +639,23 @@
                                 label="Harga Maksimum"
                             />
                         </div>
+                        <button
+                            onclick={applyFilters}
+                            class="w-full py-2 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
+                            style="background-color: {primary};"
+                        >
+                            Terapkan Harga
+                        </button>
                     </div>
 
-                    <hr class="border-slate-100 my-5" />
+                    <hr class="border-slate-100" />
 
                     <!-- Promo Toko Checkbox -->
-                    <div>
+                    <div
+                        onclick={() => {
+                            setTimeout(applyFilters, 0);
+                        }}
+                    >
                         <Toggle
                             bind:checked={promoOnly}
                             label="Hanya Promo Toko"
@@ -943,26 +663,328 @@
                             icon="ti-tag"
                         />
                     </div>
-                </div>
+                </aside>
 
-                <div
-                    class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100"
-                >
-                    <button
-                        onclick={() => resetFilters(true)}
-                        class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
-                    >
-                        Reset
-                    </button>
-                    <button
-                        onclick={applyFilters}
-                        class="py-3 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition"
-                        style="background-color: {primary};"
-                    >
-                        Terapkan
-                    </button>
+                <!-- ═══════════════════════════════════════════════════
+             PRODUCT GRID (Right Column)
+            ═══════════════════════════════════════════════════ -->
+                <div class="flex-grow flex flex-col min-w-0">
+                    {#if allProducts.length === 0 && !isLoadingMore}
+                        <div
+                            class="bg-white md:border border-slate-900 md:rounded-[28px] py-12 md:py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300"
+                        >
+                            <!-- Circular Icon (similar to screenshot) -->
+                            <div
+                                class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300"
+                            >
+                                <i
+                                    class="ti ti-package-off text-3xl sm:text-4xl"
+                                ></i>
+                            </div>
+
+                            <!-- Title (matching screenshot) -->
+                            <h3
+                                class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight"
+                            >
+                                Produk Tidak Ditemukan
+                            </h3>
+
+                            <!-- Description (matching screenshot) -->
+                            <p
+                                class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8"
+                            >
+                                Kami tidak dapat menemukan produk yang cocok
+                                dengan pencarian atau filter Anda. Coba reset
+                                filter atau gunakan kata kunci lain.
+                            </p>
+
+                            <!-- Button with dynamic theme color & blue shadow (matching screenshot) -->
+                            <button
+                                onclick={resetFilters}
+                                class="px-8 py-3 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-95 shadow-lg shadow-blue-600/25 hover:shadow-blue-600/35"
+                                style="background-color: {primary};"
+                            >
+                                Reset Filter
+                            </button>
+                        </div>
+                    {:else}
+                        <!-- Product Grid -->
+                        <div
+                            class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                        >
+                            {#each allProducts as product, index (product.id + '_' + index)}
+                                {@const img = getProductImage(product)}
+                                {@const isPromo = product.is_promo}
+                                {@const price = isPromo
+                                    ? product.promo_price
+                                    : (product.product_price?.price ?? 0)}
+                                {@const originalPrice = isPromo
+                                    ? product.original_price
+                                    : 0}
+                                {@const discountPercentage = isPromo
+                                    ? product.discount_percentage
+                                    : 0}
+
+                                <Link
+                                    href={`/products/${product.slug || product.id}`}
+                                    prefetch
+                                    class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer flex flex-col h-full"
+                                >
+                                    <div
+                                        class="relative aspect-square overflow-hidden border-b border-slate-50"
+                                    >
+                                        {#if img}
+                                            <img
+                                                src={img}
+                                                alt={product.name}
+                                                class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                                onerror={(e) => {
+                                                    e.currentTarget.src =
+                                                        '/noimage/image.png';
+                                                }}
+                                            />
+                                        {:else}
+                                            <img
+                                                src="/noimage/image.png"
+                                                alt="No Image"
+                                                class="w-full h-full object-cover"
+                                            />
+                                        {/if}
+                                        {#if isPromo && discountPercentage > 0}
+                                            <span
+                                                class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                style="background-color: {secondary};"
+                                            >
+                                                -{discountPercentage}%
+                                            </span>
+                                        {/if}
+                                    </div>
+                                    <div
+                                        class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <p
+                                                class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                                style="color: {primary};"
+                                            >
+                                                {product.category?.name ||
+                                                    'PRODUK'}
+                                            </p>
+                                            <p
+                                                class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
+                                                style="color: {primary};"
+                                            >
+                                                {product.name}
+                                            </p>
+                                            <hr class="border-slate-100 my-2" />
+                                            <div class="mb-3">
+                                                <p
+                                                    class="text-sm sm:text-base font-black leading-tight"
+                                                    style="color: {secondary};"
+                                                >
+                                                    {formatPrice(price)}
+                                                </p>
+                                                {#if isPromo && originalPrice > price}
+                                                    <p
+                                                        class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                    >
+                                                        {formatPrice(
+                                                            originalPrice,
+                                                        )}
+                                                    </p>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                        <div class="pt-3">
+                                            <span
+                                                class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                                style="background-color: {primary};"
+                                            >
+                                                <i
+                                                    class="ti ti-shopping-cart text-xs sm:text-sm"
+                                                ></i>
+                                                + KERANJANG
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            {/each}
+                        </div>
+
+                        <!-- Infinite scroll sentinel + loading indicator -->
+                        <div
+                            use:setupObserver
+                            class="py-8 flex flex-col items-center justify-center gap-3"
+                        >
+                            {#if isLoadingMore}
+                                <!-- Modern pulsing indicator (same as Home.svelte) -->
+                                <div
+                                    class="flex items-center gap-2 mt-4 text-slate-500 font-medium text-xs sm:text-sm animate-pulse"
+                                >
+                                    <svg
+                                        class="animate-spin h-5 w-5"
+                                        style="color: {primary};"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            class="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            stroke-width="4"
+                                        ></circle>
+                                        <path
+                                            class="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                        ></path>
+                                    </svg>
+                                    Memuat lebih banyak...
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>
-    {/if}
+
+        <!-- ═══════════════════════════════════════════════════
+     MOBILE FILTER DRAWER (Mobile)
+    ═══════════════════════════════════════════════════ -->
+        {#if showMobileFilters}
+            <div class="fixed inset-0 z-50 flex justify-end md:hidden">
+                <!-- Backdrop -->
+                <button
+                    onclick={() => (showMobileFilters = false)}
+                    class="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full cursor-default"
+                ></button>
+
+                <!-- Drawer body -->
+                <div
+                    class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between p-6 overflow-y-auto space-y-6"
+                >
+                    <div>
+                        <div
+                            class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5"
+                        >
+                            <span
+                                class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
+                            >
+                                <i
+                                    class="ti ti-filter text-base"
+                                    style="color: {primary};"
+                                ></i> Filter
+                            </span>
+                            <button
+                                onclick={() => (showMobileFilters = false)}
+                                class="text-slate-400 hover:text-slate-600"
+                            >
+                                <i class="ti ti-x text-lg"></i>
+                            </button>
+                        </div>
+
+                        <!-- Kategori Filter -->
+                        <div class="space-y-2.5">
+                            <span
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                                >Kategori</span
+                            >
+                            <div
+                                class="space-y-1.5 max-h-60 overflow-y-auto pr-1"
+                            >
+                                {#each categories as cat}
+                                    <button
+                                        onclick={() =>
+                                            selectCategory(
+                                                cat.slug || cat.id.toString(),
+                                            )}
+                                        class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                           {selectedCategories.includes(
+                                            cat.slug || cat.id.toString(),
+                                        )
+                                            ? 'bg-slate-50'
+                                            : 'text-slate-600 hover:text-slate-900'}"
+                                        style={selectedCategories.includes(
+                                            cat.slug || cat.id.toString(),
+                                        )
+                                            ? `color: ${primary};`
+                                            : ''}
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <i
+                                                class="ti {cat.icon ||
+                                                    'ti-tag'} text-sm"
+                                            ></i>
+                                            {cat.name}
+                                        </span>
+                                        {#if selectedCategories.includes(cat.slug || cat.id.toString())}
+                                            <i class="ti ti-check text-xs"></i>
+                                        {/if}
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100 my-5" />
+
+                        <!-- Rentang Harga Filter -->
+                        <div class="space-y-3">
+                            <span
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                                >Rentang Harga</span
+                            >
+                            <div class="space-y-3">
+                                <InputCurrency
+                                    bind:value={minPrice}
+                                    placeholder="0"
+                                    prefix="Rp"
+                                    label="Harga Minimum"
+                                />
+                                <InputCurrency
+                                    bind:value={maxPrice}
+                                    placeholder="Maks"
+                                    prefix="Rp"
+                                    label="Harga Maksimum"
+                                />
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100 my-5" />
+
+                        <!-- Promo Toko Checkbox -->
+                        <div>
+                            <Toggle
+                                bind:checked={promoOnly}
+                                label="Hanya Promo Toko"
+                                description="Tampilkan diskon aktif"
+                                icon="ti-tag"
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100"
+                    >
+                        <button
+                            onclick={() => resetFilters(true)}
+                            class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
+                        >
+                            Reset
+                        </button>
+                        <button
+                            onclick={applyFilters}
+                            class="py-3 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition"
+                            style="background-color: {primary};"
+                        >
+                            Terapkan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {/if}
+    </div>
+    <!-- end full-height wrapper -->
 </StorefrontLayout>

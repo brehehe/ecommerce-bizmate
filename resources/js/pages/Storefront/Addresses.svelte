@@ -140,9 +140,13 @@
             const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
             const fromParam = urlParams ? urlParams.get('from') : null;
             if (fromParam === 'checkout') {
-                router.visit('/checkout');
+                if (window.history.length > 1) {
+                    window.history.back();
+                } else {
+                    router.visit('/checkout', { replace: true });
+                }
             } else {
-                router.visit('/');
+                router.visit('/', { replace: true });
             }
         }
     }
@@ -634,7 +638,11 @@
                         );
                         const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
                         if (urlParams && urlParams.get('from') === 'checkout') {
-                            router.visit('/checkout');
+                            if (window.history.length > 1) {
+                                window.history.back();
+                            } else {
+                                router.visit('/checkout', { replace: true });
+                            }
                         }
                     },
                 },
@@ -643,7 +651,11 @@
             showToast('Alamat utama berhasil dipilih.', 'success', 'top');
             const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
             if (urlParams && urlParams.get('from') === 'checkout') {
-                router.visit('/checkout');
+                if (window.history.length > 1) {
+                    window.history.back();
+                } else {
+                    router.visit('/checkout', { replace: true });
+                }
             }
         }
     }

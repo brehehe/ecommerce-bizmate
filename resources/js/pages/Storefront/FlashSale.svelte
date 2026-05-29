@@ -375,10 +375,14 @@
         </div>
     </div>
 
+
+    <!-- Full-height wrapper on mobile (no bottom nav) -->
+    <div class="md:contents min-h-dvh flex flex-col">
+
     <!-- Spacer for mobile sticky bar -->
     <div class="md:hidden h-[92px]"></div>
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 flex-grow">
+    <div class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full">
         <!-- Desktop Header (Desktop only, no tabs) -->
         <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
@@ -718,4 +722,6 @@
             </div>
         </div>
     {/if}
+
+    </div><!-- end full-height wrapper -->
 </StorefrontLayout>

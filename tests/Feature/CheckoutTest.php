@@ -263,3 +263,247 @@ test('expired voucher returns invalid', function () {
 
     $response->assertOk()->assertJson(['valid' => false]);
 });
+
+test('double voucher applies both discounts successfully', function () {
+    $voucherBelanja = Promotion::create([
+        'name' => 'Diskon 10%',
+        'type' => 'voucher_belanja',
+        'code' => 'DISKON10',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'min_purchase' => 0,
+        'max_discount' => null,
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+    ]);
+
+    $voucherOngkir = Promotion::create([
+        'name' => 'Gratis Ongkir',
+        'type' => 'voucher_gratis_ongkir',
+        'code' => 'GRATIS',
+        'discount_type' => null,
+        'discount_value' => 0,
+        'max_discount' => 50000,
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'DISKON10,GRATIS',
+        'subtotal' => 10000000,
+        'shipping_fee' => 25000,
+    ]);
+
+    $response->assertOk()->assertJson([
+        'valid' => true,
+        'discount_amount' => 1000000.0,
+        'shipping_discount' => 25000.0,
+    ]);
+});
+
+test('per-user limit restricts usage successfully', function () {
+    $voucher = Promotion::create([
+        'name' => 'Diskon 10% Batas User',
+        'type' => 'voucher_belanja',
+        'code' => 'BATASUSER',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'min_purchase' => 0,
+        'max_discount' => null,
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'max_uses_per_user' => 1,
+        ],
+    ]);
+
+    // Apply first time - should be valid
+    $response1 = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'BATASUSER',
+        'subtotal' => 10000000,
+        'shipping_fee' => 25000,
+    ]);
+    $response1->assertOk()->assertJson(['valid' => true]);
+
+    // Create a previous transaction with this voucher for the user
+    Transaction::create([
+        'transaction_number' => Transaction::generateNumber(),
+        'user_id' => $this->user->id,
+        'customer_address_id' => $this->address->id,
+        'payment_method_id' => $this->paymentMethod->id,
+        'status' => 'belum_bayar',
+        'subtotal' => 10000000,
+        'discount_amount' => 1000000,
+        'shipping_fee' => 25000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'application_fee' => 0,
+        'grand_total' => 9025000,
+        'voucher_code' => 'BATASUSER',
+    ]);
+
+    // Apply second time - should be invalid because user limit is reached
+    $response2 = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'BATASUSER',
+        'subtotal' => 10000000,
+        'shipping_fee' => 25000,
+    ]);
+    $response2->assertOk()->assertJson([
+        'valid' => false,
+        'message' => 'Batas penggunaan voucher "BATASUSER" per user telah tercapai.',
+    ]);
+});
+
+test('non-stackable voucher does not apply to promo items', function () {
+    // 1. Create a promo_produk campaign for the laptop product
+    $promoProduct = Promotion::create([
+        'name' => 'Promo Laptop',
+        'type' => 'promo_produk',
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'min_qty' => 1,
+        ],
+    ]);
+    $promoProduct->items()->create([
+        'product_id' => $this->product->id,
+        'discount_type' => 'percentage',
+        'discount_value' => 20, // 20% discount
+    ]);
+
+    // 2. Create another product that is normal priced (not on promotion)
+    $normalProduct = Product::create([
+        'name' => 'Normal Product',
+        'slug' => 'normal-product',
+        'sku' => 'NORMAL-TEST',
+        'category_id' => $this->category->id,
+        'active' => true,
+    ]);
+    $normalProduct->productPrice()->create(['price' => 1000000, 'cost' => 500000]);
+    ProductStock::create([
+        'product_id' => $normalProduct->id,
+        'stock' => 10,
+        'is_unlimited' => false,
+    ]);
+
+    // 3. Put both in the cart:
+    // We already have a cart item for Laptop Test (qty = 2).
+    // Let's create a cart item for the normal product (qty = 1).
+    CartItem::create([
+        'user_id' => $this->user->id,
+        'product_id' => $normalProduct->id,
+        'quantity' => 1,
+        'is_checked' => true,
+    ]);
+
+    // 4. Create a non-stackable voucher (can_stack_with_promos = false)
+    Promotion::create([
+        'name' => 'Voucher Non-Stackable 10%',
+        'type' => 'voucher_belanja',
+        'code' => 'NONSTACK10',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'min_purchase' => 0,
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'can_stack_with_promos' => false,
+        ],
+    ]);
+
+    // 5. Test apply-voucher
+    // Total checkout subtotal will be:
+    // Laptop: 2 pcs * 4,000,000 (after 20% discount) = 8,000,000 (is_promo = true)
+    // Normal Product: 1 pc * 1,000,000 = 1,000,000 (is_promo = false)
+    // Total subtotal = 9,000,000.
+    // Non-stackable voucher of 10% should only apply to Normal Product (10% of 1,000,000 = 100,000).
+    $response = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'NONSTACK10',
+        'subtotal' => 9000000,
+        'shipping_fee' => 20000,
+    ]);
+
+    $response->assertOk()->assertJson([
+        'valid' => true,
+        'discount_amount' => 100000.0, // Only 10% of normal product
+    ]);
+});
+
+test('stackable voucher applies to all items including promo items', function () {
+    // 1. Create a promo_produk campaign for the laptop product
+    $promoProduct = Promotion::create([
+        'name' => 'Promo Laptop 2',
+        'type' => 'promo_produk',
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'min_qty' => 1,
+        ],
+    ]);
+    $promoProduct->items()->create([
+        'product_id' => $this->product->id,
+        'discount_type' => 'percentage',
+        'discount_value' => 20, // 20% discount
+    ]);
+
+    // 2. Create another product that is normal priced (not on promotion)
+    $normalProduct = Product::create([
+        'name' => 'Normal Product 2',
+        'slug' => 'normal-product-2',
+        'sku' => 'NORMAL-TEST-2',
+        'category_id' => $this->category->id,
+        'active' => true,
+    ]);
+    $normalProduct->productPrice()->create(['price' => 1000000, 'cost' => 500000]);
+    ProductStock::create([
+        'product_id' => $normalProduct->id,
+        'stock' => 10,
+        'is_unlimited' => false,
+    ]);
+
+    // 3. Put both in the cart:
+    // We already have a cart item for Laptop Test (qty = 2).
+    // Let's create a cart item for the normal product (qty = 1).
+    CartItem::create([
+        'user_id' => $this->user->id,
+        'product_id' => $normalProduct->id,
+        'quantity' => 1,
+        'is_checked' => true,
+    ]);
+
+    // 4. Create a stackable voucher (can_stack_with_promos = true)
+    Promotion::create([
+        'name' => 'Voucher Stackable 10%',
+        'type' => 'voucher_belanja',
+        'code' => 'STACKABLE10',
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'min_purchase' => 0,
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'can_stack_with_promos' => true,
+        ],
+    ]);
+
+    // 5. Test apply-voucher
+    // Total subtotal = 9,000,000.
+    // Stackable voucher of 10% should apply to full subtotal (10% of 9,000,000 = 900,000).
+    $response = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'STACKABLE10',
+        'subtotal' => 9000000,
+        'shipping_fee' => 20000,
+    ]);
+
+    $response->assertOk()->assertJson([
+        'valid' => true,
+        'discount_amount' => 900000.0, // 10% of entire 9,000,000
+    ]);
+});

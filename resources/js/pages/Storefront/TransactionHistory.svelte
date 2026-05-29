@@ -72,7 +72,7 @@
 </style>
 
 <StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-dvh bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">

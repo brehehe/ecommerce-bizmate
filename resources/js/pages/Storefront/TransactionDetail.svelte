@@ -6,6 +6,7 @@
     let {
         transaction,
         statusLabels = {},
+        paymentMethods = [] as any[],
         storeName = '',
         storeLogo = '',
     } = $props();
@@ -21,6 +22,79 @@
     let proofPreview = $state('');
     let uploadingProof = $state(false);
     let showUploadModal = $state(false);
+
+    // Cancel order modal
+    let showCancelModal = $state(false);
+    let cancelReason = $state('');
+    let cancellingOrder = $state(false);
+
+    // Change payment method modal
+    let showChangePaymentModal = $state(false);
+    let selectedPaymentMethodId = $state(transaction?.payment_method_id ?? '');
+    let changingPayment = $state(false);
+
+    const canCancel = $derived(
+        ['belum_bayar', 'menunggu'].includes(transaction.status),
+    );
+    const canChangePayment = $derived(transaction.status === 'belum_bayar');
+
+    function openCancelModal() {
+        cancelReason = '';
+        showCancelModal = true;
+    }
+
+    function submitCancel() {
+        if (!cancelReason.trim()) {
+            showToast('Alasan pembatalan harus diisi.', 'error');
+            return;
+        }
+        cancellingOrder = true;
+        router.post(
+            `/transactions/${transaction.id}/cancel`,
+            { cancel_reason: cancelReason },
+            {
+                onSuccess: () => {
+                    showCancelModal = false;
+                    showToast('Pesanan berhasil dibatalkan.', 'success');
+                },
+                onError: () => {
+                    showToast('Gagal membatalkan pesanan.', 'error');
+                },
+                onFinish: () => {
+                    cancellingOrder = false;
+                },
+            },
+        );
+    }
+
+    function openChangePaymentModal() {
+        selectedPaymentMethodId = transaction?.payment_method_id ?? '';
+        showChangePaymentModal = true;
+    }
+
+    function submitChangePayment() {
+        if (!selectedPaymentMethodId) {
+            showToast('Pilih metode pembayaran terlebih dahulu.', 'error');
+            return;
+        }
+        changingPayment = true;
+        router.post(
+            `/transactions/${transaction.id}/change-payment`,
+            { payment_method_id: selectedPaymentMethodId },
+            {
+                onSuccess: () => {
+                    showChangePaymentModal = false;
+                    showToast('Metode pembayaran berhasil diubah.', 'success');
+                },
+                onError: () => {
+                    showToast('Gagal mengubah metode pembayaran.', 'error');
+                },
+                onFinish: () => {
+                    changingPayment = false;
+                },
+            },
+        );
+    }
 
     function fmt(price: any): string {
         return new Intl.NumberFormat('id-ID', {
@@ -102,8 +176,11 @@
 
     const isGateway = $derived(paymentMethod?.type === 'gateway');
     const gatewayName = $derived(
-        paymentMethod?.name?.toLowerCase().includes('midtrans') ? 'Midtrans' :
-        (paymentMethod?.name?.toLowerCase().includes('flip') ? 'Flip' : 'Xendit')
+        paymentMethod?.name?.toLowerCase().includes('midtrans')
+            ? 'Midtrans'
+            : paymentMethod?.name?.toLowerCase().includes('flip')
+              ? 'Flip'
+              : 'Xendit',
     );
 
     function getInvoiceUrl(payment: any) {
@@ -113,7 +190,11 @@
                 typeof payment.gateway_response === 'string'
                     ? JSON.parse(payment.gateway_response)
                     : payment.gateway_response;
-            let url = resp?.link_url ?? resp?.invoice_url ?? resp?.redirect_url ?? null;
+            let url =
+                resp?.link_url ??
+                resp?.invoice_url ??
+                resp?.redirect_url ??
+                null;
             if (url && !/^https?:\/\//i.test(url)) {
                 url = 'https://' + url;
             }
@@ -182,61 +263,135 @@
 </script>
 
 <StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-dvh bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
                 <Link
                     href="/transactions"
-                    class="p-2 hover:bg-slate-100 rounded-full transition"
+                    class="p-2 hover:bg-slate-100 rounded-full transition shrink-0"
                 >
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                 </Link>
-                <div>
+                <div class="flex-1 min-w-0">
                     <h1 class="text-sm font-bold text-slate-800 leading-tight">
                         Detail Pesanan
                     </h1>
-                    <p class="text-xs text-slate-500 leading-tight">
+                    <p class="text-xs text-slate-500 leading-tight truncate">
                         {transaction.transaction_number}
                     </p>
                 </div>
+                <!-- Desktop action buttons (inside header, right side) -->
+                {#if canCancel || canChangePayment}
+                    <div class="hidden md:flex items-center gap-2 shrink-0">
+                        {#if canChangePayment}
+                            <button
+                                onclick={openChangePaymentModal}
+                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:opacity-90"
+                                style="border-color:{primary}; color:{primary};"
+                            >
+                                <i class="ti ti-credit-card text-sm"></i>
+                                Ubah Pembayaran
+                            </button>
+                        {/if}
+                        {#if canCancel}
+                            <button
+                                onclick={openCancelModal}
+                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-red-400 text-red-500 text-xs font-bold transition active:scale-95 hover:bg-red-50"
+                            >
+                                <i class="ti ti-x text-sm"></i>
+                                Batalkan
+                            </button>
+                        {/if}
+                    </div>
+                {/if}
             </div>
         </div>
 
-        <div class="max-w-6xl mx-auto px-4 py-6 pb-12">
+        <!-- Extra bottom padding on mobile to account for fixed action bar -->
+        <div
+            class="max-w-6xl mx-auto px-4 py-4 {canCancel || canChangePayment
+                ? 'pb-28'
+                : 'pb-6'} md:py-6 md:pb-6"
+        >
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left/Main Column -->
                 <div class="lg:col-span-2 space-y-4">
                     <!-- Status Banner -->
                     {#if transaction.status === 'batal'}
-                        <div
-                            class="bg-red-50 border border-red-200 rounded-2xl p-4"
-                        >
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0"
-                                >
-                                    <i class="ti ti-x text-2xl text-red-500"
-                                    ></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-red-700">
-                                        Pesanan Dibatalkan
-                                    </p>
-                                    {#if transaction.cancel_reason}
-                                        <p class="text-xs text-red-600 mt-0.5">
-                                            {transaction.cancel_reason}
-                                        </p>
-                                    {/if}
+                        <!-- Status Banner (Cancelled) -->
+                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                            <!-- Red top accent bar -->
+                            <div class="h-1 w-full"></div>
+                            <div class="p-5">
+                                <!-- Header row: badge + date -->
+                                <div class="flex items-center justify-between mb-4">
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold"
+                                    >
+                                        <i class="ti ti-x text-xs"></i>
+                                        Dibatalkan
+                                    </span>
                                     {#if transaction.cancelled_at}
-                                        <p class="text-xs text-red-400 mt-0.5">
-                                            {fmtDate(transaction.cancelled_at)}
-                                        </p>
+                                        <span class="text-xs text-slate-400"
+                                            >{fmtDate(
+                                                transaction.cancelled_at,
+                                            )}</span
+                                        >
                                     {/if}
                                 </div>
+
+                                <!-- Icon + title -->
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div
+                                        class="w-14 h-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0"
+                                    >
+                                        <i
+                                            class="ti ti-package-off text-2xl text-red-400"
+                                        ></i>
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="font-bold text-slate-800 text-base leading-tight"
+                                        >
+                                            Pesanan Dibatalkan
+                                        </p>
+                                        <p
+                                            class="text-xs text-slate-500 mt-0.5 leading-relaxed"
+                                        >
+                                            Pesanan ini telah dibatalkan dan tidak
+                                            dapat diproses lebih lanjut.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Cancel reason (if any) -->
+                                {#if transaction.cancel_reason}
+                                    <div
+                                        class="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 flex items-start gap-2.5"
+                                    >
+                                        <i
+                                            class="ti ti-message-circle text-sm text-slate-400 mt-0.5 shrink-0"
+                                        ></i>
+                                        <div>
+                                            <p
+                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5"
+                                            >
+                                                Alasan Pembatalan
+                                            </p>
+                                            <p
+                                                class="text-sm text-slate-700 leading-relaxed"
+                                            >
+                                                {transaction.cancel_reason}
+                                            </p>
+                                        </div>
+                                    </div>
+                                {/if}
                             </div>
                         </div>
-                    {:else}
+                    {/if}
+
+                    {#if transaction.status !== 'batal'}
                         <!-- Status Steps -->
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
@@ -306,160 +461,6 @@
                                         </span>
                                     </div>
                                 {/each}
-                            </div>
-                        </div>
-                    {/if}
-
-                    <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
-                    {#if canUploadProof}
-                        <div
-                            class="bg-amber-50 border border-amber-200 rounded-2xl p-4"
-                        >
-                            <div class="flex items-start gap-3">
-                                <i
-                                    class="ti ti-alert-triangle text-2xl text-amber-500 shrink-0 mt-0.5"
-                                ></i>
-                                <div class="flex-1">
-                                    <p class="font-bold text-amber-800 text-sm">
-                                        Segera Lakukan Pembayaran
-                                    </p>
-                                    <div
-                                        class="mt-2 bg-white rounded-xl p-3 border border-amber-200"
-                                    >
-                                        <p
-                                            class="text-xs font-bold text-slate-700 mb-1"
-                                        >
-                                            Transfer ke:
-                                        </p>
-                                        <p
-                                            class="text-sm font-bold text-slate-800"
-                                        >
-                                            {paymentMethod?.bank_name}
-                                        </p>
-                                        <p
-                                            class="text-lg font-black text-slate-900"
-                                        >
-                                            {paymentMethod?.account_number}
-                                        </p>
-                                        <p class="text-xs text-slate-500">
-                                            a.n. {paymentMethod?.account_name}
-                                        </p>
-                                        <div
-                                            class="mt-2 pt-2 border-t border-slate-100"
-                                        >
-                                            <p class="text-xs text-slate-600">
-                                                Jumlah transfer:
-                                            </p>
-                                            <p
-                                                class="text-base font-black"
-                                                style="color:{primary}"
-                                            >
-                                                {fmt(transaction.grand_total)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {#if latestPayment?.proof_image}
-                                        <div class="mt-2">
-                                            <p
-                                                class="text-xs text-slate-600 mb-1"
-                                            >
-                                                Bukti bayar yang diunggah:
-                                            </p>
-                                            <img
-                                                src={formatImagePath(
-                                                    latestPayment.proof_image,
-                                                )}
-                                                alt="Bukti Pembayaran"
-                                                class="w-32 h-32 object-cover rounded-xl border border-slate-200"
-                                            />
-                                            <p
-                                                class="text-xs text-slate-400 mt-1"
-                                            >
-                                                Diunggah {fmtDate(
-                                                    latestPayment.proof_uploaded_at,
-                                                )}
-                                                {#if latestPayment.status === 'rejected' && latestPayment.notes}
-                                                    <span
-                                                        class="text-red-500 font-semibold whitespace-pre-wrap break-words"
-                                                    >
-                                                        · Ditolak: {latestPayment.notes}</span
-                                                    >
-                                                {/if}
-                                            </p>
-                                        </div>
-                                    {/if}
-                                    <button
-                                        onclick={() => (showUploadModal = true)}
-                                        class="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition"
-                                        style="background:{primary}"
-                                    >
-                                        <i class="ti ti-upload text-sm"></i>
-                                        {latestPayment?.proof_image
-                                            ? 'Ganti Bukti Bayar'
-                                            : 'Upload Bukti Bayar'}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    {/if}
-
-                    <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
-                    {#if isGateway && transaction.status === 'belum_bayar'}
-                        <div
-                            class="bg-blue-50 border border-blue-200 rounded-2xl p-4"
-                        >
-                            <div class="flex items-start gap-3">
-                                <i
-                                    class="ti ti-credit-card text-2xl text-blue-500 shrink-0 mt-0.5 animate-pulse"
-                                ></i>
-                                <div class="flex-1">
-                                    <p class="font-bold text-blue-800 text-sm">
-                                        Selesaikan Pembayaran Otomatis
-                                    </p>
-                                    <p
-                                        class="text-xs text-blue-600 mt-1 leading-relaxed"
-                                    >
-                                        Pesanan Anda menggunakan sistem
-                                        pembayaran otomatis terverifikasi.
-                                        Silakan klik tombol di bawah untuk
-                                        membuka portal pembayaran {gatewayName}.
-                                    </p>
-                                    <div
-                                        class="mt-3 bg-white rounded-xl p-3 border border-blue-100 flex items-center justify-between"
-                                    >
-                                        <div>
-                                            <p class="text-xs text-slate-500">
-                                                Total Tagihan:
-                                            </p>
-                                            <p
-                                                class="text-base font-black"
-                                                style="color:{primary}"
-                                            >
-                                                {fmt(transaction.grand_total)}
-                                            </p>
-                                        </div>
-                                        {#if gatewayInvoiceUrl}
-                                            <a
-                                                href={gatewayInvoiceUrl}
-                                                class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black text-white transition active:scale-95 hover:opacity-95 shadow-md shadow-brand-blueRoyal/10"
-                                                style="background:{primary}"
-                                            >
-                                                <span>Bayar Sekarang</span>
-                                                <i class="ti ti-arrow-right"
-                                                ></i>
-                                            </a>
-                                        {:else if gatewayError}
-                                            <div
-                                                class="text-xs text-red-500 font-bold max-w-[200px] leading-relaxed text-right"
-                                            >
-                                                <i
-                                                    class="ti ti-alert-circle mr-1"
-                                                ></i>
-                                                Link gagal dibuat. {gatewayError}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     {/if}
@@ -549,6 +550,155 @@
                             {/each}
                         </div>
                     </div>
+
+                    <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
+                    {#if canUploadProof}
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                        >
+                            <div
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-slate-100"
+                            >
+                                <i
+                                    class="ti ti-alert-triangle text-base text-amber-500"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Upload Bukti Pembayaran</span
+                                >
+                            </div>
+                            <div class="p-4">
+                                <!-- Bank info -->
+                                <div
+                                    class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-3"
+                                >
+                                    <p class="text-xs text-slate-500 mb-0.5">
+                                        Transfer ke:
+                                    </p>
+                                    <p class="text-sm font-bold text-slate-800">
+                                        {paymentMethod?.bank_name}
+                                    </p>
+                                    <p
+                                        class="text-xl font-black text-slate-900"
+                                    >
+                                        {paymentMethod?.account_number}
+                                    </p>
+                                    <p class="text-xs text-slate-500">
+                                        a.n. {paymentMethod?.account_name}
+                                    </p>
+                                    <div
+                                        class="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between"
+                                    >
+                                        <p class="text-xs text-slate-500">
+                                            Jumlah transfer:
+                                        </p>
+                                        <p
+                                            class="text-base font-black"
+                                            style="color:{primary}"
+                                        >
+                                            {fmt(transaction.grand_total)}
+                                        </p>
+                                    </div>
+                                </div>
+                                {#if latestPayment?.proof_image}
+                                    <div class="mb-3">
+                                        <p class="text-xs text-slate-500 mb-1">
+                                            Bukti bayar yang diunggah:
+                                        </p>
+                                        <img
+                                            src={formatImagePath(
+                                                latestPayment.proof_image,
+                                            )}
+                                            alt="Bukti Pembayaran"
+                                            class="w-28 h-28 object-cover rounded-xl border border-slate-200"
+                                        />
+                                        <p class="text-xs text-slate-400 mt-1">
+                                            Diunggah {fmtDate(
+                                                latestPayment.proof_uploaded_at,
+                                            )}
+                                            {#if latestPayment.status === 'rejected' && latestPayment.notes}
+                                                <span
+                                                    class="text-red-500 font-semibold"
+                                                >
+                                                    · Ditolak: {latestPayment.notes}</span
+                                                >
+                                            {/if}
+                                        </p>
+                                    </div>
+                                {/if}
+                                <button
+                                    onclick={() => (showUploadModal = true)}
+                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95"
+                                    style="background:{primary}"
+                                >
+                                    <i class="ti ti-upload text-sm"></i>
+                                    {latestPayment?.proof_image
+                                        ? 'Ganti Bukti Bayar'
+                                        : 'Upload Bukti Bayar'}
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
+
+                    <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
+                    {#if isGateway && transaction.status === 'belum_bayar'}
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                        >
+                            <div
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-slate-100"
+                            >
+                                <i
+                                    class="ti ti-credit-card text-base animate-pulse"
+                                    style="color:{primary}"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Selesaikan Pembayaran</span
+                                >
+                            </div>
+                            <div class="p-4">
+                                <p
+                                    class="text-xs text-slate-500 leading-relaxed mb-3"
+                                >
+                                    Pesanan Anda menggunakan sistem pembayaran
+                                    otomatis terverifikasi. Silakan klik tombol
+                                    di bawah untuk membuka portal pembayaran {gatewayName}.
+                                </p>
+                                <div
+                                    class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100"
+                                >
+                                    <div>
+                                        <p class="text-xs text-slate-500">
+                                            Total Tagihan:
+                                        </p>
+                                        <p
+                                            class="text-base font-black"
+                                            style="color:{primary}"
+                                        >
+                                            {fmt(transaction.grand_total)}
+                                        </p>
+                                    </div>
+                                    {#if gatewayInvoiceUrl}
+                                        <a
+                                            href={gatewayInvoiceUrl}
+                                            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 hover:opacity-90 shadow-sm"
+                                            style="background:{primary}"
+                                        >
+                                            Bayar Sekarang
+                                            <i class="ti ti-arrow-right"></i>
+                                        </a>
+                                    {:else if gatewayError}
+                                        <div
+                                            class="text-xs text-red-500 font-bold max-w-[180px] leading-relaxed text-right"
+                                        >
+                                            <i class="ti ti-alert-circle mr-1"
+                                            ></i>
+                                            {gatewayError}
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
                 </div>
 
                 <!-- Right/Sidebar Column -->
@@ -746,6 +896,34 @@
         </div>
     </div>
 
+    <!-- ===== Mobile Fixed Bottom Action Bar ===== -->
+    {#if canCancel || canChangePayment}
+        <div
+            class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-3 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+        >
+            {#if canChangePayment}
+                <button
+                    onclick={openChangePaymentModal}
+                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition active:scale-95"
+                    style="border-color:{primary}; color:{primary};"
+                >
+                    <i class="ti ti-credit-card text-base"></i>
+                    Ubah Pembayaran
+                </button>
+            {/if}
+            {#if canCancel}
+                <button
+                    onclick={openCancelModal}
+                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition active:scale-95"
+                    style="border-color:red; color:red;"
+                >
+                    <i class="ti ti-x text-base"></i>
+                    Batalkan
+                </button>
+            {/if}
+        </div>
+    {/if}
+
     <!-- Upload Proof Modal -->
     {#if showUploadModal}
         <div
@@ -811,6 +989,168 @@
                         style="background:{primary}"
                     >
                         {uploadingProof ? 'Mengunggah...' : 'Upload Sekarang'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- ===== Cancel Order Modal ===== -->
+    {#if showCancelModal}
+        <div
+            class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
+            onclick={() => (showCancelModal = false)}
+        >
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <div
+                class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
+                onclick={(e: any) => e.stopPropagation()}
+            >
+                <!-- Icon -->
+                <div
+                    class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4"
+                >
+                    <i class="ti ti-alert-triangle text-2xl text-red-500"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-center text-lg mb-1">
+                    Batalkan Pesanan?
+                </h3>
+                <p
+                    class="text-xs text-slate-500 text-center mb-5 leading-relaxed"
+                >
+                    Pesanan yang dibatalkan tidak dapat dikembalikan. Mohon
+                    berikan alasan pembatalan.
+                </p>
+
+                <!-- Reason textarea -->
+                <div class="mb-4">
+                    <label
+                        class="block text-xs font-bold text-slate-700 mb-1.5"
+                        for="cancel-reason"
+                    >
+                        Alasan Pembatalan <span class="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        id="cancel-reason"
+                        bind:value={cancelReason}
+                        rows="3"
+                        placeholder="Contoh: Ingin mengganti produk, salah pilih item, dll."
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 transition"
+                        style="--tw-ring-color:{primary}20;"
+                    ></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1 text-right">
+                        {cancelReason.length}/500
+                    </p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        onclick={() => (showCancelModal = false)}
+                        class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition"
+                    >
+                        Kembali
+                    </button>
+                    <button
+                        onclick={submitCancel}
+                        disabled={cancellingOrder || !cancelReason.trim()}
+                        class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 bg-red-500 hover:bg-red-600 active:scale-95"
+                    >
+                        {cancellingOrder ? 'Membatalkan...' : 'Ya, Batalkan'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- ===== Change Payment Method Modal ===== -->
+    {#if showChangePaymentModal}
+        <div
+            class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
+            onclick={() => (showChangePaymentModal = false)}
+        >
+            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <div
+                class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
+                onclick={(e: any) => e.stopPropagation()}
+            >
+                <div
+                    class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style="background-color:{primary}15"
+                >
+                    <i
+                        class="ti ti-credit-card text-2xl"
+                        style="color:{primary}"
+                    ></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-center text-lg mb-1">
+                    Ubah Metode Pembayaran
+                </h3>
+                <p
+                    class="text-xs text-slate-500 text-center mb-5 leading-relaxed"
+                >
+                    Pilih metode pembayaran yang ingin digunakan untuk pesanan
+                    ini.
+                </p>
+
+                <!-- Payment method list -->
+                <div class="space-y-2 mb-5">
+                    {#each paymentMethods as method}
+                        <button
+                            onclick={() =>
+                                (selectedPaymentMethodId = method.id)}
+                            class="w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition text-left cursor-pointer"
+                            style={selectedPaymentMethodId === method.id
+                                ? `border-color:${primary}; background-color:${primary}08;`
+                                : 'border-color:#e2e8f0;'}
+                        >
+                            <div
+                                class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                                style={selectedPaymentMethodId === method.id
+                                    ? `background-color:${primary}; color:white;`
+                                    : 'background-color:#f1f5f9; color:#94a3b8;'}
+                            >
+                                <i
+                                    class="ti {method.type === 'gateway'
+                                        ? 'ti-world-www'
+                                        : 'ti-building-bank'} text-sm"
+                                ></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p
+                                    class="text-sm font-bold text-slate-800 truncate"
+                                >
+                                    {method.name}
+                                </p>
+                                <p class="text-[10px] text-slate-400">
+                                    {method.type === 'gateway'
+                                        ? 'Pembayaran Otomatis'
+                                        : 'Transfer Manual'}
+                                </p>
+                            </div>
+                            {#if selectedPaymentMethodId === method.id}
+                                <i
+                                    class="ti ti-circle-check text-lg shrink-0"
+                                    style="color:{primary}"
+                                ></i>
+                            {/if}
+                        </button>
+                    {/each}
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        onclick={() => (showChangePaymentModal = false)}
+                        class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={submitChangePayment}
+                        disabled={changingPayment || !selectedPaymentMethodId}
+                        class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 active:scale-95"
+                        style="background:{primary}"
+                    >
+                        {changingPayment ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
                 </div>
             </div>

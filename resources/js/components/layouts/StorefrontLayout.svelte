@@ -2,14 +2,32 @@
     import { usePage, router, Link } from '@inertiajs/svelte';
     import { slide, fade } from 'svelte/transition';
     import { onMount } from 'svelte';
+    import { showToast } from '@/utils/toast';
 
-    let { children, hideMobileHeader = false, hideMobileFooter = false } = $props();
+    let {
+        children,
+        hideMobileHeader = false,
+        hideMobileFooter = false,
+    } = $props();
 
     const page = usePage();
 
     // Theme from settings
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
+
+    $effect(() => {
+        const flash = (page.props as any).flash;
+        if (flash?.success) {
+            showToast(flash.success, 'success');
+        }
+        if (flash?.error) {
+            showToast(flash.error, 'error');
+        }
+        if (flash?.warning) {
+            showToast(flash.warning, 'error');
+        }
+    });
 
     function withOpacity(hex: string, opacity: number): string {
         if (!hex) return '';
@@ -58,7 +76,9 @@
     let desktopChatOpen = $state(false);
     let chatList = $state<any[]>([]);
     let activeChatId = $state<number | null>(null);
-    let activeChat = $derived(chatList.find((c) => c.id === activeChatId) || null);
+    let activeChat = $derived(
+        chatList.find((c) => c.id === activeChatId) || null,
+    );
     let chatMessages = $state<any[]>([]);
     let chatInput = $state('');
     let chatInterval: any = null;
@@ -90,7 +110,7 @@
         if (!silent) chatListLoading = true;
         try {
             const response = await fetch('/chats', {
-                headers: { 'Accept': 'application/json' }
+                headers: { Accept: 'application/json' },
             });
             if (response.ok) {
                 chatList = await response.json();
@@ -117,11 +137,11 @@
         chatMessagesLoading = true;
         try {
             const response = await fetch(`/chats/${activeChatId}/messages`, {
-                headers: { 'Accept': 'application/json' }
+                headers: { Accept: 'application/json' },
             });
             if (response.ok) {
                 const data = await response.json();
-                chatMessages = Array.isArray(data) ? data : (data.messages || []);
+                chatMessages = Array.isArray(data) ? data : data.messages || [];
                 setTimeout(scrollMiniChatToBottom, 50);
             }
         } catch (err) {
@@ -135,14 +155,22 @@
         stopChatPolling();
         chatInterval = setInterval(async () => {
             if (!activeChatId) return;
-            const lastMsgId = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1].id : 0;
+            const lastMsgId =
+                chatMessages.length > 0
+                    ? chatMessages[chatMessages.length - 1].id
+                    : 0;
             try {
-                const response = await fetch(`/chats/${activeChatId}/messages?after_id=${lastMsgId}`, {
-                    headers: { 'Accept': 'application/json' }
-                });
+                const response = await fetch(
+                    `/chats/${activeChatId}/messages?after_id=${lastMsgId}`,
+                    {
+                        headers: { Accept: 'application/json' },
+                    },
+                );
                 if (response.ok) {
                     const data = await response.json();
-                    const newMsgs = Array.isArray(data) ? data : (data.messages || []);
+                    const newMsgs = Array.isArray(data)
+                        ? data
+                        : data.messages || [];
                     if (newMsgs.length > 0) {
                         chatMessages = [...chatMessages, ...newMsgs];
                         setTimeout(scrollMiniChatToBottom, 50);
@@ -187,9 +215,12 @@
             body: text,
             sender_type: 'user',
             sender_id: auth.id,
-            time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            time: new Date().toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+            }),
             created_at: new Date().toISOString(),
-            is_read: false
+            is_read: false,
         };
         chatMessages = [...chatMessages, optimisticMsg];
         chatInput = '';
@@ -200,23 +231,30 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
                 },
-                body: JSON.stringify({ body: text })
+                body: JSON.stringify({ body: text }),
             });
 
             if (response.ok) {
                 const realMsg = await response.json();
-                chatMessages = chatMessages.map(m => m.id === tempId ? realMsg : m);
+                chatMessages = chatMessages.map((m) =>
+                    m.id === tempId ? realMsg : m,
+                );
                 fetchChatList(true);
             } else {
-                chatMessages = chatMessages.filter(m => m.id !== tempId);
+                chatMessages = chatMessages.filter((m) => m.id !== tempId);
                 chatInput = text;
             }
         } catch (err) {
             console.error('Error sending message:', err);
-            chatMessages = chatMessages.filter(m => m.id !== tempId);
+            chatMessages = chatMessages.filter((m) => m.id !== tempId);
             chatInput = text;
         }
     }
@@ -230,7 +268,8 @@
 
     function formatMiniChatImagePath(path: any): string {
         if (!path || typeof path !== 'string') return '/noimage/image.png';
-        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        if (path.startsWith('http://') || path.startsWith('https://'))
+            return path;
         return path.startsWith('/') ? path : '/' + path;
     }
 
@@ -244,12 +283,17 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
                 },
                 body: JSON.stringify({
-                    subject: 'Tanya Penjual'
-                })
+                    subject: 'Tanya Penjual',
+                }),
             });
             if (response.ok) {
                 const chat = await response.json();
@@ -288,7 +332,6 @@
     let loginError = $state('');
     let loginLoading = $state(false);
 
-
     // Register form
     let registerName = $state('');
     let registerEmail = $state('');
@@ -299,7 +342,6 @@
     let registerError = $state('');
     let registerLoading = $state(false);
 
-
     function openLogin() {
         authTab = 'login';
         authModalOpen = true;
@@ -308,7 +350,7 @@
 
     onMount(() => {
         const handleOpenLogin = () => openLogin();
-        const handleToggleDropdown = () => profileDropOpen = !profileDropOpen;
+        const handleToggleDropdown = () => (profileDropOpen = !profileDropOpen);
         const handleOpenDesktopChat = async (e: any) => {
             const { productId, productName } = e.detail;
             desktopChatOpen = true;
@@ -317,13 +359,18 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN':
+                            (
+                                document.querySelector(
+                                    'meta[name="csrf-token"]',
+                                ) as HTMLMetaElement
+                            )?.content || '',
                     },
                     body: JSON.stringify({
                         subject: productName,
-                        product_id: productId
-                    })
+                        product_id: productId,
+                    }),
                 });
                 if (response.ok) {
                     const chat = await response.json();
@@ -334,15 +381,24 @@
                 console.error('Error starting product chat:', err);
             }
         };
-        
+
         window.addEventListener('open-login-modal', handleOpenLogin);
-        window.addEventListener('toggle-profile-dropdown', handleToggleDropdown);
+        window.addEventListener(
+            'toggle-profile-dropdown',
+            handleToggleDropdown,
+        );
         window.addEventListener('open-desktop-chat', handleOpenDesktopChat);
-        
+
         return () => {
             window.removeEventListener('open-login-modal', handleOpenLogin);
-            window.removeEventListener('toggle-profile-dropdown', handleToggleDropdown);
-            window.removeEventListener('open-desktop-chat', handleOpenDesktopChat);
+            window.removeEventListener(
+                'toggle-profile-dropdown',
+                handleToggleDropdown,
+            );
+            window.removeEventListener(
+                'open-desktop-chat',
+                handleOpenDesktopChat,
+            );
         };
     });
 
@@ -541,7 +597,9 @@
                                 {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
                             </span>
                         {/if}
-                        <span class="text-[10px] font-bold text-white/80 mt-0.5">Chat</span>
+                        <span class="text-[10px] font-bold text-white/80 mt-0.5"
+                            >Chat</span
+                        >
                     </button>
 
                     <!-- Cart -->
@@ -623,7 +681,8 @@
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                         >
-                                            <i class="ti ti-map-pin text-base"></i> Alamat Pengiriman
+                                            <i class="ti ti-map-pin text-base"
+                                            ></i> Alamat Pengiriman
                                         </Link>
                                         <Link
                                             href="/transactions"
@@ -769,8 +828,6 @@
                 </div>
             </div>
         {/if}
-
-
     </header>
 
     <!-- Mobile profile dropdown -->
@@ -778,9 +835,7 @@
         <div
             class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl"
         >
-            <div
-                class="p-4 border-b border-slate-100 flex items-center gap-3"
-            >
+            <div class="p-4 border-b border-slate-100 flex items-center gap-3">
                 <div
                     class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white"
                     style="background-color: {primary};"
@@ -828,12 +883,16 @@
     {/if}
 
     <!-- ====== MAIN CONTENT ====== -->
-    <main class="flex-grow">
+    <main>
         {@render children()}
     </main>
 
     <!-- ====== FOOTER ====== -->
-    <footer class="{hideMobileFooter ? 'hidden md:block' : ''} bg-slate-900 text-slate-400 mt-16 py-6 border-t border-slate-800">
+    <footer
+        class="{hideMobileFooter
+            ? 'hidden md:block'
+            : ''} bg-slate-900 text-slate-400 mt-4 py-6 border-t border-slate-800"
+    >
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div
                 class="flex flex-col sm:flex-row items-center justify-between gap-4"
@@ -1011,7 +1070,9 @@
                                         class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type={showLoginPassword ? 'text' : 'password'}
+                                        type={showLoginPassword
+                                            ? 'text'
+                                            : 'password'}
                                         bind:value={loginPassword}
                                         required
                                         placeholder="••••••••"
@@ -1020,11 +1081,19 @@
                                     />
                                     <button
                                         type="button"
-                                        onclick={() => (showLoginPassword = !showLoginPassword)}
+                                        onclick={() =>
+                                            (showLoginPassword =
+                                                !showLoginPassword)}
                                         class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                                        aria-label={showLoginPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                        aria-label={showLoginPassword
+                                            ? 'Sembunyikan kata sandi'
+                                            : 'Tampilkan kata sandi'}
                                     >
-                                        <i class="ti {showLoginPassword ? 'ti-eye-off' : 'ti-eye'} text-lg"></i>
+                                        <i
+                                            class="ti {showLoginPassword
+                                                ? 'ti-eye-off'
+                                                : 'ti-eye'} text-lg"
+                                        ></i>
                                     </button>
                                 </div>
                             </div>
@@ -1143,7 +1212,9 @@
                                         class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type={showRegisterPassword ? 'text' : 'password'}
+                                        type={showRegisterPassword
+                                            ? 'text'
+                                            : 'password'}
                                         bind:value={registerPassword}
                                         required
                                         placeholder="Min. 8 karakter"
@@ -1152,11 +1223,19 @@
                                     />
                                     <button
                                         type="button"
-                                        onclick={() => (showRegisterPassword = !showRegisterPassword)}
+                                        onclick={() =>
+                                            (showRegisterPassword =
+                                                !showRegisterPassword)}
                                         class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                                        aria-label={showRegisterPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                        aria-label={showRegisterPassword
+                                            ? 'Sembunyikan kata sandi'
+                                            : 'Tampilkan kata sandi'}
                                     >
-                                        <i class="ti {showRegisterPassword ? 'ti-eye-off' : 'ti-eye'} text-lg"></i>
+                                        <i
+                                            class="ti {showRegisterPassword
+                                                ? 'ti-eye-off'
+                                                : 'ti-eye'} text-lg"
+                                        ></i>
                                     </button>
                                 </div>
                             </div>
@@ -1170,8 +1249,12 @@
                                         class="ti ti-lock-check absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type={showRegisterPasswordConfirmation ? 'text' : 'password'}
-                                        bind:value={registerPasswordConfirmation}
+                                        type={showRegisterPasswordConfirmation
+                                            ? 'text'
+                                            : 'password'}
+                                        bind:value={
+                                            registerPasswordConfirmation
+                                        }
                                         required
                                         placeholder="Ulangi kata sandi"
                                         class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
@@ -1179,11 +1262,19 @@
                                     />
                                     <button
                                         type="button"
-                                        onclick={() => (showRegisterPasswordConfirmation = !showRegisterPasswordConfirmation)}
+                                        onclick={() =>
+                                            (showRegisterPasswordConfirmation =
+                                                !showRegisterPasswordConfirmation)}
                                         class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                                        aria-label={showRegisterPasswordConfirmation ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                                        aria-label={showRegisterPasswordConfirmation
+                                            ? 'Sembunyikan kata sandi'
+                                            : 'Tampilkan kata sandi'}
                                     >
-                                        <i class="ti {showRegisterPasswordConfirmation ? 'ti-eye-off' : 'ti-eye'} text-lg"></i>
+                                        <i
+                                            class="ti {showRegisterPasswordConfirmation
+                                                ? 'ti-eye-off'
+                                                : 'ti-eye'} text-lg"
+                                        ></i>
                                     </button>
                                 </div>
                             </div>
@@ -1236,9 +1327,15 @@
         class="hidden md:flex fixed bottom-6 right-[88px] z-[9999] w-[600px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex-row"
     >
         <!-- LEFT PANEL: Thread List -->
-        <div class="w-[200px] bg-slate-50/50 border-r border-slate-100 flex flex-col shrink-0">
-            <div class="px-3.5 py-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0">
-                <span class="font-outfit font-black text-sm text-slate-800">Obrolan</span>
+        <div
+            class="w-[200px] bg-slate-50/50 border-r border-slate-100 flex flex-col shrink-0"
+        >
+            <div
+                class="px-3.5 py-3 border-b border-slate-100 bg-white flex items-center justify-between shrink-0"
+            >
+                <span class="font-outfit font-black text-sm text-slate-800"
+                    >Obrolan</span
+                >
                 <div class="flex items-center gap-1.5">
                     <button
                         onclick={createGeneralChat}
@@ -1250,42 +1347,59 @@
                         <span>Tanya</span>
                     </button>
                     {#if chatListLoading}
-                        <i class="ti ti-loader animate-spin text-slate-400 text-xs"></i>
+                        <i
+                            class="ti ti-loader animate-spin text-slate-400 text-xs"
+                        ></i>
                     {/if}
                 </div>
             </div>
 
             <!-- List -->
-            <div class="flex-grow overflow-y-auto divide-y divide-slate-100/60 bg-white">
+            <div
+                class="flex-grow overflow-y-auto divide-y divide-slate-100/60 bg-white"
+            >
                 {#if chatList.length === 0}
                     <div class="py-12 text-center text-slate-400 px-3">
-                        <i class="ti ti-message-2 text-2xl mb-1 text-slate-300 block"></i>
-                        <span class="text-[10px] font-bold">Belum ada obrolan</span>
+                        <i
+                            class="ti ti-message-2 text-2xl mb-1 text-slate-300 block"
+                        ></i>
+                        <span class="text-[10px] font-bold"
+                            >Belum ada obrolan</span
+                        >
                     </div>
                 {:else}
                     {#each chatList as chat (chat.id)}
                         <button
                             onclick={() => selectChat(chat.id)}
                             class="w-full text-left px-3 py-3 flex items-start gap-2.5 hover:bg-slate-50/70 transition duration-150 relative cursor-pointer
-                                   {activeChatId === chat.id ? 'bg-slate-50' : ''}"
+                                   {activeChatId === chat.id
+                                ? 'bg-slate-50'
+                                : ''}"
                         >
                             <!-- Avatar -->
                             <div
                                 class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-xs"
-                                style="background-color: {activeChatId === chat.id ? secondary : primary};"
+                                style="background-color: {activeChatId ===
+                                chat.id
+                                    ? secondary
+                                    : primary};"
                             >
                                 {storeName.charAt(0).toUpperCase()}
                             </div>
 
                             <!-- Info -->
                             <div class="flex-grow min-w-0">
-                                <p class="font-outfit font-bold text-[11px] text-slate-800 truncate mb-0.5">
+                                <p
+                                    class="font-outfit font-bold text-[11px] text-slate-800 truncate mb-0.5"
+                                >
                                     {chat.subject || storeName}
                                 </p>
-                                <p class="text-[10px] text-slate-500 truncate leading-normal">
+                                <p
+                                    class="text-[10px] text-slate-500 truncate leading-normal"
+                                >
                                     {#if chat.last_message}
                                         {#if chat.last_message.sender_type === 'user'}
-                                            Anda: 
+                                            Anda:
                                         {/if}
                                         {#if chat.last_message.attachment_type === 'image'}
                                             📷 Gambar
@@ -1318,7 +1432,9 @@
         <!-- RIGHT PANEL: Chat Area -->
         <div class="flex-grow flex flex-col bg-slate-50/30">
             <!-- Header Right -->
-            <div class="px-4 py-3 border-b border-slate-100 bg-white flex items-center gap-3 shrink-0">
+            <div
+                class="px-4 py-3 border-b border-slate-100 bg-white flex items-center gap-3 shrink-0"
+            >
                 {#if activeChat}
                     <div
                         class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
@@ -1327,21 +1443,36 @@
                         {storeName.charAt(0).toUpperCase()}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-outfit font-black text-xs text-slate-800 truncate">{storeName}</p>
-                        <p class="text-[9px] text-emerald-500 font-bold flex items-center gap-0.5 mt-0.5">
-                            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full inline-block"></span>
+                        <p
+                            class="font-outfit font-black text-xs text-slate-800 truncate"
+                        >
+                            {storeName}
+                        </p>
+                        <p
+                            class="text-[9px] text-emerald-500 font-bold flex items-center gap-0.5 mt-0.5"
+                        >
+                            <span
+                                class="w-1.5 h-1.5 bg-emerald-400 rounded-full inline-block"
+                            ></span>
                             Online
                         </p>
                     </div>
                 {:else}
                     <div class="flex-grow">
-                        <span class="font-outfit font-black text-xs text-slate-800">{storeName} Chat</span>
+                        <span
+                            class="font-outfit font-black text-xs text-slate-800"
+                            >{storeName} Chat</span
+                        >
                     </div>
                 {/if}
 
                 <!-- Minimize / Close -->
                 <button
-                    onclick={() => { desktopChatOpen = false; stopChatPolling(); stopChatListPolling(); }}
+                    onclick={() => {
+                        desktopChatOpen = false;
+                        stopChatPolling();
+                        stopChatListPolling();
+                    }}
                     class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-50 transition shrink-0 cursor-pointer"
                     aria-label="Tutup"
                 >
@@ -1350,39 +1481,87 @@
             </div>
 
             <!-- Messages List -->
-            <div class="flex-grow overflow-y-auto px-4 py-3 space-y-2.5 relative mini-chat-messages-container bg-slate-50/50">
+            <div
+                class="flex-grow overflow-y-auto px-4 py-3 space-y-2.5 relative mini-chat-messages-container bg-slate-50/50"
+            >
                 {#if !activeChatId}
-                    <div class="h-full flex flex-col items-center justify-center text-slate-400 px-6 text-center select-none">
-                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                            <i class="ti ti-message text-3xl text-slate-400"></i>
+                    <div
+                        class="h-full flex flex-col items-center justify-center text-slate-400 px-6 text-center select-none"
+                    >
+                        <div
+                            class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-3"
+                        >
+                            <i class="ti ti-message text-3xl text-slate-400"
+                            ></i>
                         </div>
-                        <p class="font-outfit font-black text-xs text-slate-800 mb-1">Mari memulai obrolan!</p>
-                        <p class="text-[10px] text-slate-400 leading-normal max-w-[200px]">Pilih salah satu obrolan di samping untuk mulai chat dengan penjual.</p>
+                        <p
+                            class="font-outfit font-black text-xs text-slate-800 mb-1"
+                        >
+                            Mari memulai obrolan!
+                        </p>
+                        <p
+                            class="text-[10px] text-slate-400 leading-normal max-w-[200px]"
+                        >
+                            Pilih salah satu obrolan di samping untuk mulai chat
+                            dengan penjual.
+                        </p>
                     </div>
                 {:else if chatMessagesLoading && chatMessages.length === 0}
-                    <div class="h-full flex items-center justify-center text-slate-400">
+                    <div
+                        class="h-full flex items-center justify-center text-slate-400"
+                    >
                         <i class="ti ti-loader animate-spin text-xl"></i>
                     </div>
                 {:else}
                     {#each chatMessages as msg (msg.id)}
-                        <div class="flex flex-col {msg.sender_type === 'user' ? 'items-end' : 'items-start'} gap-0.5">
+                        <div
+                            class="flex flex-col {msg.sender_type === 'user'
+                                ? 'items-end'
+                                : 'items-start'} gap-0.5"
+                        >
                             {#if msg.attachment_type === 'product' && msg.attachment_data}
                                 <!-- Product Card -->
                                 <div
-                                    class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}"
-                                    style="background-color: {msg.sender_type === 'user' ? primary : 'white'};"
+                                    class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type ===
+                                    'user'
+                                        ? 'rounded-tr-sm'
+                                        : 'rounded-tl-sm'}"
+                                    style="background-color: {msg.sender_type ===
+                                    'user'
+                                        ? primary
+                                        : 'white'};"
                                 >
                                     <div class="flex items-center gap-2 p-2">
                                         <img
-                                            src={formatMiniChatImagePath(msg.attachment_data.image)}
+                                            src={formatMiniChatImagePath(
+                                                msg.attachment_data.image,
+                                            )}
                                             alt={msg.attachment_data.name}
                                             class="w-10 h-10 rounded-lg object-cover shrink-0 bg-slate-100"
-                                            onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
+                                            onerror={(e: any) => {
+                                                e.target.src =
+                                                    '/noimage/image.png';
+                                            }}
                                         />
                                         <div class="min-w-0">
-                                            <p class="text-[10px] font-bold truncate {msg.sender_type === 'user' ? 'text-white' : 'text-slate-800'}">{msg.attachment_data.name}</p>
-                                            <p class="text-[10px] mt-0.5 font-black {msg.sender_type === 'user' ? 'text-white/90' : 'text-orange-500'}">
-                                                Rp{Number(msg.attachment_data.price ?? 0).toLocaleString('id-ID')}
+                                            <p
+                                                class="text-[10px] font-bold truncate {msg.sender_type ===
+                                                'user'
+                                                    ? 'text-white'
+                                                    : 'text-slate-800'}"
+                                            >
+                                                {msg.attachment_data.name}
+                                            </p>
+                                            <p
+                                                class="text-[10px] mt-0.5 font-black {msg.sender_type ===
+                                                'user'
+                                                    ? 'text-white/90'
+                                                    : 'text-orange-500'}"
+                                            >
+                                                Rp{Number(
+                                                    msg.attachment_data.price ??
+                                                        0,
+                                                ).toLocaleString('id-ID')}
                                             </p>
                                         </div>
                                     </div>
@@ -1391,25 +1570,42 @@
 
                             {#if msg.attachment_type === 'image' && msg.attachment_data?.url}
                                 <!-- Image Card -->
-                                <div class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}">
+                                <div
+                                    class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type ===
+                                    'user'
+                                        ? 'rounded-tr-sm'
+                                        : 'rounded-tl-sm'}"
+                                >
                                     <img
                                         src={msg.attachment_data.url}
                                         alt="Sent image"
                                         class="max-w-full max-h-40 object-contain bg-slate-100 cursor-pointer rounded-lg"
-                                        onclick={() => window.open(msg.attachment_data.url, '_blank')}
+                                        onclick={() =>
+                                            window.open(
+                                                msg.attachment_data.url,
+                                                '_blank',
+                                            )}
                                     />
                                 </div>
                             {/if}
 
                             {#if msg.body}
                                 <div
-                                    class="max-w-[85%] px-3.5 py-2 rounded-2xl text-[11px] leading-relaxed shadow-3xs {msg.sender_type === 'user' ? 'rounded-tr-sm text-white' : 'rounded-tl-sm text-slate-800 bg-white'}"
-                                    style="background-color: {msg.sender_type === 'user' ? primary : 'white'};"
+                                    class="max-w-[85%] px-3.5 py-2 rounded-2xl text-[11px] leading-relaxed shadow-3xs {msg.sender_type ===
+                                    'user'
+                                        ? 'rounded-tr-sm text-white'
+                                        : 'rounded-tl-sm text-slate-800 bg-white'}"
+                                    style="background-color: {msg.sender_type ===
+                                    'user'
+                                        ? primary
+                                        : 'white'};"
                                 >
                                     {msg.body}
                                 </div>
                             {/if}
-                            <span class="text-[8px] text-slate-400 px-1 mt-0.5">{msg.time}</span>
+                            <span class="text-[8px] text-slate-400 px-1 mt-0.5"
+                                >{msg.time}</span
+                            >
                         </div>
                     {/each}
                 {/if}
@@ -1417,12 +1613,16 @@
 
             <!-- Message Input Area -->
             {#if activeChatId}
-                <div class="bg-white border-t border-slate-100 px-3.5 py-3 shrink-0">
+                <div
+                    class="bg-white border-t border-slate-100 px-3.5 py-3 shrink-0"
+                >
                     <div class="flex items-center gap-2">
                         <input
                             type="text"
                             bind:value={chatInput}
-                            onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') sendChatMessage(); }}
+                            onkeydown={(e: KeyboardEvent) => {
+                                if (e.key === 'Enter') sendChatMessage();
+                            }}
                             placeholder="Tulis pesan..."
                             class="flex-grow bg-slate-100 rounded-full px-3.5 py-2 text-xs focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-200 transition"
                         />

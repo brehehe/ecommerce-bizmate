@@ -26,6 +26,8 @@ class TransactionItem extends Model
         'subtotal',
         'is_gift_item',
         'gift_from_promotion',
+        'applied_promotion_id',
+        'promo_quantity_used',
     ];
 
     protected $casts = [
