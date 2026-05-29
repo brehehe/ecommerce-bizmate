@@ -1455,7 +1455,7 @@ class StorefrontController extends Controller
                             $responseData = $response->json();
                             $status = $responseData['status'] ?? '';
 
-                            if ($status === 'SUCCESSFUL') {
+                            if ($status === 'SUCCESSFUL' || $status === 'INACTIVE') {
                                 DB::transaction(function () use ($transaction, $latestPayment, $status, $responseData) {
                                     // Update Transaction Payment
                                     $latestPayment->update([
