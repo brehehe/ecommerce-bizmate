@@ -100,7 +100,11 @@
             paymentMethod?.type === 'manual',
     );
 
-    const isXendit = $derived(paymentMethod?.type === 'gateway');
+    const isGateway = $derived(paymentMethod?.type === 'gateway');
+    const gatewayName = $derived(
+        paymentMethod?.name?.toLowerCase().includes('midtrans') ? 'Midtrans' :
+        (paymentMethod?.name?.toLowerCase().includes('flip') ? 'Flip' : 'Xendit')
+    );
 
     function getInvoiceUrl(payment: any) {
         if (!payment || !payment.gateway_response) return null;
@@ -109,7 +113,11 @@
                 typeof payment.gateway_response === 'string'
                     ? JSON.parse(payment.gateway_response)
                     : payment.gateway_response;
-            return resp?.invoice_url ?? null;
+            let url = resp?.link_url ?? resp?.invoice_url ?? resp?.redirect_url ?? null;
+            if (url && !/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+            return url;
         } catch (e) {
             return null;
         }
@@ -129,10 +137,10 @@
     }
 
     const gatewayInvoiceUrl = $derived(
-        isXendit ? getInvoiceUrl(latestPayment) : null,
+        isGateway ? getInvoiceUrl(latestPayment) : null,
     );
     const gatewayError = $derived(
-        isXendit && !gatewayInvoiceUrl ? getGatewayError(latestPayment) : null,
+        isGateway && !gatewayInvoiceUrl ? getGatewayError(latestPayment) : null,
     );
 
     function handleFileChange(e: Event) {
@@ -395,8 +403,8 @@
                         </div>
                     {/if}
 
-                    <!-- Xendit Payment Gateway Block (if xendit payment & belum bayar) -->
-                    {#if isXendit && transaction.status === 'belum_bayar'}
+                    <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
+                    {#if isGateway && transaction.status === 'belum_bayar'}
                         <div
                             class="bg-blue-50 border border-blue-200 rounded-2xl p-4"
                         >
@@ -414,7 +422,7 @@
                                         Pesanan Anda menggunakan sistem
                                         pembayaran otomatis terverifikasi.
                                         Silakan klik tombol di bawah untuk
-                                        membuka portal pembayaran Xendit.
+                                        membuka portal pembayaran {gatewayName}.
                                     </p>
                                     <div
                                         class="mt-3 bg-white rounded-xl p-3 border border-blue-100 flex items-center justify-between"

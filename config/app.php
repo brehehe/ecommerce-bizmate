@@ -135,4 +135,17 @@ return [
         'webhook_token' => env('X_API_XENDIT_TOKEN_WEBHOO'),
     ],
 
+    'midtrans' => [
+        'server_key' => env('MIDTRANS_SERVER_KEY', 'SB-Mid-server-YvWfBSvBdRvLwqzUc_TmKCHH'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY', 'SB-Mid-client-15KqQ2A7XYrBc5cL'),
+        'snap_url' => env('MIDTRANS_SNAP_URL', 'https://app.sandbox.midtrans.com'),
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+    ],
+
+    'flip' => [
+        'secret_key' => env('FLIP_SECRET_KEY', 'JDJ5JDEzJG5rSXlyTnlINlgzOVk2emxzOUVtNk9PTS9iUnpIcVRTdGlOS0RTSUxzTC83RXNGcGliclhh'),
+        'validation_token' => env('FLIP_VALIDATION_TOKEN', '$2y$13$bJAwMLvSexLawNRLvHAeP.8BT7mJorBYqBASfx1FjMN.NsYlZ7LXu'),
+        'base_url' => env('FLIP_BASE_URL', 'https://bigflip.id/big_sandbox_api'),
+    ],
+
 ];
