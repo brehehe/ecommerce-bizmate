@@ -40,9 +40,9 @@ class SettingSeeder extends Seeder
             'bank_account' => '1234567890',
             'bank_holder' => 'PT Bizmate Sukses Makmur',
             'shipping_rate' => '10000',
-            'enable_cod' => '1',
-            'enable_qris' => '1',
-            'enable_bank' => '1',
+            'enable_cod' => 0,
+            'enable_qris' => 0,
+            'enable_bank' => 0,
             'store_logo' => '/logos/default-logo.png',
         ];
 

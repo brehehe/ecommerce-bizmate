@@ -63,6 +63,10 @@
         rajaongkir_url: settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
         rajaongkir_key: settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
         storefront_cart_button_style: settings.storefront_cart_button_style || 'button',
+        enable_cod:
+            settings.enable_cod === 'true' ||
+            settings.enable_cod === true ||
+            settings.enable_cod === '1',
     });
 
     let imagePreview = $state(null);
@@ -757,6 +761,18 @@
                             </div>
 
                             <div class="h-px bg-slate-100"></div>
+
+                            <!-- <div class="space-y-3.5">
+                                <span
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                    >Metode Pembayaran</span
+                                >
+                                <Toggle
+                                    bind:checked={form.enable_cod}
+                                    label="COD (Bayar di Tempat)"
+                                    icon="ti-cash"
+                                />
+                            </div> -->
 
                             <div class="space-y-3.5">
                                 <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">

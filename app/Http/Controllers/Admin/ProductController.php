@@ -133,6 +133,7 @@ class ProductController extends Controller
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
+            'size_chart' => 'nullable|array',
             'weight' => 'nullable|integer|min:0',
             'length' => 'nullable|integer|min:0',
             'width' => 'nullable|integer|min:0',
@@ -146,6 +147,12 @@ class ProductController extends Controller
             'tier_prices' => 'nullable|array',
             'tier_prices.*.min_qty' => 'required|integer|min:2',
             'tier_prices.*.price' => 'required|numeric|min:0',
+            'video_url' => 'nullable|string',
+            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:51200',
+            'model_3d_url' => 'nullable|string',
+            'model_3d_file' => 'nullable|file|mimes:glb,gltf|max:51200',
+            'model_3d_usdz_url' => 'nullable|string',
+            'model_3d_usdz_file' => 'nullable|file|mimes:usdz|max:51200',
         ]);
 
         $categoryIds = $validated['category_ids'];
@@ -168,7 +175,29 @@ class ProductController extends Controller
         $validated['width'] = $validated['width'] ?? 0;
         $validated['height'] = $validated['height'] ?? 0;
 
-        // Remove price/stock fields from product data
+        // Process file uploads or manual URLs
+        $videoPath = $request->input('video_url');
+        if ($request->hasFile('video_file')) {
+            $path = $request->file('video_file')->store('products/videos', 'public');
+            $videoPath = 'storage/'.$path;
+        }
+        $validated['video_path'] = $videoPath;
+
+        $modelPath = $request->input('model_3d_url');
+        if ($request->hasFile('model_3d_file')) {
+            $path = $request->file('model_3d_file')->store('products/models', 'public');
+            $modelPath = 'storage/'.$path;
+        }
+        $validated['model_3d_path'] = $modelPath;
+
+        $usdzPath = $request->input('model_3d_usdz_url');
+        if ($request->hasFile('model_3d_usdz_file')) {
+            $path = $request->file('model_3d_usdz_file')->store('products/models', 'public');
+            $usdzPath = 'storage/'.$path;
+        }
+        $validated['model_3d_usdz_path'] = $usdzPath;
+
+        // Remove price/stock/file fields from product creation array
         $productData = Arr::except($validated, [
             'price',
             'cost',
@@ -182,6 +211,12 @@ class ProductController extends Controller
             'tier_prices',
             'category_ids',
             'brand_ids',
+            'video_url',
+            'video_file',
+            'model_3d_url',
+            'model_3d_file',
+            'model_3d_usdz_url',
+            'model_3d_usdz_file',
         ]);
 
         $product = Product::create($productData);
@@ -385,6 +420,7 @@ class ProductController extends Controller
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
+            'size_chart' => 'nullable|array',
             'weight' => 'nullable|integer|min:0',
             'length' => 'nullable|integer|min:0',
             'width' => 'nullable|integer|min:0',
@@ -398,6 +434,12 @@ class ProductController extends Controller
             'tier_prices' => 'nullable|array',
             'tier_prices.*.min_qty' => 'required|integer|min:2',
             'tier_prices.*.price' => 'required|numeric|min:0',
+            'video_url' => 'nullable|string',
+            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:51200',
+            'model_3d_url' => 'nullable|string',
+            'model_3d_file' => 'nullable|file|mimes:glb,gltf|max:51200',
+            'model_3d_usdz_url' => 'nullable|string',
+            'model_3d_usdz_file' => 'nullable|file|mimes:usdz|max:51200',
         ]);
 
         $categoryIds = $validated['category_ids'];
@@ -422,6 +464,28 @@ class ProductController extends Controller
         $validated['width'] = $validated['width'] ?? 0;
         $validated['height'] = $validated['height'] ?? 0;
 
+        // Process file uploads or manual URLs for interactive media
+        $videoPath = $request->input('video_url', $product->video_path);
+        if ($request->hasFile('video_file')) {
+            $path = $request->file('video_file')->store('products/videos', 'public');
+            $videoPath = 'storage/'.$path;
+        }
+        $validated['video_path'] = $videoPath;
+
+        $modelPath = $request->input('model_3d_url', $product->model_3d_path);
+        if ($request->hasFile('model_3d_file')) {
+            $path = $request->file('model_3d_file')->store('products/models', 'public');
+            $modelPath = 'storage/'.$path;
+        }
+        $validated['model_3d_path'] = $modelPath;
+
+        $usdzPath = $request->input('model_3d_usdz_url', $product->model_3d_usdz_path);
+        if ($request->hasFile('model_3d_usdz_file')) {
+            $path = $request->file('model_3d_usdz_file')->store('products/models', 'public');
+            $usdzPath = 'storage/'.$path;
+        }
+        $validated['model_3d_usdz_path'] = $usdzPath;
+
         // Extract products fields
         $productData = Arr::except($validated, [
             'price',
@@ -436,6 +500,12 @@ class ProductController extends Controller
             'tier_prices',
             'category_ids',
             'brand_ids',
+            'video_url',
+            'video_file',
+            'model_3d_url',
+            'model_3d_file',
+            'model_3d_usdz_url',
+            'model_3d_usdz_file',
         ]);
 
         $product->update($productData);

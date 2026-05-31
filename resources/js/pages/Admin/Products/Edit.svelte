@@ -27,8 +27,8 @@
         sku: product.sku,
         category_ids: product.categories ? product.categories.map((c) => c.id) : (product.category_id ? [product.category_id] : []),
         brand_ids: product.brands ? product.brands.map((b) => b.id) : (product.brand_id ? [product.brand_id] : []),
-        brand: product.brand || '',
         specifications: product.specifications || {},
+        size_chart: product.size_chart || null,
 
         price: product.product_price?.price || '',
         cost: product.product_price?.cost || '',
@@ -57,6 +57,12 @@
                   price: tp.price,
               }))
             : [],
+        video_url: product.video_path || '',
+        video_file: null,
+        model_3d_url: product.model_3d_path || '',
+        model_3d_file: null,
+        model_3d_usdz_url: product.model_3d_usdz_path || '',
+        model_3d_usdz_file: null,
     });
 
     function formatImagePath(path) {
@@ -80,6 +86,53 @@
         !!(product.variations && product.variations.length > 0),
     );
     let useVariantImages = $state(false);
+
+    // Interactive Media Previews & Handlers
+    let videoPreview = $state(product.video_path ? formatImagePath(product.video_path) : '');
+    let model3dFileName = $state(product.model_3d_path ? product.model_3d_path.split('/').pop() : '');
+    let model3dUsdzFileName = $state(product.model_3d_usdz_path ? product.model_3d_usdz_path.split('/').pop() : '');
+
+    function handleVideoFile(e) {
+        const file = e.target.files[0];
+        if (file) {
+            form.video_file = file;
+            videoPreview = URL.createObjectURL(file);
+        }
+    }
+
+    function removeVideo() {
+        form.video_file = null;
+        form.video_url = '';
+        videoPreview = '';
+    }
+
+    function handleModel3dFile(e) {
+        const file = e.target.files[0];
+        if (file) {
+            form.model_3d_file = file;
+            model3dFileName = file.name;
+        }
+    }
+
+    function removeModel3d() {
+        form.model_3d_file = null;
+        form.model_3d_url = '';
+        model3dFileName = '';
+    }
+
+    function handleModel3dUsdzFile(e) {
+        const file = e.target.files[0];
+        if (file) {
+            form.model_3d_usdz_file = file;
+            model3dUsdzFileName = file.name;
+        }
+    }
+
+    function removeModel3dUsdz() {
+        form.model_3d_usdz_file = null;
+        form.model_3d_usdz_url = '';
+        model3dUsdzFileName = '';
+    }
     let variations = $state(
         (product.variations || []).map((v, idx) => ({
             id: v.id,
@@ -169,6 +222,49 @@
               }))
             : [],
     );
+
+    let showSizeChart = $state(!!(product.size_chart && product.size_chart.enabled));
+    let sizeChartHeaders = $state(
+        product.size_chart?.headers || ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)']
+    );
+    let sizeChartRows = $state(
+        product.size_chart?.rows || [
+            { size: 'S', values: ['48', '68', '21'], min_height: 150, max_height: 160, min_weight: 45, max_weight: 55 },
+            { size: 'M', values: ['50', '70', '22'], min_height: 160, max_height: 170, min_weight: 55, max_weight: 65 },
+            { size: 'L', values: ['52', '72', '23'], min_height: 170, max_height: 180, min_weight: 65, max_weight: 75 },
+            { size: 'XL', values: ['54', '74', '24'], min_height: 180, max_height: 190, min_weight: 75, max_weight: 85 }
+        ]
+    );
+
+    function addSizeChartHeader() {
+        sizeChartHeaders = [...sizeChartHeaders, 'Kolom Baru'];
+        sizeChartRows = sizeChartRows.map(row => ({
+            ...row,
+            values: [...row.values, '']
+        }));
+    }
+
+    function removeSizeChartHeader(index) {
+        if (index === 0) return;
+        sizeChartHeaders = sizeChartHeaders.filter((_, i) => i !== index);
+        sizeChartRows = sizeChartRows.map(row => ({
+            ...row,
+            values: row.values.filter((_, i) => i !== (index - 1))
+        }));
+    }
+
+    function addSizeChartRow() {
+        const valCount = sizeChartHeaders.length - 1;
+        const emptyVals = Array(valCount).fill('');
+        sizeChartRows = [
+            ...sizeChartRows,
+            { size: '', values: emptyVals, min_height: '', max_height: '', min_weight: '', max_weight: '' }
+        ];
+    }
+
+    function removeSizeChartRow(index) {
+        sizeChartRows = sizeChartRows.filter((_, i) => i !== index);
+    }
 
     function addSpecification() {
         specifications = [...specifications, { label: '', value: '' }];
@@ -277,6 +373,15 @@
                       value: String(value),
                   }))
                 : [];
+            form.size_chart = product.size_chart || null;
+            showSizeChart = !!(product.size_chart && product.size_chart.enabled);
+            sizeChartHeaders = product.size_chart?.headers || ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)'];
+            sizeChartRows = product.size_chart?.rows || [
+                { size: 'S', values: ['48', '68', '21'], min_height: 150, max_height: 160, min_weight: 45, max_weight: 55 },
+                { size: 'M', values: ['50', '70', '22'], min_height: 160, max_height: 170, min_weight: 55, max_weight: 65 },
+                { size: 'L', values: ['52', '72', '23'], min_height: 170, max_height: 180, min_weight: 65, max_weight: 75 },
+                { size: 'XL', values: ['54', '74', '24'], min_height: 180, max_height: 190, min_weight: 75, max_weight: 85 }
+            ];
             form.price = product.product_price?.price || '';
             form.cost = product.product_price?.cost || '';
             form.stock = product.product_stock?.stock || '';
@@ -544,6 +649,12 @@
             }
         });
         form.specifications = specObj;
+
+        form.size_chart = showSizeChart ? {
+            enabled: true,
+            headers: $state.snapshot(sizeChartHeaders),
+            rows: $state.snapshot(sizeChartRows)
+        } : null;
 
         form.variations = enableVariants ? rawVariations : [];
         // Only submit active variants, and clear hidden properties if toggle is off
@@ -1122,6 +1233,320 @@
                             {/each}
                         </div>
                     {/if}
+                </div>
+
+                <!-- Card: Panduan Ukuran & Rekomendasi (Size Guide) -->
+                <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                                Panduan Ukuran & Kalkulator Rekomendasi
+                            </h3>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                                Aktifkan untuk menampilkan tabel panduan ukuran pakaian dan kalkulator rekomendasi tinggi/berat badan otomatis
+                            </p>
+                        </div>
+                        <Toggle
+                            bind:checked={showSizeChart}
+                            label="Aktifkan Panduan Ukuran"
+                        />
+                    </div>
+
+                    {#if showSizeChart}
+                        <div class="space-y-6">
+                            <!-- Kolom / Headers Builder -->
+                            <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                        Kolom Tabel Ukuran
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onclick={addSizeChartHeader}
+                                        class="px-2.5 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                    >
+                                        + Tambah Kolom
+                                    </button>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    {#each sizeChartHeaders as header, hIdx}
+                                        <div class="flex items-center bg-white border border-slate-200 rounded-lg p-1 text-xs pl-2.5 shadow-sm">
+                                            {#if hIdx === 0}
+                                                <span class="font-bold text-slate-600 pr-2">{header}</span>
+                                            {:else}
+                                                <input
+                                                    type="text"
+                                                    bind:value={sizeChartHeaders[hIdx]}
+                                                    class="w-28 focus:outline-none font-bold text-slate-700 bg-transparent"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onclick={() => removeSizeChartHeader(hIdx)}
+                                                    class="text-slate-400 hover:text-rose-500 pl-1.5 pr-0.5"
+                                                    title="Hapus Kolom"
+                                                >
+                                                    <i class="ti ti-x text-xs"></i>
+                                                </button>
+                                            {/if}
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+
+                            <!-- Baris / Rows Builder -->
+                            <div class="overflow-x-auto border border-slate-100 rounded-2xl">
+                                <table class="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-slate-100">
+                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-16">Opsi</th>
+                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-24 text-center">{sizeChartHeaders[0]}</th>
+                                            {#each sizeChartHeaders.slice(1) as header}
+                                                <th class="p-3 font-bold text-slate-500 uppercase tracking-wider min-w-[80px] text-center">{header}</th>
+                                            {/each}
+                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center">Tinggi (cm)</th>
+                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center">Berat (kg)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        {#each sizeChartRows as row, rIdx}
+                                            <tr class="hover:bg-slate-50/30">
+                                                <td class="p-2 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => removeSizeChartRow(rIdx)}
+                                                        class="w-6 h-6 rounded-md hover:bg-rose-50 hover:text-rose-600 text-slate-400 flex items-center justify-center transition mx-auto cursor-pointer"
+                                                        title="Hapus Baris"
+                                                    >
+                                                        <i class="ti ti-trash"></i>
+                                                    </button>
+                                                </td>
+                                                <td class="p-2">
+                                                    <input
+                                                        type="text"
+                                                        bind:value={row.size}
+                                                        class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal/20 focus:outline-none font-bold text-slate-700 text-center"
+                                                        placeholder="S/M/L"
+                                                    />
+                                                </td>
+                                                {#each sizeChartHeaders.slice(1) as _, hIdx}
+                                                    <td class="p-2">
+                                                        <input
+                                                            type="text"
+                                                            bind:value={row.values[hIdx]}
+                                                            class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal/20 focus:outline-none text-slate-600 text-center font-medium"
+                                                            placeholder="Cth: 50"
+                                                        />
+                                                    </td>
+                                                {/each}
+                                                <!-- Tinggi range -->
+                                                <td class="p-2">
+                                                    <div class="flex items-center gap-1.5 justify-center">
+                                                        <input
+                                                            type="number"
+                                                            bind:value={row.min_height}
+                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
+                                                            placeholder="Min"
+                                                        />
+                                                        <span class="text-slate-400">-</span>
+                                                        <input
+                                                            type="number"
+                                                            bind:value={row.max_height}
+                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
+                                                            placeholder="Max"
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <!-- Berat range -->
+                                                <td class="p-2">
+                                                    <div class="flex items-center gap-1.5 justify-center">
+                                                        <input
+                                                            type="number"
+                                                            bind:value={row.min_weight}
+                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
+                                                            placeholder="Min"
+                                                        />
+                                                        <span class="text-slate-400">-</span>
+                                                        <input
+                                                            type="number"
+                                                            bind:value={row.max_weight}
+                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
+                                                            placeholder="Max"
+                                                        />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <button
+                                type="button"
+                                onclick={addSizeChartRow}
+                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition w-full"
+                            >
+                                <i class="ti ti-plus text-xs"></i> Tambah Baris Ukuran
+                            </button>
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Card: Media Interaktif (Video & 3D Augmented Reality) -->
+                <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">
+                    <div class="border-b border-slate-100 pb-4 mb-5">
+                        <h3 class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2">
+                            <i class="ti ti-video text-brand-blueRoyal"></i> Media Interaktif (Video & 3D AR)
+                        </h3>
+                        <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                            Tambahkan video demonstrasi dan model 3D (format GLB/USDZ) untuk visual Augmented Reality di mobile.
+                        </p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <!-- 1. Video Section -->
+                        <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <i class="ti ti-movie text-base text-slate-400"></i> Video Produk
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Upload Video -->
+                                <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
+                                    {#if videoPreview}
+                                        <div class="w-full relative rounded-lg overflow-hidden border border-slate-100 bg-black aspect-video max-h-40">
+                                            <video src={videoPreview} class="w-full h-full object-contain" controls></video>
+                                            <button
+                                                type="button"
+                                                onclick={removeVideo}
+                                                class="absolute top-1.5 right-1.5 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition"
+                                                title="Hapus Video"
+                                            >
+                                                <i class="ti ti-trash text-sm"></i>
+                                            </button>
+                                        </div>
+                                    {:else}
+                                        <i class="ti ti-video-plus text-3xl text-slate-350 mb-1.5"></i>
+                                        <span class="text-xs font-bold text-slate-600 mb-0.5">Upload File Video</span>
+                                        <span class="text-[10px] text-slate-400 font-medium mb-3">MP4, WEBM, atau MOV (Maks. 50MB)</span>
+                                        <input
+                                            type="file"
+                                            accept="video/mp4,video/quicktime,video/webm"
+                                            onchange={handleVideoFile}
+                                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        />
+                                        <button type="button" class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition">Pilih File</button>
+                                    {/if}
+                                </div>
+                                <!-- Video URL -->
+                                <div class="flex flex-col justify-center">
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau Masukkan URL / Path Video</label>
+                                    <Input
+                                        id="video_url"
+                                        placeholder="Cth: storage/products/videos/demo.mp4"
+                                        bind:value={form.video_url}
+                                    />
+                                    <p class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">
+                                        *Catatan: Jika Anda mengunggah file video sekaligus memasukkan URL, file unggahan akan diprioritaskan.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Model 3D Section -->
+                        <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <i class="ti ti-cube text-base text-slate-400"></i> Model 3D & Augmented Reality
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- GLB File -->
+                                <div class="space-y-4">
+                                    <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
+                                        {#if model3dFileName}
+                                            <div class="w-full flex items-center gap-2 bg-green-50/30 p-2.5 rounded-lg border border-green-100">
+                                                <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                                                    <i class="ti ti-cube-send text-base"></i>
+                                                </div>
+                                                <div class="min-w-0 flex-1 text-left">
+                                                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider">GLB Model Siap</p>
+                                                    <p class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5">{model3dFileName}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onclick={removeModel3d}
+                                                    class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                    title="Hapus Model"
+                                                >
+                                                    <i class="ti ti-trash text-sm"></i>
+                                                </button>
+                                            </div>
+                                        {:else}
+                                            <i class="ti ti-box-margin text-3xl text-slate-350 mb-1.5"></i>
+                                            <span class="text-xs font-bold text-slate-600 mb-0.5">Model 3D (format GLB)</span>
+                                            <span class="text-[10px] text-slate-400 font-medium mb-3">Format GLB Standar Web (Maks. 50MB)</span>
+                                            <input
+                                                type="file"
+                                                accept=".glb"
+                                                onchange={handleModel3dFile}
+                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            />
+                                            <button type="button" class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition">Pilih File GLB</button>
+                                        {/if}
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model GLB</label>
+                                        <Input
+                                            id="model_3d_url"
+                                            placeholder="Cth: storage/products/models/item.glb"
+                                            bind:value={form.model_3d_url}
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- USDZ File (iOS AR) -->
+                                <div class="space-y-4">
+                                    <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
+                                        {#if model3dUsdzFileName}
+                                            <div class="w-full flex items-center gap-2 bg-brand-blueRoyal/5 p-2.5 rounded-lg border border-brand-blueRoyal/10">
+                                                <div class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0">
+                                                    <i class="ti ti-brand-apple text-base"></i>
+                                                </div>
+                                                <div class="min-w-0 flex-1 text-left">
+                                                    <p class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider">iOS USDZ Model Siap</p>
+                                                    <p class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5">{model3dUsdzFileName}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onclick={removeModel3dUsdz}
+                                                    class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                    title="Hapus Model iOS"
+                                                >
+                                                    <i class="ti ti-trash text-sm"></i>
+                                                </button>
+                                            </div>
+                                        {:else}
+                                            <i class="ti ti-brand-apple text-3xl text-slate-350 mb-1.5"></i>
+                                            <span class="text-xs font-bold text-slate-600 mb-0.5">Model iOS (format USDZ)</span>
+                                            <span class="text-[10px] text-slate-400 font-medium mb-3">Untuk Augmented Reality di Safari iOS (Maks. 50MB)</span>
+                                            <input
+                                                type="file"
+                                                accept=".usdz"
+                                                onchange={handleModel3dUsdzFile}
+                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            />
+                                            <button type="button" class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition">Pilih File USDZ</button>
+                                        {/if}
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model USDZ</label>
+                                        <Input
+                                            id="model_3d_usdz_url"
+                                            placeholder="Cth: storage/products/models/item.usdz"
+                                            bind:value={form.model_3d_usdz_url}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Card: Variasi -->

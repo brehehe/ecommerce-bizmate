@@ -1028,7 +1028,7 @@
                                         >
                                             <p
                                                 class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                style="color: #000000;"
+                                                style="color: #1e293b;"
                                             >
                                                 {product.name}
                                             </p>
@@ -1206,11 +1206,11 @@
                                                 {product.category?.name || 'PRODUK'}
                                             </p>
                                             <div
-                                                class="h-[2.5rem] overflow-hidden mb-1.5"
+                                                class="h-[2.5rem] overflow-hidden mb-1"
                                             >
                                                 <p
                                                     class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                    style="color: {primary};"
+                                                    style="color: #1e293b;"
                                                 >
                                                     {product.name}
                                                 </p>

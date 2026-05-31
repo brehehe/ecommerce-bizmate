@@ -1,9 +1,11 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { usePage, Link, router } from '@inertiajs/svelte';
-    import { fade } from 'svelte/transition';
+    import { fade, fly } from 'svelte/transition';
+    import { cubicOut } from 'svelte/easing';
     import { showToast } from '@/utils/toast';
     import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
+    import PremiumVideoPlayer from '@/components/ui/PremiumVideoPlayer.svelte';
 
     let {
         product,
@@ -11,10 +13,35 @@
         storeName = '',
         bundlingPromos = [],
         reviews = [] as any[],
+        shippingInfo = {} as any,
     } = $props();
 
     let selectedVariantProduct = $state<any>(null);
     let showVariantModal = $state(false);
+    let showSpecsModal = $state(false);
+    let userHeight = $state('');
+    let userWeight = $state('');
+
+    const recommendedSize = $derived.by(() => {
+        const h = Number(userHeight);
+        const w = Number(userWeight);
+        if (!h || !w || !product.size_chart?.rows) return null;
+
+        const matched = product.size_chart.rows.find(row => {
+            const hasHeightRule = row.min_height && row.max_height;
+            const hasWeightRule = row.min_weight && row.max_weight;
+
+            const heightOk = hasHeightRule ? (h >= Number(row.min_height) && h <= Number(row.max_height)) : true;
+            const weightOk = hasWeightRule ? (w >= Number(row.min_weight) && w <= Number(row.max_weight)) : true;
+
+            if (hasHeightRule || hasWeightRule) {
+                return heightOk && weightOk;
+            }
+            return false;
+        });
+
+        return matched ? matched.size : null;
+    });
 
     const page = usePage();
 
@@ -103,6 +130,42 @@
     let lightboxOpen = $state(false);
     let mainImageHasError = $state(false);
 
+    type DesktopSlide =
+        | { type: 'image'; src: string; idx: number }
+        | { type: 'video'; path: string }
+        | { type: '3d'; path: string; usdz_path?: string };
+
+    const desktopSlides: DesktopSlide[] = $derived.by(() => {
+        const slides: DesktopSlide[] = [];
+
+        if (product.video_path) {
+            slides.push({
+                type: 'video' as const,
+                path: product.video_path,
+            });
+        }
+
+        if (product.model_3d_path) {
+            slides.push({
+                type: '3d' as const,
+                path: product.model_3d_path,
+                usdz_path: product.model_3d_usdz_path,
+            });
+        }
+
+        gallery.forEach((src, i) => {
+            slides.push({
+                type: 'image' as const,
+                src,
+                idx: i,
+            });
+        });
+
+        return slides;
+    });
+
+    let activeDesktopSlideIdx = $state(0);
+
     $effect(() => {
         displayImage;
         mainImageHasError = false;
@@ -114,8 +177,12 @@
     );
 
     function pickGallery(i: number) {
-        activeIdx = i;
+        activeDesktopSlideIdx = i;
         variantOverride = null;
+        const slide = desktopSlides[i];
+        if (slide && slide.type === 'image') {
+            activeIdx = slide.idx;
+        }
     }
 
     // ═══════════════════════════════════════
@@ -124,6 +191,8 @@
     // ═══════════════════════════════════════
     type Slide =
         | { src: string; type: 'gallery'; galleryIdx: number }
+        | { type: 'video'; path: string }
+        | { type: '3d'; path: string; usdz_path?: string }
         | {
               src: string;
               type: 'variant';
@@ -135,16 +204,34 @@
           };
 
     /**
-     * Reactive array combining gallery images + variant option images.
-     * $derived.by is required here so Svelte tracks reactive reads
-     * inside the function and returns a plain array (not a function).
+     * Reactive array combining video/3D assets + gallery images + variant option images.
      */
     const combinedSlides: Slide[] = $derived.by(() => {
-        const slides: Slide[] = gallery.map((src, i) => ({
-            src,
-            type: 'gallery' as const,
-            galleryIdx: i,
-        }));
+        const slides: Slide[] = [];
+
+        if (product.video_path) {
+            slides.push({
+                type: 'video' as const,
+                path: product.video_path,
+            });
+        }
+
+        if (product.model_3d_path) {
+            slides.push({
+                type: '3d' as const,
+                path: product.model_3d_path,
+                usdz_path: product.model_3d_usdz_path,
+            });
+        }
+
+        gallery.forEach((src, i) => {
+            slides.push({
+                src,
+                type: 'gallery' as const,
+                galleryIdx: i,
+            });
+        });
+
         for (const variation of product.variations ?? []) {
             for (const opt of variation.options ?? []) {
                 const img = getOptionImage(opt.id, variation.name);
@@ -165,6 +252,48 @@
     });
 
     let activeSlideIdx = $state(0);
+    let sliderContainer = $state<HTMLDivElement | null>(null);
+    let isScrollingFromButton = false;
+
+    function syncActiveStatesForIndex(index: number) {
+        const slide = combinedSlides[index];
+        if (!slide) return;
+        if (slide.type === 'variant') {
+            selectedOptions = {
+                ...selectedOptions,
+                [slide.variationId]: slide.optionId,
+            };
+            variantOverride = slide.src;
+            const firstImgIdx = desktopSlides.findIndex(ds => ds.type === 'image');
+            activeDesktopSlideIdx = firstImgIdx !== -1 ? firstImgIdx : 0;
+        } else if (slide.type === 'gallery') {
+            activeIdx = slide.galleryIdx;
+            variantOverride = null;
+            const dsIdx = desktopSlides.findIndex(ds => ds.type === 'image' && ds.idx === slide.galleryIdx);
+            if (dsIdx !== -1) activeDesktopSlideIdx = dsIdx;
+        } else if (slide.type === 'video') {
+            variantOverride = null;
+            const dsIdx = desktopSlides.findIndex(ds => ds.type === 'video');
+            if (dsIdx !== -1) activeDesktopSlideIdx = dsIdx;
+        } else if (slide.type === '3d') {
+            variantOverride = null;
+            const dsIdx = desktopSlides.findIndex(ds => ds.type === '3d');
+            if (dsIdx !== -1) activeDesktopSlideIdx = dsIdx;
+        }
+    }
+
+    function handleSliderScroll(e: Event) {
+        if (isScrollingFromButton) return;
+        const el = e.currentTarget as HTMLDivElement;
+        const width = el.clientWidth;
+        if (width > 0) {
+            const index = Math.round(el.scrollLeft / width);
+            if (index !== activeSlideIdx && index >= 0 && index < combinedSlides.length) {
+                activeSlideIdx = index;
+                syncActiveStatesForIndex(index);
+            }
+        }
+    }
 
     /**
      * Navigate mobile slider to index `idx` and imperatively sync
@@ -175,18 +304,19 @@
         const len = combinedSlides.length;
         if (len === 0) return;
         activeSlideIdx = ((idx % len) + len) % len;
-        const slide = combinedSlides[activeSlideIdx];
-        if (!slide) return;
-        if (slide.type === 'variant') {
-            selectedOptions = {
-                ...selectedOptions,
-                [slide.variationId]: slide.optionId,
-            };
-            variantOverride = slide.src;
-        } else {
-            activeIdx = slide.galleryIdx;
-            variantOverride = null;
+        
+        if (sliderContainer) {
+            isScrollingFromButton = true;
+            sliderContainer.scrollTo({
+                left: activeSlideIdx * sliderContainer.clientWidth,
+                behavior: 'smooth'
+            });
+            setTimeout(() => {
+                isScrollingFromButton = false;
+            }, 350);
         }
+        
+        syncActiveStatesForIndex(activeSlideIdx);
     }
 
     function sliderPrev() {
@@ -196,20 +326,64 @@
         goToSlide(activeSlideIdx + 1);
     }
 
-    // ═══════════════════════════════════════
-    //  TOUCH SWIPE (mobile slider)
-    // ═══════════════════════════════════════
-    let touchStartX = $state(0);
+    let isWebcamActive = $state(false);
+    let webcamStream = $state<MediaStream | null>(null);
+    let webcamVideoElementMobile = $state<HTMLVideoElement | null>(null);
+    let webcamVideoElementDesktop = $state<HTMLVideoElement | null>(null);
 
-    function onTouchStart(e: TouchEvent) {
-        touchStartX = e.touches[0].clientX;
+    async function toggleWebcamAR() {
+        if (isWebcamActive) {
+            stopWebcam();
+        } else {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' },
+                    audio: false
+                });
+                webcamStream = stream;
+                
+                if (webcamVideoElementMobile) {
+                    webcamVideoElementMobile.srcObject = stream;
+                }
+                if (webcamVideoElementDesktop) {
+                    webcamVideoElementDesktop.srcObject = stream;
+                }
+                
+                isWebcamActive = true;
+            } catch (err) {
+                console.error('Gagal mengakses kamera:', err);
+                showToast('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.', 'error', 'top');
+            }
+        }
     }
-    function onTouchEnd(e: TouchEvent) {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(dx) < 30) return; // ignore small nudges
-        if (dx < 0) sliderNext();
-        else sliderPrev();
+
+    function stopWebcam() {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+        }
+        if (webcamVideoElementMobile) {
+            webcamVideoElementMobile.srcObject = null;
+        }
+        if (webcamVideoElementDesktop) {
+            webcamVideoElementDesktop.srcObject = null;
+        }
+        isWebcamActive = false;
     }
+
+    $effect(() => {
+        // Automatically stop webcam when changing slides
+        activeDesktopSlideIdx;
+        activeSlideIdx;
+        if (isWebcamActive) {
+            stopWebcam();
+        }
+        return () => {
+            if (isWebcamActive) {
+                stopWebcam();
+            }
+        };
+    });
 
     let scrollY = $state(0);
     let searchQuery = $state('');
@@ -300,7 +474,22 @@
         const idx = combinedSlides.findIndex(
             (s) => s.type === 'variant' && s.optionId === optionId,
         );
-        if (idx !== -1) activeSlideIdx = idx;
+        if (idx !== -1) {
+            activeSlideIdx = idx;
+            if (sliderContainer) {
+                isScrollingFromButton = true;
+                sliderContainer.scrollTo({
+                    left: idx * sliderContainer.clientWidth,
+                    behavior: 'auto'
+                });
+                setTimeout(() => {
+                    isScrollingFromButton = false;
+                }, 50);
+            }
+        }
+        
+        const firstImgIdx = desktopSlides.findIndex(ds => ds.type === 'image');
+        activeDesktopSlideIdx = firstImgIdx !== -1 ? firstImgIdx : 0;
     }
 
     function isSelected(variationId: string, optionId: number): boolean {
@@ -1081,6 +1270,7 @@
         content={product.summary ??
             `Beli ${product.name} di ${storeName}. Harga terbaik, pengiriman cepat.`}
     />
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 </svelte:head>
 
 <svelte:window bind:scrollY />
@@ -1121,13 +1311,13 @@
             <!-- Right Icons: Share, Cart, Menu -->
             <div class="flex items-center gap-1.5 shrink-0">
                 <!-- Share Button -->
-                <button
+                <!-- <button
                     onclick={shareProduct}
                     class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition"
                     aria-label="Bagikan"
                 >
                     <i class="ti ti-share text-lg"></i>
-                </button>
+                </button> -->
 
                 <!-- Cart Button -->
                 <button
@@ -1239,69 +1429,131 @@
 ───────────────────────────────────────────────────── -->
     <div class="bg-white pt-9 md:pt-0">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
-            <div
-                class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-x-5 gap-y-2 lg:gap-10 items-start"
-            >
+            <div class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-x-5 gap-y-2 lg:gap-10 items-start">
                 <!-- ══ LEFT: GALLERY ══════════════════════════════ -->
                 <div class="flex flex-col gap-3">
                     <!-- Mobile Gallery (Slider — combined product + variant images) -->
                     <div
                         class="md:hidden relative aspect-square bg-slate-50 overflow-hidden -mx-4"
                         style="width: calc(100% + 2rem)"
-                        ontouchstart={onTouchStart}
-                        ontouchend={onTouchEnd}
                     >
                         {#if combinedSlides.length > 0}
-                            {@const slide = combinedSlides[activeSlideIdx]}
+                            <div
+                                bind:this={sliderContainer}
+                                onscroll={handleSliderScroll}
+                                class="w-full h-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+                                style="scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;"
+                            >
+                                {#each combinedSlides as slide, i}
+                                    <div class="w-full h-full shrink-0 snap-center relative aspect-square">
+                                        {#if slide.type === 'video'}
+                                            <div class="w-full h-full bg-black z-20 relative">
+                                                <PremiumVideoPlayer
+                                                    src={formatImagePath(slide.path)}
+                                                    themeColor={secondary}
+                                                />
+                                            </div>
+                                        {:else if slide.type === '3d'}
+                                            <div class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20">
+                                                <!-- Webcam video element (Mobile) -->
+                                                {#if isWebcamActive}
+                                                    <video
+                                                        bind:this={webcamVideoElementMobile}
+                                                        autoplay
+                                                        playsinline
+                                                        muted
+                                                        class="absolute inset-0 w-full h-full object-cover z-10"
+                                                    >
+                                                        <track kind="captions" />
+                                                    </video>
+                                                {/if}
 
-                            <!-- Slide image -->
-                            <img
-                                src={slide.src}
-                                alt="{product.name} {activeSlideIdx + 1}"
-                                class="w-full h-full object-cover transition-opacity duration-300 {slide.type ===
-                                    'variant' && !slide.available
-                                    ? 'opacity-40'
-                                    : ''}"
-                                onerror={(e) => {
-                                    (e.currentTarget as HTMLImageElement).src =
-                                        '/noimage/image.png';
-                                }}
-                            />
+                                                <model-viewer
+                                                    src={formatImagePath(slide.path)}
+                                                    ios-src={slide.usdz_path ? formatImagePath(slide.usdz_path) : ''}
+                                                    ar
+                                                    ar-modes="webxr scene-viewer quick-look"
+                                                    camera-controls
+                                                    auto-rotate
+                                                    interaction-prompt="auto"
+                                                    class="w-full h-full relative z-20 {isWebcamActive ? 'bg-transparent' : 'bg-slate-50'}"
+                                                    style="--poster-color: transparent; background-color: {isWebcamActive ? 'transparent' : '#f8fafc'};"
+                                                >
+                                                    <!-- Custom Button Row -->
+                                                    <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30">
+                                                        <!-- Toggle Webcam AR Button -->
+                                                        <button
+                                                            type="button"
+                                                            onclick={toggleWebcamAR}
+                                                            class="bg-slate-900/80 hover:bg-slate-900 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-white/10"
+                                                        >
+                                                            <i class="ti {isWebcamActive ? 'ti-camera-off' : 'ti-camera'} text-xs"></i>
+                                                            {isWebcamActive ? 'Matikan Kamera' : 'Buka Kamera AR'}
+                                                        </button>
 
-                            <!-- Out-of-stock overlay for variant slides -->
-                            {#if slide.type === 'variant' && !slide.available}
-                                <div
-                                    class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-                                >
-                                    <div
-                                        class="bg-black/60 backdrop-blur-sm text-white font-black text-lg px-6 py-2 rounded-full tracking-widest shadow-xl border border-white/20"
-                                    >
-                                        HABIS
+                                                        <!-- Native AR Button -->
+                                                        <button
+                                                            slot="ar-button"
+                                                            class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-orange-400/20"
+                                                        >
+                                                            <i class="ti ti-augmented-reality text-sm"></i>
+                                                            Lihat di Ruangan (AR)
+                                                        </button>
+                                                    </div>
+                                                </model-viewer>
+                                            </div>
+                                        {:else}
+                                            <!-- Slide image -->
+                                            <img
+                                                src={slide.src}
+                                                alt="{product.name} {i + 1}"
+                                                class="w-full h-full object-cover transition-opacity duration-300 {slide.type ===
+                                                    'variant' && !slide.available
+                                                    ? 'opacity-40'
+                                                    : ''}"
+                                                onerror={(e) => {
+                                                    (e.currentTarget as HTMLImageElement).src =
+                                                        '/noimage/image.png';
+                                                }}
+                                            />
+
+                                            <!-- Out-of-stock overlay for variant slides -->
+                                            {#if slide.type === 'variant' && !slide.available}
+                                                <div
+                                                    class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+                                                >
+                                                    <div
+                                                        class="bg-black/60 backdrop-blur-sm text-white font-black text-lg px-6 py-2 rounded-full tracking-widest shadow-xl border border-white/20"
+                                                    >
+                                                        HABIS
+                                                    </div>
+                                                </div>
+                                            {/if}
+
+                                            {#if slide.type === 'variant'}
+                                                <div
+                                                    class="absolute bottom-10 left-3 z-10 pointer-events-none"
+                                                >
+                                                    <span
+                                                        class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-black/55 backdrop-blur-sm text-white shadow"
+                                                    >
+                                                        <span class="opacity-70"
+                                                            >{slide.variationName}:</span
+                                                        >
+                                                        {slide.optionName}
+                                                    </span>
+                                                </div>
+                                            {/if}
+                                        {/if}
                                     </div>
-                                </div>
-                            {/if}
-
-                            <!-- Variant name label (bottom-left) -->
-                            {#if slide.type === 'variant'}
-                                <div
-                                    class="absolute bottom-10 left-3 z-10 pointer-events-none"
-                                >
-                                    <span
-                                        class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-black/55 backdrop-blur-sm text-white shadow"
-                                    >
-                                        <span class="opacity-70"
-                                            >{slide.variationName}:</span
-                                        >
-                                        {slide.optionName}
-                                    </span>
-                                </div>
-                            {/if}
+                                {/each}
+                            </div>
 
                             {#if combinedSlides.length > 1}
                                 <!-- Prev button -->
                                 <button
                                     onclick={sliderPrev}
-                                    class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center shadow-md active:scale-95 transition z-10"
+                                    class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center shadow-md active:scale-95 transition z-30"
                                     aria-label="Sebelumnya"
                                 >
                                     <svg
@@ -1322,7 +1574,7 @@
                                 <!-- Next button -->
                                 <button
                                     onclick={sliderNext}
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center shadow-md active:scale-95 transition z-10"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center shadow-md active:scale-95 transition z-30"
                                     aria-label="Berikutnya"
                                 >
                                     <svg
@@ -1342,19 +1594,15 @@
 
                                 <!-- Dot indicators -->
                                 <div
-                                    class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10"
+                                    class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-30"
                                 >
                                     {#each combinedSlides as s, i}
                                         <button
                                             onclick={() => goToSlide(i)}
                                             class="rounded-full transition-all duration-300 {i ===
                                             activeSlideIdx
-                                                ? s.type === 'variant'
-                                                    ? 'w-5 h-1.5 bg-white'
-                                                    : 'w-5 h-1.5 bg-white'
-                                                : s.type === 'variant'
-                                                  ? 'w-1.5 h-1.5 bg-white/50'
-                                                  : 'w-1.5 h-1.5 bg-white/50'}"
+                                                ? 'w-5 h-1.5 bg-white'
+                                                : 'w-1.5 h-1.5 bg-white/50'}"
                                             aria-label="Slide {i + 1}"
                                         ></button>
                                     {/each}
@@ -1362,7 +1610,7 @@
 
                                 <!-- Fractional counter -->
                                 <div
-                                    class="absolute bottom-4 right-4 bg-black/50 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm select-none z-10"
+                                    class="absolute bottom-4 right-4 bg-black/50 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm select-none z-30"
                                 >
                                     {activeSlideIdx + 1}/{combinedSlides.length}
                                 </div>
@@ -1578,12 +1826,13 @@
                     <!-- Desktop Gallery (with Zoom and Thumbnails) -->
                     <div class="hidden md:flex flex-col gap-3">
                         <div
-                            class="relative aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 group select-none {displayImage &&
+                            class="relative aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 group select-none {(variantOverride || (desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'image')) && displayImage &&
                             displayImage !== '/noimage/image.png' &&
                             !mainImageHasError
                                 ? 'cursor-zoom-in'
                                 : ''}"
                             onclick={() =>
+                                (variantOverride || (desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'image')) &&
                                 displayImage &&
                                 displayImage !== '/noimage/image.png' &&
                                 !mainImageHasError &&
@@ -1592,58 +1841,136 @@
                             tabindex="0"
                             onkeydown={(e) =>
                                 e.key === 'Enter' &&
+                                (variantOverride || (desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'image')) &&
                                 displayImage &&
                                 displayImage !== '/noimage/image.png' &&
                                 !mainImageHasError &&
                                 (lightboxOpen = true)}
                         >
-                            {#if displayImage && displayImage !== '/noimage/image.png' && !mainImageHasError}
+                            {#if variantOverride}
                                 <img
-                                    src={displayImage}
+                                    src={variantOverride}
                                     alt={product.name}
                                     class="w-full h-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                                    onerror={() => {
-                                        mainImageHasError = true;
-                                    }}
                                 />
-                            {:else}
-                                <img
-                                    src="/noimage/image.png"
-                                    alt="No Image"
-                                    class="w-full h-full object-cover"
-                                />
-                            {/if}
-
-                            <!-- zoom hint -->
-                            {#if displayImage && displayImage !== '/noimage/image.png' && !mainImageHasError}
-                                <div
-                                    class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
-                                >
-                                    <i class="ti ti-zoom-in text-sm"></i>
+                            {:else if desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'video'}
+                                <div class="w-full h-full bg-black z-20 relative">
+                                    <PremiumVideoPlayer
+                                        src={formatImagePath(desktopSlides[activeDesktopSlideIdx].path)}
+                                        themeColor={secondary}
+                                    />
                                 </div>
+                            {:else if desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === '3d'}
+                                <div class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20">
+                                    <!-- Webcam video element (Desktop) -->
+                                    {#if isWebcamActive}
+                                        <video
+                                            bind:this={webcamVideoElementDesktop}
+                                            autoplay
+                                            playsinline
+                                            muted
+                                            class="absolute inset-0 w-full h-full object-cover z-10"
+                                        >
+                                            <track kind="captions" />
+                                        </video>
+                                    {/if}
+
+                                    <model-viewer
+                                        src={formatImagePath(desktopSlides[activeDesktopSlideIdx].path)}
+                                        ios-src={desktopSlides[activeDesktopSlideIdx].usdz_path ? formatImagePath(desktopSlides[activeDesktopSlideIdx].usdz_path) : ''}
+                                        ar
+                                        ar-modes="webxr scene-viewer quick-look"
+                                        camera-controls
+                                        auto-rotate
+                                        interaction-prompt="auto"
+                                        class="w-full h-full relative z-20 {isWebcamActive ? 'bg-transparent' : 'bg-slate-50'}"
+                                        style="--poster-color: transparent; background-color: {isWebcamActive ? 'transparent' : '#f8fafc'};"
+                                    >
+                                        <!-- Custom Button Row -->
+                                        <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30">
+                                            <!-- Toggle Webcam AR Button -->
+                                            <button
+                                                type="button"
+                                                onclick={toggleWebcamAR}
+                                                class="bg-slate-900/80 hover:bg-slate-900 backdrop-blur-sm text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-white/10"
+                                            >
+                                                <i class="ti {isWebcamActive ? 'ti-camera-off' : 'ti-camera'} text-base"></i>
+                                                {isWebcamActive ? 'Matikan Kamera' : 'Buka Kamera AR'}
+                                            </button>
+
+                                            <!-- Native AR Button -->
+                                            <button
+                                                slot="ar-button"
+                                                class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-orange-400/20"
+                                                onclick={(e) => e.stopPropagation()}
+                                            >
+                                                <i class="ti ti-augmented-reality text-base"></i>
+                                                Lihat di Ruangan (AR)
+                                            </button>
+                                        </div>
+                                    </model-viewer>
+                                </div>
+                            {:else}
+                                {#if displayImage && displayImage !== '/noimage/image.png' && !mainImageHasError}
+                                    <img
+                                        src={displayImage}
+                                        alt={product.name}
+                                        class="w-full h-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                                        onerror={() => {
+                                            mainImageHasError = true;
+                                        }}
+                                    />
+                                {:else}
+                                    <img
+                                        src="/noimage/image.png"
+                                        alt="No Image"
+                                        class="w-full h-full object-cover"
+                                    />
+                                {/if}
+
+                                <!-- zoom hint -->
+                                {#if displayImage && displayImage !== '/noimage/image.png' && !mainImageHasError}
+                                    <div
+                                        class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg"
+                                    >
+                                        <i class="ti ti-zoom-in text-sm"></i>
+                                    </div>
+                                {/if}
                             {/if}
                         </div>
 
                         <!-- Thumbnails row -->
-                        {#if gallery.length > 1}
-                            <div class="flex gap-2 overflow-x-auto pb-1 snap-x">
-                                {#each gallery as src, i}
+                        {#if desktopSlides.length > 1}
+                            <div class="flex gap-2 overflow-x-auto pb-1 snap-x select-none">
+                                {#each desktopSlides as slide, i}
                                     <button
                                         onclick={() => pickGallery(i)}
-                                        class="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-xl overflow-hidden border-2 shrink-0 snap-start transition duration-200
-                                           {activeIdx === i && !variantOverride
+                                        class="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-xl overflow-hidden border-2 shrink-0 snap-start transition duration-200 relative
+                                           {activeDesktopSlideIdx === i && !variantOverride
                                             ? 'border-orange-400 shadow-md shadow-orange-100'
                                             : 'border-slate-200 hover:border-slate-400 opacity-80 hover:opacity-100'}"
                                     >
-                                        <img
-                                            {src}
-                                            alt="{product.name} {i + 1}"
-                                            class="w-full h-full object-cover"
-                                            onerror={(e) => {
-                                                e.currentTarget.src =
-                                                    '/noimage/image.png';
-                                            }}
-                                        />
+                                        {#if slide.type === 'image'}
+                                            <img
+                                                src={slide.src}
+                                                alt="{product.name} {i + 1}"
+                                                class="w-full h-full object-cover"
+                                                onerror={(e) => {
+                                                    e.currentTarget.src =
+                                                        '/noimage/image.png';
+                                                }}
+                                            />
+                                        {:else if slide.type === 'video'}
+                                            <div class="w-full h-full bg-orange-50 flex flex-col items-center justify-center text-orange-600 border border-orange-100">
+                                                <i class="ti ti-video text-xl animate-pulse"></i>
+                                                <span class="text-[8px] font-black mt-0.5 tracking-wider uppercase leading-none">Video</span>
+                                            </div>
+                                        {:else if slide.type === '3d'}
+                                            <div class="w-full h-full bg-blue-50 flex flex-col items-center justify-center text-blue-600 border border-blue-100">
+                                                <i class="ti ti-3d-cube-sphere text-xl"></i>
+                                                <span class="text-[8px] font-black mt-0.5 tracking-wider uppercase leading-none">3D AR</span>
+                                            </div>
+                                        {/if}
                                     </button>
                                 {/each}
                             </div>
@@ -1738,6 +2065,8 @@
                                 >
                             {/if}
                         </div>
+
+
                     </div>
 
                     <!-- Flash Sale Banner -->
@@ -2264,24 +2593,27 @@
                     <div class="py-2.5 flex items-start gap-4">
                         <span
                             class="text-xs text-slate-400 w-20 sm:w-24 shrink-0 font-bold uppercase tracking-wider pt-0.5"
-                            >Pengiriman</span
+                            >Dikirim dari</span
                         >
                         <div
                             class="flex items-start gap-1.5 text-xs text-slate-700"
                         >
-                            <i class="ti ti-truck text-green-500 text-sm mt-0.5"
+                            <i
+                                class="ti ti-map-pin text-green-500 text-sm mt-0.5"
                             ></i>
-                            <div
-                                class="flex flex-wrap items-center gap-x-2 gap-y-0.5"
-                            >
+                            <div>
                                 <span class="font-bold text-slate-800">
-                                    Garansi tiba 1–3 hari kerja
+                                    {shippingInfo.store_city || 'Lokasi toko'}
                                 </span>
-                                <span
-                                    class="text-[11px] text-slate-400 font-normal"
-                                >
-                                    (JNE · J&T · SiCepat · Gosend · Grab)
-                                </span>
+                                {#if shippingInfo.store_address}
+                                    <p
+                                        class="text-[11px] text-slate-400 mt-0.5"
+                                    >
+                                        {shippingInfo.store_address}{shippingInfo.postal_code
+                                            ? ` ${shippingInfo.postal_code}`
+                                            : ''}
+                                    </p>
+                                {/if}
                             </div>
                         </div>
                     </div>
@@ -2297,18 +2629,16 @@
                         >
                             <span class="flex items-center gap-1">
                                 <i
-                                    class="ti ti-shield-check text-green-500 text-xs"
-                                ></i> Bebas Pengembalian
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <i class="ti ti-cash text-orange-400 text-xs"
-                                ></i> COD Tersedia
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <i
                                     class="ti ti-rosette-discount-check text-blue-500 text-xs"
                                 ></i> Produk Original
                             </span>
+                            {#if shippingInfo.enable_cod}
+                                <span class="flex items-center gap-1">
+                                    <i
+                                        class="ti ti-cash text-orange-400 text-xs"
+                                    ></i> COD Tersedia
+                                </span>
+                            {/if}
                         </div>
                     </div>
 
@@ -2614,108 +2944,166 @@
 
     <!-- ─────────────────────────────────────────────────────
      DESKRIPSI / PENGIRIMAN / ULASAN (STACKED VERTICALLY)
-───────────────────────────────────────────────────── -->
+ ───────────────────────────────────────────────────── -->
     <div
-        class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6"
+        class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 py-6 flex flex-col gap-4 md:gap-6"
     >
-        <!-- Deskripsi Section -->
+        <!-- Combined Spesifikasi & Deskripsi Section -->
         <div
-            class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
+            class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
         >
-            <h3
-                class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
-            >
-                <i class="ti ti-file-text text-lg" style="color: {primary};"
-                ></i>
-                Deskripsi Produk
-            </h3>
-            {#if product.description}
-                <div
-                    class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700"
+            <!-- Spesifikasi Row Trigger (Merged inside Deskripsi) -->
+            {#if parsedSpecifications.length > 0}
+                <button
+                    onclick={() => (showSpecsModal = true)}
+                    class="w-full flex items-center justify-between pb-5 mb-5 border-b border-slate-100/70 hover:bg-slate-50/50 transition cursor-pointer text-left focus:outline-none select-none"
                 >
-                    {@html product.description}
-                </div>
-            {:else if product.summary}
-                <p class="text-sm text-slate-600 leading-relaxed">
-                    {product.summary}
-                </p>
-            {:else}
-                <div class="text-center py-10 text-slate-400">
-                    <i class="ti ti-file-text text-5xl block mb-2"></i>
-                    <p class="text-sm">Deskripsi belum tersedia</p>
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all"
+                            style="background: {withOpacity(primary, 0.08)}; color: {primary};"
+                        >
+                            <i class="ti ti-list text-lg"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-slate-800">Spesifikasi Produk</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                {#if product.brand || (product.brands && product.brands.length > 0)}
+                                    Merk: {product.brand || product.brands[0].name} • 
+                                {/if}
+                                Lihat detail spesifikasi lengkap
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-slate-400">
+                        <span class="text-xs font-semibold text-slate-500 hidden sm:inline">Lihat</span>
+                        <i class="ti ti-chevron-right text-lg"></i>
+                    </div>
+                </button>
+            {/if}
+
+            <!-- Deskripsi Section -->
+            <div>
+                <h3
+                    class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
+                >
+                    <i class="ti ti-file-text text-lg" style="color: {primary};"></i>
+                    Deskripsi Produk
+                </h3>
+                {#if product.description}
+                    <div
+                        class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700"
+                    >
+                        {@html product.description}
+                    </div>
+                {:else if product.summary}
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        {product.summary}
+                    </p>
+                {:else}
+                    <div class="text-center py-10 text-slate-400">
+                        <i class="ti ti-file-text text-5xl block mb-2"></i>
+                        <p class="text-sm">Deskripsi belum tersedia</p>
+                    </div>
+                {/if}
+            </div>
+
+            <!-- ── Panduan Ukuran & Kalkulator Rekomendasi ── -->
+            {#if product.size_chart && product.size_chart.enabled}
+                <div class="mt-6 border-t border-slate-100 pt-6">
+                    <h3
+                        class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
+                    >
+                        <i class="ti ti-shirt text-lg" style="color: {primary};"></i>
+                        Kalkulator & Panduan Ukuran
+                    </h3>
+
+                    <!-- Calculator Card -->
+                    <div class="bg-slate-50/70 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-5 shadow-sm/5">
+                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                            <i class="ti ti-calculator text-base text-slate-400"></i> Cari Ukuran Rekomendasi Anda
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4 items-end mb-4">
+                            <div>
+                                <label for="height-input" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                                    Tinggi Badan (cm)
+                                </label>
+                                <input
+                                    type="number"
+                                    id="height-input"
+                                    bind:value={userHeight}
+                                    placeholder="Cth: 170"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-brand-blueRoyal focus:outline-none text-slate-750 font-bold"
+                                />
+                            </div>
+                            <div>
+                                <label for="weight-input" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                                    Berat Badan (kg)
+                                </label>
+                                <input
+                                    type="number"
+                                    id="weight-input"
+                                    bind:value={userWeight}
+                                    placeholder="Cth: 65"
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-brand-blueRoyal focus:outline-none text-slate-750 font-bold"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Calculator Results Alert -->
+                        {#if recommendedSize}
+                            <div 
+                                class="p-4 rounded-xl flex items-center gap-3.5 transition-all duration-300 shadow-sm"
+                                style="background: {withOpacity(primary, 0.08)}; border: 1px solid {withOpacity(primary, 0.15)};"
+                            >
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style="background: linear-gradient(135deg, {primary}, {secondary}); color: #fff;">
+                                    <i class="ti ti-sparkles text-base"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Ukuran Rekomendasi</p>
+                                    <p class="text-sm font-black mt-0.5" style="color: {primary};">
+                                        Ukuran yang paling pas untuk Anda adalah <span class="bg-white px-2 py-0.5 rounded-md border border-slate-100 shadow-sm ml-1" style="color: {secondary};">{recommendedSize}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        {:else if userHeight || userWeight}
+                            <div class="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-600 font-medium">
+                                <i class="ti ti-info-circle text-base"></i>
+                                Belum ada ukuran yang pas untuk tinggi/berat tersebut. Silakan hubungi admin via chat.
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- Size Guide Table -->
+                    <div class="overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100">
+                                    <th class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center">{product.size_chart.headers[0]}</th>
+                                    {#each product.size_chart.headers.slice(1) as header}
+                                        <th class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center">{header}</th>
+                                    {/each}
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each product.size_chart.rows as row}
+                                    <tr class="hover:bg-slate-50/40 transition {recommendedSize === row.size ? 'bg-slate-50/75 font-bold' : ''}">
+                                        <td class="p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20">{row.size}</td>
+                                        {#each row.values as val}
+                                            <td class="p-3.5 text-center text-slate-600 font-semibold">{val}</td>
+                                        {/each}
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             {/if}
         </div>
 
-        <!-- Spesifikasi Produk Section -->
-        {#if parsedSpecifications.length > 0}
-            <div
-                class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
-            >
-                <h3
-                    class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
-                >
-                    <i class="ti ti-list text-lg" style="color: {primary};"></i>
-                    Spesifikasi Produk
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
-                    {#each parsedSpecifications as [label, value]}
-                        <div
-                            class="flex py-2.5 border-b border-slate-100/50 text-sm"
-                        >
-                            <span
-                                class="text-slate-400 w-1/3 font-bold uppercase tracking-wider text-[11px] shrink-0"
-                                >{label}</span
-                            >
-                            <span class="text-slate-700 font-semibold"
-                                >{value}</span
-                            >
-                        </div>
-                    {/each}
-                </div>
-            </div>
-        {/if}
-
-        <!-- Pengiriman Section -->
-        <div
-            class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
-        >
-            <h3
-                class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
-            >
-                <i class="ti ti-truck text-lg" style="color: {primary};"></i>
-                Informasi Pengiriman
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {#each [{ icon: 'ti-map-pin', title: 'Dikirim dari', desc: 'Lokasi toko' }, { icon: 'ti-clock', title: 'Estimasi tiba', desc: '1–3 hari kerja setelah pembayaran dikonfirmasi' }, { icon: 'ti-package', title: 'Pengemasan', desc: 'Dikemas aman: bubble wrap + kardus double layer' }, { icon: 'ti-truck', title: 'Ekspedisi', desc: 'JNE · J&T Express · SiCepat · Gosend · Grab Express' }] as row}
-                    <div
-                        class="flex items-start gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100"
-                    >
-                        <div
-                            class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                            style="background:{withOpacity(
-                                primary,
-                                0.08,
-                            )}; color:{primary};"
-                        >
-                            <i class="ti {row.icon}"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">
-                                {row.title}
-                            </p>
-                            <p class="text-sm text-slate-500 mt-0.5">
-                                {row.desc}
-                            </p>
-                        </div>
-                    </div>
-                {/each}
-            </div>
-        </div>
-
         <!-- Ulasan Section -->
         <div
-            class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
+            class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
         >
             <h3
                 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
@@ -2763,7 +3151,7 @@
                             {reviews.length} ulasan
                         </p>
                     </div>
-                    <div class="flex-1 space-y-1">
+                    <div class="flex-grow space-y-1">
                         {#each [5, 4, 3, 2, 1] as star}
                             {@const count = reviews.filter(
                                 (r: any) => Number(r.rating) === star,
@@ -2781,7 +3169,7 @@
                                     class="ti ti-star-filled text-[10px] text-amber-400"
                                 ></i>
                                 <div
-                                    class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden"
+                                    class="flex-grow h-1.5 bg-slate-200 rounded-full overflow-hidden"
                                 >
                                     <div
                                         class="h-full rounded-full transition-all"
@@ -2812,7 +3200,7 @@
                                         .charAt(0)
                                         .toUpperCase()}
                                 </div>
-                                <div class="flex-1 min-w-0">
+                                <div class="flex-grow min-w-0">
                                     <div
                                         class="flex items-center gap-2 flex-wrap"
                                     >
@@ -3019,12 +3407,14 @@
                                 >
                                     {rp.category?.name || 'PRODUK'}
                                 </p>
-                                <p
-                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
-                                    style="color: {primary};"
-                                >
-                                    {rp.name}
-                                </p>
+                                <div class="h-[2.5rem] overflow-hidden mb-1">
+                                    <p
+                                        class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                        style="color: #1e293b;"
+                                    >
+                                        {rp.name}
+                                    </p>
+                                </div>
                                 <div class="flex items-center gap-1 mt-1">
                                     <i
                                         class="ti ti-star-filled text-amber-500 text-[10px]"
@@ -4076,9 +4466,82 @@
         {secondary}
         {user}
     />
+
+    <!-- ─────────────────────────────────────────────────────
+     SPESIFIKASI MODAL (BOTTOM SHEET)
+ ───────────────────────────────────────────────────── -->
+    {#if showSpecsModal && parsedSpecifications.length > 0}
+        <!-- Backdrop -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm"
+            transition:fade={{ duration: 200 }}
+            onclick={() => (showSpecsModal = false)}
+        ></div>
+
+        <!-- Bottom Sheet Panel -->
+        <div
+            class="fixed bottom-0 left-0 right-0 z-[151] bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh] sm:max-w-lg sm:mx-auto sm:rounded-2xl sm:bottom-1/2 sm:translate-y-1/2 sm:inset-x-4 sm:top-auto sm:border sm:border-slate-100"
+            transition:fly={{ y: 400, duration: 300, easing: cubicOut }}
+        >
+            <!-- Drag Handle for Mobile / Header bar -->
+            <div class="flex justify-center pt-3 pb-1 shrink-0 sm:hidden">
+                <div class="w-10 h-1 rounded-full bg-slate-200"></div>
+            </div>
+
+            <!-- Header Title + Close -->
+            <div class="px-5 pt-3 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+                    <i class="ti ti-list text-lg" style="color: {primary};"></i>
+                    Spesifikasi Produk
+                </h3>
+                <button
+                    onclick={() => (showSpecsModal = false)}
+                    aria-label="Tutup"
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition"
+                >
+                    <i class="ti ti-x text-base"></i>
+                </button>
+            </div>
+
+            <!-- Content Area (Scrollable) -->
+            <div class="px-5 py-4 overflow-y-auto space-y-1 divide-y divide-slate-100">
+                {#each parsedSpecifications as [label, value]}
+                    <div class="flex py-3.5 text-sm items-start gap-4">
+                        <span class="text-slate-400 w-1/3 font-bold uppercase tracking-wider text-[11px] shrink-0 mt-0.5">
+                            {label}
+                        </span>
+                        <span class="text-slate-700 font-semibold flex-1">
+                            {value}
+                        </span>
+                    </div>
+                {/each}
+            </div>
+
+            <!-- Footer Action Button -->
+            <div class="p-4 border-t border-slate-100 shrink-0">
+                <button
+                    onclick={() => (showSpecsModal = false)}
+                    class="w-full py-3 rounded-xl font-bold text-sm text-white shadow-md hover:shadow-lg transition duration-200 cursor-pointer"
+                    style="background: linear-gradient(135deg, {primary}, {secondary});"
+                >
+                    Tutup
+                </button>
+            </div>
+        </div>
+    {/if}
 </StorefrontLayout>
 
 <style>
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+
     @keyframes pop {
         from {
             transform: scale(0.95);

@@ -299,12 +299,33 @@ class StorefrontController extends Controller
             ->latest()
             ->get();
 
+        // Fetch shipping-related settings for display on product page
+        $shippingSettings = Setting::whereIn('key', [
+            'address',
+            'district_name',
+            'regency_name',
+            'province_name',
+            'postal_code',
+            'shipping_rate',
+            'enable_cod',
+        ])->pluck('value', 'key');
+
+        /** @var array{address: string, district_name: string, regency_name: string, province_name: string, postal_code: string, shipping_rate: string, enable_cod: string} $shippingSettings */
+        $shippingInfo = [
+            'store_address' => trim(($shippingSettings['address'] ?? '').', '.($shippingSettings['district_name'] ?? '')),
+            'store_city' => trim(($shippingSettings['regency_name'] ?? '').', '.($shippingSettings['province_name'] ?? '')),
+            'postal_code' => $shippingSettings['postal_code'] ?? '',
+            'shipping_rate' => (int) ($shippingSettings['shipping_rate'] ?? 0),
+            'enable_cod' => ($shippingSettings['enable_cod'] ?? '0') === '1',
+        ];
+
         return Inertia::render('Storefront/Product', [
             'product' => $product,
             'reviews' => $reviews,
             'relatedProducts' => $relatedProducts,
             'storeName' => $storeName,
             'bundlingPromos' => $bundlingPromos->values(),
+            'shippingInfo' => $shippingInfo,
         ]);
     }
 
@@ -1540,7 +1561,7 @@ class StorefrontController extends Controller
             }
         }
 
-        $transactions = $query->latest()
+        $transactions = $query->with('items.product')->latest()
             ->paginate(10)
             ->withQueryString();
 
