@@ -1,7 +1,9 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
-    import { page, Link } from '@inertiajs/svelte';
+    import { page, Link, router } from '@inertiajs/svelte';
     import { onMount, onDestroy } from 'svelte';
+    import { showToast } from '@/utils/toast';
+    import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
 
     let {
         categories = [],
@@ -18,6 +20,47 @@
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const auth = $derived(page.props.auth?.user);
+    const cartButtonStyle = $derived(
+        (page.props.settings as any)?.storefront_cart_button_style || 'button',
+    );
+
+    let selectedVariantProduct = $state<any>(null);
+    let showVariantModal = $state(false);
+
+    function handleAddToCart(product: any, e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!auth) {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+            return;
+        }
+
+        if (product.variants && product.variants.length > 0) {
+            selectedVariantProduct = product;
+            showVariantModal = true;
+            return;
+        }
+
+        router.post(
+            '/cart',
+            {
+                product_id: product.id,
+                product_variant_id: null,
+                quantity: 1,
+            },
+            {
+                preserveScroll: true,
+                onError: () => {
+                    showToast(
+                        'Gagal menambahkan produk ke keranjang.',
+                        'error',
+                    );
+                },
+            },
+        );
+    }
 
     function withOpacity(hex: string, opacity: number): string {
         if (!hex) return '';
@@ -69,13 +112,25 @@
         },
     ];
 
-    const heroBanners = $derived(incomingHeroBanners && incomingHeroBanners.length > 0 ? incomingHeroBanners : defaultHeroBanners);
-    const sideBanners = $derived(incomingSideBanners && incomingSideBanners.length > 0 ? incomingSideBanners : defaultSideBanners);
-    const middleWide = $derived(middleWideBanner && middleWideBanner.image ? middleWideBanner : {
-        image: '/banners/flash-sale.png',
-        alt: 'Flash Sale Promo',
-        link: '#',
-    });
+    const heroBanners = $derived(
+        incomingHeroBanners && incomingHeroBanners.length > 0
+            ? incomingHeroBanners
+            : defaultHeroBanners,
+    );
+    const sideBanners = $derived(
+        incomingSideBanners && incomingSideBanners.length > 0
+            ? incomingSideBanners
+            : defaultSideBanners,
+    );
+    const middleWide = $derived(
+        middleWideBanner && middleWideBanner.image
+            ? middleWideBanner
+            : {
+                  image: '/banners/flash-sale.png',
+                  alt: 'Flash Sale Promo',
+                  link: '#',
+              },
+    );
 
     let activeHero = $state(0);
     let heroTimer: ReturnType<typeof setInterval>;
@@ -385,6 +440,24 @@
         };
     }
 
+    function directClick(node: HTMLElement, callback: (e: MouseEvent) => void) {
+        let currentCallback = callback;
+        const handler = (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            currentCallback(e);
+        };
+        node.addEventListener('click', handler);
+        return {
+            update(newCallback: (e: MouseEvent) => void) {
+                currentCallback = newCallback;
+            },
+            destroy() {
+                node.removeEventListener('click', handler);
+            }
+        };
+    }
+
     // Special deal promo banners
     const dealBanners = [
         {
@@ -645,7 +718,8 @@
                         <span
                             class="font-outfit font-black text-xs sm:text-base md:text-lg text-white flex items-center gap-1 sm:gap-2 shrink-0"
                         >
-                            <i class="ti ti-bolt-filled animate-pulse"></i> Flash Sale
+                            <i class="ti ti-bolt-filled animate-pulse"></i> Flash
+                            Sale
                         </span>
                         <!-- Countdown -->
                         <div
@@ -679,7 +753,9 @@
                 </div>
 
                 <!-- Flash Sale Products (horizontal scroll) -->
-                <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
+                <div
+                    class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin"
+                >
                     <div
                         class="flex gap-4 {flashSaleProducts.length < 4
                             ? 'justify-start sm:justify-center w-full'
@@ -699,7 +775,8 @@
                                     ? (product.product_price?.price ?? price)
                                     : fakeOriginalPrice(price, disc)}
                                 <Link
-                                    href="/products/{product.slug || product.id}"
+                                    href="/products/{product.slug ||
+                                        product.id}"
                                     prefetch
                                     class="w-36 sm:w-40 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0"
                                 >
@@ -772,9 +849,13 @@
                                 <div
                                     class="w-36 sm:w-40 bg-slate-100 rounded-xl overflow-hidden shrink-0 animate-pulse"
                                 >
-                                    <div class="aspect-square bg-slate-200"></div>
+                                    <div
+                                        class="aspect-square bg-slate-200"
+                                    ></div>
                                     <div class="p-2.5 space-y-2">
-                                        <div class="h-3 bg-slate-200 rounded"></div>
+                                        <div
+                                            class="h-3 bg-slate-200 rounded"
+                                        ></div>
                                         <div
                                             class="h-3 bg-slate-200 rounded w-2/3"
                                         ></div>
@@ -885,8 +966,14 @@
                             isReal && isPromo ? product.original_price : 0}
                         {@const discountPercentage =
                             isReal && isPromo ? product.discount_percentage : 0}
-                        {@const avgRating = isReal ? (product.avg_rating ? Number(product.avg_rating) : null) : null}
-                        {@const reviewCount = isReal ? (product.review_count ?? 0) : 0}
+                        {@const avgRating = isReal
+                            ? product.avg_rating
+                                ? Number(product.avg_rating)
+                                : null
+                            : null}
+                        {@const reviewCount = isReal
+                            ? (product.review_count ?? 0)
+                            : 0}
                         <Link
                             href={isReal
                                 ? `/products/${product.slug || product.id}`
@@ -926,19 +1013,6 @@
                                         -{discountPercentage}%
                                     </span>
                                 {/if}
-                                <!-- Rank badge -->
-                                {#if i < 3}
-                                    <span
-                                        class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full text-[10px] font-black flex items-center justify-center text-white shadow-md"
-                                        style="background: {i === 0
-                                            ? '#f7c948'
-                                            : i === 1
-                                              ? '#b8bec7'
-                                              : '#c8835a'};"
-                                    >
-                                        #{i + 1}
-                                    </span>
-                                {/if}
                             </div>
                             <div class="p-3 flex-1 flex flex-col">
                                 {#if isReal}
@@ -949,7 +1023,9 @@
                                         >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
-                                        <div class="h-[2.5rem] overflow-hidden mb-1">
+                                        <div
+                                            class="h-[2.5rem] overflow-hidden mb-1"
+                                        >
                                             <p
                                                 class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
                                                 style="color: #000000;"
@@ -966,15 +1042,23 @@
                                                 ></i>
                                                 <span
                                                     class="text-[10px] text-slate-500 font-bold"
-                                                    >{avgRating.toFixed(1)}</span
+                                                    >{avgRating.toFixed(
+                                                        1,
+                                                    )}</span
                                                 >
-                                                <span class="text-[10px] text-slate-400">({reviewCount})</span>
+                                                <span
+                                                    class="text-[10px] text-slate-400"
+                                                    >({reviewCount})</span
+                                                >
                                             {:else}
-                                                <span class="text-[10px] text-slate-400 italic">Belum ada ulasan</span>
+                                                <span
+                                                    class="text-[10px] text-slate-400 italic"
+                                                    >Belum ada ulasan</span
+                                                >
                                             {/if}
                                         </div>
                                         <hr class="border-slate-100 my-2" />
-                                        <div class="mb-3">
+                                        <div class="mb-0">
                                             <p
                                                 class="text-sm sm:text-base font-black leading-tight"
                                                 style="color: {secondary};"
@@ -989,17 +1073,6 @@
                                                 </p>
                                             {/if}
                                         </div>
-                                    </div>
-                                    <div class="mt-auto pt-3">
-                                        <span
-                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
-                                            style="background-color: {primary};"
-                                        >
-                                            <i
-                                                class="ti ti-shopping-cart text-xs sm:text-sm"
-                                            ></i>
-                                            + KERANJANG
-                                        </span>
                                     </div>
                                 {:else}
                                     <div
@@ -1043,8 +1116,7 @@
                 </Link>
             {:else}
                 <button
-                    onclick={() =>
-                        (activeLightboxImage = middleWide.image)}
+                    onclick={() => (activeLightboxImage = middleWide.image)}
                     class="w-full text-left"
                 >
                     <img
@@ -1080,112 +1152,134 @@
                             isReal && isPromo ? product.original_price : 0}
                         {@const discountPercentage =
                             isReal && isPromo ? product.discount_percentage : 0}
-                        <Link
-                            href={isReal
-                                ? `/products/${product.slug || product.id}`
-                                : '#'}
-                            prefetch
-                            class="group bg-transparent border-none shadow-none hover:shadow-none transition cursor-pointer flex flex-col h-full p-0"
-                        >
-                            <!-- Rounded image container -->
-                            <div
-                                class="relative aspect-square overflow-hidden rounded-[20px] border border-slate-100 group/img bg-slate-50"
+                        <div class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full">
+                            <Link
+                                href={isReal
+                                    ? `/products/${product.slug || product.id}`
+                                    : '#'}
+                                prefetch
+                                class="flex flex-col flex-1 cursor-pointer"
                             >
-                                {#if img}
-                                    <img
-                                        src={img}
-                                        alt={product.name}
-                                        class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                        onerror={(e) => {
-                                            e.currentTarget.src =
-                                                '/noimage/image.png';
-                                        }}
-                                    />
-                                {:else if !isReal}
-                                    <div
-                                        class="w-full h-full bg-slate-200 animate-pulse"
-                                    ></div>
-                                {:else}
-                                    <img
-                                        src="/noimage/image.png"
-                                        alt="No Image"
-                                        class="w-full h-full object-cover"
-                                    />
-                                {/if}
-                                {#if isReal && isPromo && discountPercentage > 0}
-                                    <span
-                                        class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                        style="background-color: {secondary};"
-                                    >
-                                        -{discountPercentage}%
-                                    </span>
-                                {/if}
-                            </div>
-                            <div
-                                class="py-3 px-0 flex-1 flex flex-col justify-between"
-                            >
-                                {#if isReal}
-                                    <div>
-                                        <p
-                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
-                                            style="color: {primary};"
+                                <!-- Rounded image container -->
+                                <div
+                                    class="relative aspect-square overflow-hidden border-b border-slate-50 group/img bg-slate-50"
+                                >
+                                    {#if img}
+                                        <img
+                                            src={img}
+                                            alt={product.name}
+                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                            onerror={(e) => {
+                                                e.currentTarget.src =
+                                                    '/noimage/image.png';
+                                            }}
+                                        />
+                                    {:else if !isReal}
+                                        <div
+                                            class="w-full h-full bg-slate-200 animate-pulse"
+                                        ></div>
+                                    {:else}
+                                        <img
+                                            src="/noimage/image.png"
+                                            alt="No Image"
+                                            class="w-full h-full object-cover"
+                                        />
+                                    {/if}
+                                    {#if isReal && isPromo && discountPercentage > 0}
+                                        <span
+                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                            style="background-color: {secondary};"
                                         >
-                                            {product.category?.name || 'PRODUK'}
-                                        </p>
-                                        <div class="h-[2.5rem] overflow-hidden mb-1.5">
+                                            -{discountPercentage}%
+                                        </span>
+                                    {/if}
+                                </div>
+                                <div
+                                    class="p-3 flex-1 flex flex-col justify-between"
+                                >
+                                    {#if isReal}
+                                        <div>
                                             <p
-                                                class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                style="color: #000000;"
-                                            >
-                                                {product.name}
-                                            </p>
-                                        </div>
-                                        <div class="mb-3">
-                                            <p
-                                                class="text-sm sm:text-base font-black leading-tight"
+                                                class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
                                                 style="color: {primary};"
                                             >
-                                                {formatPrice(price)}
+                                                {product.category?.name || 'PRODUK'}
                                             </p>
-                                            {#if isPromo && originalPrice > price}
+                                            <div
+                                                class="h-[2.5rem] overflow-hidden mb-1.5"
+                                            >
                                                 <p
-                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                    style="color: {primary};"
                                                 >
-                                                    {formatPrice(originalPrice)}
+                                                    {product.name}
                                                 </p>
-                                            {/if}
+                                            </div>
+                                            <hr class="border-slate-100 my-2" />
+                                            <div class="mb-1">
+                                                <p
+                                                    class="text-sm sm:text-base font-black leading-tight"
+                                                    style="color: {secondary};"
+                                                >
+                                                    {formatPrice(price)}
+                                                </p>
+                                                {#if isPromo && originalPrice > price}
+                                                    <p
+                                                        class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                    >
+                                                        {formatPrice(originalPrice)}
+                                                    </p>
+                                                {/if}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="pt-2">
-                                        <span
-                                            class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
-                                            style="background-color: {primary};"
-                                        >
-                                            <i
-                                                class="ti ti-shopping-cart text-xs sm:text-sm"
-                                            ></i>
-                                            + KERANJANG
-                                        </span>
-                                    </div>
-                                {:else}
-                                    <div
-                                        class="space-y-1.5 animate-pulse flex-1 flex flex-col justify-between"
-                                    >
-                                        <div class="space-y-1.5">
-                                            <div
-                                                class="h-3 bg-slate-200 rounded"
-                                            ></div>
-                                            <div
-                                                class="h-4 bg-slate-200 rounded w-2/3"
-                                            ></div>
-                                        </div>
+                                    {:else}
                                         <div
-                                            class="h-8 bg-slate-200 rounded-xl w-full mt-2"
-                                        ></div>
-                                    </div>
-                                {/if}
-                            </div>
-                        </Link>
+                                            class="space-y-1.5 animate-pulse flex-1 flex flex-col justify-between"
+                                        >
+                                            <div class="space-y-1.5">
+                                                <div
+                                                    class="h-3 bg-slate-200 rounded"
+                                                ></div>
+                                                <div
+                                                    class="h-4 bg-slate-200 rounded w-2/3"
+                                                ></div>
+                                            </div>
+                                            <div
+                                                class="h-8 bg-slate-200 rounded-xl w-full mt-2"
+                                            ></div>
+                                        </div>
+                                    {/if}
+                                </div>
+                            </Link>
+                            <!-- Cart buttons OUTSIDE Link to prevent Inertia navigation -->
+                            {#if isReal && cartButtonStyle === 'icon'}
+                                <button
+                                    type="button"
+                                    onclick={(e) => handleAddToCart(product, e)}
+                                    class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
+                                    style="border-color: {primary}; color: {primary};"
+                                    title="Tambah ke Keranjang"
+                                >
+                                    <i class="ti ti-plus text-base font-black"></i>
+                                </button>
+                            {/if}
+                            {#if isReal && cartButtonStyle === 'button'}
+                                <div class="px-3 pb-3">
+                                    <button
+                                        type="button"
+                                        onclick={(e) => handleAddToCart(product, e)}
+                                        class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] cursor-pointer"
+                                        style="background-color: {primary};"
+                                        title="Tambah ke Keranjang"
+                                    >
+                                        <i
+                                            class="ti ti-shopping-cart text-xs sm:text-sm"
+                                        ></i>
+                                        + KERANJANG
+                                    </button>
+                                </div>
+                            {/if}
+                        </div>
                     {/each}
                 </div>
 
@@ -1299,6 +1393,15 @@
             </div>
         </div>
     {/if}
+
+    <VariantSelectorModal
+        product={selectedVariantProduct}
+        show={showVariantModal}
+        onClose={() => (showVariantModal = false)}
+        {primary}
+        {secondary}
+        user={auth}
+    />
 </StorefrontLayout>
 
 <style>

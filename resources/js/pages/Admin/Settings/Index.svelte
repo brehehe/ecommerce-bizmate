@@ -62,6 +62,7 @@
         
         rajaongkir_url: settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
         rajaongkir_key: settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
+        storefront_cart_button_style: settings.storefront_cart_button_style || 'button',
     });
 
     let imagePreview = $state(null);
@@ -775,6 +776,63 @@
                                     placeholder="Masukkan API Key Rajaongkir Anda"
                                     required={true}
                                 />
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-3">
+                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                    Desain Tombol Keranjang (Storefront)
+                                </span>
+                                <p class="text-[11px] text-slate-400 font-bold">
+                                    Pilih tampilan tombol "+ Keranjang" pada daftar produk di halaman depan toko Anda.
+                                </p>
+                                <div class="grid grid-cols-3 gap-2 mt-2">
+                                    <button
+                                        type="button"
+                                        onclick={() => form.storefront_cart_button_style = 'button'}
+                                        class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
+                                               {form.storefront_cart_button_style === 'button'
+                                                   ? 'border-blue-500 bg-blue-50/20'
+                                                   : 'border-slate-200 bg-white'}"
+                                    >
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
+                                            <i class="ti ti-shopping-cart text-lg"></i>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-slate-700">Tombol Bawah</span>
+                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">"+ KERANJANG"</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick={() => form.storefront_cart_button_style = 'icon'}
+                                        class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
+                                               {form.storefront_cart_button_style === 'icon'
+                                                   ? 'border-blue-500 bg-blue-50/20'
+                                                   : 'border-slate-200 bg-white'}"
+                                    >
+                                        <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2">
+                                            <i class="ti ti-plus text-lg"></i>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-slate-700">Ikon Pojok</span>
+                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">"+" di Foto</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick={() => form.storefront_cart_button_style = 'none'}
+                                        class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
+                                               {form.storefront_cart_button_style === 'none'
+                                                   ? 'border-blue-500 bg-blue-50/20'
+                                                   : 'border-slate-200 bg-white'}"
+                                    >
+                                        <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2">
+                                            <i class="ti ti-eye text-lg"></i>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-slate-700">Tanpa Tombol</span>
+                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">Hanya Detail</span>
+                                    </button>
+                                </div>
                             </div>
 
                         </div>
