@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use App\Models\Setting;
@@ -61,6 +63,41 @@ class StorefrontController extends Controller
             ->take(50)
             ->get();
 
+        // Fetch best-seller products sorted by actual sold quantity from completed transactions
+        $bestSellerIds = DB::table('transaction_items')
+            ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
+            ->where('transactions.status', 'selesai')
+            ->groupBy('transaction_items.product_id')
+            ->selectRaw('transaction_items.product_id, SUM(transaction_items.quantity) as total_sold')
+            ->orderByDesc('total_sold')
+            ->take(10)
+            ->pluck('product_id')
+            ->all();
+
+        // Load best-seller products with avg_rating and review count
+        $bestSellerProducts = Product::with(['category', 'productPrice', 'productStock', 'images'])
+            ->withAvg('reviews as avg_rating', 'rating')
+            ->withCount('reviews as review_count')
+            ->where('active', true)
+            ->whereIn('id', $bestSellerIds)
+            ->get()
+            ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
+            ->values();
+
+        // If there are fewer than 10 best sellers, pad with latest active products
+        if ($bestSellerProducts->count() < 10) {
+            $excludeIds = $bestSellerProducts->pluck('id')->all();
+            $pad = Product::with(['category', 'productPrice', 'productStock', 'images'])
+                ->withAvg('reviews as avg_rating', 'rating')
+                ->withCount('reviews as review_count')
+                ->where('active', true)
+                ->whereNotIn('id', $excludeIds)
+                ->latest()
+                ->take(10 - $bestSellerProducts->count())
+                ->get();
+            $bestSellerProducts = $bestSellerProducts->concat($pad);
+        }
+
         $activeFlashSale = Promotion::with([
             'items.product.productPrice',
             'items.product.images',
@@ -89,6 +126,10 @@ class StorefrontController extends Controller
             $this->applyPromotionsToProduct($p, $activePromotions);
         }
 
+        foreach ($bestSellerProducts as $p) {
+            $this->applyPromotionsToProduct($p, $activePromotions);
+        }
+
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
@@ -101,11 +142,18 @@ class StorefrontController extends Controller
         $middleWideBannerJson = Setting::where('key', 'middle_wide_banner')->value('value');
         $middleWideBanner = $middleWideBannerJson ? json_decode($middleWideBannerJson, true) : null;
 
+        $recentReviews = ProductReview::with(['user', 'product.images', 'productVariant.options'])
+            ->latest()
+            ->take(8)
+            ->get();
+
         return Inertia::render('Storefront/Home', [
             'categories' => $categories,
             'featuredProducts' => $featuredProducts,
             'newProducts' => $newProducts,
+            'bestSellerProducts' => $bestSellerProducts,
             'activeFlashSale' => $activeFlashSale,
+            'recentReviews' => $recentReviews,
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
             'heroBanners' => $heroBanners,
@@ -121,6 +169,8 @@ class StorefrontController extends Controller
     {
         $product->load([
             'category',
+            'categories',
+            'brands',
             'productPrice',
             'productStock',
             'images',
@@ -131,6 +181,13 @@ class StorefrontController extends Controller
             'tierPrices',
             'variants.tierPrices',
         ]);
+
+        // Calculate actual sold count from completed transactions
+        $soldCount = TransactionItem::where('product_id', $product->id)
+            ->whereHas('transaction', fn ($q) => $q->where('status', 'selesai'))
+            ->sum('quantity');
+
+        $product->sold_count = (int) $soldCount;
 
         $relatedProducts = Product::with(['productPrice', 'images', 'category'])
             ->where('active', true)
@@ -208,12 +265,46 @@ class StorefrontController extends Controller
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
 
+        $reviews = ProductReview::with(['user', 'productVariant.options'])
+            ->where('product_id', $product->id)
+            ->latest()
+            ->get();
+
         return Inertia::render('Storefront/Product', [
             'product' => $product,
+            'reviews' => $reviews,
             'relatedProducts' => $relatedProducts,
             'storeName' => $storeName,
             'bundlingPromos' => $bundlingPromos->values(),
         ]);
+    }
+
+    /**
+     * Retrieve sold quantity totals for a list of product IDs from completed transactions.
+     *
+     * @param  array<string>  $productIds
+     * @return array<string, int> Map of product_id => total sold quantity
+     */
+    private function getSoldCountsForProducts(array $productIds): array
+    {
+        if (empty($productIds)) {
+            return [];
+        }
+
+        $rows = DB::table('transaction_items')
+            ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
+            ->whereIn('transaction_items.product_id', $productIds)
+            ->where('transactions.status', 'selesai')
+            ->groupBy('transaction_items.product_id')
+            ->selectRaw('transaction_items.product_id, SUM(transaction_items.quantity) as total_sold')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row->product_id] = (int) $row->total_sold;
+        }
+
+        return $map;
     }
 
     /**
@@ -591,6 +682,7 @@ class StorefrontController extends Controller
     {
         $query = $request->input('q');
         $categoryId = $request->input('category');
+        $brandId = $request->input('brand');
         $sort = $request->input('sort', 'relevance');
         $minPrice = $request->input('min_price');
         $maxPrice = $request->input('max_price');
@@ -600,9 +692,17 @@ class StorefrontController extends Controller
             ->orderBy('order')
             ->get();
 
+        $brands = Brand::where('is_active', true)
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
+
         // Build product query
         $productsQuery = Product::with([
             'category',
+            'categories',
+            'brandRelation',
+            'brands',
             'productPrice',
             'productStock',
             'images',
@@ -625,6 +725,9 @@ class StorefrontController extends Controller
                             ->orWhere('description', $like, "%{$term}%")
                              // Cari di nama kategori
                             ->orWhereHas('category', function ($qc) use ($term, $like) {
+                                $qc->where('name', $like, "%{$term}%");
+                            })
+                            ->orWhereHas('categories', function ($qc) use ($term, $like) {
                                 $qc->where('name', $like, "%{$term}%");
                             })
                              // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
@@ -658,12 +761,54 @@ class StorefrontController extends Controller
 
             $productsQuery->where(function ($q) use ($uuids, $slugs) {
                 if (! empty($uuids)) {
-                    $q->whereIn('category_id', $uuids);
+                    $q->whereIn('category_id', $uuids)
+                        ->orWhereHas('categories', function ($sub) use ($uuids) {
+                            $sub->whereIn('categories.id', $uuids);
+                        });
                 }
                 if (! empty($slugs)) {
                     $q->orWhereHas('category', function ($sub) use ($slugs) {
                         $sub->whereIn('slug', $slugs);
-                    });
+                    })
+                        ->orWhereHas('categories', function ($sub) use ($slugs) {
+                            $sub->whereIn('categories.slug', $slugs);
+                        });
+                }
+            });
+        }
+
+        // Filter by brand
+        if ($brandId) {
+            $brandIds = is_array($brandId) ? $brandId : [$brandId];
+            $uuids = [];
+            $slugs = [];
+
+            foreach ($brandIds as $br) {
+                if (is_string($br)) {
+                    $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $br);
+                    if ($isUuid) {
+                        $uuids[] = $br;
+                    } else {
+                        $slugs[] = $br;
+                    }
+                }
+            }
+
+            $productsQuery->where(function ($q) use ($uuids, $slugs) {
+                if (! empty($uuids)) {
+                    $q->whereIn('brand_id', $uuids)
+                        ->orWhereHas('brands', function ($sub) use ($uuids) {
+                            $sub->whereIn('brands.id', $uuids);
+                        });
+                }
+                if (! empty($slugs)) {
+                    $q->orWhereIn('brand', $slugs)
+                        ->orWhereHas('brandRelation', function ($sub) use ($slugs) {
+                            $sub->whereIn('slug', $slugs);
+                        })
+                        ->orWhereHas('brands', function ($sub) use ($slugs) {
+                            $sub->whereIn('brands.slug', $slugs);
+                        });
                 }
             });
         }
@@ -710,9 +855,9 @@ class StorefrontController extends Controller
                 return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
             });
         } elseif ($sort === 'popular') {
-            $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                // Deterministic mock popularity score using crc32 of the product name
-                return crc32($p->name) % 1000;
+            $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
+            $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
+                return $soldCounts[$p->id] ?? 0;
             });
         } elseif ($sort === 'latest') {
             $productsCollection = $productsCollection->sortByDesc('created_at');
@@ -759,10 +904,12 @@ class StorefrontController extends Controller
 
         return Inertia::render('Storefront/Search', [
             'categories' => $categories,
+            'brands' => $brands,
             'products' => $productsPaginator,
             'filters' => [
                 'q' => $query,
                 'category' => $categoryId,
+                'brand' => $brandId,
                 'sort' => $sort,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
@@ -935,8 +1082,9 @@ class StorefrontController extends Controller
         } elseif ($sort === 'latest') {
             $productsCollection = $productsCollection->sortByDesc('created_at');
         } elseif ($sort === 'popular') {
-            $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                return crc32($p->name) % 1000;
+            $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
+            $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
+                return $soldCounts[$p->id] ?? 0;
             });
         } else {
             // relevance / discount_desc
@@ -1095,26 +1243,20 @@ class StorefrontController extends Controller
         } elseif ($sort === 'latest') {
             $productsCollection = $productsCollection->sortByDesc('created_at');
         } elseif ($sort === 'popular') {
-            $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                return crc32($p->name) % 1000;
+            $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
+            $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
+                return $soldCounts[$p->id] ?? 0;
             });
         } else {
+            // Default sort: by actual sold count descending (best sellers first)
+            $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
             if ($query) {
-                $productsCollection = $productsCollection->sortByDesc(function ($p) use ($query) {
-                    $nameLower = strtolower($p->name);
-                    $queryLower = strtolower($query);
-                    if (str_starts_with($nameLower, $queryLower)) {
-                        return 2;
-                    }
-                    if (str_contains($nameLower, $queryLower)) {
-                        return 1;
-                    }
-
-                    return 0;
+                $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
+                    return $soldCounts[$p->id] ?? 0;
                 });
             } else {
-                $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                    return crc32($p->name) % 1000;
+                $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
+                    return $soldCounts[$p->id] ?? 0;
                 });
             }
         }
@@ -1123,6 +1265,14 @@ class StorefrontController extends Controller
         $page = request()->input('page', 1);
         $perPage = 16;
         $total = $productsCollection->count();
+
+        // Attach sold_count to each product for display
+        $allProductIds = $productsCollection->pluck('id')->all();
+        $soldCountsMap = $this->getSoldCountsForProducts($allProductIds);
+        foreach ($productsCollection as $p) {
+            $p->sold_count = $soldCountsMap[$p->id] ?? 0;
+        }
+
         $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
 
         $productsPaginator = new LengthAwarePaginator(
@@ -1244,8 +1394,9 @@ class StorefrontController extends Controller
                 return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
             });
         } elseif ($sort === 'popular') {
-            $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                return crc32($p->name) % 1000;
+            $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
+            $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
+                return $soldCounts[$p->id] ?? 0;
             });
         } elseif ($sort === 'latest') {
             $productsCollection = $productsCollection->sortByDesc('created_at');
@@ -1394,10 +1545,19 @@ class StorefrontController extends Controller
         $transaction->load([
             'customerAddress',
             'paymentMethod',
-            'items',
+            'items.product',
             'payments',
             'payment',
+            'courier',
+            'statusHistories',
         ]);
+
+        $userReviews = ProductReview::where('user_id', $request->user()->id)
+            ->where('transaction_id', $transaction->id)
+            ->get()
+            ->keyBy(function ($review) {
+                return $review->product_id.'_'.$review->product_variant_id;
+            });
 
         // Auto-check gateway payment status if the transaction is still unpaid and is a gateway payment
         if ($transaction->status === 'belum_bayar' && $transaction->paymentMethod?->type === 'gateway') {
@@ -1557,9 +1717,31 @@ class StorefrontController extends Controller
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
+            'userReviews' => $userReviews,
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
+    }
+
+    /**
+     * Print customer transaction invoice.
+     */
+    public function printInvoice(Request $request, Transaction $transaction)
+    {
+        if ($transaction->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $transaction->load([
+            'user:id,name,email',
+            'customerAddress',
+            'paymentMethod',
+            'items',
+        ]);
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+
+        return view('print.invoice', compact('transaction', 'storeName'));
     }
 
     /**
@@ -1616,6 +1798,83 @@ class StorefrontController extends Controller
 
         return redirect()->route('transactions.show', $transaction->id)
             ->with('success', 'Metode pembayaran berhasil diubah.');
+    }
+
+    /**
+     * Complete a transaction (customer received the order).
+     * Only allowed when status is dikirim.
+     */
+    public function completeTransaction(Request $request, Transaction $transaction): RedirectResponse
+    {
+        if ($transaction->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($transaction->status !== 'dikirim') {
+            return redirect()->back()->with('error', 'Status pesanan harus dikirim terlebih dahulu.');
+        }
+
+        $transaction->update([
+            'status' => 'selesai',
+        ]);
+
+        return redirect()->route('transactions.show', $transaction->id)
+            ->with('success', 'Pesanan telah diterima. Terima kasih telah berbelanja!');
+    }
+
+    /**
+     * Submit a review for a specific product in a transaction.
+     * Only allowed when status is selesai.
+     */
+    public function submitReview(Request $request, Transaction $transaction): RedirectResponse
+    {
+        if ($transaction->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($transaction->status !== 'selesai') {
+            return redirect()->back()->with('error', 'Anda hanya bisa memberikan ulasan untuk pesanan yang telah selesai.');
+        }
+
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'product_variant_id' => 'nullable|exists:product_variants,id',
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:1000',
+            'files' => 'nullable|array',
+            'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,mp4,mov,avi,webp|max:20480',
+        ]);
+
+        // Check if already reviewed
+        $exists = ProductReview::where('user_id', $request->user()->id)
+            ->where('transaction_id', $transaction->id)
+            ->where('product_id', $validated['product_id'])
+            ->where('product_variant_id', $validated['product_variant_id'] ?? null)
+            ->exists();
+
+        if ($exists) {
+            return redirect()->back()->with('error', 'Anda sudah memberikan ulasan untuk produk ini.');
+        }
+
+        $mediaPaths = [];
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                $path = $file->store('reviews', 'public');
+                $mediaPaths[] = '/storage/'.$path;
+            }
+        }
+
+        ProductReview::create([
+            'user_id' => $request->user()->id,
+            'product_id' => $validated['product_id'],
+            'product_variant_id' => $validated['product_variant_id'] ?? null,
+            'transaction_id' => $transaction->id,
+            'rating' => $validated['rating'],
+            'comment' => $validated['comment'] ?? null,
+            'media' => ! empty($mediaPaths) ? $mediaPaths : null,
+        ]);
+
+        return redirect()->back()->with('success', 'Terima kasih atas ulasan Anda!');
     }
 
     /**

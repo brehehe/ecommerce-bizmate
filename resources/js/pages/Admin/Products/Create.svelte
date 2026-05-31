@@ -11,15 +11,18 @@
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
     import Textarea from '@/components/ui/Textarea.svelte';
     import SelectSearch from '@/components/ui/SelectSearch.svelte';
+    import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
 
-    let { categories = [] } = $props();
+    let { categories = [], brands = [] } = $props();
 
     const form = useForm({
         name: '',
         sku: '',
-        category_id: '',
+        category_ids: [],
+        brand_ids: [],
         brand: '',
+        specifications: {},
 
         // Master Price
         price: '',
@@ -56,9 +59,24 @@
     let globalCustomStock = $state(false);
     let globalCustomWeight = $state(false);
 
+    let specifications = $state([]);
+
+    function addSpecification() {
+        specifications = [...specifications, { label: '', value: '' }];
+    }
+
+    function removeSpecification(index) {
+        specifications = specifications.filter((_, i) => i !== index);
+    }
+
     // Derived category options for SelectSearch
     let categoryOptions = $derived(
         categories.map((c) => ({ id: c.id, name: c.name })),
+    );
+
+    // Derived brand options for SelectSearch
+    let brandOptions = $derived(
+        brands.map((b) => ({ id: b.id, name: b.name })),
     );
 
     let globalTaxEnabled = $derived(page.props.settings?.tax_enabled ?? false);
@@ -294,6 +312,15 @@
               )
             : [];
 
+        // Serialize specifications to dynamic key-value object
+        const specObj = {};
+        specifications.forEach((spec) => {
+            if (spec.label.trim()) {
+                specObj[spec.label.trim()] = spec.value.trim();
+            }
+        });
+        form.specifications = specObj;
+
         form.variations = enableVariants ? rawVariations : [];
         form.variants = enableVariants
             ? rawVariants
@@ -464,19 +491,18 @@
                         />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <SelectSearch
-                            bind:value={form.category_id}
+                        <SelectSearchMultiple
+                            bind:value={form.category_ids}
                             options={categoryOptions}
                             label="Kategori Produk"
                             required={true}
-                            error={form.errors.category_id}
+                            error={form.errors.category_ids}
                         />
-                        <Input
-                            bind:value={form.brand}
-                            id="brand"
+                        <SelectSearchMultiple
+                            bind:value={form.brand_ids}
+                            options={brandOptions}
                             label="Merek (Brand)"
-                            placeholder="Cth: IKEA"
-                            error={form.errors.brand}
+                            error={form.errors.brand_ids}
                         />
                     </div>
                     <div class="space-y-4">
@@ -785,6 +811,76 @@
                             error={form.errors.height}
                         />
                     </div>
+                </div>
+
+                <!-- Card: Spesifikasi Produk -->
+                <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                                Spesifikasi Produk
+                            </h3>
+                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                                Tambahkan detail spesifikasi produk (misal: Bahan, Warna, Garansi)
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onclick={addSpecification}
+                            class="px-3.5 py-2 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-bold rounded-xl flex items-center gap-1.5 transition duration-200 font-outfit uppercase tracking-wider"
+                        >
+                            <i class="ti ti-plus text-xs"></i> Tambah Spesifikasi
+                        </button>
+                    </div>
+
+                    {#if specifications.length === 0}
+                        <div class="text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-slate-50/30 flex flex-col items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                                <i class="ti ti-list text-lg"></i>
+                            </div>
+                            <p class="text-xs text-slate-500 font-medium">Belum ada spesifikasi produk yang ditambahkan.</p>
+                            <button
+                                type="button"
+                                onclick={addSpecification}
+                                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black rounded-lg uppercase tracking-wider transition mt-3 font-outfit"
+                            >
+                                Tambah Pertama
+                            </button>
+                        </div>
+                    {:else}
+                        <div class="space-y-4">
+                            {#each specifications as spec, idx (idx)}
+                                <div class="flex items-center gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative group animate-in fade-in zoom-in-95 duration-150">
+                                    <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Input
+                                            type="text"
+                                            bind:value={spec.label}
+                                            id={`spec-label-${idx}`}
+                                            label="Nama Spesifikasi"
+                                            placeholder="Contoh: Bahan, Warna, Garansi"
+                                            required={true}
+                                        />
+                                        <Input
+                                            type="text"
+                                            bind:value={spec.value}
+                                            id={`spec-val-${idx}`}
+                                            label="Nilai / Value"
+                                            placeholder="Contoh: Kayu Jati, Putih, 1 Tahun"
+                                            required={true}
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onclick={() => removeSpecification(idx)}
+                                        class="w-9 h-9 rounded-xl border border-slate-250 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center transition shrink-0 self-end mb-1 cursor-pointer"
+                                        title="Hapus Spesifikasi"
+                                    >
+                                        <i class="ti ti-trash text-sm"></i>
+                                    </button>
+                                </div>
+                            {/each}
+                        </div>
+                    {/if}
                 </div>
 
                 <!-- Card: Variasi -->

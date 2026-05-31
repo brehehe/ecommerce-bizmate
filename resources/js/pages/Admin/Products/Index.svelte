@@ -1,6 +1,7 @@
 <script>
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { Link, useForm, router } from '@inertiajs/svelte';
+    import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import {
         create as adminProductsCreate,
         edit as adminProductsEdit,
@@ -11,21 +12,31 @@
     let {
         products = { data: [], links: [], total: 0, from: 0, to: 0 },
         categories = [],
-        filters = { search: '', category: 'all', status: 'all' },
+        brands = [],
+        filters = { search: '', category: [], brand: [], status: 'all' },
     } = $props();
 
     let searchInput = $state(filters.search || '');
-    let filterCategory = $state(filters.category || 'all');
+    let filterCategories = $state(filters.category || []);
+    let filterBrands = $state(filters.brand || []);
     let filterStatus = $state(filters.status || 'all');
 
     let currentViewMode = $state('list'); // 'list' or 'grid'
+
+    let categoryOptions = $derived(
+        categories.map((c) => ({ id: c.id, name: c.name })),
+    );
+    let brandOptions = $derived(
+        brands.map((b) => ({ id: b.id, name: b.name })),
+    );
 
     function applyFilters() {
         router.get(
             '/admin/products',
             {
                 search: searchInput,
-                category: filterCategory,
+                category: filterCategories,
+                brand: filterBrands,
                 status: filterStatus,
             },
             { preserveState: true, preserveScroll: true, replace: true },
@@ -235,27 +246,35 @@
                         class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto justify-between xl:justify-start"
                     >
                         <div
-                            class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto"
+                            class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto min-w-[280px] sm:min-w-[600px] items-center"
                         >
-                            <select
-                                bind:value={filterCategory}
-                                onchange={applyFilters}
-                                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none"
-                            >
-                                <option value="all">Semua Kategori</option>
-                                {#each categories as cat}
-                                    <option value={cat.id}>{cat.name}</option>
-                                {/each}
-                            </select>
-                            <select
-                                bind:value={filterStatus}
-                                onchange={applyFilters}
-                                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none"
-                            >
-                                <option value="all">Status: Semua</option>
-                                <option value="active">Status: Aktif</option>
-                                <option value="draft">Status: Draft</option>
-                            </select>
+                            <div class="w-full">
+                                <SelectSearchMultiple
+                                    bind:value={filterCategories}
+                                    options={categoryOptions}
+                                    placeholder="Semua Kategori"
+                                    onchange={applyFilters}
+                                />
+                            </div>
+                            <div class="w-full">
+                                <SelectSearchMultiple
+                                    bind:value={filterBrands}
+                                    options={brandOptions}
+                                    placeholder="Semua Brand"
+                                    onchange={applyFilters}
+                                />
+                            </div>
+                            <div class="w-full">
+                                <select
+                                    bind:value={filterStatus}
+                                    onchange={applyFilters}
+                                    class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none min-h-[44px]"
+                                >
+                                    <option value="all">Status: Semua</option>
+                                    <option value="active">Status: Aktif</option>
+                                    <option value="draft">Status: Draft</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div
@@ -423,6 +442,11 @@
                                                     >
                                                         SKU Induk: {product.sku}
                                                     </p>
+                                                    {#if product.brands && product.brands.length > 0}
+                                                        <p class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5">
+                                                            Merek: {product.brands.map(b => b.name).join(', ')}
+                                                        </p>
+                                                    {/if}
                                                     {#if hasVariants}
                                                         <div
                                                             class="flex items-center gap-1.5 mt-1.5"
@@ -467,12 +491,26 @@
                                             </div>
                                         </td>
                                         <td class="px-3 xl:px-4 py-4">
-                                            <span
-                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 max-w-[105px] truncate"
-                                                title={product.category?.name}
-                                                >{product.category?.name ||
-                                                    '-'}</span
-                                            >
+                                            {#if product.categories && product.categories.length > 0}
+                                                <div class="flex flex-wrap gap-1 max-w-[120px]">
+                                                    <span
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 truncate max-w-[90px]"
+                                                        title={product.categories[0].name}
+                                                    >
+                                                        {product.categories[0].name}
+                                                    </span>
+                                                    {#if product.categories.length > 1}
+                                                        <span
+                                                            class="inline-flex items-center px-1.5 py-0.5 bg-brand-blueLight text-brand-blueRoyal border border-blue-100 rounded-lg text-[9px] font-extrabold"
+                                                            title={product.categories.map(c => c.name).join(', ')}
+                                                        >
+                                                            +{product.categories.length - 1}
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            {:else}
+                                                <span class="text-slate-300 font-semibold text-xs">-</span>
+                                            {/if}
                                         </td>
                                         <td class="px-3 xl:px-4 py-4">
                                             <div class="flex flex-col gap-0.5">
@@ -818,11 +856,22 @@
                                         alt={product.name}
                                     />
 
-                                    <span
-                                        class="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-600 shadow-soft"
-                                    >
-                                        {product.category?.name || '-'}
-                                    </span>
+                                    {#if product.categories && product.categories.length > 0}
+                                        <span
+                                            class="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-600 shadow-soft"
+                                        >
+                                            {product.categories[0].name}
+                                            {#if product.categories.length > 1}
+                                                <span class="text-brand-blueRoyal ml-0.5 font-extrabold text-[8px]">(+{product.categories.length - 1})</span>
+                                            {/if}
+                                        </span>
+                                    {:else}
+                                        <span
+                                            class="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 shadow-soft"
+                                        >
+                                            -
+                                        </span>
+                                    {/if}
 
                                     {#if !product.active}
                                         <span
@@ -914,6 +963,11 @@
                                                         ? 'SKU Induk'
                                                         : 'SKU'}: {product.sku}
                                                 </p>
+                                                {#if product.brands && product.brands.length > 0}
+                                                    <p class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5">
+                                                        {product.brands.map(b => b.name).join(', ')}
+                                                    </p>
+                                                {/if}
                                             </div>
 
                                             <!-- Toggle Active Status -->

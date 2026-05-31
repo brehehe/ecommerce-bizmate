@@ -221,9 +221,23 @@
                                                 <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pembayaran</span>
                                                 <p class="text-sm font-black mt-0.5" style="color:{primary}">{fmt(trx.grand_total)}</p>
                                             </div>
-                                            <div class="flex items-center gap-1 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-50 hover:text-slate-700 hover:shadow-3xs transition">
-                                                <span>Lihat Detail</span>
-                                                <i class="ti ti-chevron-right text-xs"></i>
+                                            <div class="flex items-center gap-2">
+                                                <button
+                                                    onclick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        window.open(`/transactions/${trx.id}/print-invoice?download=1`, '_blank');
+                                                    }}
+                                                    class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition"
+                                                    title="Cetak Invoice"
+                                                >
+                                                    <i class="ti ti-printer text-base"></i>
+                                                    <span class="hidden sm:inline">Cetak Invoice</span>
+                                                </button>
+                                                <div class="flex items-center gap-1 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-50 hover:text-slate-700 hover:shadow-3xs transition">
+                                                    <span>Lihat Detail</span>
+                                                    <i class="ti ti-chevron-right text-xs"></i>
+                                                </div>
                                             </div>
                                         </div>
                                     </Link>

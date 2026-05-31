@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CartItem;
+use App\Models\Courier;
 use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -192,6 +193,8 @@ class CheckoutController extends Controller
             }
         }
 
+        $couriers = Courier::where('is_active', true)->orderBy('order')->get();
+
         return Inertia::render('Storefront/Checkout', [
             'cartItems' => $cartItems,
             'addresses' => $addresses,
@@ -203,6 +206,7 @@ class CheckoutController extends Controller
             'storeOriginCity' => $storeOriginCity,
             'appFee' => $appFee,
             'appliedVoucher' => $appliedVoucher,
+            'couriers' => $couriers,
         ]);
     }
 
@@ -214,6 +218,7 @@ class CheckoutController extends Controller
         $request->validate([
             'customer_address_id' => 'required|exists:customer_addresses,id',
             'payment_method_id' => 'required|exists:payment_methods,id',
+            'courier_id' => 'nullable|exists:couriers,id',
             'shipping_courier' => 'required|string|max:50',
             'shipping_service' => 'required|string|max:50',
             'shipping_etd' => 'nullable|string|max:50',
@@ -340,6 +345,7 @@ class CheckoutController extends Controller
                 'user_id' => $user->id,
                 'customer_address_id' => $address->id,
                 'payment_method_id' => $paymentMethod->id,
+                'courier_id' => $request->courier_id,
                 'status' => 'belum_bayar',
                 'subtotal' => $subtotal,
                 'discount_amount' => $discountAmount,
@@ -355,6 +361,13 @@ class CheckoutController extends Controller
                 'voucher_discount_type' => $voucherDiscountType,
                 'voucher_discount_value' => $voucherDiscountValue,
                 'notes' => $request->notes,
+            ]);
+
+            // Log status history
+            $transaction->statusHistories()->create([
+                'status' => 'belum_bayar',
+                'description' => 'Pesanan berhasil dibuat, menunggu pembayaran.',
+                'created_by' => $user->id,
             ]);
 
             // Create transaction items & reduce stock

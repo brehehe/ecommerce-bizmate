@@ -4,7 +4,7 @@
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
-    let { product, relatedProducts = [], storeName = '', bundlingPromos = [] } = $props();
+    let { product, relatedProducts = [], storeName = '', bundlingPromos = [], reviews = [] as any[] } = $props();
 
     const page = usePage();
 
@@ -59,6 +59,32 @@
     }
 
     const gallery = $derived(buildGallery(product));
+
+    const parsedSpecifications = $derived.by(() => {
+        if (!product.specifications) return [];
+        let specsObj = product.specifications;
+        if (typeof specsObj === 'string') {
+            try {
+                specsObj = JSON.parse(specsObj);
+            } catch (e) {
+                return [];
+            }
+        }
+        if (Array.isArray(specsObj)) {
+            return specsObj.map(item => {
+                if (Array.isArray(item) && item.length >= 2) return [item[0], item[1]];
+                if (typeof item === 'object' && item !== null) {
+                    const keys = Object.keys(item);
+                    if (keys.length > 0) return [keys[0], item[keys[0]]];
+                }
+                return null;
+            }).filter(Boolean) as [string, any][];
+        }
+        if (typeof specsObj === 'object' && specsObj !== null) {
+            return Object.entries(specsObj);
+        }
+        return [];
+    });
     let activeIdx = $state(0);
     let variantOverride = $state<string | null>(null); // image from selected variant
     let lightboxOpen = $state(false);
@@ -1489,7 +1515,22 @@
                 <div class="flex flex-col gap-0 divide-y divide-slate-100">
                     <!-- Header: brand + name + rating/terjual -->
                     <div class="pb-4 flex flex-col">
-                        {#if product.brand}
+                        {#if product.brands && product.brands.length > 0}
+                            <div class="mb-1 flex flex-wrap gap-1">
+                                {#each product.brands as brand}
+                                    <span
+                                        class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded"
+                                        style="background: {withOpacity(
+                                            primary,
+                                            0.1,
+                                        )}; color: {primary};"
+                                    >
+                                        <i class="ti ti-star-filled text-[9px]"></i>
+                                        {brand.name}
+                                    </span>
+                                {/each}
+                            </div>
+                        {:else if product.brand}
                             <div class="mb-1">
                                 <span
                                     class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded"
@@ -1512,12 +1553,25 @@
                         <div
                             class="flex items-center gap-3 text-xs text-slate-400 flex-wrap mt-1.5"
                         >
-                            <span
-                                class="text-slate-500 border-r border-slate-200 pr-3"
-                                >Belum Ada Penilaian</span
-                            >
+                            {#if reviews.length > 0}
+                                {@const avgRating = reviews.reduce((s: number, r: any) => s + Number(r.rating), 0) / reviews.length}
+                                <span class="flex items-center gap-1 border-r border-slate-200 pr-3">
+                                    <i class="ti ti-star-filled text-amber-400 text-xs"></i>
+                                    <span class="font-bold text-slate-700">{avgRating.toFixed(1)}</span>
+                                    <span class="text-slate-400">({reviews.length} ulasan)</span>
+                                </span>
+                            {:else}
+                                <span
+                                    class="text-slate-400 border-r border-slate-200 pr-3"
+                                    >Belum Ada Penilaian</span
+                                >
+                            {/if}
                             <span class="border-r border-slate-200 pr-3"
-                                >0 Terjual</span
+                                >{product.sold_count != null && product.sold_count > 0
+                                    ? (product.sold_count >= 1000
+                                        ? (product.sold_count / 1000).toFixed(1).replace('.0', '') + 'rb'
+                                        : product.sold_count) + ' Terjual'
+                                    : '0 Terjual'}</span
                             >
                             {#if product.sku}
                                 <span
@@ -2178,7 +2232,7 @@
                     </div>
 
                     <!-- Product meta footer -->
-                    {#if product.weight || product.brand || product.category}
+                    {#if product.weight || product.brand || (product.brands && product.brands.length > 0) || product.category}
                         <div
                             class="pt-4 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-slate-400"
                         >
@@ -2189,7 +2243,13 @@
                                     ></span
                                 >
                             {/if}
-                            {#if product.brand}
+                            {#if product.brands && product.brands.length > 0}
+                                <span
+                                    >Merk: <b class="text-slate-600"
+                                        >{product.brands.map(b => b.name).join(', ')}</b
+                                    ></span
+                                >
+                            {:else if product.brand}
                                 <span
                                     >Merk: <b class="text-slate-600"
                                         >{product.brand}</b
@@ -2247,6 +2307,28 @@
             {/if}
         </div>
 
+        <!-- Spesifikasi Produk Section -->
+        {#if parsedSpecifications.length > 0}
+            <div
+                class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
+            >
+                <h3
+                    class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
+                >
+                    <i class="ti ti-list text-lg" style="color: {primary};"></i>
+                    Spesifikasi Produk
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+                    {#each parsedSpecifications as [label, value]}
+                        <div class="flex py-2.5 border-b border-slate-100/50 text-sm">
+                            <span class="text-slate-400 w-1/3 font-bold uppercase tracking-wider text-[11px] shrink-0">{label}</span>
+                            <span class="text-slate-700 font-semibold">{value}</span>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+        {/if}
+
         <!-- Pengiriman Section -->
         <div
             class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
@@ -2285,30 +2367,115 @@
         </div>
 
         <!-- Ulasan Section -->
-        <div
-            class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7"
-        >
-            <h3
-                class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
-            >
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-7">
+            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5">
                 <i class="ti ti-star text-lg" style="color: {primary};"></i>
                 Ulasan Pembeli
+                {#if reviews.length > 0}
+                    <span class="ml-auto text-xs font-semibold text-slate-500">{reviews.length} ulasan</span>
+                {/if}
             </h3>
-            <div class="text-center py-10">
-                <div
-                    class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-                    style="background:{withOpacity(
-                        primary,
-                        0.06,
-                    )}; color:{primary};"
-                >
-                    <i class="ti ti-star text-2xl"></i>
+
+            {#if reviews.length > 0}
+                {@const avgRating = reviews.reduce((s: number, r: any) => s + Number(r.rating), 0) / reviews.length}
+                <!-- Rating Summary -->
+                <div class="flex items-center gap-5 p-4 rounded-xl mb-5" style="background:{withOpacity(primary, 0.04)}; border: 1px solid {withOpacity(primary, 0.10)};">
+                    <div class="text-center shrink-0">
+                        <p class="text-4xl font-black" style="color:{primary}">{avgRating.toFixed(1)}</p>
+                        <div class="flex items-center gap-0.5 mt-1 justify-center">
+                            {#each [1, 2, 3, 4, 5] as s}
+                                <i class="ti ti-star-filled text-sm" style="color:{s <= Math.round(avgRating) ? '#f59e0b' : '#e2e8f0'};"></i>
+                            {/each}
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-0.5">{reviews.length} ulasan</p>
+                    </div>
+                    <div class="flex-1 space-y-1">
+                        {#each [5, 4, 3, 2, 1] as star}
+                            {@const count = reviews.filter((r: any) => Number(r.rating) === star).length}
+                            {@const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0}
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-semibold text-slate-500 w-3 text-right">{star}</span>
+                                <i class="ti ti-star-filled text-[10px] text-amber-400"></i>
+                                <div class="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all" style="width:{pct}%; background:{primary};"></div>
+                                </div>
+                                <span class="text-[10px] text-slate-400 w-4">{count}</span>
+                            </div>
+                        {/each}
+                    </div>
                 </div>
-                <p class="font-bold text-slate-700 mb-1">Belum ada ulasan</p>
-                <p class="text-sm text-slate-400">
-                    Jadilah yang pertama memberikan ulasan
-                </p>
-            </div>
+
+                <!-- Review list -->
+                <div class="space-y-4">
+                    {#each reviews as review}
+                        <div class="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
+                            <div class="flex items-start gap-3">
+                                <!-- Avatar -->
+                                <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-white text-sm" style="background: linear-gradient(135deg, {primary}, {secondary});">
+                                    {(review.user?.name ?? 'A').charAt(0).toUpperCase()}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="text-sm font-bold text-slate-800">{review.user?.name ?? 'Pembeli'}</span>
+                                        {#if review.product_variant?.options?.length > 0}
+                                            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                                                {review.product_variant.options.map((o: any) => o.value).join(', ')}
+                                            </span>
+                                        {/if}
+                                        <span class="text-[10px] text-slate-400 ml-auto">
+                                            {new Date(review.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <!-- Stars -->
+                                    <div class="flex items-center gap-0.5 mt-1">
+                                        {#each [1, 2, 3, 4, 5] as s}
+                                            <i class="ti ti-star-filled text-xs" style="color:{s <= review.rating ? '#f59e0b' : '#e2e8f0'};"></i>
+                                        {/each}
+                                    </div>
+                                    {#if review.comment}
+                                        <p class="text-sm text-slate-700 mt-2 leading-relaxed">{review.comment}</p>
+                                    {/if}
+                                    <!-- Media -->
+                                    {#if review.media && review.media.length > 0}
+                                        <div class="flex gap-2 mt-2 flex-wrap">
+                                            {#each review.media as mediaUrl}
+                                                {@const isVideo = /\.(mp4|mov|avi|webm)$/i.test(mediaUrl)}
+                                                {#if isVideo}
+                                                    <video
+                                                        src={mediaUrl}
+                                                        class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer"
+                                                        muted
+                                                        playsinline
+                                                        onclick={(e: any) => { const v = e.target as HTMLVideoElement; v.paused ? v.play() : v.pause(); }}
+                                                    ></video>
+                                                {:else}
+                                                    <img
+                                                        src={mediaUrl}
+                                                        alt="Foto ulasan"
+                                                        class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer"
+                                                        onerror={(e: any) => { e.target.style.display = 'none'; }}
+                                                    />
+                                                {/if}
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+            {:else}
+                <div class="text-center py-10">
+                    <div
+                        class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                        style="background:{withOpacity(primary, 0.06)}; color:{primary};"
+                    >
+                        <i class="ti ti-star text-2xl"></i>
+                    </div>
+                    <p class="font-bold text-slate-700 mb-1">Belum ada ulasan</p>
+                    <p class="text-sm text-slate-400">Jadilah yang pertama memberikan ulasan</p>
+                </div>
+            {/if}
         </div>
     </div>
 

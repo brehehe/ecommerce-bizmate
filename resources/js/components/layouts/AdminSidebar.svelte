@@ -28,7 +28,7 @@
     );
 
     $effect(() => {
-        if (isActive('/admin/categories') || isActive('/admin/products')) {
+        if (isActive('/admin/categories') || isActive('/admin/products') || isActive('/admin/master-data/brands')) {
             isCatalogOpen = true;
         }
         if (isActive('/admin/master-data')) {
@@ -300,6 +300,35 @@
                                         : ''}
                                 ></i>
                                 <span>Produk</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/master-data/brands')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/master-data/brands"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/master-data/brands',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/master-data/brands')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-tags text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/master-data/brands')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Brand / Merek</span>
                             </a>
                         </div>
                     </div>
@@ -680,6 +709,37 @@
                                         : ''}
                                 ></i>
                                 <span>Metode Pembayaran</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/master-data/couriers')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/master-data/couriers"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/master-data/couriers',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/master-data/couriers')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-truck text-lg group-hover:scale-110 transition"
+                                    style={isActive(
+                                        '/admin/master-data/couriers',
+                                    )
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Kurir</span>
                             </a>
                         </div>
                     </div>

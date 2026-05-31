@@ -15,6 +15,40 @@
     let rejectNotes = $state('');
     let isUpdating = $state(false);
 
+    // Resi tracking modal state and method
+    let showResiModal = $state(false);
+    let resiInput = $state(transaction.tracking_number ?? '');
+    let courierInput = $state(transaction.courier_name ?? '');
+    let submittingResi = $state(false);
+
+    function submitResi() {
+        if (!resiInput.trim()) {
+            showToast('Nomor resi tidak boleh kosong.', 'error');
+            return;
+        }
+        submittingResi = true;
+        router.post(
+            `/admin/transactions/${transaction.id}/tracking`,
+            {
+                tracking_number: resiInput.trim(),
+                courier_name: courierInput.trim() || null,
+            },
+            {
+                onSuccess: () => {
+                    showToast('Nomor resi berhasil disimpan. Status diubah ke Dikirim.', 'success');
+                    showResiModal = false;
+                },
+                onError: (err: any) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal menyimpan nomor resi.', 'error');
+                },
+                onFinish: () => {
+                    submittingResi = false;
+                },
+            }
+        );
+    }
+
     const paymentMethod = $derived(transaction.payment_method ?? transaction.paymentMethod);
     const customerAddress = $derived(transaction.customer_address ?? transaction.customerAddress);
 
@@ -151,6 +185,32 @@
                     >
                         {statusLabels[transaction.status] ?? transaction.status}
                     </span>
+                    {#if transaction.status !== 'selesai' && transaction.status !== 'batal'}
+                        <button
+                            onclick={() => (showResiModal = true)}
+                            class="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition font-outfit uppercase tracking-wider shadow-lg flex items-center gap-1.5"
+                            style="background:{secondary}; box-shadow: 0 4px 12px -2px {secondary}40;"
+                        >
+                            <i class="ti ti-truck-delivery text-sm"></i>
+                            {transaction.tracking_number ? 'Ubah Resi' : 'Input Resi'}
+                        </button>
+                    {/if}
+                    <a
+                        href="/admin/transactions/{transaction.id}/print-invoice"
+                        target="_blank"
+                        class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 transition font-outfit uppercase tracking-wider shadow-sm flex items-center gap-1.5 hover:bg-slate-50"
+                    >
+                        <i class="ti ti-printer text-sm text-slate-500"></i>Invoice
+                    </a>
+                    {#if transaction.tracking_number}
+                        <a
+                            href="/admin/transactions/{transaction.id}/print-shipping-label"
+                            target="_blank"
+                            class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 transition font-outfit uppercase tracking-wider shadow-sm flex items-center gap-1.5 hover:bg-slate-50"
+                        >
+                            <i class="ti ti-barcode text-sm text-slate-500"></i>Cetak Resi
+                        </a>
+                    {/if}
                     <button
                         onclick={() => (showStatusModal = true)}
                         class="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition font-outfit uppercase tracking-wider shadow-lg flex items-center gap-1.5"
@@ -358,6 +418,15 @@
                                         {/if}
                                     </div>
                                 {/if}
+                                {#if transaction.tracking_number}
+                                    <div class="mt-2 pt-2 border-t border-slate-200/60 text-[11px] text-slate-600">
+                                        <span class="font-bold text-slate-400 uppercase tracking-wider block mb-0.5 text-[9px]">Nomor Resi</span>
+                                        <span class="font-mono font-bold text-slate-800">{transaction.tracking_number}</span>
+                                        {#if transaction.courier_name}
+                                            <span class="text-slate-400 font-semibold"> ({transaction.courier_name})</span>
+                                        {/if}
+                                    </div>
+                                {/if}
                             </div>
                         {/if}
                     </div>
@@ -488,6 +557,69 @@
                         class="flex-1 py-3 rounded-xl text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 transition uppercase tracking-wider font-outfit disabled:opacity-50"
                     >
                         {isUpdating ? 'Memproses...' : 'Tolak'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+    <!-- Input Resi Modal (Single) -->
+    {#if showResiModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" onclick={() => (showResiModal = false)} onkeypress={() => (showResiModal = false)} role="button" tabindex="0">
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+            <div class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm" onclick={(e: any) => e.stopPropagation()} onkeypress={(e: any) => e.stopPropagation()} role="document" tabindex="0">
+                <h3 class="font-outfit font-black text-slate-800 text-lg mb-4 uppercase tracking-wider">Input Nomor Resi</h3>
+                
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70 mb-4">
+                    <i class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"></i>
+                    <p class="text-xs text-orange-700 font-medium leading-relaxed">
+                        Setelah nomor resi disimpan, status transaksi akan <strong>otomatis berubah ke "Dikirim"</strong>.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                            Nomor Resi <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            bind:value={resiInput}
+                            placeholder="Contoh: JNE1234567890"
+                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition font-mono font-bold tracking-wider"
+                            onkeydown={(e) => e.key === 'Enter' && submitResi()}
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                            Nama Kurir <span class="text-slate-300 font-normal normal-case">(opsional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            bind:value={courierInput}
+                            placeholder="Contoh: JNE, J&T, SiCepat"
+                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
+                        />
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-5">
+                    <button onclick={() => (showResiModal = false)} class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition uppercase tracking-wider font-outfit">
+                        Batal
+                    </button>
+                    <button
+                        onclick={submitResi}
+                        disabled={submittingResi || !resiInput.trim()}
+                        class="flex-1 py-3 rounded-xl text-xs font-bold text-white transition uppercase tracking-wider font-outfit disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        style="background:{secondary}"
+                    >
+                        {#if submittingResi}
+                            <i class="ti ti-loader-2 animate-spin text-sm"></i>
+                            Menyimpan...
+                        {:else}
+                            <i class="ti ti-truck-delivery text-sm"></i>
+                            Simpan Resi
+                        {/if}
                     </button>
                 </div>
             </div>

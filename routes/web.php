@@ -70,9 +70,12 @@ Route::middleware('auth')->group(function () {
     // Transaction (Customer)
     Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
     Route::get('/transactions/{transaction}', [StorefrontController::class, 'transactionDetail'])->name('transactions.show');
+    Route::get('/transactions/{transaction}/print-invoice', [StorefrontController::class, 'printInvoice'])->name('transactions.print-invoice-customer');
     Route::post('/transactions/{transaction}/upload-proof', [CheckoutController::class, 'uploadProof'])->name('transactions.upload-proof');
     Route::post('/transactions/{transaction}/cancel', [StorefrontController::class, 'cancelTransaction'])->name('transactions.cancel');
     Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
+    Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
+    Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
@@ -125,6 +128,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::delete('/master-data/payment-methods/{paymentMethod}', [MasterDataController::class, 'destroyPaymentMethod'])->name('master-data.payment-methods.destroy');
     Route::post('/master-data/payment-methods/{paymentMethod}/toggle-active', [MasterDataController::class, 'toggleActivePaymentMethod'])->name('master-data.payment-methods.toggle-active');
 
+    Route::get('/master-data/couriers', [MasterDataController::class, 'couriers'])->name('master-data.couriers');
+    Route::post('/master-data/couriers', [MasterDataController::class, 'storeCourier'])->name('master-data.couriers.store');
+    Route::put('/master-data/couriers/{courier}', [MasterDataController::class, 'updateCourier'])->name('master-data.couriers.update');
+    Route::delete('/master-data/couriers/{courier}', [MasterDataController::class, 'destroyCourier'])->name('master-data.couriers.destroy');
+    Route::post('/master-data/couriers/{courier}/toggle-active', [MasterDataController::class, 'toggleActiveCourier'])->name('master-data.couriers.toggle-active');
+
+    Route::get('/master-data/brands', [MasterDataController::class, 'brands'])->name('master-data.brands');
+    Route::post('/master-data/brands', [MasterDataController::class, 'storeBrand'])->name('master-data.brands.store');
+    Route::put('/master-data/brands/{brand}', [MasterDataController::class, 'updateBrand'])->name('master-data.brands.update');
+    Route::delete('/master-data/brands/{brand}', [MasterDataController::class, 'destroyBrand'])->name('master-data.brands.destroy');
+    Route::post('/master-data/brands/{brand}/toggle-active', [MasterDataController::class, 'toggleActiveBrand'])->name('master-data.brands.toggle-active');
+
     Route::get('/master-data/roles', [MasterDataController::class, 'roles'])->name('master-data.roles');
 
     // Chat (Admin)
@@ -141,6 +156,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('/transactions/{transaction}/status', [AdminTransactionController::class, 'updateStatus'])->name('transactions.update-status');
     Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
     Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
+    Route::post('/transactions/{transaction}/tracking', [AdminTransactionController::class, 'updateTracking'])->name('transactions.update-tracking');
+    Route::post('/transactions/bulk-status', [AdminTransactionController::class, 'bulkStatus'])->name('transactions.bulk-status');
+    Route::post('/transactions/bulk-tracking', [AdminTransactionController::class, 'bulkTracking'])->name('transactions.bulk-tracking');
+    Route::get('/transactions/{transaction}/print-invoice', [AdminTransactionController::class, 'printInvoice'])->name('transactions.print-invoice');
+    Route::get('/transactions/{transaction}/print-shipping-label', [AdminTransactionController::class, 'printShippingLabel'])->name('transactions.print-shipping-label');
 
     // Stock Movements
     Route::get('/stock-movements', [AdminTransactionController::class, 'stockMovements'])->name('stock-movements.index');

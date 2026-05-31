@@ -2,38 +2,30 @@
 
 namespace App\Models;
 
+use Database\Factories\CourierFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Category extends Model
+class Courier extends Model
 {
-    //
+    /** @use HasFactory<CourierFactory> */
+    use HasFactory;
+
     use HasUuids, SoftDeletes;
 
     protected $fillable = [
+        'code',
         'name',
-        'slug',
-        'icon',
-        'image',
-        'parent_id',
+        'is_active',
         'order',
     ];
 
-    public function parent()
-    {
-        return $this->belongsTo(Category::class, 'parent_id');
-    }
-
-    public function children()
-    {
-        return $this->hasMany(Category::class, 'parent_id')->orderBy('order');
-    }
-
-    public function products()
-    {
-        return $this->belongsToMany(Product::class, 'product_categories');
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+        'order' => 'integer',
+    ];
 
     protected static function booted(): void
     {

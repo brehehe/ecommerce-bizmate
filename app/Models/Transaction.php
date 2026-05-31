@@ -18,6 +18,7 @@ class Transaction extends Model
         'user_id',
         'customer_address_id',
         'payment_method_id',
+        'courier_id',
         'status',
         'subtotal',
         'discount_amount',
@@ -35,6 +36,8 @@ class Transaction extends Model
         'notes',
         'cancel_reason',
         'cancelled_at',
+        'tracking_number',
+        'courier_name',
     ];
 
     protected $casts = [
@@ -65,6 +68,30 @@ class Transaction extends Model
             'selesai' => 'Selesai',
             'batal' => 'Batal',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updated(function (Transaction $transaction) {
+            if ($transaction->isDirty('status')) {
+                $description = match ($transaction->status) {
+                    'belum_bayar' => 'Menunggu pembayaran.',
+                    'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',
+                    'diproses' => 'Pesanan sedang diproses.',
+                    'dikemas' => 'Pesanan sedang dikemas.',
+                    'dikirim' => 'Pesanan telah dikirim.',
+                    'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
+                    'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
+                    default => 'Status pesanan diperbarui menjadi: '.$transaction->status,
+                };
+
+                $transaction->statusHistories()->create([
+                    'status' => $transaction->status,
+                    'description' => $description,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+        });
     }
 
     /**
@@ -115,5 +142,15 @@ class Transaction extends Model
     public function stockMovements(): HasMany
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+    public function courier(): BelongsTo
+    {
+        return $this->belongsTo(Courier::class);
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(TransactionStatusHistory::class)->orderBy('created_at', 'asc');
     }
 }

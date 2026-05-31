@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariationOption;
@@ -19,6 +20,9 @@ class ProductController extends Controller
     {
         $query = Product::with([
             'category',
+            'categories',
+            'brandRelation',
+            'brands',
             'productPrice',
             'productStock',
             'tierPrices',
@@ -37,8 +41,26 @@ class ProductController extends Controller
             });
         }
 
-        if ($request->has('category') && $request->get('category') !== 'all') {
-            $query->where('category_id', $request->get('category'));
+        if ($request->filled('category') && $request->get('category') !== 'all') {
+            $categoryParam = $request->get('category');
+            $categoryIds = is_array($categoryParam) ? $categoryParam : explode(',', $categoryParam);
+            $categoryIds = array_filter(array_map('trim', $categoryIds));
+            if (! empty($categoryIds)) {
+                $query->whereHas('categories', function ($q) use ($categoryIds) {
+                    $q->whereIn('categories.id', $categoryIds);
+                });
+            }
+        }
+
+        if ($request->filled('brand') && $request->get('brand') !== 'all') {
+            $brandParam = $request->get('brand');
+            $brandIds = is_array($brandParam) ? $brandParam : explode(',', $brandParam);
+            $brandIds = array_filter(array_map('trim', $brandIds));
+            if (! empty($brandIds)) {
+                $query->whereHas('brands', function ($q) use ($brandIds) {
+                    $q->whereIn('brands.id', $brandIds);
+                });
+            }
         }
 
         if ($request->has('status') && $request->get('status') !== 'all') {
@@ -48,30 +70,58 @@ class ProductController extends Controller
         $products = $query->paginate(10)->withQueryString();
 
         $categories = Category::select('id', 'name')->get();
+        $brands = Brand::select('id', 'name')->orderBy('name')->get();
+
+        $categoryFilter = $request->get('category', []);
+        $categoryFilter = is_array($categoryFilter) ? $categoryFilter : explode(',', $categoryFilter);
+        $categoryFilter = array_filter(array_map('trim', $categoryFilter));
+
+        $brandFilter = $request->get('brand', []);
+        $brandFilter = is_array($brandFilter) ? $brandFilter : explode(',', $brandFilter);
+        $brandFilter = array_filter(array_map('trim', $brandFilter));
 
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
             'categories' => $categories,
-            'filters' => $request->only(['search', 'category', 'status']),
+            'brands' => $brands,
+            'filters' => [
+                'search' => $request->get('search', ''),
+                'category' => array_values($categoryFilter),
+                'brand' => array_values($brandFilter),
+                'status' => $request->get('status', 'all'),
+            ],
         ]);
     }
 
     public function create()
     {
         $categories = Category::select('id', 'name')->get();
+        $brands = Brand::where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('Admin/Products/Create', [
             'categories' => $categories,
+            'brands' => $brands,
         ]);
     }
 
     public function store(Request $request)
     {
         Log::info('Product store request payload', $request->all());
+
+        if ($request->has('category_id') && ! $request->has('category_ids')) {
+            $request->merge(['category_ids' => [$request->input('category_id')]]);
+        }
+        if ($request->has('brand_id') && ! $request->has('brand_ids')) {
+            $request->merge(['brand_ids' => array_filter([$request->input('brand_id')])]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'required|string|max:100|unique:products,sku',
-            'category_id' => 'required|exists:categories,id',
+            'category_ids' => 'required|array|min:1',
+            'category_ids.*' => 'exists:categories,id',
+            'brand_ids' => 'nullable|array',
+            'brand_ids.*' => 'exists:brands,id',
             'brand' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
@@ -82,6 +132,7 @@ class ProductController extends Controller
             'stock_status' => 'nullable|string',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
+            'specifications' => 'nullable|array',
             'weight' => 'nullable|integer|min:0',
             'length' => 'nullable|integer|min:0',
             'width' => 'nullable|integer|min:0',
@@ -96,6 +147,18 @@ class ProductController extends Controller
             'tier_prices.*.min_qty' => 'required|integer|min:2',
             'tier_prices.*.price' => 'required|numeric|min:0',
         ]);
+
+        $categoryIds = $validated['category_ids'];
+        $brandIds = $validated['brand_ids'] ?? [];
+
+        $validated['category_id'] = head($categoryIds);
+        $validated['brand_id'] = head($brandIds) ?: null;
+
+        if (! empty($validated['brand_id'])) {
+            $validated['brand'] = Brand::find($validated['brand_id'])?->name;
+        } else {
+            $validated['brand'] = null;
+        }
 
         $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(5);
         $validated['tax_rate'] = $validated['tax_rate'] ?? 0;
@@ -117,9 +180,15 @@ class ProductController extends Controller
             'variations',
             'variants',
             'tier_prices',
+            'category_ids',
+            'brand_ids',
         ]);
 
         $product = Product::create($productData);
+
+        // Sync many-to-many relationships
+        $product->categories()->sync($categoryIds);
+        $product->brands()->sync($brandIds);
 
         // Create Master Price
         $product->productPrice()->create([
@@ -265,7 +334,7 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $categories = Category::select('id', 'name')->get();
-        // Eager load variations, images, prices, stocks
+        $brands = Brand::orderBy('name')->get();
         $product->load([
             'images',
             'productPrice',
@@ -276,21 +345,35 @@ class ProductController extends Controller
             'variants.productPrice',
             'variants.productStock',
             'variants.tierPrices',
+            'categories',
+            'brands',
         ]);
 
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product,
             'categories' => $categories,
+            'brands' => $brands,
         ]);
     }
 
     public function update(Request $request, Product $product)
     {
         Log::info('Product update request payload', $request->all());
+
+        if ($request->has('category_id') && ! $request->has('category_ids')) {
+            $request->merge(['category_ids' => [$request->input('category_id')]]);
+        }
+        if ($request->has('brand_id') && ! $request->has('brand_ids')) {
+            $request->merge(['brand_ids' => array_filter([$request->input('brand_id')])]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'required|string|max:100|unique:products,sku,'.$product->id,
-            'category_id' => 'required|exists:categories,id',
+            'category_ids' => 'required|array|min:1',
+            'category_ids.*' => 'exists:categories,id',
+            'brand_ids' => 'nullable|array',
+            'brand_ids.*' => 'exists:brands,id',
             'brand' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0',
             'cost' => 'nullable|numeric|min:0',
@@ -301,6 +384,7 @@ class ProductController extends Controller
             'stock_status' => 'nullable|string',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
+            'specifications' => 'nullable|array',
             'weight' => 'nullable|integer|min:0',
             'length' => 'nullable|integer|min:0',
             'width' => 'nullable|integer|min:0',
@@ -315,6 +399,18 @@ class ProductController extends Controller
             'tier_prices.*.min_qty' => 'required|integer|min:2',
             'tier_prices.*.price' => 'required|numeric|min:0',
         ]);
+
+        $categoryIds = $validated['category_ids'];
+        $brandIds = $validated['brand_ids'] ?? [];
+
+        $validated['category_id'] = head($categoryIds);
+        $validated['brand_id'] = head($brandIds) ?: null;
+
+        if (! empty($validated['brand_id'])) {
+            $validated['brand'] = Brand::find($validated['brand_id'])?->name;
+        } else {
+            $validated['brand'] = null;
+        }
 
         if ($product->name !== $validated['name']) {
             $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(5);
@@ -338,9 +434,15 @@ class ProductController extends Controller
             'variants',
             'photos',
             'tier_prices',
+            'category_ids',
+            'brand_ids',
         ]);
 
         $product->update($productData);
+
+        // Sync many-to-many relationships
+        $product->categories()->sync($categoryIds);
+        $product->brands()->sync($brandIds);
 
         // Sync Tier Prices for Master Product
         $product->tierPrices()->delete();

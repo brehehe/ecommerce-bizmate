@@ -4,36 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Category extends Model
+class Brand extends Model
 {
-    //
     use HasUuids, SoftDeletes;
 
     protected $fillable = [
         'name',
         'slug',
-        'icon',
-        'image',
-        'parent_id',
+        'is_active',
         'order',
     ];
 
-    public function parent()
-    {
-        return $this->belongsTo(Category::class, 'parent_id');
-    }
-
-    public function children()
-    {
-        return $this->hasMany(Category::class, 'parent_id')->orderBy('order');
-    }
-
-    public function products()
-    {
-        return $this->belongsToMany(Product::class, 'product_categories');
-    }
+    protected $casts = [
+        'is_active' => 'boolean',
+        'order' => 'integer',
+    ];
 
     protected static function booted(): void
     {
@@ -42,5 +30,10 @@ class Category extends Model
                 $model->order = static::withTrashed()->max('order') + 1;
             }
         });
+    }
+
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'product_brands');
     }
 }

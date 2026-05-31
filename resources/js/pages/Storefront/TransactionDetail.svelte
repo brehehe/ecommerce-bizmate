@@ -7,6 +7,7 @@
         transaction,
         statusLabels = {},
         paymentMethods = [] as any[],
+        userReviews = {} as Record<string, any>,
         storeName = '',
         storeLogo = '',
     } = $props();
@@ -33,10 +34,28 @@
     let selectedPaymentMethodId = $state(transaction?.payment_method_id ?? '');
     let changingPayment = $state(false);
 
+    // Complete order
+    let completingOrder = $state(false);
+
+    // Review modal
+    let showReviewModal = $state(false);
+    let reviewItem: any = $state(null);
+    let reviewRating = $state(0);
+    let reviewHoverRating = $state(0);
+    let reviewComment = $state('');
+    let reviewFiles: File[] = $state([]);
+    let reviewPreviews: { url: string; type: string }[] = $state([]);
+    let submittingReview = $state(false);
+
     const canCancel = $derived(
         ['belum_bayar', 'menunggu'].includes(transaction.status),
     );
     const canChangePayment = $derived(transaction.status === 'belum_bayar');
+    const canCompleteOrder = $derived(transaction.status === 'dikirim');
+    const isCompleted = $derived(transaction.status === 'selesai');
+
+    // Check if mobile action bar should show
+    const hasMobileAction = $derived(canCancel || canChangePayment || canCompleteOrder);
 
     function openCancelModal() {
         cancelReason = '';
@@ -91,6 +110,100 @@
                 },
                 onFinish: () => {
                     changingPayment = false;
+                },
+            },
+        );
+    }
+
+    function completeOrder() {
+        completingOrder = true;
+        router.post(
+            `/transactions/${transaction.id}/complete`,
+            {},
+            {
+                onSuccess: () => {
+                    showToast('Pesanan telah diterima. Terima kasih!', 'success');
+                },
+                onError: () => {
+                    showToast('Gagal mengonfirmasi penerimaan pesanan.', 'error');
+                },
+                onFinish: () => {
+                    completingOrder = false;
+                },
+            },
+        );
+    }
+
+    function isItemReviewed(item: any): boolean {
+        const key = String(item.product_id) + '_' + String(item.product_variant_id ?? '');
+        return !!userReviews[key];
+    }
+
+    function openReviewModal(item: any) {
+        reviewItem = item;
+        reviewRating = 0;
+        reviewHoverRating = 0;
+        reviewComment = '';
+        reviewFiles = [];
+        reviewPreviews = [];
+        showReviewModal = true;
+    }
+
+    function handleReviewFileChange(e: Event) {
+        const input = e.target as HTMLInputElement;
+        if (!input.files) return;
+        const newFiles = Array.from(input.files);
+        for (const file of newFiles) {
+            if (reviewFiles.length >= 5) break;
+            reviewFiles = [...reviewFiles, file];
+            const url = URL.createObjectURL(file);
+            reviewPreviews = [...reviewPreviews, { url, type: file.type.startsWith('video/') ? 'video' : 'image' }];
+        }
+        input.value = '';
+    }
+
+    function removeReviewFile(index: number) {
+        URL.revokeObjectURL(reviewPreviews[index].url);
+        reviewFiles = reviewFiles.filter((_, i) => i !== index);
+        reviewPreviews = reviewPreviews.filter((_, i) => i !== index);
+    }
+
+    function submitReview() {
+        if (reviewRating === 0) {
+            showToast('Pilih bintang penilaian terlebih dahulu.', 'error');
+            return;
+        }
+        submittingReview = true;
+
+        const form = new FormData();
+        form.append('product_id', String(reviewItem.product_id));
+        if (reviewItem.product_variant_id) {
+            form.append('product_variant_id', String(reviewItem.product_variant_id));
+        }
+        form.append('rating', String(reviewRating));
+        if (reviewComment.trim()) {
+            form.append('comment', reviewComment.trim());
+        }
+        for (const file of reviewFiles) {
+            form.append('files[]', file);
+        }
+
+        router.post(
+            `/transactions/${transaction.id}/review`,
+            form as any,
+            {
+                forceFormData: true,
+                onSuccess: () => {
+                    showReviewModal = false;
+                    showToast('Ulasan berhasil dikirim. Terima kasih!', 'success');
+                    reviewPreviews.forEach(p => URL.revokeObjectURL(p.url));
+                },
+                onError: (errors: any) => {
+                    const first = Object.values(errors)[0] as string;
+                    showToast(first ?? 'Gagal mengirim ulasan.', 'error');
+                },
+                onFinish: () => {
+                    submittingReview = false;
                 },
             },
         );
@@ -281,36 +394,55 @@
                         {transaction.transaction_number}
                     </p>
                 </div>
+                <!-- Cetak Invoice Button -->
+                <a
+                    href={`/transactions/${transaction.id}/print-invoice?download=1`}
+                    target="_blank"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold transition active:scale-95 hover:bg-slate-50 shrink-0"
+                    title="Cetak Invoice"
+                >
+                    <i class="ti ti-printer text-base"></i>
+                    <span class="hidden sm:inline">Cetak Invoice</span>
+                </a>
                 <!-- Desktop action buttons (inside header, right side) -->
-                {#if canCancel || canChangePayment}
-                    <div class="hidden md:flex items-center gap-2 shrink-0">
-                        {#if canChangePayment}
-                            <button
-                                onclick={openChangePaymentModal}
-                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:opacity-90"
-                                style="border-color:{primary}; color:{primary};"
-                            >
-                                <i class="ti ti-credit-card text-sm"></i>
-                                Ubah Pembayaran
-                            </button>
-                        {/if}
-                        {#if canCancel}
-                            <button
-                                onclick={openCancelModal}
-                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-red-400 text-red-500 text-xs font-bold transition active:scale-95 hover:bg-red-50"
-                            >
-                                <i class="ti ti-x text-sm"></i>
-                                Batalkan
-                            </button>
-                        {/if}
-                    </div>
-                {/if}
+                <div class="hidden md:flex items-center gap-2 shrink-0">
+                    {#if canCompleteOrder}
+                        <button
+                            onclick={completeOrder}
+                            disabled={completingOrder}
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition active:scale-95 hover:opacity-90 disabled:opacity-60"
+                            style="background:{primary}"
+                        >
+                            <i class="ti ti-circle-check text-sm"></i>
+                            {completingOrder ? 'Memproses...' : 'Pesanan Diterima'}
+                        </button>
+                    {/if}
+                    {#if canChangePayment}
+                        <button
+                            onclick={openChangePaymentModal}
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:opacity-90"
+                            style="border-color:{primary}; color:{primary};"
+                        >
+                            <i class="ti ti-credit-card text-sm"></i>
+                            Ubah Pembayaran
+                        </button>
+                    {/if}
+                    {#if canCancel}
+                        <button
+                            onclick={openCancelModal}
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-red-400 text-red-500 text-xs font-bold transition active:scale-95 hover:bg-red-50"
+                        >
+                            <i class="ti ti-x text-sm"></i>
+                            Batalkan
+                        </button>
+                    {/if}
+                </div>
             </div>
         </div>
 
         <!-- Extra bottom padding on mobile to account for fixed action bar -->
         <div
-            class="max-w-6xl mx-auto px-4 py-4 {canCancel || canChangePayment
+            class="max-w-6xl mx-auto px-4 py-4 {hasMobileAction
                 ? 'pb-28'
                 : 'pb-6'} md:py-6 md:pb-6"
         >
@@ -319,12 +451,9 @@
                 <div class="lg:col-span-2 space-y-4">
                     <!-- Status Banner -->
                     {#if transaction.status === 'batal'}
-                        <!-- Status Banner (Cancelled) -->
                         <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-                            <!-- Red top accent bar -->
                             <div class="h-1 w-full"></div>
                             <div class="p-5">
-                                <!-- Header row: badge + date -->
                                 <div class="flex items-center justify-between mb-4">
                                     <span
                                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold"
@@ -341,7 +470,6 @@
                                     {/if}
                                 </div>
 
-                                <!-- Icon + title -->
                                 <div class="flex items-center gap-4 mb-4">
                                     <div
                                         class="w-14 h-14 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0"
@@ -365,7 +493,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Cancel reason (if any) -->
                                 {#if transaction.cancel_reason}
                                     <div
                                         class="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 flex items-start gap-2.5"
@@ -392,7 +519,6 @@
                     {/if}
 
                     {#if transaction.status !== 'batal'}
-                        <!-- Status Steps -->
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
                         >
@@ -410,11 +536,9 @@
                                 >
                             </div>
 
-                            <!-- Progress Steps -->
                             <div
                                 class="flex items-center justify-between relative"
                             >
-                                <!-- Progress line -->
                                 <div
                                     class="absolute left-4 right-4 top-4 h-0.5 bg-slate-200 z-0"
                                 ></div>
@@ -462,7 +586,77 @@
                                     </div>
                                 {/each}
                             </div>
+
+                            <!-- Complete Order Banner (when status is dikirim) -->
+                            {#if canCompleteOrder}
+                                <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                                        <i class="ti ti-truck-delivery text-orange-500 text-base"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-slate-800 leading-tight">Pesanan sedang dalam pengiriman</p>
+                                        <p class="text-[10px] text-slate-500 leading-relaxed mt-0.5">Jika pesanan sudah tiba, klik tombol "Pesanan Diterima".</p>
+                                    </div>
+                                </div>
+                            {/if}
+
+                            <!-- Order Completed Banner (when status is selesai) -->
+                            {#if isCompleted}
+                                <div class="mt-4 p-3 rounded-xl flex items-center gap-3" style="background:{primary}10; border: 1px solid {primary}30;">
+                                    <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style="background:{primary}20;">
+                                        <i class="ti ti-circle-check text-base" style="color:{primary}"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-slate-800 leading-tight">Pesanan selesai!</p>
+                                        <p class="text-[10px] text-slate-500 leading-relaxed mt-0.5">Terima kasih telah berbelanja. Jangan lupa beri ulasan produknya!</p>
+                                    </div>
+                                </div>
+                            {/if}
                         </div>
+
+                        <!-- Status History Timeline -->
+                        {#if transaction.status_histories && transaction.status_histories.length > 0}
+                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="ti ti-timeline text-base" style="color:{primary}"></i>
+                                    <span class="font-bold text-slate-800 text-sm">Riwayat Status</span>
+                                </div>
+                                <div class="relative">
+                                    <!-- Vertical line -->
+                                    <div class="absolute left-[11px] top-0 bottom-0 w-0.5 bg-slate-100"></div>
+                                    <div class="space-y-3">
+                                        {#each [...transaction.status_histories].reverse() as hist, i}
+                                            {@const histColor = statusColors[hist.status] ?? '#64748b'}
+                                            {@const isLatest = i === 0}
+                                            <div class="flex gap-3 relative">
+                                                <div
+                                                    class="rounded-full border-2 border-white flex items-center justify-center shrink-0 z-10 mt-0.5"
+                                                    style="background:{isLatest ? histColor : '#e2e8f0'}; min-width:22px; min-height:22px; max-width:22px; max-height:22px;"
+                                                >
+                                                    {#if isLatest}
+                                                        <i class="ti ti-circle-filled text-white" style="font-size:6px;"></i>
+                                                    {/if}
+                                                </div>
+                                                <div class="flex-1 min-w-0 pb-1">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span
+                                                            class="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider"
+                                                            style="background:{histColor}18; color:{histColor};"
+                                                        >
+                                                            {statusLabels[hist.status] ?? hist.status}
+                                                        </span>
+                                                        <span class="text-[10px] text-slate-400">{fmtDate(hist.created_at)}</span>
+                                                    </div>
+                                                    {#if hist.description}
+                                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">{hist.description}</p>
+                                                    {/if}
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                </div>
+                            </div>
+                        {/if}
                     {/if}
 
                     <!-- Order Items -->
@@ -482,70 +676,93 @@
                         </div>
                         <div class="divide-y divide-slate-100">
                             {#each transaction.items ?? [] as item}
-                                <div class="px-4 py-3 flex gap-3">
-                                    {#if item.product_image}
-                                        <img
-                                            src={formatImagePath(
-                                                item.product_image,
-                                            )}
-                                            alt={item.product_name}
-                                            class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
-                                            onerror={(e: any) => {
-                                                e.target.src =
-                                                    '/noimage/image.png';
-                                            }}
-                                        />
-                                    {:else}
-                                        <div
-                                            class="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center"
-                                        >
-                                            <i
-                                                class="ti ti-package text-2xl text-slate-300"
-                                            ></i>
-                                        </div>
-                                    {/if}
-                                    <div class="flex-1 min-w-0">
-                                        <p
-                                            class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words"
-                                        >
-                                            {item.product_name}
-                                        </p>
-                                        {#if item.variant_name}
+                                {@const reviewed = isItemReviewed(item)}
+                                <div class="px-4 py-3">
+                                    <div class="flex gap-3">
+                                        {#if item.product_image}
+                                            <img
+                                                src={formatImagePath(
+                                                    item.product_image,
+                                                )}
+                                                alt={item.product_name}
+                                                class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
+                                                onerror={(e: any) => {
+                                                    e.target.src =
+                                                        '/noimage/image.png';
+                                                }}
+                                            />
+                                        {:else}
+                                            <div
+                                                class="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center"
+                                            >
+                                                <i
+                                                    class="ti ti-package text-2xl text-slate-300"
+                                                ></i>
+                                            </div>
+                                        {/if}
+                                        <div class="flex-1 min-w-0">
                                             <p
-                                                class="text-xs text-slate-500 whitespace-pre-wrap break-words"
+                                                class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words"
                                             >
-                                                {item.variant_name}
+                                                {item.product_name}
                                             </p>
-                                        {/if}
-                                        {#if item.is_gift_item}
-                                            <span
-                                                class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 mt-0.5"
-                                                >Gratis</span
-                                            >
-                                        {/if}
-                                        <div
-                                            class="flex items-center justify-between mt-1.5"
-                                        >
-                                            <span class="text-xs text-slate-500"
-                                                >x{item.quantity}</span
-                                            >
-                                            <div class="text-right">
-                                                {#if item.diskon_item > 0}
-                                                    <p
-                                                        class="text-xs text-slate-400 line-through"
-                                                    >
-                                                        {fmt(item.harga_jual)}
-                                                    </p>
-                                                {/if}
+                                            {#if item.variant_name}
                                                 <p
-                                                    class="text-sm font-bold"
-                                                    style="color:{primary}"
+                                                    class="text-xs text-slate-500 whitespace-pre-wrap break-words"
                                                 >
-                                                    {fmt(item.harga_akhir)}
+                                                    {item.variant_name}
                                                 </p>
+                                            {/if}
+                                            {#if item.is_gift_item}
+                                                <span
+                                                    class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 mt-0.5"
+                                                    >Gratis</span
+                                                >
+                                            {/if}
+                                            <div
+                                                class="flex items-center justify-between mt-1.5"
+                                            >
+                                                <span class="text-xs text-slate-500"
+                                                    >x{item.quantity}</span
+                                                >
+                                                <div class="text-right">
+                                                    {#if item.diskon_item > 0}
+                                                        <p
+                                                            class="text-xs text-slate-400 line-through"
+                                                        >
+                                                            {fmt(item.harga_jual)}
+                                                        </p>
+                                                    {/if}
+                                                    <p
+                                                        class="text-sm font-bold"
+                                                        style="color:{primary}"
+                                                    >
+                                                        {fmt(item.harga_akhir)}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Beri Ulasan button for completed orders -->
+                                    {#if isCompleted && !item.is_gift_item}
+                                        <div class="mt-2 flex justify-end">
+                                            {#if reviewed}
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-xl border border-green-200">
+                                                    <i class="ti ti-circle-check text-xs"></i>
+                                                    Sudah Diulas
+                                                </span>
+                                            {:else}
+                                                <button
+                                                    onclick={() => openReviewModal(item)}
+                                                    class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white transition active:scale-95 hover:opacity-90"
+                                                    style="background:{primary}"
+                                                >
+                                                    <i class="ti ti-star text-xs"></i>
+                                                    Beri Ulasan
+                                                </button>
+                                            {/if}
+                                        </div>
+                                    {/if}
                                 </div>
                             {/each}
                         </div>
@@ -567,7 +784,6 @@
                                 >
                             </div>
                             <div class="p-4">
-                                <!-- Bank info -->
                                 <div
                                     class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-3"
                                 >
@@ -756,6 +972,49 @@
                         </div>
                     {/if}
 
+                    <!-- Shipping Information (Resi) -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i class="ti ti-truck-delivery text-base" style="color:{primary}"></i>
+                            <span class="font-bold text-slate-800 text-sm">Informasi Pengiriman</span>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500">Kurir / Layanan</span>
+                                <span class="font-bold text-slate-800 uppercase">
+                                    {transaction.courier_name || transaction.shipping_courier || '-'} 
+                                    {#if transaction.shipping_service}
+                                        ({transaction.shipping_service})
+                                    {/if}
+                                </span>
+                            </div>
+                            
+                            <div class="pt-2 border-t border-slate-100 flex flex-col gap-1">
+                                <span class="text-xs text-slate-500">Nomor Resi</span>
+                                {#if transaction.tracking_number}
+                                    <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 mt-1">
+                                        <span class="font-mono font-bold text-sm text-slate-800 select-all">{transaction.tracking_number}</span>
+                                        <button 
+                                            onclick={() => {
+                                                navigator.clipboard.writeText(transaction.tracking_number);
+                                                showToast('Nomor resi berhasil disalin!', 'success');
+                                            }}
+                                            class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition"
+                                            title="Salin Resi"
+                                        >
+                                            <i class="ti ti-copy text-sm"></i>
+                                        </button>
+                                    </div>
+                                {:else}
+                                    <div class="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 mt-1 text-xs">
+                                        <i class="ti ti-alert-circle text-sm"></i>
+                                        <span class="font-medium">Nomor resi belum tersedia</span>
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Payment Summary -->
                     <div
                         class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
@@ -848,7 +1107,6 @@
                             </div>
                         </div>
 
-                        <!-- Payment Method -->
                         <div
                             class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2"
                         >
@@ -870,7 +1128,6 @@
                         </div>
                     </div>
 
-                    <!-- Notes -->
                     {#if transaction.notes}
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
@@ -897,10 +1154,21 @@
     </div>
 
     <!-- ===== Mobile Fixed Bottom Action Bar ===== -->
-    {#if canCancel || canChangePayment}
+    {#if hasMobileAction}
         <div
             class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-3 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
         >
+            {#if canCompleteOrder}
+                <button
+                    onclick={completeOrder}
+                    disabled={completingOrder}
+                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 disabled:opacity-60"
+                    style="background:{primary}"
+                >
+                    <i class="ti ti-circle-check text-base"></i>
+                    {completingOrder ? 'Memproses...' : 'Pesanan Diterima'}
+                </button>
+            {/if}
             {#if canChangePayment}
                 <button
                     onclick={openChangePaymentModal}
@@ -995,7 +1263,7 @@
         </div>
     {/if}
 
-    <!-- ===== Cancel Order Modal ===== -->
+    <!-- Cancel Order Modal -->
     {#if showCancelModal}
         <div
             class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
@@ -1006,7 +1274,6 @@
                 class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
                 onclick={(e: any) => e.stopPropagation()}
             >
-                <!-- Icon -->
                 <div
                     class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4"
                 >
@@ -1022,7 +1289,6 @@
                     berikan alasan pembatalan.
                 </p>
 
-                <!-- Reason textarea -->
                 <div class="mb-4">
                     <label
                         class="block text-xs font-bold text-slate-700 mb-1.5"
@@ -1062,7 +1328,7 @@
         </div>
     {/if}
 
-    <!-- ===== Change Payment Method Modal ===== -->
+    <!-- Change Payment Method Modal -->
     {#if showChangePaymentModal}
         <div
             class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
@@ -1092,7 +1358,6 @@
                     ini.
                 </p>
 
-                <!-- Payment method list -->
                 <div class="space-y-2 mb-5">
                     {#each paymentMethods as method}
                         <button
@@ -1152,6 +1417,171 @@
                     >
                         {changingPayment ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Beri Ulasan Modal -->
+    {#if showReviewModal && reviewItem}
+        <div
+            class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
+            onclick={() => (showReviewModal = false)}
+        >
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+            <div
+                class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl max-h-[90dvh] overflow-y-auto"
+                onclick={(e: any) => e.stopPropagation()}
+            >
+                <div class="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">Beri Ulasan</h3>
+                        <p class="text-xs text-slate-500 mt-0.5 leading-tight line-clamp-1">{reviewItem.product_name}</p>
+                    </div>
+                    <button
+                        onclick={() => (showReviewModal = false)}
+                        class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition"
+                    >
+                        <i class="ti ti-x text-sm text-slate-600"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-5">
+                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        {#if reviewItem.product_image}
+                            <img
+                                src={formatImagePath(reviewItem.product_image)}
+                                alt={reviewItem.product_name}
+                                class="w-12 h-12 object-cover rounded-lg shrink-0 border border-slate-100"
+                                onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
+                            />
+                        {:else}
+                            <div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center">
+                                <i class="ti ti-package text-slate-400 text-lg"></i>
+                            </div>
+                        {/if}
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-slate-800 leading-tight line-clamp-2">{reviewItem.product_name}</p>
+                            {#if reviewItem.variant_name}
+                                <p class="text-xs text-slate-500 mt-0.5">{reviewItem.variant_name}</p>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-bold text-slate-700 mb-2">Penilaian Produk <span class="text-red-500">*</span></p>
+                        <div class="flex items-center gap-2">
+                            {#each [1, 2, 3, 4, 5] as star}
+                                <button
+                                    onclick={() => (reviewRating = star)}
+                                    onmouseenter={() => (reviewHoverRating = star)}
+                                    onmouseleave={() => (reviewHoverRating = 0)}
+                                    class="text-3xl transition-transform hover:scale-110 active:scale-95"
+                                    style="color:{(reviewHoverRating || reviewRating) >= star ? '#f59e0b' : '#e2e8f0'};"
+                                >
+                                    <i class="ti ti-star-filled"></i>
+                                </button>
+                            {/each}
+                            {#if reviewRating > 0}
+                                <span class="text-xs font-bold text-amber-500 ml-1">
+                                    {reviewRating === 1 ? 'Buruk' : reviewRating === 2 ? 'Kurang' : reviewRating === 3 ? 'Cukup' : reviewRating === 4 ? 'Bagus' : 'Sempurna'}
+                                </span>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-2" for="review-comment">
+                            Ulasan <span class="text-slate-400 font-normal">(opsional)</span>
+                        </label>
+                        <textarea
+                            id="review-comment"
+                            bind:value={reviewComment}
+                            rows="4"
+                            maxlength="1000"
+                            placeholder="Ceritakan pengalaman Anda dengan produk ini..."
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:border-transparent transition leading-relaxed"
+                            style="focus-ring-color:{primary}40;"
+                        ></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1 text-right">{reviewComment.length}/1000</p>
+                    </div>
+
+                    <div>
+                        <p class="text-xs font-bold text-slate-700 mb-2">Foto / Video <span class="text-slate-400 font-normal">(maks. 5 file)</span></p>
+
+                        {#if reviewPreviews.length > 0}
+                            <div class="grid grid-cols-5 gap-2 mb-3">
+                                {#each reviewPreviews as preview, idx}
+                                    <div class="relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group">
+                                        {#if preview.type === 'video'}
+                                            <video
+                                                src={preview.url}
+                                                class="w-full h-full object-cover"
+                                                muted
+                                            ></video>
+                                            <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+                                                <i class="ti ti-player-play text-white text-base"></i>
+                                            </div>
+                                        {:else}
+                                            <img
+                                                src={preview.url}
+                                                alt="Preview {idx + 1}"
+                                                class="w-full h-full object-cover"
+                                            />
+                                        {/if}
+                                        <button
+                                            onclick={() => removeReviewFile(idx)}
+                                            class="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                                        >
+                                            <i class="ti ti-x text-white" style="font-size:9px;"></i>
+                                        </button>
+                                    </div>
+                                {/each}
+                                {#if reviewPreviews.length < 5}
+                                    <button
+                                        onclick={() => (document.getElementById('review-file-input') as HTMLInputElement)?.click()}
+                                        class="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 hover:text-slate-500 transition"
+                                    >
+                                        <i class="ti ti-plus text-lg"></i>
+                                    </button>
+                                {/if}
+                            </div>
+                        {:else}
+                            <button
+                                onclick={() => (document.getElementById('review-file-input') as HTMLInputElement)?.click()}
+                                class="w-full border-2 border-dashed border-slate-200 rounded-xl py-6 flex flex-col items-center gap-2 text-slate-400 hover:border-slate-300 hover:text-slate-500 transition"
+                            >
+                                <i class="ti ti-camera text-2xl"></i>
+                                <p class="text-xs font-semibold">Tambahkan foto atau video</p>
+                                <p class="text-[10px]">JPG, PNG, WEBP, MP4, MOV (maks. 20MB/file)</p>
+                            </button>
+                        {/if}
+                        <input
+                            id="review-file-input"
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp,video/mp4,video/mov,video/avi"
+                            multiple
+                            class="hidden"
+                            onchange={handleReviewFileChange}
+                        />
+                    </div>
+
+                    <div class="flex gap-3 pt-1">
+                        <button
+                            onclick={() => (showReviewModal = false)}
+                            class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            onclick={submitReview}
+                            disabled={submittingReview || reviewRating === 0}
+                            class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 active:scale-95"
+                            style="background:{primary}"
+                        >
+                            {submittingReview ? 'Mengirim...' : 'Kirim Ulasan'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

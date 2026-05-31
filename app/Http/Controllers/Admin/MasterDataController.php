@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
+use App\Models\Courier;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
@@ -356,5 +359,177 @@ class MasterDataController extends Controller
         $paymentMethod->update(['is_active' => ! $paymentMethod->is_active]);
 
         return back()->with('success', 'Status metode pembayaran berhasil diubah.');
+    }
+
+    /**
+     * Display a listing of couriers.
+     */
+    public function couriers(Request $request)
+    {
+        $query = Courier::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('code', 'ilike', "%{$search}%");
+            });
+        }
+
+        $perPage = $request->get('perPage', 10);
+        $couriers = $query->orderBy('order')->paginate($perPage)->withQueryString();
+
+        return Inertia::render('Admin/MasterData/Couriers', [
+            'couriers' => $couriers,
+            'filters' => [
+                'search' => $request->search,
+                'perPage' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created courier.
+     */
+    public function storeCourier(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:50|unique:couriers,code',
+            'name' => 'required|string|max:255',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        Courier::create([
+            'code' => strtolower($validated['code']),
+            'name' => $validated['name'],
+            'is_active' => $request->input('is_active', true),
+        ]);
+
+        return back()->with('success', 'Kurir berhasil ditambahkan.');
+    }
+
+    /**
+     * Update the specified courier.
+     */
+    public function updateCourier(Request $request, Courier $courier)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:50|unique:couriers,code,'.$courier->id,
+            'name' => 'required|string|max:255',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $courier->update([
+            'code' => strtolower($validated['code']),
+            'name' => $validated['name'],
+            'is_active' => $request->input('is_active', $courier->is_active),
+        ]);
+
+        return back()->with('success', 'Kurir berhasil diperbarui.');
+    }
+
+    /**
+     * Remove the specified courier.
+     */
+    public function destroyCourier(Courier $courier)
+    {
+        $courier->delete();
+
+        return back()->with('success', 'Kurir berhasil dihapus.');
+    }
+
+    /**
+     * Toggle active status of courier.
+     */
+    public function toggleActiveCourier(Courier $courier)
+    {
+        $courier->update(['is_active' => ! $courier->is_active]);
+
+        return back()->with('success', 'Status kurir berhasil diubah.');
+    }
+
+    /**
+     * Display a listing of brands.
+     */
+    public function brands(Request $request)
+    {
+        $query = Brand::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('slug', 'ilike', "%{$search}%");
+            });
+        }
+
+        $perPage = $request->get('perPage', 10);
+        $brands = $query->orderBy('order')->orderBy('name')->paginate($perPage)->withQueryString();
+
+        return Inertia::render('Admin/MasterData/Brands', [
+            'brands' => $brands,
+            'filters' => [
+                'search' => $request->search,
+                'perPage' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created brand.
+     */
+    public function storeBrand(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:brands,name',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        Brand::create([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'is_active' => $request->input('is_active', true),
+        ]);
+
+        return back()->with('success', 'Brand berhasil ditambahkan.');
+    }
+
+    /**
+     * Update the specified brand.
+     */
+    public function updateBrand(Request $request, Brand $brand)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:brands,name,'.$brand->id,
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $brand->update([
+            'name' => $validated['name'],
+            'slug' => Str::slug($validated['name']),
+            'is_active' => $request->input('is_active', $brand->is_active),
+        ]);
+
+        return back()->with('success', 'Brand berhasil diperbarui.');
+    }
+
+    /**
+     * Remove the specified brand.
+     */
+    public function destroyBrand(Brand $brand)
+    {
+        $brand->delete();
+
+        return back()->with('success', 'Brand berhasil dihapus.');
+    }
+
+    /**
+     * Toggle active status of brand.
+     */
+    public function toggleActiveBrand(Brand $brand)
+    {
+        $brand->update(['is_active' => ! $brand->is_active]);
+
+        return back()->with('success', 'Status brand berhasil diubah.');
     }
 }

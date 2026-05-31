@@ -464,6 +464,11 @@
     let selectedShippingVoucher = $state<any>(null);
     let selectedDiscountVoucher = $state<any>(null);
     let manualVoucherCode = $state('');
+    let expandedTerms = $state<Record<number, boolean>>({});
+
+    function toggleTerms(id: number) {
+        expandedTerms[id] = !expandedTerms[id];
+    }
 
     const shippingVouchers = $derived(
         activeVouchers.filter((v: any) => v.type === 'voucher_gratis_ongkir')
@@ -2301,9 +2306,10 @@
                                             voucher.id}
 
                                         <div
-                                            class="relative flex items-stretch bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
+                                            class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
                                             class:opacity-60={!minMet}
                                         >
+                                            <div class="relative flex items-stretch">
                                             <!-- Left side color ribbon -->
                                             <div
                                                 class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
@@ -2379,13 +2385,24 @@
                                                 <div
                                                     class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
                                                 >
-                                                    <span
-                                                        class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none shrink-0"
-                                                    >
-                                                        Min. {fmt(
-                                                            voucher.min_purchase,
-                                                        )}
-                                                    </span>
+                                                    <div class="flex items-center gap-1.5 shrink-0">
+                                                        <span
+                                                            class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                        >
+                                                            Min. {fmt(
+                                                                voucher.min_purchase,
+                                                            )}
+                                                        </span>
+                                                        {#if voucher.settings?.terms}
+                                                            <button
+                                                                type="button"
+                                                                onclick={() => toggleTerms(voucher.id)}
+                                                                class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                            >
+                                                                S&K <i class="ti {expandedTerms[voucher.id] ? 'ti-chevron-up' : 'ti-chevron-down'} text-[8px]"></i>
+                                                            </button>
+                                                        {/if}
+                                                    </div>
 
                                                     {#if minMet}
                                                         <button
@@ -2419,6 +2436,12 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        {#if expandedTerms[voucher.id] && voucher.settings?.terms}
+                                            <div class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed">
+                                                {voucher.settings.terms}
+                                            </div>
+                                        {/if}
+                                    </div>
                                     {/each}
                                 </div>
                             </div>
@@ -2449,9 +2472,10 @@
                                             voucher.id}
 
                                         <div
-                                            class="relative flex items-stretch bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
+                                            class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
                                             class:opacity-60={!minMet}
                                         >
+                                            <div class="relative flex items-stretch">
                                             <!-- Left side color ribbon -->
                                             <div
                                                 class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
@@ -2533,13 +2557,24 @@
                                                 <div
                                                     class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
                                                 >
-                                                    <span
-                                                        class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none shrink-0"
-                                                    >
-                                                        Min. {fmt(
-                                                            voucher.min_purchase,
-                                                        )}
-                                                    </span>
+                                                    <div class="flex items-center gap-1.5 shrink-0">
+                                                        <span
+                                                            class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                        >
+                                                            Min. {fmt(
+                                                                voucher.min_purchase,
+                                                            )}
+                                                        </span>
+                                                        {#if voucher.settings?.terms}
+                                                            <button
+                                                                type="button"
+                                                                onclick={() => toggleTerms(voucher.id)}
+                                                                class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                            >
+                                                                S&K <i class="ti {expandedTerms[voucher.id] ? 'ti-chevron-up' : 'ti-chevron-down'} text-[8px]"></i>
+                                                            </button>
+                                                        {/if}
+                                                    </div>
 
                                                     {#if minMet}
                                                         <button
@@ -2573,6 +2608,12 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        {#if expandedTerms[voucher.id] && voucher.settings?.terms}
+                                            <div class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed">
+                                                {voucher.settings.terms}
+                                            </div>
+                                        {/if}
+                                    </div>
                                     {/each}
                                 </div>
                             </div>

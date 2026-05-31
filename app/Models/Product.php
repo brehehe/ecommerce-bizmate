@@ -15,10 +15,12 @@ class Product extends Model
         'slug',
         'sku',
         'category_id',
+        'brand_id',
         'brand',
         'stock_status',
         'summary',
         'description',
+        'specifications',
         'weight',
         'length',
         'width',
@@ -28,6 +30,11 @@ class Product extends Model
         'active',
         'image',
     ];
+
+    public function brandRelation()
+    {
+        return $this->belongsTo(Brand::class, 'brand_id');
+    }
 
     public function productPrice()
     {
@@ -72,10 +79,37 @@ class Product extends Model
         'length' => 'integer',
         'width' => 'integer',
         'height' => 'integer',
+        'specifications' => 'array',
     ];
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'product_categories');
+    }
+
+    public function brands()
+    {
+        return $this->belongsToMany(Brand::class, 'product_brands');
+    }
+
+    /**
+     * Transaction items for this product — used to calculate sold counts.
+     */
+    public function transactionItems()
+    {
+        return $this->hasMany(TransactionItem::class);
+    }
+
+    /**
+     * Reviews for this product.
+     */
+    public function reviews()
+    {
+        return $this->hasMany(ProductReview::class);
     }
 }

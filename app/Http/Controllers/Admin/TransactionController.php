@@ -166,6 +166,137 @@ class TransactionController extends Controller
     }
 
     /**
+     * Update tracking number (resi) and automatically set status to 'dikirim'.
+     */
+    public function updateTracking(Request $request, Transaction $transaction)
+    {
+        if (in_array($transaction->status, ['selesai', 'batal'])) {
+            return back()->with('error', 'Tidak dapat memperbarui resi untuk transaksi yang sudah selesai atau batal.');
+        }
+
+        $request->validate([
+            'tracking_number' => 'required|string|max:100',
+            'courier_name' => 'nullable|string|max:100',
+        ]);
+
+        $transaction->update([
+            'tracking_number' => $request->tracking_number,
+            'courier_name' => $request->courier_name,
+            'status' => 'dikirim',
+        ]);
+
+        return back()->with('success', 'Nomor resi berhasil disimpan. Status diubah ke Dikirim.');
+    }
+
+    /**
+     * Bulk update status of multiple transactions.
+     */
+    public function bulkStatus(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:transactions,id',
+            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,dikirim,selesai,batal',
+            'cancel_reason' => 'nullable|string|max:500',
+        ]);
+
+        $ids = $request->ids;
+        $newStatus = $request->status;
+
+        \DB::transaction(function () use ($ids, $newStatus, $request) {
+            $transactions = Transaction::whereIn('id', $ids)->get();
+
+            foreach ($transactions as $transaction) {
+                // Skip if status is already the same
+                if ($transaction->status === $newStatus) {
+                    continue;
+                }
+
+                // If cancelling, restore stock
+                if ($newStatus === 'batal') {
+                    $this->restoreStock($transaction, $request->user());
+                    $transaction->update([
+                        'status' => $newStatus,
+                        'cancel_reason' => $request->cancel_reason ?: 'Pembatalan massal oleh Admin',
+                        'cancelled_at' => now(),
+                    ]);
+                } else {
+                    $transaction->update(['status' => $newStatus]);
+                }
+            }
+        });
+
+        return back()->with('success', count($ids).' transaksi berhasil diperbarui.');
+    }
+
+    /**
+     * Bulk update tracking numbers and set status to 'dikirim'.
+     */
+    public function bulkTracking(Request $request)
+    {
+        $request->validate([
+            'tracking_data' => 'required|array',
+            'tracking_data.*.id' => 'required|exists:transactions,id',
+            'tracking_data.*.tracking_number' => 'required|string|max:100',
+            'tracking_data.*.courier_name' => 'nullable|string|max:100',
+        ]);
+
+        \DB::transaction(function () use ($request) {
+            foreach ($request->tracking_data as $data) {
+                $transaction = Transaction::findOrFail($data['id']);
+
+                if (in_array($transaction->status, ['selesai', 'batal'])) {
+                    continue;
+                }
+
+                $transaction->update([
+                    'tracking_number' => $data['tracking_number'],
+                    'courier_name' => $data['courier_name'] ?? null,
+                    'status' => 'dikirim',
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Nomor resi untuk '.count($request->tracking_data).' transaksi berhasil disimpan.');
+    }
+
+    /**
+     * Print transaction invoice.
+     */
+    public function printInvoice(Transaction $transaction)
+    {
+        $transaction->load([
+            'user:id,name,email',
+            'customerAddress',
+            'paymentMethod',
+            'items',
+        ]);
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+
+        return view('print.invoice', compact('transaction', 'storeName'));
+    }
+
+    /**
+     * Print transaction shipping label.
+     */
+    public function printShippingLabel(Transaction $transaction)
+    {
+        $transaction->load([
+            'customerAddress',
+            'paymentMethod',
+            'items',
+        ]);
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '-';
+        $storeAddress = Setting::where('key', 'address')->value('value') ?? 'Gudang Utama BIZMATE';
+        $storeCity = Setting::where('key', 'regency_name')->value('value') ?? 'DKI Jakarta';
+
+        return view('print.shipping-label', compact('transaction', 'storeName', 'storePhone', 'storeAddress', 'storeCity'));
+    }
+
+    /**
      * Display stock movements report.
      */
     public function stockMovements(Request $request)

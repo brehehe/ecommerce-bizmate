@@ -12,6 +12,125 @@
     let filterDateTo = $state((filters as any).date_to ?? '');
     let filterSearch = $state((filters as any).search ?? '');
 
+    // Checkbox & Resi modal state
+    let selectedIds: number[] = $state([]);
+    let showResiModal = $state(false);
+    let resiTransactionId = $state<number | null>(null);
+    let resiTransactionNumber = $state('');
+    let resiInput = $state('');
+    let courierInput = $state('');
+    let submittingResi = $state(false);
+
+    // Toast state
+    let toastMsg = $state('');
+    let toastType = $state<'success' | 'error'>('success');
+    let toastVisible = $state(false);
+    let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function showToast(msg: string, type: 'success' | 'error' = 'success') {
+        toastMsg = msg;
+        toastType = type;
+        toastVisible = true;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toastVisible = false; }, 3500);
+    }
+
+    // Bulk status update state and method
+    let bulkStatusValue = $state('');
+    let bulkCancelReason = $state('');
+    let submittingBulkStatus = $state(false);
+
+    // Bulk tracking (resi massal) state
+    let showBulkResiModal = $state(false);
+    let bulkTrackingData = $state<{ id: number; transaction_number: string; tracking_number: string; courier_name: string }[]>([]);
+    let submittingBulkResi = $state(false);
+
+    function submitBulkStatus() {
+        if (!bulkStatusValue) {
+            showToast('Pilih status terlebih dahulu.', 'error');
+            return;
+        }
+
+        if (bulkStatusValue === 'dikirim') {
+            // Open Bulk Resi Modal
+            const selectedTrxs = transactions.data.filter((t: any) => selectedIds.includes(t.id));
+            bulkTrackingData = selectedTrxs.map((t: any) => ({
+                id: t.id,
+                transaction_number: t.transaction_number,
+                tracking_number: t.tracking_number ?? '',
+                courier_name: t.courier_name ?? ''
+            }));
+            showBulkResiModal = true;
+            return;
+        }
+
+        if (bulkStatusValue === 'batal' && !bulkCancelReason.trim()) {
+            showToast('Alasan pembatalan harus diisi.', 'error');
+            return;
+        }
+
+        submittingBulkStatus = true;
+        router.post(
+            '/admin/transactions/bulk-status',
+            {
+                ids: selectedIds,
+                status: bulkStatusValue,
+                cancel_reason: bulkStatusValue === 'batal' ? bulkCancelReason.trim() : null,
+            },
+            {
+                onSuccess: () => {
+                    showToast(`${selectedIds.length} transaksi berhasil diperbarui.`, 'success');
+                    selectedIds = [];
+                    bulkStatusValue = '';
+                    bulkCancelReason = '';
+                },
+                onError: (err: any) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal memperbarui status transaksi.', 'error');
+                },
+                onFinish: () => {
+                    submittingBulkStatus = false;
+                },
+            }
+        );
+    }
+
+    function submitBulkTracking() {
+        const missing = bulkTrackingData.some(d => !d.tracking_number.trim());
+        if (missing) {
+            showToast('Nomor resi untuk seluruh transaksi harus diisi.', 'error');
+            return;
+        }
+
+        submittingBulkResi = true;
+        router.post(
+            '/admin/transactions/bulk-tracking',
+            {
+                tracking_data: bulkTrackingData.map(d => ({
+                    id: d.id,
+                    tracking_number: d.tracking_number.trim(),
+                    courier_name: d.courier_name.trim() || null
+                }))
+            },
+            {
+                onSuccess: () => {
+                    showToast('Nomor resi massal berhasil disimpan.', 'success');
+                    selectedIds = [];
+                    bulkStatusValue = '';
+                    showBulkResiModal = false;
+                    bulkTrackingData = [];
+                },
+                onError: (err: any) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal menyimpan nomor resi massal.', 'error');
+                },
+                onFinish: () => {
+                    submittingBulkResi = false;
+                }
+            }
+        );
+    }
+
     function applyFilters() {
         router.get('/admin/transactions', {
             status: filterStatus || undefined,
@@ -70,6 +189,74 @@
     function setStatusFilter(status: string) {
         filterStatus = status;
         applyFilters();
+    }
+
+    function toggleSelect(id: number) {
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter((x) => x !== id);
+        } else {
+            selectedIds = [...selectedIds, id];
+        }
+    }
+
+    function toggleSelectAll() {
+        const selectableIds = transactions.data
+            .filter((t: any) => t.status !== 'selesai' && t.status !== 'batal')
+            .map((t: any) => t.id);
+            
+        if (selectedIds.length === selectableIds.length) {
+            selectedIds = [];
+        } else {
+            selectedIds = [...selectableIds];
+        }
+    }
+
+    const allSelected = $derived(
+        transactions.data.filter((t: any) => t.status !== 'selesai' && t.status !== 'batal').length > 0 && 
+        selectedIds.length === transactions.data.filter((t: any) => t.status !== 'selesai' && t.status !== 'batal').length
+    );
+
+    function openResiModal(trx: any) {
+        resiTransactionId = trx.id;
+        resiTransactionNumber = trx.transaction_number;
+        resiInput = trx.tracking_number ?? '';
+        courierInput = trx.courier_name ?? '';
+        showResiModal = true;
+    }
+
+    function closeResiModal() {
+        showResiModal = false;
+        resiTransactionId = null;
+        resiInput = '';
+        courierInput = '';
+    }
+
+    function submitResi() {
+        if (!resiInput.trim()) {
+            showToast('Nomor resi tidak boleh kosong.', 'error');
+            return;
+        }
+        submittingResi = true;
+        router.post(
+            `/admin/transactions/${resiTransactionId}/tracking`,
+            {
+                tracking_number: resiInput.trim(),
+                courier_name: courierInput.trim() || null,
+            },
+            {
+                onSuccess: () => {
+                    showToast('Nomor resi berhasil disimpan. Status diubah ke Dikirim.', 'success');
+                    closeResiModal();
+                },
+                onError: (errors: any) => {
+                    const first = Object.values(errors)[0] as string;
+                    showToast(first ?? 'Gagal menyimpan nomor resi.', 'error');
+                },
+                onFinish: () => {
+                    submittingResi = false;
+                },
+            }
+        );
     }
 </script>
 
@@ -178,6 +365,56 @@
                 </div>
             </div>
 
+            <!-- Bulk action bar (when items selected) -->
+            {#if selectedIds.length > 0}
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-md px-5 py-3 flex items-center gap-4 flex-wrap">
+                    <span class="text-sm font-bold text-slate-700">
+                        <i class="ti ti-checkbox text-base mr-1" style="color:{primary}"></i>
+                        {selectedIds.length} transaksi dipilih
+                    </span>
+                    
+                    <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+                    
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubah Status Massal:</span>
+                        <select
+                            bind:value={bulkStatusValue}
+                            class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white"
+                        >
+                            <option value="">-- Pilih Status --</option>
+                            {#each Object.entries(statusLabels) as [key, label]}
+                                <option value={key}>{label as string}</option>
+                            {/each}
+                        </select>
+                        
+                        {#if bulkStatusValue === 'batal'}
+                            <input 
+                                type="text"
+                                bind:value={bulkCancelReason}
+                                placeholder="Alasan batal..."
+                                class="px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white w-48"
+                            />
+                        {/if}
+
+                        <button
+                            onclick={submitBulkStatus}
+                            disabled={submittingBulkStatus || !bulkStatusValue}
+                            class="px-4 py-1.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50"
+                            style="background:{primary}"
+                        >
+                            {submittingBulkStatus ? 'Memproses...' : 'Terapkan'}
+                        </button>
+                    </div>
+
+                    <button
+                        onclick={() => { selectedIds = []; bulkStatusValue = ''; bulkCancelReason = ''; }}
+                        class="text-xs text-slate-400 hover:text-slate-600 font-bold ml-auto"
+                    >
+                        Batalkan Pilihan
+                    </button>
+                </div>
+            {/if}
+
             <!-- Table -->
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
                 {#if transactions.data.length === 0}
@@ -190,35 +427,55 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">
-                                    <th class="py-6 px-6">No. Transaksi</th>
-                                    <th class="py-6 px-6">Customer</th>
-                                    <th class="py-6 px-6">Items</th>
-                                    <th class="py-6 px-6">Total</th>
-                                    <th class="py-6 px-6">Status</th>
-                                    <th class="py-6 px-6">Pembayaran</th>
-                                    <th class="py-6 px-6">Tanggal</th>
-                                    <th class="py-6 px-6 text-center">Aksi</th>
+                                    <th class="py-5 px-4">
+                                        <input
+                                            type="checkbox"
+                                            checked={allSelected}
+                                            onchange={toggleSelectAll}
+                                            class="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-600"
+                                        />
+                                    </th>
+                                    <th class="py-5 px-4">No. Transaksi</th>
+                                    <th class="py-5 px-4">Customer</th>
+                                    <th class="py-5 px-4">Items</th>
+                                    <th class="py-5 px-4">Total</th>
+                                    <th class="py-5 px-4">Status</th>
+                                    <th class="py-5 px-4">Nomor Resi</th>
+                                    <th class="py-5 px-4">Pembayaran</th>
+                                    <th class="py-5 px-4">Tanggal</th>
+                                    <th class="py-5 px-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
                                 {#each transactions.data as trx}
                                     {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
                                     {@const paymentStatus = trx.payment?.status}
-                                    <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100">
-                                        <td class="py-6 px-6">
+                                    {@const isSelected = selectedIds.includes(trx.id)}
+                                    <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected ? 'bg-blue-50/40' : ''}">
+                                        <td class="py-5 px-4">
+                                            {#if trx.status !== 'selesai' && trx.status !== 'batal'}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onchange={() => toggleSelect(trx.id)}
+                                                    class="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-600"
+                                                />
+                                            {/if}
+                                        </td>
+                                        <td class="py-5 px-4">
                                             <p class="font-bold text-slate-800 font-mono text-xs break-all">{trx.transaction_number}</p>
                                         </td>
-                                        <td class="py-6 px-6">
+                                        <td class="py-5 px-4">
                                             <p class="font-bold text-slate-800 whitespace-pre-wrap break-words">{trx.user?.name ?? '-'}</p>
                                             <p class="text-[11px] text-slate-400 font-bold mt-0.5 break-all">{trx.user?.email ?? ''}</p>
                                         </td>
-                                        <td class="py-6 px-6">
+                                        <td class="py-5 px-4">
                                             <span class="text-slate-600 font-bold">{(trx.items ?? []).length} item</span>
                                         </td>
-                                        <td class="py-6 px-6">
+                                        <td class="py-5 px-4">
                                             <span class="font-black text-slate-800">{fmt(trx.grand_total)}</span>
                                         </td>
-                                        <td class="py-6 px-6">
+                                        <td class="py-5 px-4">
                                             <span
                                                 class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider"
                                                 style="background:{statusStyle.bg}; color:{statusStyle.text}"
@@ -226,7 +483,40 @@
                                                 {statusLabels[trx.status] ?? trx.status}
                                             </span>
                                         </td>
-                                        <td class="py-6 px-6">
+                                        <!-- Nomor Resi Column -->
+                                        <td class="py-5 px-4">
+                                            {#if trx.tracking_number}
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="font-bold text-slate-800 text-xs font-mono">{trx.tracking_number}</span>
+                                                    {#if trx.courier_name}
+                                                        <span class="text-[10px] text-slate-400 font-semibold">{trx.courier_name}</span>
+                                                    {/if}
+                                                    {#if trx.status !== 'selesai' && trx.status !== 'batal'}
+                                                        <button
+                                                            onclick={() => openResiModal(trx)}
+                                                            class="text-[10px] font-bold mt-0.5 underline text-left"
+                                                            style="color:{primary}"
+                                                        >
+                                                            Ubah Resi
+                                                        </button>
+                                                    {/if}
+                                                </div>
+                                            {:else}
+                                                {#if trx.status !== 'selesai' && trx.status !== 'batal'}
+                                                    <button
+                                                        onclick={() => openResiModal(trx)}
+                                                        class="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border-2 border-dashed transition hover:bg-orange-50"
+                                                        style="border-color:{secondary}; color:{secondary}"
+                                                    >
+                                                        <i class="ti ti-truck-delivery text-xs"></i>
+                                                        Input Resi
+                                                    </button>
+                                                {:else}
+                                                    <span class="text-xs text-slate-400 font-semibold">Resi tidak tersedia</span>
+                                                {/if}
+                                            {/if}
+                                        </td>
+                                        <td class="py-5 px-4">
                                             {#if paymentStatus === 'confirmed'}
                                                 <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider">Dikonfirmasi</span>
                                             {:else if paymentStatus === 'rejected'}
@@ -237,18 +527,38 @@
                                                 <span class="text-xs text-slate-400 font-bold">Belum ada bukti</span>
                                             {/if}
                                         </td>
-                                        <td class="py-6 px-6">
+                                        <td class="py-5 px-4">
                                             <span class="text-xs text-slate-500 font-bold">{fmtDate(trx.created_at)}</span>
                                         </td>
-                                        <td class="py-6 px-6 text-center">
-                                            <a
-                                                href="/admin/transactions/{trx.id}"
-                                                class="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl text-white transition font-outfit uppercase tracking-wider shadow-md hover:shadow-lg"
-                                                style="background:{primary}; box-shadow: 0 4px 10px -2px {primary}30;"
-                                            >
-                                                <i class="ti ti-eye text-sm"></i>
-                                                Detail
-                                            </a>
+                                        <td class="py-5 px-4 text-center">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <a
+                                                    href="/admin/transactions/{trx.id}"
+                                                    class="inline-flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl text-white transition font-outfit uppercase tracking-wider"
+                                                    style="background:{primary};"
+                                                    title="Detail Transaksi"
+                                                >
+                                                    <i class="ti ti-eye text-sm"></i>
+                                                </a>
+                                                <a
+                                                    href="/admin/transactions/{trx.id}/print-invoice"
+                                                    target="_blank"
+                                                    class="inline-flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition"
+                                                    title="Cetak Invoice"
+                                                >
+                                                    <i class="ti ti-printer text-base"></i>
+                                                </a>
+                                                {#if trx.tracking_number}
+                                                    <a
+                                                        href="/admin/transactions/{trx.id}/print-shipping-label"
+                                                        target="_blank"
+                                                        class="inline-flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition"
+                                                        title="Cetak Resi"
+                                                    >
+                                                        <i class="ti ti-barcode text-base"></i>
+                                                    </a>
+                                                {/if}
+                                            </div>
                                         </td>
                                     </tr>
                                 {/each}
@@ -281,3 +591,214 @@
         </div>
     </div>
 </AdminLayout>
+
+<!-- ═══════════════════════════════════
+     MODAL INPUT NOMOR RESI
+═══════════════════════════════════ -->
+{#if showResiModal}
+    <!-- Backdrop -->
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="background:rgba(15,23,42,0.55); backdrop-filter:blur(4px);"
+        role="dialog"
+        aria-modal="true"
+    >
+        <div
+            class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+            onclick={(e) => e.stopPropagation()}
+            role="presentation"
+        >
+            <!-- Modal header -->
+            <div class="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start gap-4">
+                <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style="background:{secondary}18;">
+                    <i class="ti ti-truck-delivery text-xl" style="color:{secondary}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-outfit font-black text-slate-800 text-base leading-tight">Input Nomor Resi</h3>
+                    <p class="text-xs text-slate-400 font-semibold mt-0.5 truncate">{resiTransactionNumber}</p>
+                </div>
+                <button
+                    onclick={closeResiModal}
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0"
+                >
+                    <i class="ti ti-x text-sm text-slate-500"></i>
+                </button>
+            </div>
+
+            <!-- Modal body -->
+            <div class="px-6 py-5 space-y-4">
+                <!-- Info banner -->
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70">
+                    <i class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"></i>
+                    <p class="text-xs text-orange-700 font-medium leading-relaxed">
+                        Setelah nomor resi disimpan, status transaksi akan <strong>otomatis berubah ke "Dikirim"</strong>.
+                    </p>
+                </div>
+
+                <!-- Nomor Resi -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Nomor Resi <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        bind:value={resiInput}
+                        placeholder="Contoh: JNE1234567890"
+                        class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 transition font-mono font-bold tracking-wider"
+                        style="focus:ring-color:{primary}"
+                        onkeydown={(e) => e.key === 'Enter' && submitResi()}
+                    />
+                </div>
+
+                <!-- Nama Kurir -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                        Nama Kurir <span class="text-slate-300 font-normal normal-case">(opsional)</span>
+                    </label>
+                    <input
+                        type="text"
+                        bind:value={courierInput}
+                        placeholder="Contoh: JNE, JT Express, SiCepat, dll."
+                        class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 transition"
+                    />
+                </div>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="px-6 pb-6 flex gap-3">
+                <button
+                    onclick={closeResiModal}
+                    disabled={submittingResi}
+                    class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition disabled:opacity-50"
+                >
+                    Batal
+                </button>
+                <button
+                    onclick={submitResi}
+                    disabled={submittingResi || !resiInput.trim()}
+                    class="flex-1 py-3 rounded-xl text-white text-sm font-bold transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    style="background:{secondary}; box-shadow: 0 4px 14px -2px {secondary}50;"
+                >
+                    {#if submittingResi}
+                        <i class="ti ti-loader-2 animate-spin text-sm"></i>
+                        Menyimpan...
+                    {:else}
+                        <i class="ti ti-truck-delivery text-sm"></i>
+                        Simpan Resi
+                    {/if}
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Bulk Input Resi Modal (Resi Massal) -->
+{#if showBulkResiModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div 
+            class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onclick={() => { showBulkResiModal = false; }}
+            onkeydown={() => { showBulkResiModal = false; }}
+            role="button"
+            tabindex="0"
+        ></div>
+        <div class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h3 class="font-outfit font-black text-slate-800 text-lg uppercase tracking-wider">Input Resi Massal</h3>
+                    <p class="text-xs text-slate-400 font-semibold mt-0.5">Masukkan nomor resi untuk {bulkTrackingData.length} transaksi yang dipilih.</p>
+                </div>
+                <button
+                    onclick={() => { showBulkResiModal = false; }}
+                    class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0"
+                >
+                    <i class="ti ti-x text-sm text-slate-500"></i>
+                </button>
+            </div>
+
+            <!-- Body (Scrollable table of inputs) -->
+            <div class="p-6 overflow-y-auto space-y-4 flex-1">
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70 mb-2">
+                    <i class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"></i>
+                    <p class="text-xs text-orange-700 font-medium leading-relaxed">
+                        Setelah disimpan, nomor resi masing-masing transaksi akan di-update, dan statusnya otomatis berubah menjadi <strong>"Dikirim"</strong>.
+                    </p>
+                </div>
+
+                <div class="space-y-4">
+                    {#each bulkTrackingData as row, i (row.id)}
+                        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col md:flex-row gap-4 items-start md:items-center">
+                            <div class="flex-1 min-w-0">
+                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">No. Transaksi</span>
+                                <span class="text-xs font-mono font-black text-slate-800 block mt-0.5">{row.transaction_number}</span>
+                            </div>
+                            
+                            <!-- Nomor Resi Input -->
+                            <div class="w-full md:w-48 shrink-0">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                                    Resi <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    bind:value={row.tracking_number}
+                                    placeholder="Resi"
+                                    class="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white"
+                                />
+                            </div>
+
+                            <!-- Courier Name Input -->
+                            <div class="w-full md:w-36 shrink-0">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                                    Kurir
+                                </label>
+                                <input
+                                    type="text"
+                                    bind:value={row.courier_name}
+                                    placeholder="JNE, J&T, etc."
+                                    class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-400 bg-white"
+                                />
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+                <button
+                    onclick={() => { showBulkResiModal = false; }}
+                    disabled={submittingBulkResi}
+                    class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 bg-white text-xs font-bold hover:bg-slate-50 transition disabled:opacity-50 font-outfit uppercase tracking-wider"
+                >
+                    Batal
+                </button>
+                <button
+                    onclick={submitBulkTracking}
+                    disabled={submittingBulkResi || bulkTrackingData.some(d => !d.tracking_number.trim())}
+                    class="flex-1 py-3 rounded-xl text-white text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2 font-outfit uppercase tracking-wider"
+                    style="background:{secondary}; box-shadow: 0 4px 14px -2px {secondary}50;"
+                >
+                    {#if submittingBulkResi}
+                        <i class="ti ti-loader-2 animate-spin text-sm"></i>
+                        Menyimpan...
+                    {:else}
+                        <i class="ti ti-truck-delivery text-sm"></i>
+                        Simpan Semua Resi
+                    {/if}
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Toast notification -->
+{#if toastVisible}
+    <div
+        class="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-bold transition-all duration-300"
+        style="background:{toastType === 'success' ? '#22c55e' : '#ef4444'};"
+    >
+        <i class="ti {toastType === 'success' ? 'ti-circle-check' : 'ti-circle-x'} text-base"></i>
+        {toastMsg}
+    </div>
+{/if}

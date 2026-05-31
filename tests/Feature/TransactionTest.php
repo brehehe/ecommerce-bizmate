@@ -296,3 +296,174 @@ test('admin can filter transactions by status', function () {
         ->has('transactions.data', 0)
     );
 });
+
+test('admin can update transaction tracking number and status becomes dikirim', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.update-tracking', $transaction),
+        [
+            'tracking_number' => 'RESI123456789',
+            'courier_name' => 'JNE Express',
+        ]
+    );
+
+    $response->assertRedirect();
+    $transaction->refresh();
+
+    expect($transaction->status)->toBe('dikirim');
+    expect($transaction->tracking_number)->toBe('RESI123456789');
+    expect($transaction->courier_name)->toBe('JNE Express');
+
+    // Assure status history is recorded
+    $this->assertDatabaseHas('transaction_status_histories', [
+        'transaction_id' => $transaction->id,
+        'status' => 'dikirim',
+    ]);
+});
+
+test('admin cannot update transaction tracking number if status is selesai or batal', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    // Mark as selesai first
+    $transaction->update(['status' => 'selesai']);
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.update-tracking', $transaction),
+        [
+            'tracking_number' => 'RESI123456789',
+            'courier_name' => 'JNE Express',
+        ]
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Tidak dapat memperbarui resi untuk transaksi yang sudah selesai atau batal.');
+
+    $transaction->refresh();
+    expect($transaction->status)->toBe('selesai');
+    expect($transaction->tracking_number)->toBeNull();
+});
+
+test('admin can bulk update transaction status', function () {
+    ['transaction' => $trx1, 'admin' => $admin] = createTestTransaction();
+
+    $trx2 = Transaction::create([
+        'transaction_number' => 'TRX-TEST-00002',
+        'user_id' => $trx1->user_id,
+        'customer_address_id' => $trx1->customer_address_id,
+        'payment_method_id' => $trx1->payment_method_id,
+        'status' => 'belum_bayar',
+        'subtotal' => 100000,
+        'discount_amount' => 0,
+        'shipping_fee' => 15000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 115000,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+    ]);
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.bulk-status'),
+        [
+            'ids' => [$trx1->id, $trx2->id],
+            'status' => 'diproses',
+        ]
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success', '2 transaksi berhasil diperbarui.');
+
+    $trx1->refresh();
+    $trx2->refresh();
+
+    expect($trx1->status)->toBe('diproses');
+    expect($trx2->status)->toBe('diproses');
+});
+
+test('admin can bulk update transaction tracking numbers and status becomes dikirim', function () {
+    ['transaction' => $trx1, 'admin' => $admin] = createTestTransaction();
+
+    $trx2 = Transaction::create([
+        'transaction_number' => 'TRX-TEST-00002',
+        'user_id' => $trx1->user_id,
+        'customer_address_id' => $trx1->customer_address_id,
+        'payment_method_id' => $trx1->payment_method_id,
+        'status' => 'belum_bayar',
+        'subtotal' => 100000,
+        'discount_amount' => 0,
+        'shipping_fee' => 15000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 115000,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+    ]);
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.bulk-tracking'),
+        [
+            'tracking_data' => [
+                [
+                    'id' => $trx1->id,
+                    'tracking_number' => 'RESI111',
+                    'courier_name' => 'JNE',
+                ],
+                [
+                    'id' => $trx2->id,
+                    'tracking_number' => 'RESI222',
+                    'courier_name' => 'J&T',
+                ],
+            ],
+        ]
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success', 'Nomor resi untuk 2 transaksi berhasil disimpan.');
+
+    $trx1->refresh();
+    $trx2->refresh();
+
+    expect($trx1->status)->toBe('dikirim');
+    expect($trx1->tracking_number)->toBe('RESI111');
+    expect($trx1->courier_name)->toBe('JNE');
+
+    expect($trx2->status)->toBe('dikirim');
+    expect($trx2->tracking_number)->toBe('RESI222');
+    expect($trx2->courier_name)->toBe('J&T');
+});
+
+test('admin can print transaction invoice', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    $response = $this->actingAs($admin)->get(route('admin.transactions.print-invoice', $transaction));
+    $response->assertOk();
+    $response->assertViewIs('print.invoice');
+    $response->assertSee($transaction->transaction_number);
+});
+
+test('admin can print shipping label', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    $response = $this->actingAs($admin)->get(route('admin.transactions.print-shipping-label', $transaction));
+    $response->assertOk();
+    $response->assertViewIs('print.shipping-label');
+    $response->assertSee($transaction->transaction_number);
+});
+
+test('customer can print their transaction invoice', function () {
+    ['transaction' => $transaction, 'customer' => $customer] = createTestTransaction();
+
+    $response = $this->actingAs($customer)->get(route('transactions.print-invoice-customer', $transaction));
+    $response->assertOk();
+    $response->assertViewIs('print.invoice');
+    $response->assertSee($transaction->transaction_number);
+});
+
+test('customer cannot print others transaction invoice', function () {
+    ['transaction' => $transaction] = createTestTransaction();
+    $otherCustomer = User::factory()->create();
+
+    $response = $this->actingAs($otherCustomer)->get(route('transactions.print-invoice-customer', $transaction));
+    $response->assertForbidden();
+});

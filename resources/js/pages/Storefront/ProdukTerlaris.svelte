@@ -494,6 +494,13 @@
                                         <p class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1" style="color: {primary};">
                                             {product.name}
                                         </p>
+                                        {#if product.sold_count != null && product.sold_count > 0}
+                                            <p class="text-[9px] text-slate-400 font-medium mb-1">
+                                                {product.sold_count >= 1000
+                                                    ? (product.sold_count / 1000).toFixed(1).replace('.0', '') + 'rb'
+                                                    : product.sold_count}+ terjual
+                                            </p>
+                                        {/if}
                                         <hr class="border-slate-100 my-2" />
                                         <div class="mb-3">
                                             <p class="text-sm sm:text-base font-black leading-tight" style="color: {secondary};">

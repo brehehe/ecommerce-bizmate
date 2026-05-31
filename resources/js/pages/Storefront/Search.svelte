@@ -8,10 +8,12 @@
 
     let {
         categories = [],
+        brands = [],
         products = { data: [], links: [] },
         filters = {
             q: '',
             category: '',
+            brand: '',
             sort: 'latest',
             min_price: '',
             max_price: '',
@@ -34,7 +36,14 @@
         return [catFilter];
     }
 
+    function getBrandsFromFilter(brandFilter: any) {
+        if (!brandFilter) return [];
+        if (Array.isArray(brandFilter)) return brandFilter;
+        return [brandFilter];
+    }
+
     let selectedCategories = $state(getCategoriesFromFilter(filters.category));
+    let selectedBrands = $state(getBrandsFromFilter(filters.brand));
     let selectedSort = $state(filters.sort || 'relevance');
     let minPrice = $state(filters.min_price || '');
     let maxPrice = $state(filters.max_price || '');
@@ -49,6 +58,7 @@
     $effect(() => {
         searchQ = filters.q || '';
         selectedCategories = getCategoriesFromFilter(filters.category);
+        selectedBrands = getBrandsFromFilter(filters.brand);
         selectedSort = filters.sort || 'relevance';
         minPrice = filters.min_price || '';
         maxPrice = filters.max_price || '';
@@ -63,6 +73,7 @@
             {
                 q: searchQ,
                 category: selectedCategories,
+                brand: selectedBrands,
                 sort: selectedSort,
                 min_price: minPrice,
                 max_price: maxPrice,
@@ -78,6 +89,7 @@
     function resetFilters(keepMobileOpen = false) {
         searchQ = '';
         selectedCategories = [];
+        selectedBrands = [];
         selectedSort = 'latest';
         minPrice = '';
         maxPrice = '';
@@ -108,6 +120,16 @@
         }
     }
 
+    function selectBrand(brandSlug: string) {
+        if (selectedBrands.includes(brandSlug)) {
+            selectedBrands = selectedBrands.filter(
+                (slug) => slug !== brandSlug,
+            );
+        } else {
+            selectedBrands = [...selectedBrands, brandSlug];
+        }
+    }
+
     // Di desktop sidebar: toggle dan langsung terapkan filter
     function selectCategoryDesktop(catSlug: string) {
         if (selectedCategories.includes(catSlug)) {
@@ -116,6 +138,17 @@
             );
         } else {
             selectedCategories = [...selectedCategories, catSlug];
+        }
+        applyFilters(false);
+    }
+
+    function selectBrandDesktop(brandSlug: string) {
+        if (selectedBrands.includes(brandSlug)) {
+            selectedBrands = selectedBrands.filter(
+                (slug) => slug !== brandSlug,
+            );
+        } else {
+            selectedBrands = [...selectedBrands, brandSlug];
         }
         applyFilters(false);
     }
@@ -144,6 +177,7 @@
         JSON.stringify({
             q: filters.q,
             category: filters.category,
+            brand: filters.brand,
             sort: filters.sort,
             min_price: filters.min_price,
             max_price: filters.max_price,
@@ -156,6 +190,7 @@
         const newKey = JSON.stringify({
             q: filters.q,
             category: filters.category,
+            brand: filters.brand,
             sort: filters.sort,
             min_price: filters.min_price,
             max_price: filters.max_price,
@@ -415,12 +450,14 @@
                 onclick={() => (showMobileFilters = true)}
                 class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95 flex items-center gap-1
                        {selectedCategories.length > 0 ||
+                selectedBrands.length > 0 ||
                 minPrice ||
                 maxPrice ||
                 promoOnly
                     ? 'text-white border-transparent'
                     : 'bg-white border-slate-200 text-slate-600'}"
                 style={selectedCategories.length > 0 ||
+                selectedBrands.length > 0 ||
                 minPrice ||
                 maxPrice ||
                 promoOnly
@@ -610,6 +647,47 @@
                                         {cat.name}
                                     </span>
                                     {#if selectedCategories.includes(cat.slug || cat.id.toString())}
+                                        <i class="ti ti-check text-xs"></i>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
+                    <!-- Brand Filter -->
+                    <div class="space-y-2.5">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                            >Merek / Brand</span
+                        >
+                        <div
+                            class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
+                        >
+                            {#each brands as brand}
+                                <button
+                                    onclick={() =>
+                                        selectBrandDesktop(
+                                            brand.slug || brand.id.toString(),
+                                        )}
+                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                       {selectedBrands.includes(
+                                        brand.slug || brand.id.toString(),
+                                    )
+                                        ? 'bg-slate-50'
+                                        : 'text-slate-600 hover:text-slate-900'}"
+                                    style={selectedBrands.includes(
+                                        brand.slug || brand.id.toString(),
+                                    )
+                                        ? `color: ${primary};`
+                                        : ''}
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <i class="ti ti-building-store text-sm"></i>
+                                        {brand.name}
+                                    </span>
+                                    {#if selectedBrands.includes(brand.slug || brand.id.toString())}
                                         <i class="ti ti-check text-xs"></i>
                                     {/if}
                                 </button>
@@ -921,6 +999,47 @@
                                             {cat.name}
                                         </span>
                                         {#if selectedCategories.includes(cat.slug || cat.id.toString())}
+                                            <i class="ti ti-check text-xs"></i>
+                                        {/if}
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100 my-5" />
+
+                        <!-- Brand Filter -->
+                        <div class="space-y-2.5">
+                            <span
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                                >Merek / Brand</span
+                            >
+                            <div
+                                class="space-y-1.5 max-h-60 overflow-y-auto pr-1"
+                            >
+                                {#each brands as brand}
+                                    <button
+                                        onclick={() =>
+                                            selectBrand(
+                                                brand.slug || brand.id.toString(),
+                                            )}
+                                        class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                           {selectedBrands.includes(
+                                            brand.slug || brand.id.toString(),
+                                        )
+                                            ? 'bg-slate-50'
+                                            : 'text-slate-600 hover:text-slate-900'}"
+                                        style={selectedBrands.includes(
+                                            brand.slug || brand.id.toString(),
+                                        )
+                                            ? `color: ${primary};`
+                                            : ''}
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <i class="ti ti-building-store text-sm"></i>
+                                            {brand.name}
+                                        </span>
+                                        {#if selectedBrands.includes(brand.slug || brand.id.toString())}
                                             <i class="ti ti-check text-xs"></i>
                                         {/if}
                                     </button>

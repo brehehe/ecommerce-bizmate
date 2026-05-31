@@ -7,11 +7,13 @@
         categories = [],
         featuredProducts = [],
         newProducts = [],
+        bestSellerProducts = [] as any[],
         activeFlashSale = null,
         storeName = '',
         heroBanners: incomingHeroBanners = [],
         sideBanners: incomingSideBanners = [],
         middleWideBanner = null,
+        recentReviews = [] as any[],
     } = $props();
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
@@ -346,7 +348,7 @@
                   })
             : [],
     );
-    const bestSellerProducts = $derived(newProducts.slice(0, 10));
+    // bestSellerProducts is now passed from the server (sorted by real sold count)
 
     // Infinite Scroll State for Hanya Untukmu
     let displayedCount = $state(10);
@@ -883,8 +885,8 @@
                             isReal && isPromo ? product.original_price : 0}
                         {@const discountPercentage =
                             isReal && isPromo ? product.discount_percentage : 0}
-                        {@const rating = fakeRating()}
-                        {@const sold = fakeSold()}
+                        {@const avgRating = isReal ? (product.avg_rating ? Number(product.avg_rating) : null) : null}
+                        {@const reviewCount = isReal ? (product.review_count ?? 0) : 0}
                         <Link
                             href={isReal
                                 ? `/products/${product.slug || product.id}`
@@ -958,13 +960,18 @@
                                         <div
                                             class="flex items-center gap-1 mt-1"
                                         >
-                                            <i
-                                                class="ti ti-star-filled text-amber-500 text-[10px]"
-                                            ></i>
-                                            <span
-                                                class="text-[10px] text-slate-500 font-bold"
-                                                >{rating}</span
-                                            >
+                                            {#if avgRating !== null && reviewCount > 0}
+                                                <i
+                                                    class="ti ti-star-filled text-amber-500 text-[10px]"
+                                                ></i>
+                                                <span
+                                                    class="text-[10px] text-slate-500 font-bold"
+                                                    >{avgRating.toFixed(1)}</span
+                                                >
+                                                <span class="text-[10px] text-slate-400">({reviewCount})</span>
+                                            {:else}
+                                                <span class="text-[10px] text-slate-400 italic">Belum ada ulasan</span>
+                                            {/if}
                                         </div>
                                         <hr class="border-slate-100 my-2" />
                                         <div class="mb-3">
@@ -1073,7 +1080,6 @@
                             isReal && isPromo ? product.original_price : 0}
                         {@const discountPercentage =
                             isReal && isPromo ? product.discount_percentage : 0}
-                        {@const rating = fakeRating()}
                         <Link
                             href={isReal
                                 ? `/products/${product.slug || product.id}`

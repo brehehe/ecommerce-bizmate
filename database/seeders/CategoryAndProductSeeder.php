@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
@@ -769,6 +770,31 @@ class CategoryAndProductSeeder extends Seeder
             ],
         ];
 
+        // Create active Brands based on data
+        $brandNames = [];
+        foreach ($categoriesData as $catData) {
+            foreach ($catData['products'] as $prodData) {
+                if (! empty($prodData['brand'])) {
+                    $brandNames[] = $prodData['brand'];
+                }
+            }
+        }
+        $brandNames = array_unique($brandNames);
+
+        $brandModels = [];
+        $order = 1;
+        foreach ($brandNames as $name) {
+            $slug = Str::slug($name);
+            $brandModels[$name] = Brand::updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'name' => $name,
+                    'is_active' => true,
+                    'order' => $order++,
+                ]
+            );
+        }
+
         // Seed Categories and Products
         foreach ($categoriesData as $catData) {
             // 1. Create Category
@@ -783,12 +809,14 @@ class CategoryAndProductSeeder extends Seeder
             // 2. Create Products for each Category
             foreach ($catData['products'] as $prodData) {
                 $sku = 'SKU-'.strtoupper(Str::random(3)).'-'.rand(1000, 9999);
+                $brandModel = $brandModels[$prodData['brand']] ?? null;
 
                 $product = Product::create([
                     'name' => $prodData['name'],
                     'slug' => Str::slug($prodData['name']).'-'.Str::random(5),
                     'sku' => $sku,
                     'category_id' => $category->id,
+                    'brand_id' => $brandModel?->id,
                     'brand' => $prodData['brand'],
                     'stock_status' => 'in_stock',
                     'summary' => $prodData['summary'],
@@ -801,7 +829,14 @@ class CategoryAndProductSeeder extends Seeder
                     'tax_rate' => 0,
                     'active' => true,
                     'image' => $prodData['image'],
+                    'specifications' => $this->getSpecificationsForProduct($category->slug, $prodData['name']),
                 ]);
+
+                // Sync many-to-many pivots
+                $product->categories()->sync([$category->id]);
+                if ($brandModel) {
+                    $product->brands()->sync([$brandModel->id]);
+                }
 
                 // 3. Create Master Price
                 $product->productPrice()->create([
@@ -906,5 +941,204 @@ class CategoryAndProductSeeder extends Seeder
                 }
             }
         }
+    }
+
+    /**
+     * Generate realistic specifications based on category and product name.
+     */
+    private function getSpecificationsForProduct(string $categorySlug, string $productName): array
+    {
+        if (
+            str_contains($categorySlug, 'elektronik') ||
+            str_contains($categorySlug, 'gadget')
+        ) {
+            return [
+                'Merek' => 'Original Brand',
+                'Model' => $productName,
+                'Kondisi' => 'Baru',
+                'Garansi' => '1 Tahun Resmi',
+                'Warna' => 'Hitam / Putih / Silver',
+                'Kapasitas Baterai' => '5000 mAh',
+                'Daya / Voltase' => '5V / 2A',
+                'Konektivitas' => 'Bluetooth, WiFi, USB-C',
+                'Material' => 'ABS Premium',
+                'Fitur Utama' => 'Hemat Energi & Efisien',
+                'Isi Kemasan' => 'Unit, Kabel, Buku Manual',
+                'Sertifikasi' => 'CE, RoHS',
+                'Negara Asal' => 'Indonesia / China',
+                'Berat' => '500 Gram',
+                'Dimensi' => '20 x 10 x 5 cm',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'komputer') ||
+            str_contains($categorySlug, 'laptop')
+        ) {
+            return [
+                'Processor' => 'Intel Core i5 / AMD Ryzen 5',
+                'RAM' => '16 GB DDR4',
+                'Storage' => '512 GB SSD NVMe',
+                'VGA' => 'Integrated / Dedicated',
+                'Ukuran Layar' => '15.6 Inch Full HD',
+                'Resolusi' => '1920 x 1080',
+                'Sistem Operasi' => 'Windows 11',
+                'Konektivitas' => 'WiFi 6, Bluetooth 5.3',
+                'Port' => 'USB-C, HDMI, USB 3.0',
+                'Kamera' => 'HD Webcam',
+                'Baterai' => '5000 mAh',
+                'Garansi' => '2 Tahun Resmi',
+                'Berat' => '1.8 Kg',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'hp') ||
+            str_contains($categorySlug, 'smartphone')
+        ) {
+            return [
+                'RAM' => '8 GB',
+                'Memori Internal' => '256 GB',
+                'Ukuran Layar' => '6.7 Inch',
+                'Resolusi Layar' => 'FHD+',
+                'Chipset' => 'Snapdragon / MediaTek',
+                'Kamera Belakang' => '50 MP',
+                'Kamera Depan' => '16 MP',
+                'Baterai' => '5000 mAh',
+                'Fast Charging' => '67 Watt',
+                'Dual SIM' => 'Ya',
+                'Jaringan' => '4G / 5G',
+                'Garansi' => '1 Tahun Resmi',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'fashion') ||
+            str_contains($categorySlug, 'pakaian')
+        ) {
+            return [
+                'Bahan' => 'Katun Combed Premium',
+                'Ukuran' => 'S, M, L, XL, XXL',
+                'Warna' => 'Hitam, Putih, Navy, Abu',
+                'Model' => 'Regular Fit',
+                'Jenis Kelamin' => 'Pria / Wanita',
+                'Motif' => 'Polos / Printing',
+                'Ketebalan' => 'Sedang',
+                'Elastisitas' => 'Normal',
+                'Instruksi Cuci' => 'Cuci Air Dingin',
+                'Negara Asal' => 'Indonesia',
+                'Kondisi' => 'Baru',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'sepatu') ||
+            str_contains($categorySlug, 'sandal')
+        ) {
+            return [
+                'Bahan Upper' => 'Kulit Sintetis / Mesh',
+                'Bahan Sole' => 'Phylon / Rubber',
+                'Ukuran' => '39, 40, 41, 42, 43, 44',
+                'Warna' => 'Hitam, Putih, Abu',
+                'Jenis' => 'Casual / Running',
+                'Anti Slip' => 'Ya',
+                'Tinggi Sol' => '3 cm',
+                'Berat' => '800 Gram',
+                'Kelengkapan' => 'Dus Original',
+                'Kondisi' => 'Baru',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'tas')
+        ) {
+            return [
+                'Material' => 'Kulit Sintetis Premium',
+                'Ukuran' => '30 x 15 x 40 cm',
+                'Kapasitas' => '20 Liter',
+                'Jumlah Kompartemen' => '5',
+                'Jenis Penutup' => 'Resleting',
+                'Tali' => 'Adjustable',
+                'Water Resistant' => 'Ya',
+                'Warna' => 'Hitam, Coklat, Navy',
+                'Berat' => '700 Gram',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'kecantikan') ||
+            str_contains($categorySlug, 'kosmetik')
+        ) {
+            return [
+                'Jenis Produk' => 'Skincare / Makeup',
+                'Isi Bersih' => '100 ml',
+                'BPOM' => 'Terdaftar',
+                'Halal' => 'Ya',
+                'Jenis Kulit' => 'Semua Jenis Kulit',
+                'Masa Simpan' => '24 Bulan',
+                'Manfaat' => 'Melembabkan & Menutrisi',
+                'Cara Pakai' => 'Gunakan Secukupnya',
+                'Negara Asal' => 'Indonesia',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'makanan') ||
+            str_contains($categorySlug, 'minuman')
+        ) {
+            return [
+                'Berat Bersih' => '500 Gram',
+                'Jenis Kemasan' => 'Pouch / Botol',
+                'Tanggal Kadaluarsa' => '12 Bulan',
+                'Penyimpanan' => 'Suhu Ruangan',
+                'Komposisi' => 'Bahan Pilihan',
+                'Sertifikasi' => 'Halal',
+                'BPOM / PIRT' => 'Terdaftar',
+                'Asal Produk' => 'Indonesia',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'rumah') ||
+            str_contains($categorySlug, 'furniture')
+        ) {
+            return [
+                'Material' => 'Kayu Solid / MDF',
+                'Dimensi' => '120 x 60 x 75 cm',
+                'Warna' => 'Natural Wood',
+                'Berat' => '20 Kg',
+                'Tahan Air' => 'Ya',
+                'Anti Rayap' => 'Ya',
+                'Perakitan' => 'Knock Down',
+                'Kapasitas Beban' => '100 Kg',
+                'Garansi' => '3 Bulan',
+            ];
+        }
+
+        if (
+            str_contains($categorySlug, 'otomotif')
+        ) {
+            return [
+                'Jenis Produk' => 'Aksesoris Kendaraan',
+                'Material' => 'ABS Premium',
+                'Kompatibilitas' => 'Universal',
+                'Warna' => 'Hitam',
+                'Berat' => '500 Gram',
+                'Pemasangan' => 'Mudah',
+                'Garansi' => '1 Bulan',
+                'Kondisi' => 'Baru',
+            ];
+        }
+
+        return [
+            'Merek' => 'Generic',
+            'Kondisi' => 'Baru',
+            'Garansi' => '7 Hari Toko',
+            'Kualitas' => 'Original',
+            'Berat' => '500 Gram',
+            'Dimensi' => '10 x 10 x 10 cm',
+            'Ketersediaan' => 'Ready Stock',
+            'Negara Asal' => 'Indonesia',
+        ];
     }
 }

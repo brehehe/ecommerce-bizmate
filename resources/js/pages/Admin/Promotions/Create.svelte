@@ -84,6 +84,7 @@
         end_time: '',
         is_active: true,
         settings: {
+            terms: '',
             keep_tier_prices: false,
             max_uses_per_user: '',
             min_qty: 1,
@@ -500,6 +501,146 @@
         { id: 'percentage', name: 'Persentase (%)' },
         { id: 'fixed', name: 'Nominal Tetap (Rp)' },
     ];
+
+    let isTermsManuallyEdited = $state(false);
+
+    function generateAutoTerms() {
+        const rules: string[] = [];
+
+        // 1. Min Purchase
+        if (form.min_purchase && Number(form.min_purchase) > 0) {
+            rules.push(`Minimal pembelian Rp ${Number(form.min_purchase).toLocaleString('id-ID')}.`);
+        }
+
+        // 2. Promotion Type specific conditions
+        if (form.type === 'promo_produk' && form.settings.min_qty && Number(form.settings.min_qty) > 0) {
+            rules.push(`Minimal pembelian ${form.settings.min_qty} qty untuk mendapatkan potongan.`);
+        }
+
+        if (form.type === 'voucher_gratis_ongkir') {
+            if (form.discount_value && Number(form.discount_value) > 0) {
+                rules.push(`Maksimal potongan ongkir sebesar Rp ${Number(form.discount_value).toLocaleString('id-ID')}.`);
+            } else {
+                rules.push(`Potongan ongkir gratis 100%.`);
+            }
+        } else if (form.type !== 'bundling_gift' && form.discount_value && Number(form.discount_value) > 0) {
+            if (form.discount_type === 'percentage') {
+                rules.push(`Mendapatkan diskon sebesar ${form.discount_value}%.`);
+                if (form.max_discount && Number(form.max_discount) > 0) {
+                    rules.push(`Maksimal potongan diskon sebesar Rp ${Number(form.max_discount).toLocaleString('id-ID')}.`);
+                }
+            } else {
+                rules.push(`Mendapatkan potongan diskon sebesar Rp ${Number(form.discount_value).toLocaleString('id-ID')}.`);
+            }
+        }
+
+        // 3. Target Scope (Specific products vs All products)
+        if (form.type === 'bundling_gift') {
+            // Buy items
+            const buyDescriptions: string[] = [];
+            form.settings.bundle.buy_items.forEach((item) => {
+                if (item.product_id) {
+                    const prod = products.find((p) => p.id == item.product_id);
+                    if (prod) {
+                        let name = prod.name;
+                        if (item.product_variant_id && prod.variants) {
+                            const vari = prod.variants.find((v) => v.id == item.product_variant_id);
+                            if (vari) name += ` (${vari.name})`;
+                        }
+                        buyDescriptions.push(`${item.qty}x ${name}`);
+                    }
+                }
+            });
+
+            // Get items
+            const getDescriptions: string[] = [];
+            form.settings.bundle.get_items.forEach((item) => {
+                if (item.product_id) {
+                    const prod = products.find((p) => p.id == item.product_id);
+                    if (prod) {
+                        let name = prod.name;
+                        if (item.product_variant_id && prod.variants) {
+                            const vari = prod.variants.find((v) => v.id == item.product_variant_id);
+                            if (vari) name += ` (${vari.name})`;
+                        }
+                        let discText = '';
+                        if (item.discount_type === 'free') {
+                            discText = 'Gratis';
+                        } else if (item.discount_type === 'percentage') {
+                            discText = `Diskon ${item.discount_value}%`;
+                        } else if (item.discount_type === 'fixed') {
+                            discText = `Potongan Rp ${Number(item.discount_value).toLocaleString('id-ID')}`;
+                        }
+                        getDescriptions.push(`${item.qty}x ${name} (${discText})`);
+                    }
+                }
+            });
+
+            if (buyDescriptions.length > 0 && getDescriptions.length > 0) {
+                rules.push(`Wajib membeli: ${buyDescriptions.join(', ')}.`);
+                rules.push(`Dapatkan bonus/hadiah: ${getDescriptions.join(', ')}.`);
+            }
+        } else if (targetScope === 'specific' && form.items && form.items.length > 0) {
+            const itemNames = form.items.map((item) => {
+                let name = item.product_name;
+                if (item.variant_name && item.variant_name !== 'Tanpa Varian' && item.variant_name !== 'Semua Varian') {
+                    name += ` (${item.variant_name})`;
+                }
+                return name;
+            });
+            
+            if (itemNames.length <= 3) {
+                rules.push(`Hanya berlaku untuk produk: ${itemNames.join(', ')}.`);
+            } else {
+                rules.push(`Hanya berlaku untuk produk terpilih: ${itemNames.slice(0, 3).join(', ')}, dan ${itemNames.length - 3} produk lainnya.`);
+            }
+        } else if (form.type !== 'voucher_belanja' && form.type !== 'voucher_gratis_ongkir' && form.type !== 'promo_toko') {
+            rules.push(`Berlaku untuk semua produk di toko.`);
+        }
+
+        // 4. Stackability
+        if (form.settings.can_stack_with_promos === false) {
+            rules.push(`Promo tidak dapat digabungkan dengan promo/voucher lainnya.`);
+        }
+
+        // 5. Max Uses Per User
+        if (form.settings.max_uses_per_user && Number(form.settings.max_uses_per_user) > 0) {
+            rules.push(`Maksimal penggunaan ${form.settings.max_uses_per_user}x per akun.`);
+        }
+
+        // 6. Quota
+        if (form.quota && Number(form.quota) > 0) {
+            rules.push(`Kuota promo terbatas.`);
+        }
+
+        // 7. General rule
+        rules.push(`Syarat & ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.`);
+
+        return rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
+    }
+
+    $effect(() => {
+        const trigger = {
+            type: form.type,
+            min_purchase: form.min_purchase,
+            max_discount: form.max_discount,
+            discount_type: form.discount_type,
+            discount_value: form.discount_value,
+            targetScope,
+            itemsCount: form.items.length,
+            itemsList: JSON.stringify(form.items.map(item => ({ id: item.product_id, vId: item.product_variant_id }))),
+            can_stack: form.settings.can_stack_with_promos,
+            max_uses: form.settings.max_uses_per_user,
+            quota: form.quota,
+            min_qty: form.settings.min_qty,
+            bundle_buy: JSON.stringify(form.settings.bundle?.buy_items),
+            bundle_get: JSON.stringify(form.settings.bundle?.get_items),
+        };
+
+        if (!isTermsManuallyEdited) {
+            form.settings.terms = generateAutoTerms();
+        }
+    });
 </script>
 
 <svelte:head>
@@ -740,6 +881,40 @@
                             />
                         </div>
                     {/if}
+
+                    <!-- Terms & Conditions (S&K) -->
+                    <div class="pt-4 border-t border-slate-100 mt-4 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label for="promo-terms" class="text-xs font-bold text-slate-600 block">
+                                Syarat & Ketentuan (S&K)
+                            </label>
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    isTermsManuallyEdited = false;
+                                    form.settings.terms = generateAutoTerms();
+                                }}
+                                class="text-[10px] font-black uppercase tracking-wider text-brand-blueRoyal hover:text-blue-800 transition duration-150 flex items-center gap-1.5 focus:outline-none"
+                            >
+                                {#if isTermsManuallyEdited}
+                                    <i class="ti ti-wand text-xs"></i> Buat Otomatis
+                                {:else}
+                                    <span class="text-emerald-600 flex items-center gap-1 font-bold">
+                                        <i class="ti ti-circle-check text-xs"></i> Mengikuti Input (Otomatis)
+                                    </span>
+                                {/if}
+                            </button>
+                        </div>
+                        <Textarea
+                            id="promo-terms"
+                            bind:value={form.settings.terms}
+                            oninput={() => isTermsManuallyEdited = true}
+                            autoHeight={true}
+                            placeholder="Contoh: &#10;1. Berlaku untuk semua metode pembayaran. &#10;2. Berlaku untuk 1x transaksi per akun."
+                            rows={4}
+                            error={form.errors['settings.terms']}
+                        />
+                    </div>
                 </div>
 
 
