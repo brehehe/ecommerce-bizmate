@@ -3,6 +3,8 @@
     import { page, Link, router } from '@inertiajs/svelte';
     import { onMount, onDestroy } from 'svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
+    import { showToast } from '@/utils/toast';
+    import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
 
     let {
         categories = [],
@@ -16,6 +18,37 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const cartCount = $derived(page.props.cartCount || 0);
     const auth = $derived(page.props.auth?.user);
+    const cartButtonStyle = $derived((page.props.settings as any)?.storefront_cart_button_style || 'button');
+
+    let selectedVariantProduct = $state<any>(null);
+    let showVariantModal = $state(false);
+
+    function handleAddToCart(product: any, e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!auth) {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+            return;
+        }
+
+        if (product.variants && product.variants.length > 0) {
+            selectedVariantProduct = product;
+            showVariantModal = true;
+            return;
+        }
+
+        router.post('/cart', {
+            product_id: product.id,
+            product_variant_id: null,
+            quantity: 1,
+        }, {
+            preserveScroll: true,
+            onError: () => {
+                showToast('Gagal menambahkan produk ke keranjang.', 'error');
+            }
+        });
+    }
 
     // Filter states
     let searchQ = $state(filters.q || '');
@@ -233,6 +266,24 @@
         return {
             destroy() {
                 observer.disconnect();
+            }
+        };
+    }
+
+    function directClick(node: HTMLElement, callback: (e: MouseEvent) => void) {
+        let currentCallback = callback;
+        const handler = (e: MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            currentCallback(e);
+        };
+        node.addEventListener('click', handler);
+        return {
+            update(newCallback: (e: MouseEvent) => void) {
+                currentCallback = newCallback;
+            },
+            destroy() {
+                node.removeEventListener('click', handler);
             }
         };
     }
@@ -530,68 +581,87 @@
                             {@const originalPrice = isPromo ? product.original_price : 0}
                             {@const discountPercentage = isPromo ? product.discount_percentage : 0}
 
-                            <Link
-                                href={`/products/${product.slug || product.id}`}
-                                prefetch
-                                class="group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition cursor-pointer flex flex-col h-full"
-                            >
-                                <div class="relative aspect-square overflow-hidden border-b border-slate-50">
-                                    {#if img}
-                                        <img
-                                            src={img}
-                                            alt={product.name}
-                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                            onerror={(e) => {
-                                                e.currentTarget.src = '/noimage/image.png';
-                                            }}
-                                        />
-                                    {:else}
-                                        <img
-                                            src="/noimage/image.png"
-                                            alt="No Image"
-                                            class="w-full h-full object-cover"
-                                        />
-                                    {/if}
-                                    {#if isPromo && discountPercentage > 0}
-                                        <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                            style="background-color: {secondary};"
-                                        >
-                                            -{discountPercentage}%
-                                        </span>
-                                    {/if}
-                                </div>
-                                <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
-                                    <div>
-                                        <p class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1" style="color: {primary};">
-                                            {product.category?.name || 'PRODUK'}
-                                        </p>
-                                        <p class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1" style="color: {primary};">
-                                            {product.name}
-                                        </p>
-                                        <hr class="border-slate-100 my-2" />
-                                        <div class="mb-3">
-                                            <p class="text-sm sm:text-base font-black leading-tight" style="color: {secondary};">
-                                                {formatPrice(price)}
+                            <div class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full">
+                                <Link
+                                    href={`/products/${product.slug || product.id}`}
+                                    prefetch
+                                    class="flex flex-col flex-1 cursor-pointer"
+                                >
+                                    <div class="relative aspect-square overflow-hidden border-b border-slate-50">
+                                        {#if img}
+                                            <img
+                                                src={img}
+                                                alt={product.name}
+                                                class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                                onerror={(e) => {
+                                                    e.currentTarget.src = '/noimage/image.png';
+                                                }}
+                                            />
+                                        {:else}
+                                            <img
+                                                src="/noimage/image.png"
+                                                alt="No Image"
+                                                class="w-full h-full object-cover"
+                                            />
+                                        {/if}
+                                        {#if isPromo && discountPercentage > 0}
+                                            <span
+                                                class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                style="background-color: {secondary};"
+                                            >
+                                                -{discountPercentage}%
+                                            </span>
+                                        {/if}
+                                    </div>
+                                    <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <p class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1" style="color: {primary};">
+                                                {product.category?.name || 'PRODUK'}
                                             </p>
-                                            {#if isPromo && originalPrice > price}
-                                                <p class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5">
-                                                    {formatPrice(originalPrice)}
+                                            <p class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1" style="color: {primary};">
+                                                {product.name}
+                                            </p>
+                                            <hr class="border-slate-100 my-2" />
+                                            <div class="mb-1">
+                                                <p class="text-sm sm:text-base font-black leading-tight" style="color: {secondary};">
+                                                    {formatPrice(price)}
                                                 </p>
-                                            {/if}
+                                                {#if isPromo && originalPrice > price}
+                                                    <p class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5">
+                                                        {formatPrice(originalPrice)}
+                                                    </p>
+                                                {/if}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="pt-3">
-                                        <span
-                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                </Link>
+                                <!-- Cart buttons OUTSIDE Link to prevent Inertia navigation -->
+                                {#if cartButtonStyle === 'icon'}
+                                    <button
+                                        type="button"
+                                        onclick={(e) => handleAddToCart(product, e)}
+                                        class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
+                                        style="border-color: {primary}; color: {primary};"
+                                        title="Tambah ke Keranjang"
+                                    >
+                                        <i class="ti ti-plus text-base font-black"></i>
+                                    </button>
+                                {/if}
+                                {#if cartButtonStyle === 'button'}
+                                    <div class="px-2.5 pb-2.5">
+                                        <button
+                                            type="button"
+                                            onclick={(e) => handleAddToCart(product, e)}
+                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] cursor-pointer"
                                             style="background-color: {primary};"
+                                            title="Tambah ke Keranjang"
                                         >
                                             <i class="ti ti-shopping-cart text-xs sm:text-sm"></i>
                                             + KERANJANG
-                                        </span>
+                                        </button>
                                     </div>
-                                </div>
-                            </Link>
+                                {/if}
+                            </div>
                         {/each}
                     </div>
 
@@ -724,4 +794,13 @@
     {/if}
 
     </div><!-- end full-height wrapper -->
+
+    <VariantSelectorModal
+        product={selectedVariantProduct}
+        show={showVariantModal}
+        onClose={() => (showVariantModal = false)}
+        primary={primary}
+        secondary={secondary}
+        user={auth}
+    />
 </StorefrontLayout>

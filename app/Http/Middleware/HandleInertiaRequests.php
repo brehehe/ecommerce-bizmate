@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
         $storeLogo = null;
 
         $setupTourCompleted = false;
+        $cartButtonStyle = 'button';
 
         try {
             if (Schema::hasTable('settings')) {
@@ -60,6 +61,7 @@ class HandleInertiaRequests extends Middleware
                 $storeName = Setting::where('key', 'store_name')->value('value') ?? $storeName;
                 $storeLogo = Setting::where('key', 'store_logo')->value('value');
                 $setupTourCompleted = Setting::where('key', 'setup_tour_completed')->value('value') === '1';
+                $cartButtonStyle = Setting::where('key', 'storefront_cart_button_style')->value('value') ?? 'button';
             }
         } catch (\Throwable $e) {
             // Fallback when database is not ready
@@ -89,6 +91,7 @@ class HandleInertiaRequests extends Middleware
                 'store_name' => $storeName,
                 'store_logo' => $storeLogo,
                 'setup_tour_completed' => $setupTourCompleted,
+                'storefront_cart_button_style' => $cartButtonStyle,
             ],
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)

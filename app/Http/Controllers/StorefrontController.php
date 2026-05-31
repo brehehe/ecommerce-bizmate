@@ -44,6 +44,7 @@ class StorefrontController extends Controller
             'variants.productPrice',
             'variants.options',
             'variants.productStock',
+            'variations.options',
         ])
             ->where('active', true)
             ->latest()
@@ -58,6 +59,7 @@ class StorefrontController extends Controller
             'variants.productPrice',
             'variants.options',
             'variants.productStock',
+            'variations.options',
         ])
             ->where('active', true)
             ->latest()
@@ -76,7 +78,16 @@ class StorefrontController extends Controller
             ->all();
 
         // Load best-seller products with avg_rating and review count
-        $bestSellerProducts = Product::with(['category', 'productPrice', 'productStock', 'images'])
+        $bestSellerProducts = Product::with([
+            'category',
+            'productPrice',
+            'productStock',
+            'images',
+            'variants.productPrice',
+            'variants.options',
+            'variants.productStock',
+            'variations.options',
+        ])
             ->withAvg('reviews as avg_rating', 'rating')
             ->withCount('reviews as review_count')
             ->where('active', true)
@@ -88,7 +99,16 @@ class StorefrontController extends Controller
         // If there are fewer than 10 best sellers, pad with latest active products
         if ($bestSellerProducts->count() < 10) {
             $excludeIds = $bestSellerProducts->pluck('id')->all();
-            $pad = Product::with(['category', 'productPrice', 'productStock', 'images'])
+            $pad = Product::with([
+                'category',
+                'productPrice',
+                'productStock',
+                'images',
+                'variants.productPrice',
+                'variants.options',
+                'variants.productStock',
+                'variations.options',
+            ])
                 ->withAvg('reviews as avg_rating', 'rating')
                 ->withCount('reviews as review_count')
                 ->where('active', true)
@@ -190,7 +210,15 @@ class StorefrontController extends Controller
 
         $product->sold_count = (int) $soldCount;
 
-        $relatedProducts = Product::with(['productPrice', 'images', 'category'])
+        $relatedProducts = Product::with([
+            'productPrice',
+            'images',
+            'category',
+            'variants.productPrice',
+            'variants.options',
+            'variants.productStock',
+            'variations.options',
+        ])
             ->where('active', true)
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
@@ -710,6 +738,7 @@ class StorefrontController extends Controller
             'variants.productPrice',
             'variants.options',
             'variants.productStock',
+            'variations.options',
         ])
             ->where('active', true);
 
@@ -987,6 +1016,7 @@ class StorefrontController extends Controller
                     'variants.productPrice',
                     'variants.options',
                     'variants.productStock',
+                    'variations.options',
                 ])
                     ->where('active', true)
                     ->get();
@@ -1159,6 +1189,7 @@ class StorefrontController extends Controller
             'variants.productPrice',
             'variants.options',
             'variants.productStock',
+            'variations.options',
         ])
             ->where('active', true);
 
@@ -1336,6 +1367,7 @@ class StorefrontController extends Controller
             'variants.productPrice',
             'variants.options',
             'variants.productStock',
+            'variations.options',
         ])
             ->where('active', true)
             ->where('category_id', $categoryModel->id);
