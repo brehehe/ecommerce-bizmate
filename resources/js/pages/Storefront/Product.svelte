@@ -1469,14 +1469,20 @@
                                                 />
                                             </div>
                                         {:else if slide.type === '3d'}
-                                            <div class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20">
+                                            <!-- Stop touch propagation to scroll-snap container so model-viewer
+                                                 can receive gestures for orbit/rotate/zoom -->
+                                            <div
+                                                class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20"
+                                                ontouchstart={(e) => e.stopPropagation()}
+                                                ontouchmove={(e) => e.stopPropagation()}
+                                            >
                                                 <model-viewer
                                                     src={formatImagePath(slide.path)}
                                                     camera-controls
                                                     auto-rotate
                                                     interaction-prompt="auto"
                                                     class="w-full h-full relative z-20 bg-slate-50"
-                                                    style="--poster-color: transparent; background-color: #f8fafc;"
+                                                    style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                                 >
                                                     <!-- Buka Kamera AR — centered at bottom -->
                                                     <div class="absolute bottom-4 left-0 right-0 flex justify-center z-30">
@@ -1860,7 +1866,7 @@
                                         auto-rotate
                                         interaction-prompt="auto"
                                         class="w-full h-full relative z-20 bg-slate-50"
-                                        style="--poster-color: transparent; background-color: #f8fafc;"
+                                        style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                     >
                                         <!-- Buka Kamera AR — centered at bottom -->
                                         <div class="absolute bottom-4 left-0 right-0 flex justify-center z-30">
@@ -3469,7 +3475,7 @@
                 auto-rotate
                 interaction-prompt="auto"
                 class="absolute inset-0 w-full h-full"
-                style="--poster-color: transparent; background-color: transparent;"
+                style="--poster-color: transparent; background-color: transparent; touch-action: none;"
             >
             </model-viewer>
 
