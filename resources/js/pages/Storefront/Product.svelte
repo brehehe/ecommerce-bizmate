@@ -340,15 +340,11 @@
                     video: { facingMode: 'environment' },
                     audio: false
                 });
+                // Set stream BEFORE isWebcamActive so the $effect below can pick it up
+                // after the video elements are rendered into the DOM.
                 webcamStream = stream;
-                
-                if (webcamVideoElementMobile) {
-                    webcamVideoElementMobile.srcObject = stream;
-                }
-                if (webcamVideoElementDesktop) {
-                    webcamVideoElementDesktop.srcObject = stream;
-                }
-                
+                // isWebcamActive=true renders the <video> elements; the $effect below
+                // then assigns srcObject once the elements exist.
                 isWebcamActive = true;
             } catch (err) {
                 console.error('Gagal mengakses kamera:', err);
@@ -356,6 +352,24 @@
             }
         }
     }
+
+    /**
+     * Whenever webcamStream changes AND the video elements are available in the DOM
+     * (which happens after isWebcamActive becomes true), assign srcObject.
+     */
+    $effect(() => {
+        const stream = webcamStream;
+        const mobile = webcamVideoElementMobile;
+        const desktop = webcamVideoElementDesktop;
+        if (stream) {
+            if (mobile && mobile.srcObject !== stream) {
+                mobile.srcObject = stream;
+            }
+            if (desktop && desktop.srcObject !== stream) {
+                desktop.srcObject = stream;
+            }
+        }
+    });
 
     function stopWebcam() {
         if (webcamStream) {
@@ -1608,9 +1622,9 @@
                                     {/each}
                                 </div>
 
-                                <!-- Fractional counter -->
+                                <!-- Fractional counter — top-right to avoid overlap with AR/camera buttons at bottom -->
                                 <div
-                                    class="absolute bottom-4 right-4 bg-black/50 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm select-none z-30"
+                                    class="absolute top-3 right-3 bg-black/50 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-sm select-none z-30"
                                 >
                                     {activeSlideIdx + 1}/{combinedSlides.length}
                                 </div>
