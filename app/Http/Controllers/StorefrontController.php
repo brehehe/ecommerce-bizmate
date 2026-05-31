@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Notification;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductReview;
@@ -1913,5 +1914,41 @@ class StorefrontController extends Controller
             ->sum('promo_quantity_used');
 
         return max(0, $promoItem->promo_stock - $soldPromoQty);
+    }
+
+    /**
+     * Mark a specific notification as read.
+     */
+    public function markNotificationAsRead(Request $request, Notification $notification): RedirectResponse
+    {
+        if ($notification->user_id === null) {
+            if (! $request->user()->hasAnyRole(['Super Admin', 'Admin Penjualan', 'Admin Toko'])) {
+                abort(403);
+            }
+        } elseif ($notification->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        $notification->update(['is_read' => true]);
+
+        return redirect()->back();
+    }
+
+    /**
+     * Mark all notifications of the user as read.
+     */
+    public function markAllNotificationsAsRead(Request $request): RedirectResponse
+    {
+        if ($request->user()->hasAnyRole(['Super Admin', 'Admin Penjualan', 'Admin Toko'])) {
+            Notification::whereNull('user_id')
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+        } else {
+            Notification::where('user_id', $request->user()->id)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
+        }
+
+        return redirect()->back();
     }
 }

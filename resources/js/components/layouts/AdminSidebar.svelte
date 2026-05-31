@@ -2,7 +2,7 @@
     import { usePage, router, inertia } from '@inertiajs/svelte';
     import { fade, slide } from 'svelte/transition';
 
-    let { isSidebarOpen = false } = $props();
+    let { isSidebarOpen = false, isTourActive = false } = $props();
 
     const page = usePage();
 
@@ -12,6 +12,13 @@
     let isReportsOpen = $state(false);
     let isCmsOpen = $state(false);
     const user = $derived(page.props.auth?.user);
+
+    const adminNotifications = $derived((page.props as any).adminNotifications);
+    const totalNewTransactions = $derived(
+        (adminNotifications?.transactionCounts?.belum_bayar || 0) +
+            (adminNotifications?.transactionCounts?.menunggu || 0) +
+            (adminNotifications?.transactionCounts?.diproses || 0),
+    );
 
     const handleLogout = () => {
         router.post('/logout');
@@ -28,7 +35,19 @@
     );
 
     $effect(() => {
-        if (isActive('/admin/categories') || isActive('/admin/products') || isActive('/admin/master-data/brands')) {
+        if (isTourActive) {
+            isCatalogOpen = true;
+            isMasterDataOpen = true;
+            isReportsOpen = true;
+            isCmsOpen = true;
+            return;
+        }
+
+        if (
+            isActive('/admin/categories') ||
+            isActive('/admin/products') ||
+            isActive('/admin/master-data/brands')
+        ) {
             isCatalogOpen = true;
         }
         if (isActive('/admin/master-data')) {
@@ -134,7 +153,7 @@
                 <span class="flex-1 flex items-center justify-between min-w-0">
                     <span class="truncate">Chat</span>
                     {#if (page.props as any).adminChatUnreadCount > 0}
-                        <span 
+                        <span
                             class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0"
                             style="background-color: {secondaryColor};"
                         >
@@ -143,7 +162,7 @@
                     {/if}
                 </span>
             </a>
-        </div>  
+        </div>
         <div
             class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-8"
         >
@@ -175,7 +194,17 @@
                             ? `color: ${primaryColor};`
                             : ''}
                     ></i>
-                    <span>Transaksi</span>
+                    <span class="flex-grow flex items-center justify-between">
+                        <span>Transaksi</span>
+                        {#if totalNewTransactions > 0}
+                            <span
+                                class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0 font-sans"
+                                style="background-color: {secondaryColor};"
+                            >
+                                {totalNewTransactions}
+                            </span>
+                        {/if}
+                    </span>
                 </a>
             </div>
             <div class="relative">
@@ -275,35 +304,6 @@
                         </div>
 
                         <div class="relative">
-                            {#if isActive('/admin/products')}
-                                <div
-                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
-                                    style="background-color: {secondaryColor};"
-                                ></div>
-                            {/if}
-                            <a
-                                href="/admin/products"
-                                use:inertia
-                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
-                                    '/admin/products',
-                                )
-                                    ? 'bg-slate-50 font-bold'
-                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
-                                style={isActive('/admin/products')
-                                    ? `color: ${primaryColor};`
-                                    : ''}
-                            >
-                                <i
-                                    class="ti ti-list text-lg group-hover:scale-110 transition"
-                                    style={isActive('/admin/products')
-                                        ? `color: ${primaryColor};`
-                                        : ''}
-                                ></i>
-                                <span>Produk</span>
-                            </a>
-                        </div>
-
-                        <div class="relative">
                             {#if isActive('/admin/master-data/brands')}
                                 <div
                                     class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
@@ -329,6 +329,35 @@
                                         : ''}
                                 ></i>
                                 <span>Brand / Merek</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/products')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/products"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/products',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/products')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-list text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/products')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Produk</span>
                             </a>
                         </div>
                     </div>
@@ -509,7 +538,9 @@
                             >
                                 <i
                                     class="ti ti-calculator text-lg group-hover:scale-110 transition"
-                                    style={isActive('/admin/reports/profit-loss')
+                                    style={isActive(
+                                        '/admin/reports/profit-loss',
+                                    )
                                         ? `color: ${primaryColor};`
                                         : ''}
                                 ></i>
@@ -696,7 +727,9 @@
                                 )
                                     ? 'bg-slate-50 font-bold'
                                     : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
-                                style={isActive('/admin/master-data/payment-methods')
+                                style={isActive(
+                                    '/admin/master-data/payment-methods',
+                                )
                                     ? `color: ${primaryColor};`
                                     : ''}
                             >
@@ -854,7 +887,7 @@
                 class="absolute bottom-full left-4 right-4 mb-2 bg-white border border-slate-200 rounded-xl shadow-lg shadow-slate-200/50 py-2 z-50"
             >
                 <a
-                    href="/admin/settings"
+                    href="/admin/profile"
                     use:inertia
                     class="flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition"
                 >

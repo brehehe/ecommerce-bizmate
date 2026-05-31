@@ -42,4 +42,14 @@ class SettingController extends Controller
 
         return redirect()->back()->with('success', 'Pengaturan berhasil disimpan.');
     }
+
+    public function completeTour()
+    {
+        Setting::updateOrCreate(
+            ['key' => 'setup_tour_completed'],
+            ['value' => '1']
+        );
+
+        return redirect()->route('admin.dashboard')->with('success', 'Setup awal toko berhasil diselesaikan!');
+    }
 }

@@ -15,6 +15,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAddressController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::post('/cart/select-vouchers', [CartController::class, 'selectVouchers'])->name('cart.select-vouchers');
+
+    // Customer Profile Edit
+    Route::get('/profile', [ProfileController::class, 'showCustomerProfile'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'updateCustomerProfile'])->name('profile.update');
 
     // Customer Shipping Addresses
     Route::get('/profile/addresses', [CustomerAddressController::class, 'index'])->name('profile.addresses.index');
@@ -76,14 +81,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
     Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
+
+    // Notifications (Customer)
+    Route::post('/notifications/{notification}/read', [StorefrontController::class, 'markNotificationAsRead'])->name('notifications.read');
+    Route::post('/notifications/read-all', [StorefrontController::class, 'markAllNotificationsAsRead'])->name('notifications.read-all');
 });
 
-Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // Settings
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::post('/settings/tour-complete', [SettingController::class, 'completeTour'])->name('settings.tour-complete');
+
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'showAdminProfile'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'updateAdminProfile'])->name('profile.update');
 
     // CMS Banners
     Route::get('/cms/banners', [CmsController::class, 'banners'])->name('cms.banners');
