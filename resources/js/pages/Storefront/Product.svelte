@@ -1478,21 +1478,31 @@
                                             >
                                                 <model-viewer
                                                     src={formatImagePath(slide.path)}
+                                                    ios-src={slide.usdz_path ? formatImagePath(slide.usdz_path) : ''}
+                                                    ar
+                                                    ar-modes="webxr scene-viewer quick-look"
                                                     camera-controls
                                                     auto-rotate
                                                     interaction-prompt="auto"
                                                     class="w-full h-full relative z-20 bg-slate-50"
                                                     style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                                 >
-                                                    <!-- Buka Kamera AR — centered at bottom -->
-                                                    <div class="absolute bottom-4 left-0 right-0 flex justify-center z-30">
+                                                    <!-- Two buttons side by side at bottom -->
+                                                    <div class="absolute bottom-3 left-2 right-2 flex justify-between items-center gap-1.5 z-30">
                                                         <button
                                                             type="button"
                                                             onclick={() => openCameraModal(slide.path, slide.usdz_path ?? '')}
-                                                            class="bg-slate-900/80 hover:bg-slate-900 active:scale-95 backdrop-blur-sm text-white px-4 py-2 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1.5 border border-white/10"
+                                                            class="bg-slate-900/80 hover:bg-slate-900 active:scale-95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-white/10"
                                                         >
-                                                            <i class="ti ti-camera text-xs"></i>
+                                                            <i class="ti ti-camera text-[11px]"></i>
                                                             Buka Kamera AR
+                                                        </button>
+                                                        <button
+                                                            slot="ar-button"
+                                                            class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-3 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-orange-400/20"
+                                                        >
+                                                            <i class="ti ti-augmented-reality text-[11px]"></i>
+                                                            Lihat di Ruangan
                                                         </button>
                                                     </div>
                                                 </model-viewer>
@@ -1868,8 +1878,8 @@
                                         class="w-full h-full relative z-20 bg-slate-50"
                                         style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                     >
-                                        <!-- Buka Kamera AR — centered at bottom -->
-                                        <div class="absolute bottom-4 left-0 right-0 flex justify-center z-30">
+                                        <!-- Two buttons side by side at bottom -->
+                                        <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30">
                                             <button
                                                 type="button"
                                                 onclick={() => openCameraModal(
@@ -1880,6 +1890,14 @@
                                             >
                                                 <i class="ti ti-camera text-base"></i>
                                                 Buka Kamera AR
+                                            </button>
+                                            <button
+                                                slot="ar-button"
+                                                class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-orange-400/20"
+                                                onclick={(e) => e.stopPropagation()}
+                                            >
+                                                <i class="ti ti-augmented-reality text-base"></i>
+                                                Lihat di Ruangan (AR)
                                             </button>
                                         </div>
                                     </model-viewer>
