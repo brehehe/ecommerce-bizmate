@@ -326,77 +326,78 @@
         goToSlide(activeSlideIdx + 1);
     }
 
-    let isWebcamActive = $state(false);
+    // ── Camera AR Modal ─────────────────────────────────────────────────────
+    let isCameraModalOpen = $state(false);
     let webcamStream = $state<MediaStream | null>(null);
-    let webcamVideoElementMobile = $state<HTMLVideoElement | null>(null);
-    let webcamVideoElementDesktop = $state<HTMLVideoElement | null>(null);
+    let cameraVideoEl = $state<HTMLVideoElement | null>(null);
+    /** Which 3D slide path is being AR-previewed */
+    let arModelPath = $state('');
+    let arModelUsdz = $state('');
 
-    async function toggleWebcamAR() {
-        if (isWebcamActive) {
-            stopWebcam();
-        } else {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' },
-                    audio: false
-                });
-                // Set stream BEFORE isWebcamActive so the $effect below can pick it up
-                // after the video elements are rendered into the DOM.
-                webcamStream = stream;
-                // isWebcamActive=true renders the <video> elements; the $effect below
-                // then assigns srcObject once the elements exist.
-                isWebcamActive = true;
-            } catch (err) {
-                console.error('Gagal mengakses kamera:', err);
-                showToast('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.', 'error', 'top');
-            }
+    /**
+     * Open the camera modal for a specific 3D slide.
+     * The bad pattern before was: we set isWebcamActive=true which triggered a
+     * $effect that read isWebcamActive → Svelte re-ran the effect immediately
+     * and called stopWebcam(). Now we use an explicit modal pattern instead.
+     */
+    async function openCameraModal(modelPath: string, usdzPath: string = '') {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+            });
+            arModelPath = modelPath;
+            arModelUsdz = usdzPath;
+            webcamStream = stream;
+            isCameraModalOpen = true;
+        } catch (err) {
+            console.error('Gagal mengakses kamera:', err);
+            showToast('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.', 'error', 'top');
         }
     }
 
-    /**
-     * Whenever webcamStream changes AND the video elements are available in the DOM
-     * (which happens after isWebcamActive becomes true), assign srcObject.
-     */
-    $effect(() => {
-        const stream = webcamStream;
-        const mobile = webcamVideoElementMobile;
-        const desktop = webcamVideoElementDesktop;
-        if (stream) {
-            if (mobile && mobile.srcObject !== stream) {
-                mobile.srcObject = stream;
-            }
-            if (desktop && desktop.srcObject !== stream) {
-                desktop.srcObject = stream;
-            }
-        }
-    });
-
-    function stopWebcam() {
+    function closeCameraModal() {
+        isCameraModalOpen = false;
         if (webcamStream) {
             webcamStream.getTracks().forEach(track => track.stop());
             webcamStream = null;
         }
-        if (webcamVideoElementMobile) {
-            webcamVideoElementMobile.srcObject = null;
-        }
-        if (webcamVideoElementDesktop) {
-            webcamVideoElementDesktop.srcObject = null;
-        }
-        isWebcamActive = false;
+        arModelPath = '';
+        arModelUsdz = '';
     }
 
+    /**
+     * Once the camera modal is open and cameraVideoEl is bound, assign the stream.
+     * This runs AFTER isCameraModalOpen=true has rendered the <video> element.
+     */
     $effect(() => {
-        // Automatically stop webcam when changing slides
-        activeDesktopSlideIdx;
-        activeSlideIdx;
-        if (isWebcamActive) {
-            stopWebcam();
+        const stream = webcamStream;
+        const el = cameraVideoEl;
+        if (stream && el && el.srcObject !== stream) {
+            el.srcObject = stream;
         }
-        return () => {
-            if (isWebcamActive) {
-                stopWebcam();
+    });
+
+    /**
+     * Stop camera if user navigates away from the 3D slide.
+     * We track the slide indices WITHOUT reading isCameraModalOpen reactively,
+     * to avoid the "effect triggers its own dependencies" loop.
+     */
+    let _prevDesktopSlideIdx = $state(0);
+    let _prevSlideIdx = $state(0);
+    $effect(() => {
+        const d = activeDesktopSlideIdx;
+        const m = activeSlideIdx;
+        if (d !== _prevDesktopSlideIdx || m !== _prevSlideIdx) {
+            _prevDesktopSlideIdx = d;
+            _prevSlideIdx = m;
+            // Close camera if open — reading isCameraModalOpen here is fine
+            // because we only change it when slide indices change, not when
+            // isCameraModalOpen itself changes (no circular dependency).
+            if (isCameraModalOpen) {
+                closeCameraModal();
             }
-        };
+        }
     });
 
     let scrollY = $state(0);
@@ -1469,19 +1470,6 @@
                                             </div>
                                         {:else if slide.type === '3d'}
                                             <div class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20">
-                                                <!-- Webcam video element (Mobile) -->
-                                                {#if isWebcamActive}
-                                                    <video
-                                                        bind:this={webcamVideoElementMobile}
-                                                        autoplay
-                                                        playsinline
-                                                        muted
-                                                        class="absolute inset-0 w-full h-full object-cover z-10"
-                                                    >
-                                                        <track kind="captions" />
-                                                    </video>
-                                                {/if}
-
                                                 <model-viewer
                                                     src={formatImagePath(slide.path)}
                                                     ios-src={slide.usdz_path ? formatImagePath(slide.usdz_path) : ''}
@@ -1490,28 +1478,25 @@
                                                     camera-controls
                                                     auto-rotate
                                                     interaction-prompt="auto"
-                                                    class="w-full h-full relative z-20 {isWebcamActive ? 'bg-transparent' : 'bg-slate-50'}"
-                                                    style="--poster-color: transparent; background-color: {isWebcamActive ? 'transparent' : '#f8fafc'};"
+                                                    class="w-full h-full relative z-20 bg-slate-50"
+                                                    style="--poster-color: transparent; background-color: #f8fafc;"
                                                 >
-                                                    <!-- Custom Button Row -->
-                                                    <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30">
-                                                        <!-- Toggle Webcam AR Button -->
+                                                    <!-- Button Row: Camera AR + Native AR -->
+                                                    <div class="absolute bottom-4 left-3 right-3 flex justify-between items-center gap-2 z-30">
                                                         <button
                                                             type="button"
-                                                            onclick={toggleWebcamAR}
-                                                            class="bg-slate-900/80 hover:bg-slate-900 backdrop-blur-sm text-white px-3.5 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-white/10"
+                                                            onclick={() => openCameraModal(slide.path, slide.usdz_path ?? '')}
+                                                            class="bg-slate-900/80 hover:bg-slate-900 active:scale-95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-white/10"
                                                         >
-                                                            <i class="ti {isWebcamActive ? 'ti-camera-off' : 'ti-camera'} text-xs"></i>
-                                                            {isWebcamActive ? 'Matikan Kamera' : 'Buka Kamera AR'}
+                                                            <i class="ti ti-camera text-xs"></i>
+                                                            Buka Kamera AR
                                                         </button>
-
-                                                        <!-- Native AR Button -->
                                                         <button
                                                             slot="ar-button"
-                                                            class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-3.5 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-orange-400/20"
+                                                            class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-3 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-orange-400/20"
                                                         >
-                                                            <i class="ti ti-augmented-reality text-sm"></i>
-                                                            Lihat di Ruangan (AR)
+                                                            <i class="ti ti-augmented-reality text-xs"></i>
+                                                            Lihat di Ruangan
                                                         </button>
                                                     </div>
                                                 </model-viewer>
@@ -1876,19 +1861,6 @@
                                 </div>
                             {:else if desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === '3d'}
                                 <div class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20">
-                                    <!-- Webcam video element (Desktop) -->
-                                    {#if isWebcamActive}
-                                        <video
-                                            bind:this={webcamVideoElementDesktop}
-                                            autoplay
-                                            playsinline
-                                            muted
-                                            class="absolute inset-0 w-full h-full object-cover z-10"
-                                        >
-                                            <track kind="captions" />
-                                        </video>
-                                    {/if}
-
                                     <model-viewer
                                         src={formatImagePath(desktopSlides[activeDesktopSlideIdx].path)}
                                         ios-src={desktopSlides[activeDesktopSlideIdx].usdz_path ? formatImagePath(desktopSlides[activeDesktopSlideIdx].usdz_path) : ''}
@@ -1897,22 +1869,22 @@
                                         camera-controls
                                         auto-rotate
                                         interaction-prompt="auto"
-                                        class="w-full h-full relative z-20 {isWebcamActive ? 'bg-transparent' : 'bg-slate-50'}"
-                                        style="--poster-color: transparent; background-color: {isWebcamActive ? 'transparent' : '#f8fafc'};"
+                                        class="w-full h-full relative z-20 bg-slate-50"
+                                        style="--poster-color: transparent; background-color: #f8fafc;"
                                     >
-                                        <!-- Custom Button Row -->
+                                        <!-- Button Row: Camera AR + Native AR -->
                                         <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30">
-                                            <!-- Toggle Webcam AR Button -->
                                             <button
                                                 type="button"
-                                                onclick={toggleWebcamAR}
-                                                class="bg-slate-900/80 hover:bg-slate-900 backdrop-blur-sm text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-white/10"
+                                                onclick={() => openCameraModal(
+                                                    desktopSlides[activeDesktopSlideIdx].path,
+                                                    desktopSlides[activeDesktopSlideIdx].usdz_path ?? ''
+                                                )}
+                                                class="bg-slate-900/80 hover:bg-slate-900 active:scale-95 backdrop-blur-sm text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-white/10"
                                             >
-                                                <i class="ti {isWebcamActive ? 'ti-camera-off' : 'ti-camera'} text-base"></i>
-                                                {isWebcamActive ? 'Matikan Kamera' : 'Buka Kamera AR'}
+                                                <i class="ti ti-camera text-base"></i>
+                                                Buka Kamera AR
                                             </button>
-
-                                            <!-- Native AR Button -->
                                             <button
                                                 slot="ar-button"
                                                 class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-orange-400/20"
@@ -3481,6 +3453,84 @@
                         </div>
                     </Link>
                 {/each}
+            </div>
+        </div>
+    {/if}
+
+    <!-- ─────────────────────────────────────────────────────
+     CAMERA AR MODAL — fullscreen popup with live camera feed + 3D overlay
+───────────────────────────────────────────────────── -->
+    {#if isCameraModalOpen && arModelPath}
+        <div
+            class="fixed inset-0 z-[210] flex flex-col bg-black"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Kamera AR"
+            onkeydown={(e) => e.key === 'Escape' && closeCameraModal()}
+            tabindex="-1"
+        >
+            <!-- Live camera feed -->
+            <video
+                bind:this={cameraVideoEl}
+                autoplay
+                playsinline
+                muted
+                class="absolute inset-0 w-full h-full object-cover"
+            >
+                <track kind="captions" />
+            </video>
+
+            <!-- 3D model overlaid transparently on camera feed -->
+            <model-viewer
+                src={formatImagePath(arModelPath)}
+                ios-src={arModelUsdz ? formatImagePath(arModelUsdz) : ''}
+                ar
+                ar-modes="webxr scene-viewer quick-look"
+                camera-controls
+                auto-rotate
+                interaction-prompt="auto"
+                class="absolute inset-0 w-full h-full"
+                style="--poster-color: transparent; background-color: transparent;"
+            >
+                <!-- Native AR button inside modal -->
+                <button
+                    slot="ar-button"
+                    class="absolute bottom-24 left-1/2 -translate-x-1/2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-5 py-2.5 rounded-full shadow-xl font-bold text-sm transition flex items-center gap-2"
+                >
+                    <i class="ti ti-augmented-reality text-base"></i>
+                    Lihat di Ruangan (AR)
+                </button>
+            </model-viewer>
+
+            <!-- Top bar: title + close -->
+            <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 z-30 bg-gradient-to-b from-black/70 to-transparent">
+                <div class="flex items-center gap-2 text-white">
+                    <i class="ti ti-camera text-lg"></i>
+                    <span class="font-bold text-sm">Kamera AR Aktif</span>
+                </div>
+                <button
+                    type="button"
+                    onclick={closeCameraModal}
+                    class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-sm text-white flex items-center justify-center transition shadow-lg"
+                    aria-label="Tutup kamera"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Bottom hint -->
+            <div class="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16 z-30 bg-gradient-to-t from-black/70 to-transparent flex flex-col items-center gap-3">
+                <p class="text-white/80 text-xs text-center">
+                    Arahkan kamera ke permukaan datar · Gunakan gesture untuk memutar model 3D
+                </p>
+                <button
+                    type="button"
+                    onclick={closeCameraModal}
+                    class="bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-sm text-white px-5 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 border border-white/20"
+                >
+                    <i class="ti ti-camera-off text-base"></i>
+                    Matikan Kamera
+                </button>
             </div>
         </div>
     {/if}
