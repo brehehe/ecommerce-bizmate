@@ -673,12 +673,14 @@
                                                     {product.category?.name ||
                                                         'PRODUK'}
                                                 </p>
-                                                <p
-                                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2 mb-1"
-                                                    style="color: {primary};"
-                                                >
-                                                    {product.name}
-                                                </p>
+                                                <div class="h-[2.5rem] overflow-hidden mb-1">
+                                                    <p
+                                                        class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                        style="color: #1e293b;"
+                                                    >
+                                                        {product.name}
+                                                    </p>
+                                                </div>
                                                 {#if product.sold_count != null && product.sold_count > 0}
                                                     <p
                                                         class="text-[9px] text-slate-400 font-medium mb-1"

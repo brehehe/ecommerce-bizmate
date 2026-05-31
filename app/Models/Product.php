@@ -21,6 +21,7 @@ class Product extends Model
         'summary',
         'description',
         'specifications',
+        'size_chart',
         'weight',
         'length',
         'width',
@@ -29,6 +30,9 @@ class Product extends Model
         'tax_rate',
         'active',
         'image',
+        'video_path',
+        'model_3d_path',
+        'model_3d_usdz_path',
     ];
 
     public function brandRelation()
@@ -80,6 +84,7 @@ class Product extends Model
         'width' => 'integer',
         'height' => 'integer',
         'specifications' => 'array',
+        'size_chart' => 'array',
     ];
 
     public function category(): BelongsTo

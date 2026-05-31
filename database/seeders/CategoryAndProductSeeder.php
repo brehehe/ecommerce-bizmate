@@ -31,6 +31,9 @@ class CategoryAndProductSeeder extends Seeder
                             'https://images.unsplash.com/photo-1496181130204-7552cc14ac1a?w=600&auto=format&fit=crop&q=80',
                             'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=600&auto=format&fit=crop&q=80',
                         ],
+                        'video_path' => 'https://www.w3schools.com/html/mov_bbb.mp4',
+                        'model_3d_path' => 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                        'model_3d_usdz_path' => 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz',
                         'summary' => 'Laptop ringan & kencang untuk produktivitas harian Anda.',
                     ],
                     [
@@ -42,6 +45,9 @@ class CategoryAndProductSeeder extends Seeder
                             'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=600&auto=format&fit=crop&q=80',
                             'https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?w=600&auto=format&fit=crop&q=80',
                         ],
+                        'video_path' => 'https://www.w3schools.com/html/mov_bbb.mp4',
+                        'model_3d_path' => 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.glb',
+                        'model_3d_usdz_path' => 'https://modelviewer.dev/shared-assets/models/NeilArmstrong.usdz',
                         'summary' => 'Pelacak kesehatan pintar dengan layar AMOLED lebar.',
                         'variations' => [
                             [
@@ -808,19 +814,20 @@ class CategoryAndProductSeeder extends Seeder
 
             // 2. Create Products for each Category
             foreach ($catData['products'] as $prodData) {
-                $sku = 'SKU-'.strtoupper(Str::random(3)).'-'.rand(1000, 9999);
+                $sku = 'SKU-' . strtoupper(Str::random(3)) . '-' . rand(1000, 9999);
                 $brandModel = $brandModels[$prodData['brand']] ?? null;
 
                 $product = Product::create([
                     'name' => $prodData['name'],
-                    'slug' => Str::slug($prodData['name']).'-'.Str::random(5),
+                    'slug' => Str::slug($prodData['name']) . '-' . Str::random(5),
                     'sku' => $sku,
                     'category_id' => $category->id,
                     'brand_id' => $brandModel?->id,
                     'brand' => $prodData['brand'],
                     'stock_status' => 'in_stock',
                     'summary' => $prodData['summary'],
-                    'description' => 'Ini adalah deskripsi produk premium '.$prodData['name'].'. Dibuat dari bahan-bahan berkualitas tinggi dan diproduksi secara teliti untuk menjamin kepuasan maksimal bagi pelanggan kami. Dapatkan harga terbaik dan garansi keaslian 100% hanya di toko resmi kami sekarang juga!',
+                    'description' => $this->getLongDescriptionForProduct($category->slug, $prodData['name']),
+                    'size_chart' => $this->getSizeChartForProduct($category->slug, $prodData['name']),
                     'weight' => rand(100, 2000),
                     'length' => rand(5, 50),
                     'width' => rand(5, 50),
@@ -830,6 +837,9 @@ class CategoryAndProductSeeder extends Seeder
                     'active' => true,
                     'image' => $prodData['image'],
                     'specifications' => $this->getSpecificationsForProduct($category->slug, $prodData['name']),
+                    'video_path' => $prodData['video_path'] ?? null,
+                    'model_3d_path' => $prodData['model_3d_path'] ?? null,
+                    'model_3d_usdz_path' => $prodData['model_3d_usdz_path'] ?? null,
                 ]);
 
                 // Sync many-to-many pivots
@@ -884,14 +894,14 @@ class CategoryAndProductSeeder extends Seeder
                                 'image' => $optData['image'] ?? null,
                             ]);
 
-                            $optionMap[$vData['name'].':'.$optData['name']] = $option;
+                            $optionMap[$vData['name'] . ':' . $optData['name']] = $option;
                         }
                     }
 
                     // 8. Seed Variants combinations if defined
                     if (isset($prodData['variants']) && is_array($prodData['variants'])) {
                         foreach ($prodData['variants'] as $variantData) {
-                            $variantSku = $product->sku.'-'.strtoupper(implode('-', array_map(function ($c) {
+                            $variantSku = $product->sku . '-' . strtoupper(implode('-', array_map(function ($c) {
                                 return substr(Str::slug($c), 0, 3);
                             }, $variantData['combination'])));
 
@@ -900,7 +910,7 @@ class CategoryAndProductSeeder extends Seeder
 
                             foreach ($variantData['combination'] as $combOptName) {
                                 foreach ($optionMap as $key => $optionModel) {
-                                    if (str_ends_with($key, ':'.$combOptName)) {
+                                    if (str_ends_with($key, ':' . $combOptName)) {
                                         $attachedOptionIds[] = $optionModel->id;
                                         if ($optionModel->image && ! $variantImage) {
                                             $variantImage = $optionModel->image;
@@ -1139,6 +1149,259 @@ class CategoryAndProductSeeder extends Seeder
             'Dimensi' => '10 x 10 x 10 cm',
             'Ketersediaan' => 'Ready Stock',
             'Negara Asal' => 'Indonesia',
+        ];
+    }
+
+    private function getLongDescriptionForProduct(string $categorySlug, string $productName): string
+    {
+        $desc = '';
+
+        $desc .= "<h2><strong>{$productName}</strong></h2>";
+
+        $desc .= "<p>
+        {$productName} merupakan produk berkualitas premium yang dirancang untuk memberikan
+        pengalaman terbaik dalam penggunaan sehari-hari. Dengan mengutamakan kualitas material,
+        desain modern, serta fungsi yang optimal, produk ini menjadi pilihan tepat bagi konsumen
+        yang menginginkan kombinasi antara kualitas, kenyamanan, ketahanan, dan nilai investasi
+        jangka panjang.
+    </p>";
+
+        $desc .= "<h3><strong>Mengapa Memilih {$productName}?</strong></h3>";
+
+        $desc .= '<ul>
+        <li>Material berkualitas tinggi dan tahan lama.</li>
+        <li>Desain modern yang mengikuti tren terkini.</li>
+        <li>Proses produksi dengan standar quality control ketat.</li>
+        <li>Mudah digunakan dan dirawat.</li>
+        <li>Cocok untuk penggunaan pribadi maupun profesional.</li>
+        <li>Memberikan nilai lebih dibandingkan produk sejenis.</li>
+    </ul>';
+
+        if (
+            str_contains($categorySlug, 'elektronik') ||
+            str_contains($categorySlug, 'gadget')
+        ) {
+
+            $desc .= '
+        <h3><strong>Performa dan Teknologi Modern</strong></h3>
+
+        <p>
+            Produk ini telah dibekali teknologi terkini yang dirancang untuk memberikan
+            performa stabil, responsif, dan efisien dalam berbagai kondisi penggunaan.
+            Sistem internal telah melalui serangkaian pengujian untuk memastikan
+            kestabilan daya, keamanan penggunaan, serta daya tahan jangka panjang.
+        </p>
+
+        <p>
+            Dukungan konektivitas modern memungkinkan perangkat terhubung dengan mudah
+            ke berbagai sistem operasi dan perangkat lainnya. Proses instalasi yang
+            sederhana membuat produk dapat langsung digunakan tanpa memerlukan
+            konfigurasi yang rumit.
+        </p>
+
+        <h3><strong>Keunggulan Utama</strong></h3>
+
+        <ul>
+            <li>Konsumsi daya lebih hemat.</li>
+            <li>Performa stabil untuk penggunaan harian.</li>
+            <li>Sistem proteksi keamanan berlapis.</li>
+            <li>Kompatibel dengan berbagai perangkat.</li>
+            <li>Desain elegan dan modern.</li>
+            <li>Usia pakai lebih panjang.</li>
+        </ul>
+
+        <h3><strong>Cocok Digunakan Untuk</strong></h3>
+
+        <ul>
+            <li>Kebutuhan rumah tangga.</li>
+            <li>Pekerjaan kantor.</li>
+            <li>Aktivitas belajar dan pendidikan.</li>
+            <li>Kebutuhan bisnis dan usaha.</li>
+            <li>Penggunaan profesional.</li>
+        </ul>';
+        } elseif (
+            str_contains($categorySlug, 'pakaian') ||
+            str_contains($categorySlug, 'fashion')
+        ) {
+
+            $desc .= '
+        <h3><strong>Kenyamanan Premium untuk Aktivitas Sehari-hari</strong></h3>
+
+        <p>
+            Dibuat menggunakan bahan pilihan yang nyaman digunakan sepanjang hari.
+            Material yang digunakan memiliki karakteristik lembut, tidak panas,
+            serta mampu menyerap keringat dengan baik sehingga cocok digunakan
+            pada berbagai kondisi cuaca.
+        </p>
+
+        <p>
+            Setiap detail jahitan dikerjakan secara presisi untuk menghasilkan
+            tampilan yang rapi sekaligus meningkatkan ketahanan produk terhadap
+            penggunaan jangka panjang.
+        </p>
+
+        <h3><strong>Keunggulan Fashion</strong></h3>
+
+        <ul>
+            <li>Bahan nyaman dan tidak mudah kusut.</li>
+            <li>Jahitan rapi dan kuat.</li>
+            <li>Warna lebih awet.</li>
+            <li>Model modern dan mengikuti tren.</li>
+            <li>Mudah dipadukan dengan berbagai outfit.</li>
+            <li>Cocok untuk pria maupun wanita.</li>
+        </ul>
+
+        <h3><strong>Rekomendasi Penggunaan</strong></h3>
+
+        <p>
+            Sangat cocok digunakan untuk aktivitas harian, bekerja, kuliah,
+            bepergian, berkumpul bersama teman, maupun acara semi-formal.
+            Padukan dengan celana jeans, chino, atau sneakers favorit Anda
+            untuk mendapatkan tampilan yang lebih menarik.
+        </p>';
+        } elseif (
+            str_contains($categorySlug, 'furnitur') ||
+            str_contains($categorySlug, 'rumah') ||
+            str_contains($categorySlug, 'mebel')
+        ) {
+
+            $desc .= '
+        <h3><strong>Konstruksi Kuat dan Tahan Lama</strong></h3>
+
+        <p>
+            Menggunakan material pilihan yang diproses melalui standar produksi
+            modern untuk menghasilkan produk yang kokoh, stabil, dan memiliki
+            daya tahan tinggi terhadap penggunaan sehari-hari.
+        </p>
+
+        <p>
+            Finishing dilakukan secara detail untuk menghasilkan permukaan yang
+            halus, elegan, dan mudah dibersihkan sehingga tetap terlihat menarik
+            meskipun digunakan dalam jangka waktu yang lama.
+        </p>
+
+        <h3><strong>Manfaat Produk</strong></h3>
+
+        <ul>
+            <li>Mempercantik tampilan ruangan.</li>
+            <li>Memberikan kenyamanan penggunaan.</li>
+            <li>Meningkatkan efisiensi ruang.</li>
+            <li>Memiliki daya tahan tinggi.</li>
+            <li>Mudah dipadukan dengan berbagai konsep interior.</li>
+        </ul>';
+        }
+
+        $desc .= "
+    <h3><strong>Proses Quality Control</strong></h3>
+
+    <p>
+        Setiap produk melewati proses pemeriksaan kualitas secara menyeluruh
+        sebelum dikirim kepada pelanggan. Pemeriksaan meliputi kondisi fisik,
+        fungsi utama produk, kualitas finishing, kelengkapan aksesoris,
+        hingga keamanan kemasan.
+    </p>
+
+    <h3><strong>Isi Paket</strong></h3>
+
+    <ul>
+        <li>1 x {$productName}</li>
+        <li>Manual penggunaan (jika tersedia).</li>
+        <li>Kartu garansi (sesuai kategori produk).</li>
+        <li>Kemasan pelindung standar pengiriman.</li>
+    </ul>
+
+    <h3><strong>Informasi Pengiriman</strong></h3>
+
+    <p>
+        Produk dikemas menggunakan lapisan pelindung tambahan untuk mengurangi
+        risiko kerusakan selama proses pengiriman. Kami bekerja sama dengan
+        berbagai ekspedisi terpercaya untuk memastikan produk sampai dengan aman.
+    </p>
+
+    <h3><strong>Tips Perawatan</strong></h3>
+
+    <ul>
+        <li>Bersihkan produk secara berkala.</li>
+        <li>Gunakan sesuai petunjuk penggunaan.</li>
+        <li>Hindari benturan atau tekanan berlebihan.</li>
+        <li>Simpan pada tempat yang bersih dan kering.</li>
+        <li>Hindari penggunaan bahan kimia keras.</li>
+    </ul>
+
+    <h3><strong>Pertanyaan yang Sering Diajukan (FAQ)</strong></h3>
+
+    <p><strong>Apakah produk ini original?</strong><br>
+    Ya, produk yang kami kirim merupakan produk baru dan sesuai deskripsi.</p>
+
+    <p><strong>Apakah produk sudah melalui pengecekan?</strong><br>
+    Ya, seluruh produk telah melewati proses quality control sebelum dikirim.</p>
+
+    <p><strong>Bagaimana jika produk rusak saat diterima?</strong><br>
+    Silakan hubungi layanan pelanggan kami dengan menyertakan video unboxing.</p>
+
+    <h3><strong>Kesimpulan</strong></h3>
+
+    <p>
+        {$productName} merupakan pilihan tepat bagi Anda yang mengutamakan kualitas,
+        kenyamanan, daya tahan, dan nilai guna dalam satu produk. Dengan desain modern,
+        material pilihan, serta proses produksi berkualitas tinggi, produk ini siap
+        menjadi solusi terbaik untuk kebutuhan Anda.
+    </p>";
+
+        return $desc;
+    }
+
+    private function getSizeChartForProduct(string $categorySlug, string $productName): ?array
+    {
+        if (! str_contains($categorySlug, 'pakaian')) {
+            return null;
+        }
+
+        return [
+            'enabled' => true,
+            'headers' => ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)', 'Lebar Bahu (cm)'],
+            'rows' => [
+                [
+                    'size' => 'S',
+                    'values' => ['48', '68', '21', '40'],
+                    'min_height' => 150,
+                    'max_height' => 160,
+                    'min_weight' => 45,
+                    'max_weight' => 55,
+                ],
+                [
+                    'size' => 'M',
+                    'values' => ['50', '70', '22', '42'],
+                    'min_height' => 160,
+                    'max_height' => 170,
+                    'min_weight' => 55,
+                    'max_weight' => 65,
+                ],
+                [
+                    'size' => 'L',
+                    'values' => ['52', '72', '23', '44'],
+                    'min_height' => 170,
+                    'max_height' => 180,
+                    'min_weight' => 65,
+                    'max_weight' => 75,
+                ],
+                [
+                    'size' => 'XL',
+                    'values' => ['54', '74', '24', '46'],
+                    'min_height' => 180,
+                    'max_height' => 190,
+                    'min_weight' => 75,
+                    'max_weight' => 85,
+                ],
+                [
+                    'size' => 'XXL',
+                    'values' => ['58', '76', '25', '48'],
+                    'min_height' => 185,
+                    'max_height' => 200,
+                    'min_weight' => 85,
+                    'max_weight' => 110,
+                ],
+            ],
         ];
     }
 }

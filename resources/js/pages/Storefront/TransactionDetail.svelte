@@ -680,20 +680,22 @@
                                 <div class="px-4 py-3">
                                     <div class="flex gap-3">
                                         {#if item.product_image}
-                                            <img
-                                                src={formatImagePath(
-                                                    item.product_image,
-                                                )}
-                                                alt={item.product_name}
-                                                class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
-                                                onerror={(e: any) => {
-                                                    e.target.src =
-                                                        '/noimage/image.png';
-                                                }}
-                                            />
+                                            <Link href={item.product?.slug ? `/products/${item.product.slug}` : '#'} class="shrink-0">
+                                                <img
+                                                    src={formatImagePath(
+                                                        item.product_image,
+                                                    )}
+                                                    alt={item.product_name}
+                                                    class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100 hover:opacity-85 transition"
+                                                    onerror={(e: any) => {
+                                                        e.target.src =
+                                                            '/noimage/image.png';
+                                                    }}
+                                                />
+                                            </Link>
                                         {:else}
                                             <div
-                                                class="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center"
+                                                class="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center border border-slate-100"
                                             >
                                                 <i
                                                     class="ti ti-package text-2xl text-slate-300"
@@ -701,11 +703,12 @@
                                             </div>
                                         {/if}
                                         <div class="flex-1 min-w-0">
-                                            <p
-                                                class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words"
+                                            <Link
+                                                href={item.product?.slug ? `/products/${item.product.slug}` : '#'}
+                                                class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words hover:text-brand-blueRoyal hover:underline transition"
                                             >
                                                 {item.product_name}
-                                            </p>
+                                            </Link>
                                             {#if item.variant_name}
                                                 <p
                                                     class="text-xs text-slate-500 whitespace-pre-wrap break-words"

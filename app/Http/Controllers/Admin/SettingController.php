@@ -34,6 +34,10 @@ class SettingController extends Controller
 
         // Handle other key-value pairs
         foreach ($data as $key => $value) {
+            if (is_bool($value)) {
+                $value = $value ? '1' : '0';
+            }
+
             Setting::updateOrCreate(
                 ['key' => $key],
                 ['value' => $value]

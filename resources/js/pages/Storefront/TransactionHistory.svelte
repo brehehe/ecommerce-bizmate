@@ -185,12 +185,23 @@
                                         <!-- Items Preview -->
                                         <div class="px-4 py-3 divide-y divide-slate-50">
                                             {#each (trx.items ?? []).slice(0, 2) as item}
-                                                <div class="flex items-center gap-3 py-2">
+                                                <button
+                                                    onclick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        if (item.product?.slug) {
+                                                            router.get(`/products/${item.product.slug}`);
+                                                        } else {
+                                                            router.get(`/transactions/${trx.id}`);
+                                                        }
+                                                    }}
+                                                    class="w-full flex items-center gap-3 py-2 text-left hover:bg-slate-50/70 rounded-xl px-2 -mx-2 transition cursor-pointer group"
+                                                >
                                                     {#if item.product_image}
                                                         <img
                                                             src={formatImagePath(item.product_image)}
                                                             alt={item.product_name}
-                                                            class="w-12 h-12 object-cover rounded-xl shrink-0 border border-slate-100"
+                                                            class="w-12 h-12 object-cover rounded-xl shrink-0 border border-slate-100 group-hover:opacity-90 transition"
                                                             onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
                                                         />
                                                     {:else}
@@ -199,7 +210,7 @@
                                                         </div>
                                                     {/if}
                                                     <div class="flex-1 min-w-0">
-                                                        <p class="text-xs font-bold text-slate-800 whitespace-pre-wrap break-words leading-tight">{item.product_name}</p>
+                                                        <p class="text-xs font-bold text-slate-800 whitespace-pre-wrap break-words leading-tight group-hover:text-brand-blueRoyal transition">{item.product_name}</p>
                                                         {#if item.variant_name}
                                                             <span class="inline-block text-[9px] font-bold px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-slate-500 mt-1">{item.variant_name}</span>
                                                         {/if}
@@ -208,7 +219,7 @@
                                                         <p class="text-xs text-slate-400 font-bold">x{item.quantity}</p>
                                                         <p class="text-xs font-bold text-slate-700 mt-0.5">{fmt(item.harga_akhir ?? item.harga_jual)}</p>
                                                     </div>
-                                                </div>
+                                                </button>
                                             {/each}
                                             {#if (trx.items ?? []).length > 2}
                                                 <p class="text-xs text-slate-400 font-bold mt-2 pt-2 border-t border-slate-50">+{(trx.items ?? []).length - 2} produk lainnya</p>
