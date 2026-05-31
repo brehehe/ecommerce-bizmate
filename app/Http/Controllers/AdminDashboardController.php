@@ -127,7 +127,7 @@ class AdminDashboardController extends Controller
             $customerEmail = $user ? $user->email : 'guest@email.com';
 
             $initials = collect(explode(' ', $customerName))
-                ->map(fn($n) => strtoupper(substr($n, 0, 1)))
+                ->map(fn ($n) => strtoupper(substr($n, 0, 1)))
                 ->take(2)
                 ->implode('');
 
@@ -144,7 +144,7 @@ class AdminDashboardController extends Controller
 
             return [
                 'raw_id' => $transaction->id,
-                'id' => '#' . $transaction->transaction_number,
+                'id' => '#'.$transaction->transaction_number,
                 'customer' => $customerName,
                 'email' => $customerEmail,
                 'initials' => $initials,
@@ -180,9 +180,9 @@ class AdminDashboardController extends Controller
                 if ($productModel->image) {
                     $imageUrl = str_starts_with($productModel->image, 'http')
                         ? $productModel->image
-                        : '/' . ltrim($productModel->image, '/');
+                        : '/'.ltrim($productModel->image, '/');
                 } elseif ($productModel->images->first()) {
-                    $imageUrl = '/' . ltrim($productModel->images->first()->path, '/');
+                    $imageUrl = '/'.ltrim($productModel->images->first()->path, '/');
                 }
             }
 
@@ -249,16 +249,16 @@ class AdminDashboardController extends Controller
     private function formatRupiah(float $value): string
     {
         if ($value >= 1_000_000_000_000) {
-            return 'Rp ' . number_format($value / 1_000_000_000_000, 1, ',', '.') . ' T';
+            return 'Rp '.number_format($value / 1_000_000_000_000, 1, ',', '.').' T';
         }
         if ($value >= 1_000_000_000) {
-            return 'Rp ' . number_format($value / 1_000_000_000, 1, ',', '.') . ' M';
+            return 'Rp '.number_format($value / 1_000_000_000, 1, ',', '.').' M';
         }
         if ($value >= 1_000_000) {
-            return 'Rp ' . number_format($value / 1_000_000, 1, ',', '.') . ' Jt';
+            return 'Rp '.number_format($value / 1_000_000, 1, ',', '.').' Jt';
         }
 
-        return 'Rp ' . number_format($value, 0, ',', '.');
+        return 'Rp '.number_format($value, 0, ',', '.');
     }
 
     /**
@@ -280,9 +280,9 @@ class AdminDashboardController extends Controller
         $formatted = number_format(abs($change), 1, ',', '.');
 
         if ($change > 0) {
-            return ['value' => '+' . $formatted . '%', 'type' => 'up'];
+            return ['value' => '+'.$formatted.'%', 'type' => 'up'];
         } elseif ($change < 0) {
-            return ['value' => '-' . $formatted . '%', 'type' => 'down'];
+            return ['value' => '-'.$formatted.'%', 'type' => 'down'];
         }
 
         return ['value' => '0%', 'type' => 'neutral'];

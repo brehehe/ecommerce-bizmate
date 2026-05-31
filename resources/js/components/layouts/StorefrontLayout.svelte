@@ -68,9 +68,12 @@
 
     // Profile dropdown
     let profileDropOpen = $state(false);
+    let isNotifOpen = $state(false);
 
     const cartCount = $derived((page.props as any).cartCount || 0);
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
+    const customerNotifications = $derived((page.props as any).customerNotifications || []);
+    const unreadNotifCount = $derived(customerNotifications.filter((n: any) => !n.is_read).length);
 
     // Desktop floating mini-chat state
     let desktopChatOpen = $state(false);
@@ -504,6 +507,20 @@
         router.post('/logout');
     }
 
+    function handleNotificationClick(notif: any) {
+        isNotifOpen = false;
+        if (!notif.is_read) {
+            router.post(`/notifications/${notif.id}/read`, {}, { preserveScroll: true });
+        }
+        if (notif.url) {
+            router.visit(notif.url);
+        }
+    }
+
+    function markAllAsRead() {
+        router.post('/notifications/read-all', {}, { preserveScroll: true });
+    }
+
     function getInitials(name: string) {
         if (!name) return 'U';
         return name
@@ -621,6 +638,108 @@
                             >Keranjang</span
                         >
                     </button>
+
+                    <!-- Notifications (Desktop) -->
+                    {#if auth}
+                        <div class="relative flex items-center">
+                            <button
+                                onclick={() => (isNotifOpen = !isNotifOpen)}
+                                class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center justify-center shrink-0"
+                                aria-label="Notifikasi"
+                            >
+                                <i class="ti ti-bell text-2xl"></i>
+                                {#if unreadNotifCount > 0}
+                                    <span
+                                        class="absolute top-1 right-2.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white bg-brand-orange border border-white/20 shadow-sm font-sans"
+                                        style="background-color: {secondary}; font-family: sans-serif;"
+                                    >
+                                        {unreadNotifCount}
+                                    </span>
+                                {/if}
+                                <span class="text-[10px] font-bold text-white/80 mt-0.5"
+                                    >Notifikasi</span
+                                >
+                            </button>
+
+                            {#if isNotifOpen}
+                                <!-- Backdrop to close dropdown on click outside -->
+                                <div
+                                    class="fixed inset-0 z-40"
+                                    onclick={() => (isNotifOpen = false)}
+                                    role="presentation"
+                                ></div>
+
+                                <!-- Dropdown Panel -->
+                                <div
+                                    class="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 font-sans"
+                                >
+                                    <!-- Header -->
+                                    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                        <span class="text-sm font-black text-slate-800 tracking-tight">Notifikasi Anda</span>
+                                        {#if unreadNotifCount > 0}
+                                            <button
+                                                onclick={markAllAsRead}
+                                                class="text-xs font-bold text-slate-500 hover:text-slate-800 transition"
+                                            >
+                                                Tandai Semua Dibaca
+                                            </button>
+                                        {/if}
+                                    </div>
+
+                                    <!-- Notifications List -->
+                                    <div class="max-h-[350px] overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
+                                        {#if customerNotifications.length > 0}
+                                            {#each customerNotifications as notif}
+                                                <button
+                                                    onclick={() => handleNotificationClick(notif)}
+                                                    class="w-full text-left p-4 hover:bg-slate-50/70 transition flex gap-3 items-start {!notif.is_read ? 'bg-slate-50/40' : ''}"
+                                                >
+                                                    <!-- Icon -->
+                                                    <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                                                        <i class="ti ti-package text-lg"></i>
+                                                    </div>
+                                                    
+                                                    <!-- Content -->
+                                                    <div class="flex-grow min-w-0">
+                                                        <div class="flex items-center justify-between gap-2 mb-0.5">
+                                                            <span class="text-xs font-black text-slate-800 truncate">{notif.title}</span>
+                                                            <span class="text-[10px] text-slate-400 shrink-0">{notif.created_at}</span>
+                                                        </div>
+                                                        <p class="text-xs text-slate-600 leading-normal line-clamp-2">{notif.message}</p>
+                                                    </div>
+
+                                                    <!-- Unread Dot Indicator -->
+                                                    {#if !notif.is_read}
+                                                        <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" style="background-color: {secondary};"></div>
+                                                    {/if}
+                                                </button>
+                                            {/each}
+                                        {:else}
+                                            <div class="py-12 text-center">
+                                                <div class="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                    <i class="ti ti-bell-off text-2xl"></i>
+                                                </div>
+                                                <p class="text-xs font-bold text-slate-800">Belum Ada Notifikasi</p>
+                                                <p class="text-[10px] text-slate-400 mt-1">Pembaruan pesanan Anda akan muncul di sini.</p>
+                                            </div>
+                                        {/if}
+                                    </div>
+
+                                    <!-- Footer -->
+                                    <div class="p-3 border-t border-slate-100 bg-slate-50/30 text-center">
+                                        <Link
+                                            href="/transactions"
+                                            onclick={() => (isNotifOpen = false)}
+                                            class="text-xs font-black"
+                                            style="color: {primary};"
+                                        >
+                                            Lihat Semua Pesanan Saya
+                                        </Link>
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
 
                     <!-- Profile / Auth -->
                     {#if auth}
@@ -807,6 +926,28 @@
                             </span>
                         {/if}
                     </button>
+
+                    <!-- Notifications Bell (Mobile) -->
+                    {#if auth}
+                        <button
+                            onclick={() => {
+                                isNotifOpen = !isNotifOpen;
+                                profileDropOpen = false;
+                            }}
+                            class="relative text-white p-1.5"
+                            aria-label="Notifikasi"
+                        >
+                            <i class="ti ti-bell text-2xl"></i>
+                            {#if unreadNotifCount > 0}
+                                <span
+                                    class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-brand-orange border border-white/20 shadow-sm font-sans"
+                                    style="background-color: {secondary};"
+                                >
+                                    {unreadNotifCount}
+                                </span>
+                            {/if}
+                        </button>
+                    {/if}
 
                     <!-- Profile / Login -->
                     {#if auth}

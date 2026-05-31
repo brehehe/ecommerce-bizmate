@@ -4,7 +4,10 @@ namespace App\Http\Middleware;
 
 use App\Models\CartItem;
 use App\Models\ChatMessage;
+use App\Models\Notification;
+use App\Models\ProductStock;
 use App\Models\Setting;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
@@ -46,6 +49,8 @@ class HandleInertiaRequests extends Middleware
         $storeName = config('app.name');
         $storeLogo = null;
 
+        $setupTourCompleted = false;
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -54,6 +59,7 @@ class HandleInertiaRequests extends Middleware
                 $taxPercentage = Setting::where('key', 'tax_percentage')->value('value') ?? 0;
                 $storeName = Setting::where('key', 'store_name')->value('value') ?? $storeName;
                 $storeLogo = Setting::where('key', 'store_logo')->value('value');
+                $setupTourCompleted = Setting::where('key', 'setup_tour_completed')->value('value') === '1';
             }
         } catch (\Throwable $e) {
             // Fallback when database is not ready
@@ -82,7 +88,75 @@ class HandleInertiaRequests extends Middleware
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,
                 'store_logo' => $storeLogo,
+                'setup_tour_completed' => $setupTourCompleted,
             ],
+            'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
+                'lowStockCount' => ProductStock::where('is_unlimited', false)
+                    ->where('stock', '>', 0)
+                    ->whereColumn('stock', '<=', 'min_stock')
+                    ->count(),
+                'outOfStockCount' => ProductStock::where('is_unlimited', false)
+                    ->where('stock', '<=', 0)
+                    ->count(),
+                'lowStockItems' => ProductStock::with(['product', 'variant.options'])
+                    ->where('is_unlimited', false)
+                    ->where('stock', '>', 0)
+                    ->whereColumn('stock', '<=', 'min_stock')
+                    ->orderBy('stock', 'asc')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn ($ps) => [
+                        'id' => $ps->id,
+                        'product_id' => $ps->product_id,
+                        'name' => $ps->product ? $ps->product->name.($ps->variant && $ps->variant->options->count() > 0 ? ' ('.$ps->variant->options->pluck('name')->implode(', ').')' : '') : 'Unknown Product',
+                        'stock' => $ps->stock,
+                        'min_stock' => $ps->min_stock,
+                    ]),
+                'outOfStockItems' => ProductStock::with(['product', 'variant.options'])
+                    ->where('is_unlimited', false)
+                    ->where('stock', '<=', 0)
+                    ->limit(5)
+                    ->get()
+                    ->map(fn ($ps) => [
+                        'id' => $ps->id,
+                        'product_id' => $ps->product_id,
+                        'name' => $ps->product ? $ps->product->name.($ps->variant && $ps->variant->options->count() > 0 ? ' ('.$ps->variant->options->pluck('name')->implode(', ').')' : '') : 'Unknown Product',
+                        'stock' => $ps->stock,
+                    ]),
+                'transactionCounts' => [
+                    'belum_bayar' => Transaction::where('status', 'belum_bayar')->count(),
+                    'menunggu' => Transaction::where('status', 'menunggu')->count(),
+                    'diproses' => Transaction::where('status', 'diproses')->count(),
+                ],
+                'notifications' => Notification::whereNull('user_id')
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn ($n) => [
+                        'id' => $n->id,
+                        'title' => $n->title,
+                        'message' => $n->message,
+                        'type' => $n->type,
+                        'url' => $n->url,
+                        'is_read' => $n->is_read,
+                        'created_at' => $n->created_at->diffForHumans(),
+                        'time_raw' => $n->created_at->toIso8601String(),
+                    ]),
+            ] : null,
+            'customerNotifications' => $request->user() ? Notification::where('user_id', $request->user()->id)
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(fn ($n) => [
+                    'id' => $n->id,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'type' => $n->type,
+                    'url' => $n->url,
+                    'is_read' => $n->is_read,
+                    'created_at' => $n->created_at->diffForHumans(),
+                    'time_raw' => $n->created_at->toIso8601String(),
+                ]) : [],
         ];
     }
 }

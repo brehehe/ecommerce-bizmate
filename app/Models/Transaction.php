@@ -90,6 +90,78 @@ class Transaction extends Model
                     'description' => $description,
                     'created_by' => auth()->id(),
                 ]);
+
+                // Create database notification for the customer
+                try {
+                    Notification::create([
+                        'user_id' => $transaction->user_id,
+                        'title' => 'Pembaruan Status Pesanan',
+                        'message' => 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
+                            'belum_bayar' => 'menunggu pembayaran.',
+                            'menunggu' => 'menunggu konfirmasi pembayaran.',
+                            'diproses' => 'sedang diproses.',
+                            'dikemas' => 'sedang dikemas.',
+                            'dikirim' => 'telah dikirim.',
+                            'selesai' => 'selesai / telah diterima.',
+                            'batal' => 'dibatalkan.',
+                            default => 'diperbarui menjadi '.$transaction->status,
+                        },
+                        'type' => 'transaction_status',
+                        'url' => '/transactions/'.$transaction->id,
+                        'is_read' => false,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Fail silently or log
+                }
+
+                // Create database notification for admins when transaction status is updated
+                try {
+                    $customerName = $transaction->user ? $transaction->user->name : 'Customer';
+                    $statusLabel = Transaction::statusLabels()[$transaction->status] ?? $transaction->status;
+
+                    $title = $transaction->status === 'menunggu' ? 'Konfirmasi Pembayaran' : 'Pembaruan Status Pesanan';
+                    $message = $transaction->status === 'menunggu'
+                        ? 'Ada konfirmasi pembayaran dari '.$customerName.' untuk transaksi #'.$transaction->transaction_number.' (Status: Menunggu Konfirmasi).'
+                        : 'Pesanan #'.$transaction->transaction_number.' oleh '.$customerName.' kini '.match ($transaction->status) {
+                            'belum_bayar' => 'menunggu pembayaran',
+                            'menunggu' => 'menunggu konfirmasi pembayaran',
+                            'diproses' => 'sedang diproses',
+                            'dikemas' => 'sedang dikemas',
+                            'dikirim' => 'telah dikirim',
+                            'selesai' => 'selesai / telah diterima',
+                            'batal' => 'dibatalkan',
+                            default => 'diperbarui menjadi '.$transaction->status,
+                        }.' (Status: '.$statusLabel.').';
+
+                    Notification::create([
+                        'user_id' => null, // null means Admin global
+                        'title' => $title,
+                        'message' => $message,
+                        'type' => $transaction->status === 'menunggu' ? 'payment_proof' : 'transaction_status',
+                        'url' => '/admin/transactions/'.$transaction->id,
+                        'is_read' => false,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Fail silently
+                }
+            }
+        });
+
+        static::created(function (Transaction $transaction) {
+            // Create database notification for admins when a new transaction is created
+            try {
+                $customerName = $transaction->user ? $transaction->user->name : 'Customer';
+                $statusLabel = Transaction::statusLabels()[$transaction->status] ?? $transaction->status;
+                Notification::create([
+                    'user_id' => null, // null means Admin global
+                    'title' => 'Pesanan Masuk Baru',
+                    'message' => 'Ada pesanan masuk atas nama '.$customerName.' dengan nomor transaksi #'.$transaction->transaction_number.' (Status: '.$statusLabel.').',
+                    'type' => 'new_order',
+                    'url' => '/admin/transactions/'.$transaction->id,
+                    'is_read' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // Fail silently
             }
         });
     }

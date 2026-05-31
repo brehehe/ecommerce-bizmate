@@ -172,7 +172,7 @@
 </svelte:head>
 
 <AdminLayout>
-    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1200px] mx-auto space-y-6 print:p-0 print:bg-white">
+    <main class="flex-grow p-4 sm:p-8 w-full max-w-full mx-auto space-y-6 print:p-0 print:bg-white">
         <!-- Page Header -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
             <div>
