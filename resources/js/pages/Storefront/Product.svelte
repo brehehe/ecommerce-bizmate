@@ -1487,8 +1487,8 @@
                                                     class="w-full h-full relative z-20 bg-slate-50"
                                                     style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                                 >
-                                                    <!-- Two buttons side by side — raised above dot indicators (dots are at bottom-3) -->
-                                                    <div class="absolute bottom-10 left-2 right-2 flex justify-between items-center gap-1.5 z-30">
+                                                    <!-- Two buttons side by side — raised above dot indicators and model-viewer AR icon -->
+                                                    <div class="absolute bottom-16 left-2 right-2 flex justify-between items-center gap-1.5 z-30">
                                                         <button
                                                             type="button"
                                                             onclick={() => openCameraModal(slide.path, slide.usdz_path ?? '')}
