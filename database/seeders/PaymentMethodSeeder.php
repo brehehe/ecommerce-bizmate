@@ -28,20 +28,20 @@ class PaymentMethodSeeder extends Seeder
         );
 
         // 2. Xendit Gateway
-        PaymentMethod::updateOrCreate(
-            ['name' => 'Xendit'],
-            [
-                'type' => 'gateway',
-                'api_key' => config('app.xendit.private_key') ?: 'xnd_development_your_private_key',
-                'api_secret' => config('app.xendit.public_key') ?: 'xnd_development_your_public_key',
-                'admin_fee' => 0,
-                'is_active' => true,
-                'settings' => [
-                    'url' => 'https://api.xendit.co',
-                    'webhook_token' => config('app.xendit.webhook_token') ?: 'xendit_webhook_token',
-                ],
-            ]
-        );
+        // PaymentMethod::updateOrCreate(
+        //     ['name' => 'Xendit'],
+        //     [
+        //         'type' => 'gateway',
+        //         'api_key' => config('app.xendit.private_key') ?: 'xnd_development_your_private_key',
+        //         'api_secret' => config('app.xendit.public_key') ?: 'xnd_development_your_public_key',
+        //         'admin_fee' => 0,
+        //         'is_active' => true,
+        //         'settings' => [
+        //             'url' => 'https://api.xendit.co',
+        //             'webhook_token' => config('app.xendit.webhook_token') ?: 'xendit_webhook_token',
+        //         ],
+        //     ]
+        // );
 
         // 3. Manual BCA Transfer (example)
         PaymentMethod::updateOrCreate(
@@ -70,19 +70,19 @@ class PaymentMethodSeeder extends Seeder
         );
 
         // 5. Flip Gateway
-        PaymentMethod::updateOrCreate(
-            ['name' => 'Flip'],
-            [
-                'type' => 'gateway',
-                'api_key' => 'JDJ5JDEzJG5rSXlyTnlINlgzOVk2emxzOUVtNk9PTS9iUnpIcVRTdGlOS0RTSUxzTC83RXNGcGliclhh', // Secret Key
-                'api_secret' => '$2y$13$bJAwMLvSexLawNRLvHAeP.8BT7mJorBYqBASfx1FjMN.NsYlZ7LXu', // Validation Token
-                'admin_fee' => 0,
-                'is_active' => true,
-                'settings' => [
-                    'url' => 'https://bigflip.id/big_sandbox_api',
-                    'webhook_token' => '$2y$13$bJAwMLvSexLawNRLvHAeP.8BT7mJorBYqBASfx1FjMN.NsYlZ7LXu',
-                ],
-            ]
-        );
+        // PaymentMethod::updateOrCreate(
+        //     ['name' => 'Flip'],
+        //     [
+        //         'type' => 'gateway',
+        //         'api_key' => 'JDJ5JDEzJG5rSXlyTnlINlgzOVk2emxzOUVtNk9PTS9iUnpIcVRTdGlOS0RTSUxzTC83RXNGcGliclhh', // Secret Key
+        //         'api_secret' => '$2y$13$bJAwMLvSexLawNRLvHAeP.8BT7mJorBYqBASfx1FjMN.NsYlZ7LXu', // Validation Token
+        //         'admin_fee' => 0,
+        //         'is_active' => true,
+        //         'settings' => [
+        //             'url' => 'https://bigflip.id/big_sandbox_api',
+        //             'webhook_token' => '$2y$13$bJAwMLvSexLawNRLvHAeP.8BT7mJorBYqBASfx1FjMN.NsYlZ7LXu',
+        //         ],
+        //     ]
+        // );
     }
 }
