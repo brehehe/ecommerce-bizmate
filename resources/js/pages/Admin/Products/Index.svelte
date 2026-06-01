@@ -2,6 +2,7 @@
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { Link, useForm, router } from '@inertiajs/svelte';
     import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
+    import Pagination from '@/components/ui/Pagination.svelte';
     import {
         create as adminProductsCreate,
         edit as adminProductsEdit,
@@ -1196,34 +1197,7 @@
                 </div>
 
                 <!-- Pagination -->
-                <div
-                    class="p-4 sm:p-6 border-t border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between"
-                >
-                    <p class="text-xs font-bold text-slate-400">
-                        Menampilkan {products.from || 0} - {products.to || 0} dari
-                        {products.total} Produk
-                    </p>
-                    <div class="flex items-center gap-2">
-                        {#each products.links as link}
-                            <Link
-                                href={link.url || '#'}
-                                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition {link.active
-                                    ? 'bg-brand-blueRoyal text-white shadow-sm'
-                                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'} {!link.url
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : ''}"
-                            >
-                                {#if link.label.includes('Previous')}
-                                    <i class="ti ti-chevron-left text-sm"></i>
-                                {:else if link.label.includes('Next')}
-                                    <i class="ti ti-chevron-right text-sm"></i>
-                                {:else}
-                                    {@html link.label}
-                                {/if}
-                            </Link>
-                        {/each}
-                    </div>
-                </div>
+                <Pagination paginator={products} />
             </div>
         </main>
     </div>
