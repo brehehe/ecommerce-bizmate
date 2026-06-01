@@ -348,7 +348,7 @@
     <AdminSidebar {isSidebarOpen} isTourActive={showTour} />
 
     <!-- ==================== MAIN LAYOUT ==================== -->
-    <div class="flex-grow lg:pl-64 flex flex-col min-h-screen w-full">
+    <div class="flex-grow lg:pl-72 flex flex-col min-h-screen w-full">
         <!-- Topbar -->
         <header
             class="h-20 bg-white/80 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8"
