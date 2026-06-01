@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { usePage, Link } from '@inertiajs/svelte';
     import AdminSidebar from './AdminSidebar.svelte';
+    import OfflineDetector from '@/components/OfflineDetector.svelte';
 
     let { children } = $props();
 
@@ -697,6 +698,8 @@
             </div>
         </div>
     {/if}
+
+    <OfflineDetector />
 </div>
 
 <style>

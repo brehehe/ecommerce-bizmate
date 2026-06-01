@@ -3,6 +3,7 @@
     import { slide, fade } from 'svelte/transition';
     import { onMount } from 'svelte';
     import { showToast } from '@/utils/toast';
+    import OfflineDetector from '@/components/OfflineDetector.svelte';
 
     let {
         children,
@@ -1052,7 +1053,7 @@
     {/if}
 
     <!-- ====== MAIN CONTENT ====== -->
-    <main>
+    <main class="flex-grow flex flex-col">
         {@render children()}
     </main>
 
@@ -1836,3 +1837,5 @@
         onclick={() => (profileDropOpen = false)}
     ></div>
 {/if}
+
+<OfflineDetector />
