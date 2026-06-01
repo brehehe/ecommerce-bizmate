@@ -12,6 +12,7 @@
     } = $props();
 
     const primary = $derived((page.props as any).theme?.primary_color ?? '#ee4d2d');
+    const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
 
     function fmt(price: any): string {
         return new Intl.NumberFormat('id-ID', {
@@ -85,7 +86,7 @@
 
         <div class="max-w-6xl mx-auto px-4 py-6 pb-12">
             {#if statusCounts.all === 0}
-                <div class="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-100 shadow-sm p-8 max-w-lg mx-auto">
+                <div class="w-full max-w-6xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm p-8 py-20 flex flex-col items-center justify-center text-center">
                     <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                         <i class="ti ti-shopping-bag text-3xl text-slate-300"></i>
                     </div>
@@ -98,37 +99,9 @@
                     >Mulai Belanja</Link>
                 </div>
             {:else}
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <!-- Left Sidebar (Desktop Only) -->
-                    <div class="hidden lg:block space-y-4">
-                        <!-- User Card -->
-                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md shadow-brand-blueRoyal/10" style="background:{primary}">
-                                    {(page.props.auth?.user?.name ?? 'C').substring(0, 2).toUpperCase()}
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="font-bold text-slate-800 text-sm truncate">{page.props.auth?.user?.name ?? 'Pelanggan'}</p>
-                                    <p class="text-xs text-slate-400 font-medium truncate mt-0.5">{page.props.auth?.user?.email ?? ''}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Sidebar Menu -->
-                        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-2">
-                            <Link href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition">
-                                <i class="ti ti-smart-home text-base text-slate-400"></i>
-                                Belanja Lagi
-                            </Link>
-                            <Link href="/chats?tanya=1" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition">
-                                <i class="ti ti-message-2 text-base text-slate-400"></i>
-                                Hubungi Penjual
-                            </Link>
-                        </div>
-                    </div>
-
+                <div class="max-w-6xl mx-auto space-y-4">
                     <!-- Right Main Content -->
-                    <div class="lg:col-span-3 space-y-4">
+                    <div class="space-y-4">
                         <!-- Navigation Status Tabs -->
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-1.5 overflow-x-auto scrollbar-none flex gap-1.5 sticky top-[56px] lg:top-auto z-20">
                             {#each [

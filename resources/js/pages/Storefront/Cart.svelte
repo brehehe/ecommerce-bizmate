@@ -223,7 +223,8 @@
         if (selectedItems.length === 0) {
             showToast(
                 'Silakan pilih minimal satu produk untuk melakukan pembayaran.',
-            'success');
+                'success',
+            );
             return;
         }
         paymentModalOpen = true;
@@ -232,7 +233,10 @@
     function processPayment() {
         if (selectedMethod === 'cc') {
             if (!cardNumber || !cardExpiry || !cardCvv) {
-                showToast('Silakan lengkapi informasi kartu kredit Anda.', 'error');
+                showToast(
+                    'Silakan lengkapi informasi kartu kredit Anda.',
+                    'error',
+                );
                 return;
             }
         }
@@ -317,7 +321,7 @@
             if (hasUncheckedItemsInPromo(promo)) return false;
             const bundle = promo.settings?.bundle;
             if (!bundle || !bundle.buy_items) return false;
-            
+
             // Check if this item is part of the buy_items
             const matchesThisItem = bundle.buy_items.some((buyItem: any) => {
                 const matchProduct =
@@ -328,9 +332,9 @@
                     : true;
                 return matchProduct && matchVariant;
             });
-            
+
             if (!matchesThisItem) return false;
-            
+
             // To prevent double info, only return this promo if 'item' is the FIRST checked item in cartItems that matches it
             const firstMatchingItemInCart = cartItems.find((ci: any) => {
                 if (!ci.is_checked) return false;
@@ -344,8 +348,11 @@
                     return matchProduct && matchVariant;
                 });
             });
-            
-            return firstMatchingItemInCart && firstMatchingItemInCart.id === item.id;
+
+            return (
+                firstMatchingItemInCart &&
+                firstMatchingItemInCart.id === item.id
+            );
         });
     }
 
@@ -438,7 +445,11 @@
     }
 
     function goBack() {
-        if (window.history.length > 1 && document.referrer && document.referrer.includes(window.location.host)) {
+        if (
+            window.history.length > 1 &&
+            document.referrer &&
+            document.referrer.includes(window.location.host)
+        ) {
             window.history.back();
         } else {
             router.visit('/');
@@ -448,13 +459,21 @@
     // Voucher & Promo Selection States
     const activeVouchers = $derived.by(() => {
         const base = (activePromotions || []).filter(
-            (p: any) => p.type === 'voucher_gratis_ongkir' || p.type === 'voucher_belanja',
+            (p: any) =>
+                p.type === 'voucher_gratis_ongkir' ||
+                p.type === 'voucher_belanja',
         );
         const extra = [];
-        if (selectedShippingVoucher && !base.some((p: any) => p.id === selectedShippingVoucher.id)) {
+        if (
+            selectedShippingVoucher &&
+            !base.some((p: any) => p.id === selectedShippingVoucher.id)
+        ) {
             extra.push(selectedShippingVoucher);
         }
-        if (selectedDiscountVoucher && !base.some((p: any) => p.id === selectedDiscountVoucher.id)) {
+        if (
+            selectedDiscountVoucher &&
+            !base.some((p: any) => p.id === selectedDiscountVoucher.id)
+        ) {
             extra.push(selectedDiscountVoucher);
         }
         return [...base, ...extra];
@@ -471,59 +490,80 @@
     }
 
     const shippingVouchers = $derived(
-        activeVouchers.filter((v: any) => v.type === 'voucher_gratis_ongkir')
+        activeVouchers.filter((v: any) => v.type === 'voucher_gratis_ongkir'),
     );
 
     const discountVouchers = $derived(
-        activeVouchers.filter((v: any) => v.type !== 'voucher_gratis_ongkir')
+        activeVouchers.filter((v: any) => v.type !== 'voucher_gratis_ongkir'),
     );
 
     const checkoutUrl = $derived.by(() => {
         const codes = [];
         if (selectedShippingVoucher) codes.push(selectedShippingVoucher.code);
         if (selectedDiscountVoucher) codes.push(selectedDiscountVoucher.code);
-        return codes.length > 0 ? `/checkout?voucher=${codes.join(',')}` : '/checkout';
+        return codes.length > 0
+            ? `/checkout?voucher=${codes.join(',')}`
+            : '/checkout';
     });
 
     const calculatedDiscount = $derived.by(() => {
         if (!selectedDiscountVoucher) return 0;
-        if (selectedCartSubtotal < Number(selectedDiscountVoucher.min_purchase ?? 0)) return 0;
-        
-        const canStack = selectedDiscountVoucher.settings?.can_stack_with_promos !== false;
+        if (
+            selectedCartSubtotal <
+            Number(selectedDiscountVoucher.min_purchase ?? 0)
+        )
+            return 0;
+
+        const canStack =
+            selectedDiscountVoucher.settings?.can_stack_with_promos !== false;
         let eligibleSubtotal = selectedCartSubtotal;
-        
+
         if (!canStack) {
-            eligibleSubtotal = selectedItems.reduce((acc: number, item: any) => {
-                const variant = item.product_variant ?? item.productVariant ?? null;
-                const product = item.product ?? null;
-                const isOnPromo = variant ? (variant.is_promo ?? false) : (product?.is_promo ?? false);
-                return isOnPromo ? acc : acc + (item.subtotal ?? 0);
-            }, 0);
+            eligibleSubtotal = selectedItems.reduce(
+                (acc: number, item: any) => {
+                    const variant =
+                        item.product_variant ?? item.productVariant ?? null;
+                    const product = item.product ?? null;
+                    const isOnPromo = variant
+                        ? (variant.is_promo ?? false)
+                        : (product?.is_promo ?? false);
+                    return isOnPromo ? acc : acc + (item.subtotal ?? 0);
+                },
+                0,
+            );
         }
-        
+
         let amount = 0;
         if (selectedDiscountVoucher.discount_type === 'percentage') {
-            amount = eligibleSubtotal * (Number(selectedDiscountVoucher.discount_value) / 100);
+            amount =
+                eligibleSubtotal *
+                (Number(selectedDiscountVoucher.discount_value) / 100);
         } else {
             amount = Number(selectedDiscountVoucher.discount_value);
         }
-        
+
         amount = Math.min(amount, eligibleSubtotal);
-        
+
         if (selectedDiscountVoucher.max_discount) {
-            amount = Math.min(amount, Number(selectedDiscountVoucher.max_discount));
+            amount = Math.min(
+                amount,
+                Number(selectedDiscountVoucher.max_discount),
+            );
         }
-        
+
         return amount;
     });
 
     const calculatedGrandTotal = $derived(
-        Math.max(0, selectedCartSubtotal - calculatedDiscount)
+        Math.max(0, selectedCartSubtotal - calculatedDiscount),
     );
 
     function toggleVoucher(promo: any) {
         if (selectedCartSubtotal < Number(promo.min_purchase ?? 0)) {
-            showToast(`Belum memenuhi syarat minimal pembelian ${fmt(promo.min_purchase)}`, 'warning');
+            showToast(
+                `Belum memenuhi syarat minimal pembelian ${fmt(promo.min_purchase)}`,
+                'warning',
+            );
             return;
         }
         if (promo.type === 'voucher_gratis_ongkir') {
@@ -548,13 +588,18 @@
     function applyManualCode() {
         const code = manualVoucherCode.trim().toUpperCase();
         if (!code) return;
-        
-        const found = (activePromotions || []).find(p => p.code && p.code.toUpperCase() === code);
+
+        const found = (activePromotions || []).find(
+            (p) => p.code && p.code.toUpperCase() === code,
+        );
         if (found) {
             toggleVoucher(found);
             manualVoucherCode = '';
         } else {
-            showToast('Kode voucher tidak ditemukan atau sudah kadaluarsa.', 'error');
+            showToast(
+                'Kode voucher tidak ditemukan atau sudah kadaluarsa.',
+                'error',
+            );
         }
     }
 
@@ -564,16 +609,20 @@
         if (selectedShippingVoucher) codes.push(selectedShippingVoucher.code);
         if (selectedDiscountVoucher) codes.push(selectedDiscountVoucher.code);
 
-        router.post('/cart/select-vouchers', {
-            vouchers: codes.length > 0 ? codes.join(',') : ''
-        }, {
-            onSuccess: () => {
-                router.visit('/checkout');
+        router.post(
+            '/cart/select-vouchers',
+            {
+                vouchers: codes.length > 0 ? codes.join(',') : '',
             },
-            onError: () => {
-                router.visit('/checkout');
-            }
-        });
+            {
+                onSuccess: () => {
+                    router.visit('/checkout');
+                },
+                onError: () => {
+                    router.visit('/checkout');
+                },
+            },
+        );
     }
 </script>
 
@@ -2309,139 +2358,155 @@
                                             class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
                                             class:opacity-60={!minMet}
                                         >
-                                            <div class="relative flex items-stretch">
-                                            <!-- Left side color ribbon -->
                                             <div
-                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
-                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                                    primary,
-                                                    0.8,
-                                                )});"
+                                                class="relative flex items-stretch"
                                             >
-                                                <i
-                                                    class="ti ti-truck text-base mb-0.5 shrink-0"
-                                                ></i>
-                                                <span
-                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
-                                                >
-                                                    Free
-                                                </span>
-                                            </div>
-
-                                            <!-- Dashed Ticket Divider line -->
-                                            <div
-                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
-                                            ></div>
-                                            <!-- Ticket Top & Bottom cutouts -->
-                                            <div
-                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-                                            <div
-                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-
-                                            <!-- Right side content -->
-                                            <div
-                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
-                                            >
-                                                <div class="min-w-0">
-                                                    <div
-                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
-                                                    >
-                                                        <span
-                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
-                                                            style="color: {primary}; border-color: {withOpacity(
-                                                                primary,
-                                                                0.35,
-                                                            )}; background: {withOpacity(
-                                                                primary,
-                                                                0.06,
-                                                            )};"
-                                                        >
-                                                            {voucher.code}
-                                                        </span>
-                                                        {#if isSelected}
-                                                            <span
-                                                                class="bg-emerald-550 text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
-                                                                style="background-color: {primary};"
-                                                                >TERPASANG</span
-                                                            >
-                                                        {/if}
-                                                    </div>
-                                                    <h4
-                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
-                                                    >
-                                                        {voucher.name}
-                                                    </h4>
-                                                    <p
-                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
-                                                    >
-                                                        Gratis Ongkir s/d {fmt(
-                                                            voucher.discount_value,
-                                                        )}
-                                                    </p>
-                                                </div>
-
+                                                <!-- Left side color ribbon -->
                                                 <div
-                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                        primary,
+                                                        0.8,
+                                                    )});"
                                                 >
-                                                    <div class="flex items-center gap-1.5 shrink-0">
-                                                        <span
-                                                            class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                    <i
+                                                        class="ti ti-truck text-base mb-0.5 shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                    >
+                                                        Free
+                                                    </span>
+                                                </div>
+
+                                                <!-- Dashed Ticket Divider line -->
+                                                <div
+                                                    class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                                ></div>
+                                                <!-- Ticket Top & Bottom cutouts -->
+                                                <div
+                                                    class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+                                                <div
+                                                    class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+
+                                                <!-- Right side content -->
+                                                <div
+                                                    class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                                >
+                                                    <div class="min-w-0">
+                                                        <div
+                                                            class="flex items-center gap-1 mb-0.5 flex-wrap"
                                                         >
-                                                            Min. {fmt(
-                                                                voucher.min_purchase,
-                                                            )}
-                                                        </span>
-                                                        {#if voucher.settings?.terms}
-                                                            <button
-                                                                type="button"
-                                                                onclick={() => toggleTerms(voucher.id)}
-                                                                class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                            <span
+                                                                class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                                style="color: {primary}; border-color: {withOpacity(
+                                                                    primary,
+                                                                    0.35,
+                                                                )}; background: {withOpacity(
+                                                                    primary,
+                                                                    0.06,
+                                                                )};"
                                                             >
-                                                                S&K <i class="ti {expandedTerms[voucher.id] ? 'ti-chevron-up' : 'ti-chevron-down'} text-[8px]"></i>
-                                                            </button>
-                                                        {/if}
+                                                                {voucher.code}
+                                                            </span>
+                                                            {#if isSelected}
+                                                                <span
+                                                                    class="bg-emerald-550 text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                    style="background-color: {primary};"
+                                                                    >TERPASANG</span
+                                                                >
+                                                            {/if}
+                                                        </div>
+                                                        <h4
+                                                            class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                        >
+                                                            {voucher.name}
+                                                        </h4>
+                                                        <p
+                                                            class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                        >
+                                                            Gratis Ongkir s/d {fmt(
+                                                                voucher.discount_value,
+                                                            )}
+                                                        </p>
                                                     </div>
 
-                                                    {#if minMet}
-                                                        <button
-                                                            onclick={() =>
-                                                                toggleVoucher(
-                                                                    voucher,
-                                                                )}
-                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
-                                                            style="background: {isSelected
-                                                                ? '#cbd5e1'
-                                                                : primary}; color: {isSelected
-                                                                ? '#475569'
-                                                                : 'white'};"
+                                                    <div
+                                                        class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-1.5 shrink-0"
                                                         >
-                                                            {isSelected
-                                                                ? 'Lepas'
-                                                                : 'Pakai'}
-                                                        </button>
-                                                    {:else}
-                                                        <span
-                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
-                                                        >
-                                                            Kurang {fmt(
-                                                                Number(
+                                                            <span
+                                                                class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                            >
+                                                                Min. {fmt(
                                                                     voucher.min_purchase,
-                                                                ) -
-                                                                    selectedCartSubtotal,
-                                                            )}
-                                                        </span>
-                                                    {/if}
+                                                                )}
+                                                            </span>
+                                                            {#if voucher.settings?.terms}
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        toggleTerms(
+                                                                            voucher.id,
+                                                                        )}
+                                                                    class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                                >
+                                                                    S&K <i
+                                                                        class="ti {expandedTerms[
+                                                                            voucher
+                                                                                .id
+                                                                        ]
+                                                                            ? 'ti-chevron-up'
+                                                                            : 'ti-chevron-down'} text-[8px]"
+                                                                    ></i>
+                                                                </button>
+                                                            {/if}
+                                                        </div>
+
+                                                        {#if minMet}
+                                                            <button
+                                                                onclick={() =>
+                                                                    toggleVoucher(
+                                                                        voucher,
+                                                                    )}
+                                                                class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                                style="background: {isSelected
+                                                                    ? '#cbd5e1'
+                                                                    : primary}; color: {isSelected
+                                                                    ? '#475569'
+                                                                    : 'white'};"
+                                                            >
+                                                                {isSelected
+                                                                    ? 'Lepas'
+                                                                    : 'Pakai'}
+                                                            </button>
+                                                        {:else}
+                                                            <span
+                                                                class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                            >
+                                                                Kurang {fmt(
+                                                                    Number(
+                                                                        voucher.min_purchase,
+                                                                    ) -
+                                                                        selectedCartSubtotal,
+                                                                )}
+                                                            </span>
+                                                        {/if}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            {#if expandedTerms[voucher.id] && voucher.settings?.terms}
+                                                <div
+                                                    class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed"
+                                                >
+                                                    {voucher.settings.terms}
+                                                </div>
+                                            {/if}
                                         </div>
-                                        {#if expandedTerms[voucher.id] && voucher.settings?.terms}
-                                            <div class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed">
-                                                {voucher.settings.terms}
-                                            </div>
-                                        {/if}
-                                    </div>
                                     {/each}
                                 </div>
                             </div>
@@ -2475,145 +2540,161 @@
                                             class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
                                             class:opacity-60={!minMet}
                                         >
-                                            <div class="relative flex items-stretch">
-                                            <!-- Left side color ribbon -->
                                             <div
-                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
-                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                                    primary,
-                                                    0.8,
-                                                )});"
+                                                class="relative flex items-stretch"
                                             >
-                                                <i
-                                                    class="ti ti-ticket text-base mb-0.5 shrink-0"
-                                                ></i>
-                                                <span
-                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
-                                                >
-                                                    Diskon
-                                                </span>
-                                            </div>
-
-                                            <!-- Dashed Ticket Divider line -->
-                                            <div
-                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
-                                            ></div>
-                                            <!-- Ticket Top & Bottom cutouts -->
-                                            <div
-                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-                                            <div
-                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-
-                                            <!-- Right side content -->
-                                            <div
-                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
-                                            >
-                                                <div class="min-w-0">
-                                                    <div
-                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
-                                                    >
-                                                        <span
-                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
-                                                            style="color: {primary}; border-color: {withOpacity(
-                                                                primary,
-                                                                0.35,
-                                                            )}; background: {withOpacity(
-                                                                primary,
-                                                                0.06,
-                                                            )};"
-                                                        >
-                                                            {voucher.code}
-                                                        </span>
-                                                        {#if isSelected}
-                                                            <span
-                                                                class="bg-emerald-550 text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
-                                                                style="background-color: {primary};"
-                                                                >TERPASANG</span
-                                                            >
-                                                        {/if}
-                                                    </div>
-                                                    <h4
-                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
-                                                    >
-                                                        {voucher.name}
-                                                    </h4>
-                                                    <p
-                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
-                                                    >
-                                                        Potongan {#if voucher.discount_type === 'percentage'}{Number(
-                                                                voucher.discount_value,
-                                                            )}%{:else}{fmt(
-                                                                voucher.discount_value,
-                                                            )}{/if}
-                                                        {#if voucher.max_discount}s/d
-                                                            {fmt(
-                                                                voucher.max_discount,
-                                                            )}{/if}
-                                                    </p>
-                                                </div>
-
+                                                <!-- Left side color ribbon -->
                                                 <div
-                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                        primary,
+                                                        0.8,
+                                                    )});"
                                                 >
-                                                    <div class="flex items-center gap-1.5 shrink-0">
-                                                        <span
-                                                            class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                    <i
+                                                        class="ti ti-ticket text-base mb-0.5 shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                    >
+                                                        Diskon
+                                                    </span>
+                                                </div>
+
+                                                <!-- Dashed Ticket Divider line -->
+                                                <div
+                                                    class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                                ></div>
+                                                <!-- Ticket Top & Bottom cutouts -->
+                                                <div
+                                                    class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+                                                <div
+                                                    class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+
+                                                <!-- Right side content -->
+                                                <div
+                                                    class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                                >
+                                                    <div class="min-w-0">
+                                                        <div
+                                                            class="flex items-center gap-1 mb-0.5 flex-wrap"
                                                         >
-                                                            Min. {fmt(
-                                                                voucher.min_purchase,
-                                                            )}
-                                                        </span>
-                                                        {#if voucher.settings?.terms}
-                                                            <button
-                                                                type="button"
-                                                                onclick={() => toggleTerms(voucher.id)}
-                                                                class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                            <span
+                                                                class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                                style="color: {primary}; border-color: {withOpacity(
+                                                                    primary,
+                                                                    0.35,
+                                                                )}; background: {withOpacity(
+                                                                    primary,
+                                                                    0.06,
+                                                                )};"
                                                             >
-                                                                S&K <i class="ti {expandedTerms[voucher.id] ? 'ti-chevron-up' : 'ti-chevron-down'} text-[8px]"></i>
-                                                            </button>
-                                                        {/if}
+                                                                {voucher.code}
+                                                            </span>
+                                                            {#if isSelected}
+                                                                <span
+                                                                    class="bg-emerald-550 text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                    style="background-color: {primary};"
+                                                                    >TERPASANG</span
+                                                                >
+                                                            {/if}
+                                                        </div>
+                                                        <h4
+                                                            class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                        >
+                                                            {voucher.name}
+                                                        </h4>
+                                                        <p
+                                                            class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                        >
+                                                            Potongan {#if voucher.discount_type === 'percentage'}{Number(
+                                                                    voucher.discount_value,
+                                                                )}%{:else}{fmt(
+                                                                    voucher.discount_value,
+                                                                )}{/if}
+                                                            {#if voucher.max_discount}s/d
+                                                                {fmt(
+                                                                    voucher.max_discount,
+                                                                )}{/if}
+                                                        </p>
                                                     </div>
 
-                                                    {#if minMet}
-                                                        <button
-                                                            onclick={() =>
-                                                                toggleVoucher(
-                                                                    voucher,
-                                                                )}
-                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
-                                                            style="background: {isSelected
-                                                                ? '#cbd5e1'
-                                                                : primary}; color: {isSelected
-                                                                ? '#475569'
-                                                                : 'white'};"
+                                                    <div
+                                                        class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-1.5 shrink-0"
                                                         >
-                                                            {isSelected
-                                                                ? 'Lepas'
-                                                                : 'Pakai'}
-                                                        </button>
-                                                    {:else}
-                                                        <span
-                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
-                                                        >
-                                                            Kurang {fmt(
-                                                                Number(
+                                                            <span
+                                                                class="text-[8px] bg-slate-100/80 text-slate-505 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                            >
+                                                                Min. {fmt(
                                                                     voucher.min_purchase,
-                                                                ) -
-                                                                    selectedCartSubtotal,
-                                                            )}
-                                                        </span>
-                                                    {/if}
+                                                                )}
+                                                            </span>
+                                                            {#if voucher.settings?.terms}
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        toggleTerms(
+                                                                            voucher.id,
+                                                                        )}
+                                                                    class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                                >
+                                                                    S&K <i
+                                                                        class="ti {expandedTerms[
+                                                                            voucher
+                                                                                .id
+                                                                        ]
+                                                                            ? 'ti-chevron-up'
+                                                                            : 'ti-chevron-down'} text-[8px]"
+                                                                    ></i>
+                                                                </button>
+                                                            {/if}
+                                                        </div>
+
+                                                        {#if minMet}
+                                                            <button
+                                                                onclick={() =>
+                                                                    toggleVoucher(
+                                                                        voucher,
+                                                                    )}
+                                                                class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                                style="background: {isSelected
+                                                                    ? '#cbd5e1'
+                                                                    : primary}; color: {isSelected
+                                                                    ? '#475569'
+                                                                    : 'white'};"
+                                                            >
+                                                                {isSelected
+                                                                    ? 'Lepas'
+                                                                    : 'Pakai'}
+                                                            </button>
+                                                        {:else}
+                                                            <span
+                                                                class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                            >
+                                                                Kurang {fmt(
+                                                                    Number(
+                                                                        voucher.min_purchase,
+                                                                    ) -
+                                                                        selectedCartSubtotal,
+                                                                )}
+                                                            </span>
+                                                        {/if}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            {#if expandedTerms[voucher.id] && voucher.settings?.terms}
+                                                <div
+                                                    class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed"
+                                                >
+                                                    {voucher.settings.terms}
+                                                </div>
+                                            {/if}
                                         </div>
-                                        {#if expandedTerms[voucher.id] && voucher.settings?.terms}
-                                            <div class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed">
-                                                {voucher.settings.terms}
-                                            </div>
-                                        {/if}
-                                    </div>
                                     {/each}
                                 </div>
                             </div>
