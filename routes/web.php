@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\ReturnController as AdminReturnController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\AdminDashboardController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +46,13 @@ Route::middleware('auth')->group(function () {
     // Customer Profile Edit
     Route::get('/profile', [ProfileController::class, 'showCustomerProfile'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'updateCustomerProfile'])->name('profile.update');
+
+    // Customer Bank Accounts
+    Route::get('/profile/bank-accounts', [ProfileController::class, 'bankAccounts'])->name('profile.bank-accounts.index');
+    Route::post('/profile/bank-accounts', [ProfileController::class, 'storeBankAccount'])->name('profile.bank-accounts.store');
+    Route::put('/profile/bank-accounts/{bankAccount}', [ProfileController::class, 'updateBankAccount'])->name('profile.bank-accounts.update');
+    Route::delete('/profile/bank-accounts/{bankAccount}', [ProfileController::class, 'destroyBankAccount'])->name('profile.bank-accounts.destroy');
+    Route::post('/profile/bank-accounts/{bankAccount}/make-primary', [ProfileController::class, 'makePrimaryBankAccount'])->name('profile.bank-accounts.make-primary');
 
     // Customer Shipping Addresses
     Route::get('/profile/addresses', [CustomerAddressController::class, 'index'])->name('profile.addresses.index');
@@ -81,6 +90,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
     Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
+
+    // Returns (Customer)
+    Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
+    Route::post('/transactions/{transaction}/return', [ReturnController::class, 'store'])->name('returns.store');
+    Route::post('/returns/{returnRequest}/tracking', [ReturnController::class, 'updateTracking'])->name('returns.tracking');
 
     // Notifications (Customer)
     Route::post('/notifications/{notification}/read', [StorefrontController::class, 'markNotificationAsRead'])->name('notifications.read');
@@ -178,6 +192,18 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // Stock Movements
     Route::get('/stock-movements', [AdminTransactionController::class, 'stockMovements'])->name('stock-movements.index');
+
+    // Returns (Admin)
+    Route::get('/returns', [AdminReturnController::class, 'index'])->name('returns.index');
+    Route::get('/returns/{return}', [AdminReturnController::class, 'show'])->name('returns.show');
+    Route::post('/returns/{return}/approve', [AdminReturnController::class, 'approve'])->name('returns.approve');
+    Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->name('returns.reject');
+    Route::post('/returns/{return}/customer-tracking', [AdminReturnController::class, 'updateCustomerTracking'])->name('returns.customer-tracking');
+    Route::post('/returns/{return}/confirm-receipt', [AdminReturnController::class, 'confirmReceipt'])->name('returns.confirm-receipt');
+    Route::post('/returns/{return}/process-refund', [AdminReturnController::class, 'processRefund'])->name('returns.process-refund');
+    Route::post('/returns/{return}/process-replacement', [AdminReturnController::class, 'processReplacement'])->name('returns.process-replacement');
+    Route::post('/returns/{return}/replacement-tracking', [AdminReturnController::class, 'updateReplacementTracking'])->name('returns.replacement-tracking');
+    Route::post('/returns/{return}/complete-refund', [AdminReturnController::class, 'completeRefund'])->name('returns.complete-refund');
 
     // Reports
     Route::prefix('reports')->name('reports.')->group(function () {

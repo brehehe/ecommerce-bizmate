@@ -173,58 +173,9 @@
         </div>
 
         <!-- ==================== DESKTOP LAYOUT (hidden on mobile) ==================== -->
-        <div class="hidden md:grid md:grid-cols-5 gap-8 items-start">
-            
-            <!-- Left Column: Navigation Sidebar -->
-            <div class="col-span-2 space-y-6">
-                <!-- User Detail Card -->
-                <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center gap-4">
-                    <div
-                        class="w-16 h-16 rounded-full border-4 p-0.5 flex items-center justify-center shrink-0 shadow-sm"
-                        style="border-color: {secondary};"
-                    >
-                        <div
-                            class="w-full h-full text-white font-black text-lg rounded-full flex items-center justify-center uppercase"
-                            style="background: linear-gradient(135deg, {primary}, {secondary});"
-                        >
-                            {user ? user.name.substring(0, 2) : 'CS'}
-                        </div>
-                    </div>
-                    <div class="min-w-0">
-                        <h2 class="text-base font-black text-slate-800 truncate">{user?.name}</h2>
-                        <p class="text-xs text-slate-400 font-medium truncate mt-0.5">{user?.email}</p>
-                    </div>
-                </div>
-
-                <!-- Desktop Sidebar Navigation Menu -->
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-2">
-                    <Link
-                        href="/profile"
-                        class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200"
-                        style="color: {primary}; background-color: {primary}08;"
-                    >
-                        <i class="ti ti-user text-lg"></i>
-                        <span>Profil Saya</span>
-                    </Link>
-                    <Link
-                        href="/profile/addresses"
-                        class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition"
-                    >
-                        <i class="ti ti-map-pin text-lg"></i>
-                        <span>Alamat Pengiriman</span>
-                    </Link>
-                    <Link
-                        href="/transactions"
-                        class="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition"
-                    >
-                        <i class="ti ti-shopping-cart text-lg"></i>
-                        <span>Transaksi Saya</span>
-                    </Link>
-                </div>
-            </div>
-
+        <div class="hidden md:block max-w-6xl mx-auto w-full">
             <!-- Right Column: Profile Form -->
-            <div class="col-span-3 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 sm:p-8 space-y-6">
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 sm:p-8 space-y-6">
                 <div class="border-b border-slate-100 pb-4">
                     <h1 class="font-outfit font-black text-xl text-slate-800">Profil Saya</h1>
                     <p class="text-xs text-slate-400 font-medium mt-1">

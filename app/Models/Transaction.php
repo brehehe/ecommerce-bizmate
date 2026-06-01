@@ -41,6 +41,9 @@ class Transaction extends Model
         'cancelled_at',
         'tracking_number',
         'courier_name',
+        'return_status',
+        'is_replacement_transaction',
+        'original_transaction_id',
     ];
 
     protected $casts = [
@@ -53,6 +56,7 @@ class Transaction extends Model
         'grand_total' => 'decimal:2',
         'voucher_discount_value' => 'decimal:2',
         'cancelled_at' => 'datetime',
+        'is_replacement_transaction' => 'boolean',
     ];
 
     /**
@@ -70,6 +74,24 @@ class Transaction extends Model
             'dikirim' => 'Dikirim',
             'selesai' => 'Selesai',
             'batal' => 'Batal',
+        ];
+    }
+
+    /**
+     * Return status labels in Indonesian.
+     *
+     * @return array<string, string>
+     */
+    public static function returnStatusLabels(): array
+    {
+        return [
+            'menunggu_review' => 'Menunggu Review',
+            'disetujui' => 'Retur Disetujui',
+            'ditolak' => 'Retur Ditolak',
+            'barang_dikirim_customer' => 'Barang Dikirim',
+            'barang_diterima_toko' => 'Diterima Toko',
+            'refund_diproses' => 'Refund Diproses',
+            'selesai' => 'Retur Selesai',
         ];
     }
 
@@ -248,5 +270,15 @@ class Transaction extends Model
     public function statusHistories(): HasMany
     {
         return $this->hasMany(TransactionStatusHistory::class)->orderBy('created_at', 'asc');
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class);
+    }
+
+    public function activeReturn(): HasOne
+    {
+        return $this->hasOne(ReturnRequest::class)->whereNotIn('status', ['ditolak'])->latestOfMany();
     }
 }

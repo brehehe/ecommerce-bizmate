@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CustomerBankAccount;
+use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -15,8 +17,13 @@ class ProfileController extends Controller
      */
     public function showCustomerProfile(Request $request): Response
     {
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
         return Inertia::render('Storefront/Profile', [
             'user' => $request->user(),
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
         ]);
     }
 
@@ -29,7 +36,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'nullable|string|min:8|confirmed',
         ], [
             'name.required' => 'Nama wajib diisi.',
@@ -71,7 +78,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'nullable|string|min:8|confirmed',
         ], [
             'name.required' => 'Nama wajib diisi.',
@@ -92,5 +99,127 @@ class ProfileController extends Controller
         $user->save();
 
         return redirect()->back()->with('success', 'Profil admin berhasil diperbarui!');
+    }
+
+    /**
+     * Show customer bank accounts page.
+     */
+    public function bankAccounts(Request $request): Response
+    {
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/BankAccounts', [
+            'bankAccounts' => $request->user()->customerBankAccounts()->orderByDesc('is_primary')->orderBy('id')->get(),
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Store a new bank account.
+     */
+    public function storeBankAccount(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'bank_name' => 'required|string|max:100',
+            'account_number' => 'required|string|max:50',
+            'account_name' => 'required|string|max:150',
+            'is_primary' => 'boolean',
+        ], [
+            'bank_name.required' => 'Nama bank wajib diisi.',
+            'account_number.required' => 'Nomor rekening wajib diisi.',
+            'account_name.required' => 'Nama pemilik rekening wajib diisi.',
+        ]);
+
+        // If this is set as primary, unset all others
+        if ($request->boolean('is_primary')) {
+            $user->customerBankAccounts()->update(['is_primary' => false]);
+        }
+
+        // If this is the first account, make it primary
+        $isPrimary = $request->boolean('is_primary') || $user->customerBankAccounts()->count() === 0;
+
+        $user->customerBankAccounts()->create([
+            'bank_name' => $request->bank_name,
+            'account_number' => $request->account_number,
+            'account_name' => $request->account_name,
+            'is_primary' => $isPrimary,
+        ]);
+
+        return back()->with('success', 'Rekening bank berhasil ditambahkan.');
+    }
+
+    /**
+     * Update a bank account.
+     */
+    public function updateBankAccount(Request $request, CustomerBankAccount $bankAccount): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($bankAccount->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'bank_name' => 'required|string|max:100',
+            'account_number' => 'required|string|max:50',
+            'account_name' => 'required|string|max:150',
+            'is_primary' => 'boolean',
+        ]);
+
+        if ($request->boolean('is_primary')) {
+            $user->customerBankAccounts()->update(['is_primary' => false]);
+        }
+
+        $bankAccount->update([
+            'bank_name' => $request->bank_name,
+            'account_number' => $request->account_number,
+            'account_name' => $request->account_name,
+            'is_primary' => $request->boolean('is_primary'),
+        ]);
+
+        return back()->with('success', 'Rekening bank berhasil diperbarui.');
+    }
+
+    /**
+     * Delete a bank account.
+     */
+    public function destroyBankAccount(Request $request, CustomerBankAccount $bankAccount): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($bankAccount->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $wasPrimary = $bankAccount->is_primary;
+        $bankAccount->delete();
+
+        // If deleted account was primary, set the first remaining as primary
+        if ($wasPrimary) {
+            $user->customerBankAccounts()->orderBy('id')->first()?->update(['is_primary' => true]);
+        }
+
+        return back()->with('success', 'Rekening bank berhasil dihapus.');
+    }
+
+    /**
+     * Set a bank account as primary.
+     */
+    public function makePrimaryBankAccount(Request $request, CustomerBankAccount $bankAccount): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($bankAccount->user_id !== $user->id) {
+            abort(403);
+        }
+
+        $user->customerBankAccounts()->update(['is_primary' => false]);
+        $bankAccount->update(['is_primary' => true]);
+
+        return back()->with('success', 'Rekening utama berhasil diubah.');
     }
 }

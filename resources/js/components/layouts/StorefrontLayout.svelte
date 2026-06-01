@@ -811,6 +811,20 @@
                                             <i class="ti ti-package text-base"
                                             ></i> Pesanan
                                         </Link>
+                                        <Link
+                                            href="/profile/bank-accounts"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                        >
+                                            <i class="ti ti-building-bank text-base"></i> Rekening Saya
+                                        </Link>
+                                        <Link
+                                            href="/returns"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                        >
+                                            <i class="ti ti-arrow-back-up text-base"></i> Retur Saya
+                                        </Link>
                                     </div>
                                     <div class="p-1 border-t border-slate-100">
                                         <button
@@ -1011,6 +1025,20 @@
                     class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                 >
                     <i class="ti ti-package text-lg"></i> Pesanan Saya
+                </Link>
+                <Link
+                    href="/profile/bank-accounts"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-building-bank text-lg"></i> Rekening Saya
+                </Link>
+                <Link
+                    href="/returns"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-arrow-back-up text-lg"></i> Retur Saya
                 </Link>
 
                 <button

@@ -1604,6 +1604,10 @@ class StorefrontController extends Controller
             'payment',
             'courier',
             'statusHistories',
+            'returns.items',
+            'returns.media',
+            'activeReturn.items',
+            'activeReturn.media',
         ]);
 
         $userReviews = ProductReview::where('user_id', $request->user()->id)
@@ -1767,11 +1771,13 @@ class StorefrontController extends Controller
         return Inertia::render('Storefront/TransactionDetail', [
             'transaction' => $transaction,
             'statusLabels' => Transaction::statusLabels(),
+            'returnStatusLabels' => Transaction::returnStatusLabels(),
             'paymentMethods' => PaymentMethod::select('id', 'name', 'type')
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(),
             'userReviews' => $userReviews,
+            'userBankAccounts' => $request->user()->customerBankAccounts()->orderByDesc('is_primary')->get(),
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
