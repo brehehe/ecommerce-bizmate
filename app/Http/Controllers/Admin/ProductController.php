@@ -150,9 +150,9 @@ class ProductController extends Controller
             'video_url' => 'nullable|string',
             'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:51200',
             'model_3d_url' => 'nullable|string',
-            'model_3d_file' => 'nullable|file|mimes:glb,gltf|max:51200',
+            'model_3d_file' => 'nullable|file|max:51200',
             'model_3d_usdz_url' => 'nullable|string',
-            'model_3d_usdz_file' => 'nullable|file|mimes:usdz|max:51200',
+            'model_3d_usdz_file' => 'nullable|file|max:51200',
         ]);
 
         $categoryIds = $validated['category_ids'];
@@ -185,14 +185,16 @@ class ProductController extends Controller
 
         $modelPath = $request->input('model_3d_url');
         if ($request->hasFile('model_3d_file')) {
-            $path = $request->file('model_3d_file')->store('products/models', 'public');
+            $filename = Str::random(40).'.glb';
+            $path = $request->file('model_3d_file')->storeAs('products/models', $filename, 'public');
             $modelPath = 'storage/'.$path;
         }
         $validated['model_3d_path'] = $modelPath;
 
         $usdzPath = $request->input('model_3d_usdz_url');
         if ($request->hasFile('model_3d_usdz_file')) {
-            $path = $request->file('model_3d_usdz_file')->store('products/models', 'public');
+            $filename = Str::random(40).'.usdz';
+            $path = $request->file('model_3d_usdz_file')->storeAs('products/models', $filename, 'public');
             $usdzPath = 'storage/'.$path;
         }
         $validated['model_3d_usdz_path'] = $usdzPath;
@@ -437,9 +439,9 @@ class ProductController extends Controller
             'video_url' => 'nullable|string',
             'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:51200',
             'model_3d_url' => 'nullable|string',
-            'model_3d_file' => 'nullable|file|mimes:glb,gltf|max:51200',
+            'model_3d_file' => 'nullable|file|max:51200',
             'model_3d_usdz_url' => 'nullable|string',
-            'model_3d_usdz_file' => 'nullable|file|mimes:usdz|max:51200',
+            'model_3d_usdz_file' => 'nullable|file|max:51200',
         ]);
 
         $categoryIds = $validated['category_ids'];
@@ -474,14 +476,16 @@ class ProductController extends Controller
 
         $modelPath = $request->input('model_3d_url', $product->model_3d_path);
         if ($request->hasFile('model_3d_file')) {
-            $path = $request->file('model_3d_file')->store('products/models', 'public');
+            $filename = Str::random(40).'.glb';
+            $path = $request->file('model_3d_file')->storeAs('products/models', $filename, 'public');
             $modelPath = 'storage/'.$path;
         }
         $validated['model_3d_path'] = $modelPath;
 
         $usdzPath = $request->input('model_3d_usdz_url', $product->model_3d_usdz_path);
         if ($request->hasFile('model_3d_usdz_file')) {
-            $path = $request->file('model_3d_usdz_file')->store('products/models', 'public');
+            $filename = Str::random(40).'.usdz';
+            $path = $request->file('model_3d_usdz_file')->storeAs('products/models', $filename, 'public');
             $usdzPath = 'storage/'.$path;
         }
         $validated['model_3d_usdz_path'] = $usdzPath;
