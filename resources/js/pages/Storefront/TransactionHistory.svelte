@@ -203,7 +203,14 @@
                                         <div class="px-4 py-3 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between">
                                             <div>
                                                 <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pembayaran</span>
-                                                <p class="text-sm font-black mt-0.5" style="color:{primary}">{fmt(trx.grand_total)}</p>
+                                                <div class="flex items-center gap-2 mt-0.5">
+                                                    <p class="text-sm font-black" style="color:{primary}">{fmt(trx.grand_total)}</p>
+                                                    {#if trx.coins_redeemed > 0}
+                                                        <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-50 text-amber-600 border border-amber-200/50">
+                                                            <i class="ti ti-coins"></i> Potongan: -{fmt(trx.coins_value)}
+                                                        </span>
+                                                    {/if}
+                                                </div>
                                             </div>
                                             <div class="flex items-center gap-2">
                                                 <button

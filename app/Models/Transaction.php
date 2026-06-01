@@ -44,6 +44,9 @@ class Transaction extends Model
         'return_status',
         'is_replacement_transaction',
         'original_transaction_id',
+        'coins_redeemed',
+        'coins_value',
+        'coins_earned',
     ];
 
     protected $casts = [
@@ -57,6 +60,9 @@ class Transaction extends Model
         'voucher_discount_value' => 'decimal:2',
         'cancelled_at' => 'datetime',
         'is_replacement_transaction' => 'boolean',
+        'coins_redeemed' => 'integer',
+        'coins_value' => 'integer',
+        'coins_earned' => 'integer',
     ];
 
     /**
@@ -103,6 +109,46 @@ class Transaction extends Model
 
             if ($statusChanged || $trackingChanged) {
                 if ($statusChanged) {
+                    // Award coins when status is updated to completed ('selesai')
+                    if ($transaction->status === 'selesai' && $transaction->coins_earned > 0) {
+                        $alreadyAwarded = CoinHistory::where('transaction_id', $transaction->id)
+                            ->where('type', 'earn')
+                            ->exists();
+                        if (! $alreadyAwarded) {
+                            $user = $transaction->user;
+                            if ($user) {
+                                $user->increment('coins_balance', $transaction->coins_earned);
+                                CoinHistory::create([
+                                    'user_id' => $user->id,
+                                    'transaction_id' => $transaction->id,
+                                    'amount' => $transaction->coins_earned,
+                                    'type' => 'earn',
+                                    'description' => 'Mendapatkan koin dari transaksi #'.$transaction->transaction_number,
+                                ]);
+                            }
+                        }
+                    }
+
+                    // Refund coins when status is updated to cancelled ('batal')
+                    if ($transaction->status === 'batal' && $transaction->coins_redeemed > 0) {
+                        $alreadyRefunded = CoinHistory::where('transaction_id', $transaction->id)
+                            ->where('type', 'refund')
+                            ->exists();
+                        if (! $alreadyRefunded) {
+                            $user = $transaction->user;
+                            if ($user) {
+                                $user->increment('coins_balance', $transaction->coins_redeemed);
+                                CoinHistory::create([
+                                    'user_id' => $user->id,
+                                    'transaction_id' => $transaction->id,
+                                    'amount' => $transaction->coins_redeemed,
+                                    'type' => 'refund',
+                                    'description' => 'Pengembalian koin dari pembatalan transaksi #'.$transaction->transaction_number,
+                                ]);
+                            }
+                        }
+                    }
+
                     $description = match ($transaction->status) {
                         'belum_bayar' => 'Menunggu pembayaran.',
                         'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',

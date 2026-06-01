@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'is_active', 'last_active_at'])]
+#[Fillable(['name', 'email', 'password', 'is_active', 'last_active_at', 'coins_balance'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -45,5 +45,10 @@ class User extends Authenticatable
     public function customerBankAccounts()
     {
         return $this->hasMany(CustomerBankAccount::class);
+    }
+
+    public function coinHistories()
+    {
+        return $this->hasMany(CoinHistory::class)->latest();
     }
 }

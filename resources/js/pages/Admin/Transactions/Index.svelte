@@ -473,7 +473,14 @@
                                             <span class="text-slate-600 font-bold">{(trx.items ?? []).length} item</span>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span class="font-black text-slate-800">{fmt(trx.grand_total)}</span>
+                                            <div class="flex flex-col">
+                                                <span class="font-black text-slate-800">{fmt(trx.grand_total)}</span>
+                                                {#if trx.coins_redeemed > 0}
+                                                    <span class="text-[9px] font-black text-amber-600 flex items-center gap-0.5 mt-0.5" title="Koin yang digunakan">
+                                                        <i class="ti ti-coins"></i> -{fmt(trx.coins_value)}
+                                                    </span>
+                                                {/if}
+                                            </div>
                                         </td>
                                         <td class="py-5 px-4">
                                             <span
