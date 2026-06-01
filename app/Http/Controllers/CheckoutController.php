@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderConfirmation;
 use App\Models\CartItem;
 use App\Models\Courier;
 use App\Models\CustomerAddress;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -622,6 +624,18 @@ class CheckoutController extends Controller
 
         $transactionNumber = session('last_transaction_number');
         $transaction = Transaction::where('transaction_number', $transactionNumber)->first();
+
+        // Send order confirmation email (fail silently so it never blocks the redirect)
+        try {
+            $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+            $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+            $transaction->load(['items', 'user', 'customerAddress', 'paymentMethod']);
+
+            Mail::to($user->email)->send(new OrderConfirmation($transaction, $storeName, $storeLogo));
+        } catch (\Throwable $e) {
+            Log::error('Order confirmation email failed for transaction '.$transaction->transaction_number.': '.$e->getMessage());
+        }
 
         return redirect()->route('transactions.show', $transaction->id)
             ->with('success', 'Pesanan berhasil dibuat!');
