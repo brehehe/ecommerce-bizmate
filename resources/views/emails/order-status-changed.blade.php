@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Pesanan Berhasil Dibuat</title>
+    <title>Update Status Pesanan</title>
     <!--[if mso]>
     <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
     <![endif]-->
@@ -41,11 +41,33 @@
             }
         }
     }
+
+    $statusText = match ($transaction->status) {
+        'belum_bayar' => 'Menunggu Pembayaran',
+        'menunggu' => 'Menunggu Konfirmasi',
+        'diproses' => 'Sedang Diproses',
+        'dikemas' => 'Sedang Dikemas',
+        'dikirim' => 'Sedang Dikirim',
+        'selesai' => 'Pesanan Selesai',
+        'batal' => 'Dibatalkan',
+        default => 'Status Diperbarui',
+    };
+
+    $statusDescription = match ($transaction->status) {
+        'belum_bayar' => 'Pesanan Anda menunggu pembayaran. Silakan selesaikan pembayaran agar pesanan Anda dapat segera diproses.',
+        'menunggu' => 'Pembayaran Anda telah kami terima dan saat ini sedang menunggu konfirmasi/verifikasi.',
+        'diproses' => 'Pembayaran berhasil dikonfirmasi. Penjual sedang memproses pesanan Anda.',
+        'dikemas' => 'Pesanan Anda saat ini sedang dikemas dengan rapi dan bersiap untuk diserahkan ke kurir.',
+        'dikirim' => 'Kabar gembira! Pesanan Anda telah dikirim dan sedang dalam perjalanan ke alamat Anda.',
+        'selesai' => 'Terima kasih! Pesanan Anda telah selesai dan diterima dengan baik. Selamat menikmati produk Anda!',
+        'batal' => 'Pesanan Anda telah dibatalkan.' . ($transaction->cancel_reason ? ' Alasan: ' . $transaction->cancel_reason : ''),
+        default => 'Status pesanan Anda telah diperbarui menjadi ' . $statusText,
+    };
 @endphp
 
 <!-- Preheader -->
 <div style="display:none;font-size:1px;color:#f5f8fa;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-    Pesanan #{{ $transaction->transaction_number }} berhasil dibuat — {{ $storeName }}
+    Status pesanan #{{ $transaction->transaction_number }} kini {{ strtolower($statusText) }} — {{ $storeName }}
 </div>
 
 <!-- Outer wrapper -->
@@ -72,32 +94,45 @@
 
                         <p style="font-size:15px;margin:0 0 12px 0;color:#222222;">Hai <strong>{{ $transaction->user->name }}</strong>,</p>
                         <p style="font-size:14px;line-height:1.5;margin:0 0 25px 0;color:#444444;">
-                            Pesanan Anda <strong style="color:#0056b3;">#{{ $transaction->transaction_number }}</strong> telah berhasil dibuat pada {{ $transaction->created_at->format('d/m/Y H:i') }} WIB.
+                            Ada pembaruan untuk status pesanan Anda <strong style="color:#0056b3;">#{{ $transaction->transaction_number }}</strong>.
                         </p>
 
-                        {{-- Section: Order Details --}}
-                        <div style="font-size:13px;font-weight:bold;color:#444444;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #eeeeee;padding-bottom:6px;letter-spacing:0.5px;">
-                            Rincian Pesanan
-                        </div>
-
-                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px;font-size:13px;line-height:1.6;">
+                        {{-- Status Highlight Card --}}
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#f2f7fd;border:1px solid #d4e3f5;border-radius:4px;margin-bottom:25px;">
                             <tr>
-                                <td width="130" style="color:#777777;padding:3px 0;vertical-align:top;">No. Pesanan:</td>
-                                <td style="color:#0056b3;font-weight:bold;padding:3px 0;vertical-align:top;">#{{ $transaction->transaction_number }}</td>
-                            </tr>
-                            <tr>
-                                <td style="color:#777777;padding:3px 0;vertical-align:top;">Tanggal Pemesanan:</td>
-                                <td style="color:#333333;padding:3px 0;vertical-align:top;">{{ $transaction->created_at->format('d M Y H:i') }} WIB</td>
-                            </tr>
-                            <tr>
-                                <td style="color:#777777;padding:3px 0;vertical-align:top;">Penjual:</td>
-                                <td style="color:#333333;padding:3px 0;vertical-align:top;">{{ $storeName }}</td>
-                            </tr>
-                            <tr>
-                                <td style="color:#777777;padding:3px 0;vertical-align:top;">Status:</td>
-                                <td style="color:#0056b3;font-weight:bold;padding:3px 0;vertical-align:top;">Belum Bayar</td>
+                                <td style="padding:20px;">
+                                    <div style="font-size:12px;font-weight:bold;color:#666666;text-transform:uppercase;margin-bottom:5px;">Status Pesanan Saat Ini</div>
+                                    <div style="font-size:18px;font-weight:bold;color:#0056b3;margin-bottom:10px;">{{ $statusText }}</div>
+                                    <div style="font-size:13px;color:#333333;line-height:1.5;margin:0;">{{ $statusDescription }}</div>
+                                </td>
                             </tr>
                         </table>
+
+                        {{-- Resi / Courier Box (If Shipped) --}}
+                        @if($transaction->status === 'dikirim' && $transaction->tracking_number)
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border:1px solid #eeeeee;border-radius:4px;margin-bottom:25px;background-color:#fafafa;">
+                            <tr>
+                                <td style="padding:15px;">
+                                    <div style="font-size:13px;font-weight:bold;color:#444444;margin-bottom:8px;">Informasi Pengiriman</div>
+                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-size:13px;">
+                                        <tr>
+                                            <td width="100" style="color:#777777;padding:3px 0;">Kurir:</td>
+                                            <td style="color:#333333;font-weight:bold;padding:3px 0;">
+                                                {{ strtoupper($transaction->courier_name ?? $transaction->shipping_courier ?? '-') }} 
+                                                @if($transaction->shipping_service)
+                                                    ({{ $transaction->shipping_service }})
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="color:#777777;padding:3px 0;">No. Resi:</td>
+                                            <td style="color:#0056b3;font-weight:bold;padding:3px 0;font-family:monospace;font-size:14px;">{{ $transaction->tracking_number }}</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                        @endif
 
                         {{-- Section: Products --}}
                         <div style="font-size:13px;font-weight:bold;color:#444444;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #eeeeee;padding-bottom:6px;letter-spacing:0.5px;">
@@ -150,45 +185,11 @@
                             @endforeach
                         </table>
 
-                        {{-- Section: Payment Summary --}}
-                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-size:13px;color:#555555;margin-bottom:25px;line-height:1.6;">
+                        {{-- Total Pembayaran --}}
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="font-size:13px;margin-bottom:25px;line-height:1.6;">
                             <tr>
-                                <td style="padding:3px 0;">Subtotal untuk Produk</td>
-                                <td align="right" style="padding:3px 0;color:#333333;">Rp {{ number_format($transaction->subtotal, 0, ',', '.') }}</td>
-                            </tr>
-                            <tr>
-                                <td style="padding:3px 0;">
-                                    Total Ongkos Kirim
-                                    @if($transaction->shipping_courier)
-                                        ({{ strtoupper($transaction->shipping_courier) }} {{ $transaction->shipping_service }})
-                                    @endif
-                                </td>
-                                <td align="right" style="padding:3px 0;color:#333333;">Rp {{ number_format($transaction->shipping_fee, 0, ',', '.') }}</td>
-                            </tr>
-                            @if($transaction->shipping_discount > 0)
-                            <tr>
-                                <td style="padding:3px 0;color:#0056b3;">Diskon Pengiriman</td>
-                                <td align="right" style="padding:3px 0;color:#0056b3;">-Rp {{ number_format($transaction->shipping_discount, 0, ',', '.') }}</td>
-                            </tr>
-                            @endif
-                            @if($transaction->discount_amount > 0)
-                            <tr>
-                                <td style="padding:3px 0;color:#0056b3;">Diskon Voucher ({{ $transaction->voucher_code }})</td>
-                                <td align="right" style="padding:3px 0;color:#0056b3;">-Rp {{ number_format($transaction->discount_amount, 0, ',', '.') }}</td>
-                            </tr>
-                            @endif
-                            @if($transaction->admin_fee > 0)
-                            <tr>
-                                <td style="padding:3px 0;">Biaya Admin</td>
-                                <td align="right" style="padding:3px 0;color:#333333;">Rp {{ number_format($transaction->admin_fee, 0, ',', '.') }}</td>
-                            </tr>
-                            @endif
-                            <tr>
-                                <td colspan="2" style="padding:8px 0 0 0;"><div style="border-top:1px solid #eeeeee;"></div></td>
-                            </tr>
-                            <tr>
-                                <td style="padding:8px 0 0 0;font-size:15px;font-weight:bold;color:#222222;">Total Pembayaran</td>
-                                <td align="right" style="padding:8px 0 0 0;font-size:15px;font-weight:bold;color:#0056b3;">
+                                <td style="font-size:14px;font-weight:bold;color:#222222;">Total Pembayaran</td>
+                                <td align="right" style="font-size:14px;font-weight:bold;color:#0056b3;">
                                     Rp {{ number_format($transaction->grand_total, 0, ',', '.') }}
                                 </td>
                             </tr>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\OrderStatusChanged;
 use App\Models\Category;
 use App\Models\CustomerAddress;
 use App\Models\Notification;
@@ -9,6 +10,7 @@ use App\Models\ProductStock;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 
 uses(RefreshDatabase::class);
 
@@ -260,4 +262,112 @@ test('a notification is created when product stock is low or empty', function ()
     $outNotif = Notification::where('type', 'out_of_stock')->first();
     expect($outNotif->message)->toContain('Test Product');
     expect($outNotif->message)->toContain('telah habis (0)');
+});
+
+test('an email is sent to customer when transaction status changes', function () {
+    Mail::fake();
+
+    $customer = User::factory()->create(['email' => 'testcustomer@example.com']);
+
+    $category = Category::create([
+        'name' => 'Test Cat',
+        'slug' => 'test-cat',
+        'icon' => 'ti-box',
+    ]);
+
+    $address = CustomerAddress::create([
+        'user_id' => $customer->id,
+        'receiver_name' => 'Customer Test',
+        'phone_number' => '08000000000',
+        'label' => 'Rumah',
+        'full_address' => 'Jl. Test 1',
+        'is_primary' => true,
+    ]);
+
+    $paymentMethod = PaymentMethod::create([
+        'name' => 'BCA',
+        'type' => 'manual',
+        'bank_name' => 'BCA',
+        'account_number' => '9876543210',
+        'account_name' => 'Toko Test',
+        'is_active' => true,
+        'admin_fee' => 0,
+    ]);
+
+    $transaction = Transaction::create([
+        'transaction_number' => 'TRX-EMAIL-TEST-123',
+        'user_id' => $customer->id,
+        'customer_address_id' => $address->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'belum_bayar',
+        'subtotal' => 200000,
+        'discount_amount' => 0,
+        'shipping_fee' => 15000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 215000,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+    ]);
+
+    // Update status to trigger email sending
+    $transaction->update(['status' => 'diproses']);
+
+    Mail::assertSent(OrderStatusChanged::class, function ($mail) use ($customer) {
+        return $mail->hasTo($customer->email) && $mail->transaction->status === 'diproses';
+    });
+});
+
+test('an email is sent to customer when transaction tracking number changes', function () {
+    Mail::fake();
+
+    $customer = User::factory()->create(['email' => 'testcustomer2@example.com']);
+
+    $category = Category::create([
+        'name' => 'Test Cat',
+        'slug' => 'test-cat',
+        'icon' => 'ti-box',
+    ]);
+
+    $address = CustomerAddress::create([
+        'user_id' => $customer->id,
+        'receiver_name' => 'Customer Test',
+        'phone_number' => '08000000000',
+        'label' => 'Rumah',
+        'full_address' => 'Jl. Test 1',
+        'is_primary' => true,
+    ]);
+
+    $paymentMethod = PaymentMethod::create([
+        'name' => 'BCA',
+        'type' => 'manual',
+        'bank_name' => 'BCA',
+        'account_number' => '9876543210',
+        'account_name' => 'Toko Test',
+        'is_active' => true,
+        'admin_fee' => 0,
+    ]);
+
+    $transaction = Transaction::create([
+        'transaction_number' => 'TRX-EMAIL-TEST-456',
+        'user_id' => $customer->id,
+        'customer_address_id' => $address->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'diproses',
+        'subtotal' => 200000,
+        'discount_amount' => 0,
+        'shipping_fee' => 15000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 215000,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+    ]);
+
+    // Update tracking number to trigger email sending
+    $transaction->update(['tracking_number' => 'RESI123456789']);
+
+    Mail::assertSent(OrderStatusChanged::class, function ($mail) use ($customer) {
+        return $mail->hasTo($customer->email) && $mail->transaction->tracking_number === 'RESI123456789';
+    });
 });

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Mail\OrderStatusChanged;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class Transaction extends Model
 {
@@ -73,76 +76,97 @@ class Transaction extends Model
     protected static function booted(): void
     {
         static::updated(function (Transaction $transaction) {
-            if ($transaction->isDirty('status')) {
-                $description = match ($transaction->status) {
-                    'belum_bayar' => 'Menunggu pembayaran.',
-                    'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',
-                    'diproses' => 'Pesanan sedang diproses.',
-                    'dikemas' => 'Pesanan sedang dikemas.',
-                    'dikirim' => 'Pesanan telah dikirim.',
-                    'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
-                    'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
-                    default => 'Status pesanan diperbarui menjadi: '.$transaction->status,
-                };
+            $statusChanged = $transaction->isDirty('status');
+            $trackingChanged = $transaction->isDirty('tracking_number');
 
-                $transaction->statusHistories()->create([
-                    'status' => $transaction->status,
-                    'description' => $description,
-                    'created_by' => auth()->id(),
-                ]);
+            if ($statusChanged || $trackingChanged) {
+                if ($statusChanged) {
+                    $description = match ($transaction->status) {
+                        'belum_bayar' => 'Menunggu pembayaran.',
+                        'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',
+                        'diproses' => 'Pesanan sedang diproses.',
+                        'dikemas' => 'Pesanan sedang dikemas.',
+                        'dikirim' => 'Pesanan telah dikirim.',
+                        'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
+                        'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
+                        default => 'Status pesanan diperbarui menjadi: '.$transaction->status,
+                    };
 
-                // Create database notification for the customer
-                try {
-                    Notification::create([
-                        'user_id' => $transaction->user_id,
-                        'title' => 'Pembaruan Status Pesanan',
-                        'message' => 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
-                            'belum_bayar' => 'menunggu pembayaran.',
-                            'menunggu' => 'menunggu konfirmasi pembayaran.',
-                            'diproses' => 'sedang diproses.',
-                            'dikemas' => 'sedang dikemas.',
-                            'dikirim' => 'telah dikirim.',
-                            'selesai' => 'selesai / telah diterima.',
-                            'batal' => 'dibatalkan.',
-                            default => 'diperbarui menjadi '.$transaction->status,
-                        },
-                        'type' => 'transaction_status',
-                        'url' => '/transactions/'.$transaction->id,
-                        'is_read' => false,
+                    $transaction->statusHistories()->create([
+                        'status' => $transaction->status,
+                        'description' => $description,
+                        'created_by' => auth()->id(),
                     ]);
-                } catch (\Throwable $e) {
-                    // Fail silently or log
+
+                    // Create database notification for the customer
+                    try {
+                        Notification::create([
+                            'user_id' => $transaction->user_id,
+                            'title' => 'Pembaruan Status Pesanan',
+                            'message' => 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
+                                'belum_bayar' => 'menunggu pembayaran.',
+                                'menunggu' => 'menunggu konfirmasi pembayaran.',
+                                'diproses' => 'sedang diproses.',
+                                'dikemas' => 'sedang dikemas.',
+                                'dikirim' => 'telah dikirim.',
+                                'selesai' => 'selesai / telah diterima.',
+                                'batal' => 'dibatalkan.',
+                                default => 'diperbarui menjadi '.$transaction->status,
+                            },
+                            'type' => 'transaction_status',
+                            'url' => '/transactions/'.$transaction->id,
+                            'is_read' => false,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Fail silently or log
+                    }
+
+                    // Create database notification for admins when transaction status is updated
+                    try {
+                        $customerName = $transaction->user ? $transaction->user->name : 'Customer';
+                        $statusLabel = Transaction::statusLabels()[$transaction->status] ?? $transaction->status;
+
+                        $title = $transaction->status === 'menunggu' ? 'Konfirmasi Pembayaran' : 'Pembaruan Status Pesanan';
+                        $message = $transaction->status === 'menunggu'
+                            ? 'Ada konfirmasi pembayaran dari '.$customerName.' untuk transaksi #'.$transaction->transaction_number.' (Status: Menunggu Konfirmasi).'
+                            : 'Pesanan #'.$transaction->transaction_number.' oleh '.$customerName.' kini '.match ($transaction->status) {
+                                'belum_bayar' => 'menunggu pembayaran',
+                                'menunggu' => 'menunggu konfirmasi pembayaran',
+                                'diproses' => 'sedang diproses',
+                                'dikemas' => 'sedang dikemas',
+                                'dikirim' => 'telah dikirim',
+                                'selesai' => 'selesai / telah diterima',
+                                'batal' => 'dibatalkan',
+                                default => 'diperbarui menjadi '.$transaction->status,
+                            }.' (Status: '.$statusLabel.').';
+
+                        Notification::create([
+                            'user_id' => null, // null means Admin global
+                            'title' => $title,
+                            'message' => $message,
+                            'type' => $transaction->status === 'menunggu' ? 'payment_proof' : 'transaction_status',
+                            'url' => '/admin/transactions/'.$transaction->id,
+                            'is_read' => false,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Fail silently
+                    }
                 }
 
-                // Create database notification for admins when transaction status is updated
+                // Send email notification to user
                 try {
-                    $customerName = $transaction->user ? $transaction->user->name : 'Customer';
-                    $statusLabel = Transaction::statusLabels()[$transaction->status] ?? $transaction->status;
+                    $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                    $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
-                    $title = $transaction->status === 'menunggu' ? 'Konfirmasi Pembayaran' : 'Pembaruan Status Pesanan';
-                    $message = $transaction->status === 'menunggu'
-                        ? 'Ada konfirmasi pembayaran dari '.$customerName.' untuk transaksi #'.$transaction->transaction_number.' (Status: Menunggu Konfirmasi).'
-                        : 'Pesanan #'.$transaction->transaction_number.' oleh '.$customerName.' kini '.match ($transaction->status) {
-                            'belum_bayar' => 'menunggu pembayaran',
-                            'menunggu' => 'menunggu konfirmasi pembayaran',
-                            'diproses' => 'sedang diproses',
-                            'dikemas' => 'sedang dikemas',
-                            'dikirim' => 'telah dikirim',
-                            'selesai' => 'selesai / telah diterima',
-                            'batal' => 'dibatalkan',
-                            default => 'diperbarui menjadi '.$transaction->status,
-                        }.' (Status: '.$statusLabel.').';
+                    // Ensure relations are loaded
+                    $transaction->loadMissing(['user', 'items.product', 'customerAddress', 'paymentMethod']);
 
-                    Notification::create([
-                        'user_id' => null, // null means Admin global
-                        'title' => $title,
-                        'message' => $message,
-                        'type' => $transaction->status === 'menunggu' ? 'payment_proof' : 'transaction_status',
-                        'url' => '/admin/transactions/'.$transaction->id,
-                        'is_read' => false,
-                    ]);
+                    if ($transaction->user && $transaction->user->email) {
+                        Mail::to($transaction->user->email)
+                            ->send(new OrderStatusChanged($transaction, $storeName, $storeLogo));
+                    }
                 } catch (\Throwable $e) {
-                    // Fail silently
+                    Log::error('Order status change email failed for transaction '.$transaction->transaction_number.': '.$e->getMessage());
                 }
             }
         });
