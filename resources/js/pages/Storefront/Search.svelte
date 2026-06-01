@@ -28,7 +28,9 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const cartCount = $derived(page.props.cartCount || 0);
     const auth = $derived(page.props.auth?.user);
-    const cartButtonStyle = $derived((page.props.settings as any)?.storefront_cart_button_style || 'button');
+    const cartButtonStyle = $derived(
+        (page.props.settings as any)?.storefront_cart_button_style || 'button',
+    );
 
     let selectedVariantProduct = $state<any>(null);
     let showVariantModal = $state(false);
@@ -48,16 +50,23 @@
             return;
         }
 
-        router.post('/cart', {
-            product_id: product.id,
-            product_variant_id: null,
-            quantity: 1,
-        }, {
-            preserveScroll: true,
-            onError: () => {
-                showToast('Gagal menambahkan produk ke keranjang.', 'error');
-            }
-        });
+        router.post(
+            '/cart',
+            {
+                product_id: product.id,
+                product_variant_id: null,
+                quantity: 1,
+            },
+            {
+                preserveScroll: true,
+                onError: () => {
+                    showToast(
+                        'Gagal menambahkan produk ke keranjang.',
+                        'error',
+                    );
+                },
+            },
+        );
     }
 
     // Filter states
@@ -338,7 +347,7 @@
             },
             destroy() {
                 node.removeEventListener('click', handler);
-            }
+            },
         };
     }
 
@@ -735,7 +744,8 @@
                                         : ''}
                                 >
                                     <span class="flex items-center gap-2">
-                                        <i class="ti ti-building-store text-sm"></i>
+                                        <i class="ti ti-building-store text-sm"
+                                        ></i>
                                         {brand.name}
                                     </span>
                                     {#if selectedBrands.includes(brand.slug || brand.id.toString())}
@@ -854,7 +864,9 @@
                                     ? product.discount_percentage
                                     : 0}
 
-                                <div class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full">
+                                <div
+                                    class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
+                                >
                                     <Link
                                         href={`/products/${product.slug || product.id}`}
                                         prefetch
@@ -900,7 +912,9 @@
                                                     {product.category?.name ||
                                                         'PRODUK'}
                                                 </p>
-                                                <div class="h-[2.5rem] overflow-hidden mb-1">
+                                                <div
+                                                    class="h-[2.5rem] overflow-hidden mb-1"
+                                                >
                                                     <p
                                                         class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
                                                         style="color: #1e293b;"
@@ -908,7 +922,9 @@
                                                         {product.name}
                                                     </p>
                                                 </div>
-                                                <hr class="border-slate-100 my-2" />
+                                                <hr
+                                                    class="border-slate-100 my-2"
+                                                />
                                                 <div class="mb-1">
                                                     <p
                                                         class="text-sm sm:text-base font-black leading-tight"
@@ -933,19 +949,23 @@
                                     {#if cartButtonStyle === 'icon'}
                                         <button
                                             type="button"
-                                            onclick={(e) => handleAddToCart(product, e)}
+                                            onclick={(e) =>
+                                                handleAddToCart(product, e)}
                                             class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
                                             style="border-color: {primary}; color: {primary};"
                                             title="Tambah ke Keranjang"
                                         >
-                                            <i class="ti ti-plus text-base font-black"></i>
+                                            <i
+                                                class="ti ti-plus text-2xl sm:text-base font-black"
+                                            ></i>
                                         </button>
                                     {/if}
                                     {#if cartButtonStyle === 'button'}
                                         <div class="px-2.5 pb-2.5">
                                             <button
                                                 type="button"
-                                                onclick={(e) => handleAddToCart(product, e)}
+                                                onclick={(e) =>
+                                                    handleAddToCart(product, e)}
                                                 class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] cursor-pointer"
                                                 style="background-color: {primary};"
                                                 title="Tambah ke Keranjang"
@@ -1093,7 +1113,8 @@
                                     <button
                                         onclick={() =>
                                             selectBrand(
-                                                brand.slug || brand.id.toString(),
+                                                brand.slug ||
+                                                    brand.id.toString(),
                                             )}
                                         class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
                                            {selectedBrands.includes(
@@ -1108,7 +1129,9 @@
                                             : ''}
                                     >
                                         <span class="flex items-center gap-2">
-                                            <i class="ti ti-building-store text-sm"></i>
+                                            <i
+                                                class="ti ti-building-store text-sm"
+                                            ></i>
                                             {brand.name}
                                         </span>
                                         {#if selectedBrands.includes(brand.slug || brand.id.toString())}
@@ -1183,8 +1206,8 @@
         product={selectedVariantProduct}
         show={showVariantModal}
         onClose={() => (showVariantModal = false)}
-        primary={primary}
-        secondary={secondary}
+        {primary}
+        {secondary}
         user={auth}
     />
 </StorefrontLayout>

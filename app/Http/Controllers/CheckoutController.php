@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\OrderConfirmation;
 use App\Models\CartItem;
+use App\Models\CoinHistory;
 use App\Models\Courier;
 use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
@@ -227,6 +228,7 @@ class CheckoutController extends Controller
             'shipping_fee' => 'required|numeric|min:0',
             'voucher_code' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
+            'use_coins' => 'nullable|boolean',
         ]);
 
         $user = $request->user();
@@ -294,6 +296,33 @@ class CheckoutController extends Controller
             }
         }
 
+        // Validate physical stock availability before processing checkout
+        foreach ($cartItems as $item) {
+            $variant = $item->productVariant;
+            $product = $item->product;
+
+            if ($variant) {
+                $matchedVariant = $product->variants->firstWhere('id', $variant->id);
+                if ($matchedVariant) {
+                    $variant = $matchedVariant;
+                }
+            }
+
+            $stockRecord = $variant
+                ? $variant->productStock
+                : $product->productStock;
+
+            if ($stockRecord && ! $stockRecord->is_unlimited) {
+                if ($stockRecord->stock <= 0) {
+                    return redirect()->route('cart.index')->with('error', "Stok produk {$product->name} sudah habis. Silakan perbarui keranjang Anda.");
+                }
+
+                if ($stockRecord->stock < $item->quantity) {
+                    return redirect()->route('cart.index')->with('error', "Stok produk {$product->name} tidak mencukupi. Tersisa {$stockRecord->stock} pcs, Anda memesan {$item->quantity} pcs.");
+                }
+            }
+        }
+
         // Process voucher
         $voucherCode = $request->voucher_code;
         $voucherDiscountType = null;
@@ -335,11 +364,75 @@ class CheckoutController extends Controller
         $grandTotal = $subtotal - $discountAmount + ($shippingFee - $shippingDiscount) + $adminFee + $appFee;
         $grandTotal = max(0, $grandTotal);
 
+        // --- Loyalty Coins Redemption Logic ---
+        $coinsRedeemed = 0;
+        $coinsValue = 0;
+        $coinsEnabled = Setting::where('key', 'coins_enabled')->value('value') === '1';
+
+        if ($coinsEnabled && $request->boolean('use_coins') && $user->coins_balance > 0) {
+            $coinConversionRate = (float) (Setting::where('key', 'coin_conversion_rate')->value('value') ?? 1);
+            $coinMinPurchaseRedeem = (float) (Setting::where('key', 'coin_min_purchase_redeem')->value('value') ?? 0);
+            $coinMaxRedeemPerTxn = (float) (Setting::where('key', 'coin_max_redeem_per_txn')->value('value') ?? 50000);
+            $coinMaxRedeemPercentage = (float) (Setting::where('key', 'coin_max_redeem_percentage')->value('value') ?? 100);
+
+            if ($subtotal >= $coinMinPurchaseRedeem) {
+                // Calculate max coins by percentage of subtotal
+                $maxCoinsByPercentage = ($subtotal * ($coinMaxRedeemPercentage / 100)) / $coinConversionRate;
+
+                // Max redeemable coins is the minimum of balance, transaction cap, and percentage cap
+                $maxRedeemableCoins = min($user->coins_balance, $coinMaxRedeemPerTxn, $maxCoinsByPercentage);
+
+                // Discount cannot exceed the grand total before coins
+                $maxDiscountValue = min($maxRedeemableCoins * $coinConversionRate, $grandTotal);
+
+                if ($maxDiscountValue > 0) {
+                    $coinsRedeemed = (int) floor($maxDiscountValue / $coinConversionRate);
+                    $coinsValue = $coinsRedeemed * $coinConversionRate;
+                    $grandTotal = max(0, $grandTotal - $coinsValue);
+                }
+            }
+        }
+
+        // --- Loyalty Coins Earning Calculation ---
+        $coinsEarned = 0;
+        if ($coinsEnabled && $coinsRedeemed <= 0) {
+            $coinEarningMethod = Setting::where('key', 'coin_earning_method')->value('value') ?? 'proportional';
+
+            if ($coinEarningMethod === 'proportional') {
+                $coinEarningRateRupiah = (float) (Setting::where('key', 'coin_earning_rate_rupiah')->value('value') ?? 1000);
+                $coinEarningRateCoins = (float) (Setting::where('key', 'coin_earning_rate_coins')->value('value') ?? 1);
+
+                if ($coinEarningRateRupiah > 0) {
+                    $coinsEarned = (int) (floor($subtotal / $coinEarningRateRupiah) * $coinEarningRateCoins);
+                }
+            } elseif ($coinEarningMethod === 'tiered') {
+                $tiersVal = Setting::where('key', 'coin_earning_tiers')->value('value');
+                $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
+
+                if (is_array($coinEarningTiers) && count($coinEarningTiers) > 0) {
+                    // Sort descending by min_purchase
+                    usort($coinEarningTiers, function ($a, $b) {
+                        return ($b['min_purchase'] ?? 0) <=> ($a['min_purchase'] ?? 0);
+                    });
+
+                    foreach ($coinEarningTiers as $tier) {
+                        $minPurchase = (float) ($tier['min_purchase'] ?? 0);
+                        $earnCoins = (int) ($tier['earn_coins'] ?? 0);
+
+                        if ($subtotal >= $minPurchase) {
+                            $coinsEarned = $earnCoins;
+                            break; // Got the highest tier
+                        }
+                    }
+                }
+            }
+        }
+
         DB::transaction(function () use (
             $user, $address, $paymentMethod, $cartItems,
             $request, $subtotal, $discountAmount, $shippingFee, $shippingDiscount,
             $adminFee, $appFee, $grandTotal, $voucherCode, $voucherDiscountType, $voucherDiscountValue,
-            $voucherPromotion
+            $voucherPromotion, $coinsRedeemed, $coinsValue, $coinsEarned
         ) {
             // Create transaction
             $transaction = Transaction::create([
@@ -363,7 +456,22 @@ class CheckoutController extends Controller
                 'voucher_discount_type' => $voucherDiscountType,
                 'voucher_discount_value' => $voucherDiscountValue,
                 'notes' => $request->notes,
+                'coins_redeemed' => $coinsRedeemed,
+                'coins_value' => $coinsValue,
+                'coins_earned' => $coinsEarned,
             ]);
+
+            // Deduct user coins immediately
+            if ($coinsRedeemed > 0) {
+                $user->decrement('coins_balance', $coinsRedeemed);
+                CoinHistory::create([
+                    'user_id' => $user->id,
+                    'transaction_id' => $transaction->id,
+                    'amount' => -$coinsRedeemed,
+                    'type' => 'redeem',
+                    'description' => 'Penggunaan koin untuk transaksi #'.$transaction->transaction_number,
+                ]);
+            }
 
             // Log status history
             $transaction->statusHistories()->create([
@@ -1511,11 +1619,9 @@ class CheckoutController extends Controller
 
         $soldPromoQty = TransactionItem::where('applied_promotion_id', $promotionId)
             ->where('product_id', $productId)
-            ->where(function ($q) use ($variantId) {
-                if ($variantId) {
-                    $q->where('product_variant_id', $variantId);
-                } else {
-                    $q->whereNull('product_variant_id');
+            ->where(function ($q) use ($promoItem) {
+                if (! is_null($promoItem->product_variant_id)) {
+                    $q->where('product_variant_id', $promoItem->product_variant_id);
                 }
             })
             ->whereHas('transaction', function ($q) {

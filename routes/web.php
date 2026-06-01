@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     // Customer Profile Edit
     Route::get('/profile', [ProfileController::class, 'showCustomerProfile'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'updateCustomerProfile'])->name('profile.update');
+    Route::get('/profile/coin-history', [ProfileController::class, 'coinHistory'])->name('profile.coin-history');
 
     // Customer Bank Accounts
     Route::get('/profile/bank-accounts', [ProfileController::class, 'bankAccounts'])->name('profile.bank-accounts.index');

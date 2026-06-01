@@ -177,6 +177,47 @@ class CartController extends Controller
         $variantId = $request->input('product_variant_id');
         $quantity = (int) $request->input('quantity');
 
+        // Load product with stock information for validation
+        $product = Product::with([
+            'productStock',
+            'variants.productStock',
+        ])->findOrFail($productId);
+
+        // Resolve the relevant stock record (variant or product level)
+        if ($variantId) {
+            $variant = $product->variants->firstWhere('id', $variantId);
+            $stockRecord = $variant?->productStock;
+            $productLabel = $product->name.($variant ? ' ('.($variant->sku ?? 'varian ini').')' : '');
+        } else {
+            $stockRecord = $product->productStock;
+            $productLabel = $product->name;
+        }
+
+        // Validate stock availability before adding to cart
+        if ($stockRecord && ! $stockRecord->is_unlimited) {
+            // Check if this combination already exists in the cart
+            $existingCartItem = CartItem::where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->where('product_variant_id', $variantId)
+                ->first();
+
+            $existingQty = $existingCartItem?->quantity ?? 0;
+            $totalQty = $existingQty + $quantity;
+
+            if ($stockRecord->stock <= 0) {
+                return back()->with('error', "Stok {$productLabel} sudah habis.");
+            }
+
+            if ($totalQty > $stockRecord->stock) {
+                $available = max(0, $stockRecord->stock - $existingQty);
+                if ($available <= 0) {
+                    return back()->with('error', "Stok {$productLabel} sudah mencapai batas maksimal di keranjang Anda.");
+                }
+
+                return back()->with('error', "Stok {$productLabel} tidak mencukupi. Anda bisa menambah {$available} pcs lagi.");
+            }
+        }
+
         // Check if this combination already exists in the cart
         $cartItem = CartItem::where('user_id', $userId)
             ->where('product_id', $productId)
@@ -722,11 +763,9 @@ class CartController extends Controller
 
         $soldPromoQty = TransactionItem::where('applied_promotion_id', $promotionId)
             ->where('product_id', $productId)
-            ->where(function ($q) use ($variantId) {
-                if ($variantId) {
-                    $q->where('product_variant_id', $variantId);
-                } else {
-                    $q->whereNull('product_variant_id');
+            ->where(function ($q) use ($promoItem) {
+                if (! is_null($promoItem->product_variant_id)) {
+                    $q->where('product_variant_id', $promoItem->product_variant_id);
                 }
             })
             ->whereHas('transaction', function ($q) {

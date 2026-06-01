@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CoinHistory;
 use App\Models\CustomerBankAccount;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
@@ -221,5 +222,37 @@ class ProfileController extends Controller
         $bankAccount->update(['is_primary' => true]);
 
         return back()->with('success', 'Rekening utama berhasil diubah.');
+    }
+
+    /**
+     * Get customer coin transaction history.
+     */
+    public function coinHistory(Request $request)
+    {
+        $user = $request->user();
+        $query = CoinHistory::where('user_id', $user->id)->latest();
+
+        if ($request->filled('type')) {
+            $type = $request->input('type');
+            if ($type === 'masuk') {
+                $query->where('amount', '>', 0);
+            } elseif ($type === 'keluar') {
+                $query->where('amount', '<', 0);
+            }
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('description', 'like', '%'.$search.'%')
+                    ->orWhereHas('transaction', function ($t) use ($search) {
+                        $t->where('transaction_number', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        $history = $query->paginate(10);
+
+        return response()->json($history);
     }
 }

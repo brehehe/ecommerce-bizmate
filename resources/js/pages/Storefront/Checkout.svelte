@@ -222,6 +222,10 @@
         }).format(Number(price) || 0);
     }
 
+    function formatNumber(num: number): string {
+        return new Intl.NumberFormat('id-ID').format(num);
+    }
+
     function withOpacity(hex: string, alpha: number) {
         if (!hex) return `rgba(0, 0, 0, ${alpha})`;
         let r = 0,
@@ -332,11 +336,75 @@
         Number((selectedPaymentMethod as any)?.admin_fee ?? 0),
     );
     const applicationFee = $derived(Number(appFee ?? 0));
+
+    // Coins Integration
+    let useCoins = $state(false);
+
+    // Dynamic calculations for coins
+    const coinsSettings = $derived((page.props as any).settings);
+    const authUser = $derived((page.props as any).auth?.user);
+    const coinsEnabled = $derived(coinsSettings?.coins_enabled);
+    const coinConversionRate = $derived(Number(coinsSettings?.coin_conversion_rate || 1));
+    const coinMinPurchaseRedeem = $derived(Number(coinsSettings?.coin_min_purchase_redeem || 0));
+    const coinMaxRedeemPerTxn = $derived(Number(coinsSettings?.coin_max_redeem_per_txn || 50000));
+    const coinMaxRedeemPercentage = $derived(Number(coinsSettings?.coin_max_redeem_percentage || 100));
+
+    // User's balance
+    const userCoinsBalance = $derived(Number(authUser?.coins_balance || 0));
+    const userCoinsValue = $derived(userCoinsBalance * coinConversionRate);
+
+    // Validate if user meets minimum purchase rule to redeem coins
+    const isCoinsMinPurchaseMet = $derived(subtotal >= coinMinPurchaseRedeem);
+
+    // Calculate maximum coins we can redeem for this order
+    const maxCoinsRedeemValueAllowed = $derived.by(() => {
+        // Max based on percentage of order subtotal
+        const maxPercentValue = (subtotal * coinMaxRedeemPercentage) / 100;
+        // Max cap per txn in Rupiah
+        const maxCapValue = coinMaxRedeemPerTxn;
+        
+        return Math.min(userCoinsValue, maxPercentValue, maxCapValue);
+    });
+
+    const maxCoinsRedeemAllowed = $derived(Math.floor(maxCoinsRedeemValueAllowed / coinConversionRate));
+    
+    // Dynamic discount applied by coins
+    const coinDiscountAmount = $derived.by(() => {
+        if (!useCoins || !coinsEnabled || !isCoinsMinPurchaseMet || maxCoinsRedeemAllowed <= 0) {
+            return 0;
+        }
+        return maxCoinsRedeemAllowed * coinConversionRate;
+    });
+
+    // Prospective coins earned
+    const coinEarningMethod = $derived(coinsSettings?.coin_earning_method || 'proportional');
+    const coinEarningRateRupiah = $derived(Number(coinsSettings?.coin_earning_rate_rupiah || 1000));
+    const coinEarningRateCoins = $derived(Number(coinsSettings?.coin_earning_rate_coins || 1));
+    const coinEarningTiers = $derived(coinsSettings?.coin_earning_tiers || []);
+
+    const prospectiveCoinsEarned = $derived.by(() => {
+        if (!coinsEnabled || (useCoins && coinDiscountAmount > 0)) return 0;
+        
+        if (coinEarningMethod === 'proportional') {
+            if (coinEarningRateRupiah <= 0) return 0;
+            return Math.floor(subtotal / coinEarningRateRupiah) * coinEarningRateCoins;
+        } else if (coinEarningMethod === 'tiered') {
+            const sortedTiers = [...coinEarningTiers].sort((a, b) => Number(b.min_purchase) - Number(a.min_purchase));
+            for (const tier of sortedTiers) {
+                if (subtotal >= Number(tier.min_purchase)) {
+                    return Number(tier.earn_coins);
+                }
+            }
+        }
+        return 0;
+    });
+
     const grandTotal = $derived(
         Math.max(
             0,
             subtotal -
-                discountAmount +
+                discountAmount -
+                coinDiscountAmount +
                 (shippingFee - shippingDiscount) +
                 adminFee +
                 applicationFee,
@@ -544,6 +612,7 @@
                 shipping_fee: shippingFee,
                 voucher_code: voucherInputCode ?? '',
                 notes: orderNotes,
+                use_coins: useCoins,
             },
             {
                 onError: () => {
@@ -559,6 +628,97 @@
             },
         );
     }
+
+    // ─── Promo Expiry Tracking ───────────────────────────────────────────────
+    // Collect all unique promo end times from cart items (flash sale, promo_produk, etc.)
+    const promoEndTimes = $derived.by(() => {
+        const times: { name: string; endTime: Date }[] = [];
+        const seen = new Set<string>();
+        for (const item of cartItems as any[]) {
+            const src = (item.productVariant ?? item.product) as any;
+            if (src?.promo_end_time && src?.is_promo && src?.promo_type) {
+                const key = src.promo_end_time;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    const d = new Date(String(key).replace(' ', 'T'));
+                    if (!isNaN(d.getTime())) {
+                        times.push({
+                            name: src.promo_type === 'flash_sale' ? 'Flash Sale' :
+                                  src.promo_type === 'promo_produk' ? 'Promo Produk' :
+                                  src.promo_type === 'bundling_gift' ? 'Bundling Gift' : 'Promo',
+                            endTime: d,
+                        });
+                    }
+                }
+            }
+        }
+        // Sort by soonest to expire first
+        return times.sort((a, b) => a.endTime.getTime() - b.endTime.getTime());
+    });
+
+    let promoCountdowns = $state<{ name: string; remaining: number; label: string }[]>([]);
+    let promoExpiredNames = $state<string[]>([]);
+    let promoExpiryTimer: ReturnType<typeof setInterval> | null = null;
+
+    function computePromoCountdowns() {
+        const now = Date.now();
+        const updated: typeof promoCountdowns = [];
+        const expired: string[] = [];
+
+        for (const item of promoEndTimes) {
+            const diff = item.endTime.getTime() - now;
+            if (diff <= 0) {
+                expired.push(item.name);
+            } else {
+                const h = Math.floor(diff / 3_600_000);
+                const m = Math.floor((diff % 3_600_000) / 60_000);
+                const s = Math.floor((diff % 60_000) / 1_000);
+                const label = h > 0
+                    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                updated.push({ name: item.name, remaining: diff, label });
+            }
+        }
+
+        promoCountdowns = updated;
+
+        // If newly expired promos detected, reload to get fresh pricing from server
+        if (expired.length > 0) {
+            const newExpired = expired.filter(n => !promoExpiredNames.includes(n));
+            if (newExpired.length > 0) {
+                promoExpiredNames = [...promoExpiredNames, ...newExpired];
+                showToast(
+                    `${newExpired.join(', ')} telah berakhir. Harga diperbarui ke harga normal.`,
+                    'error',
+                );
+                // Reload checkout page so server recalculates prices without the expired promo
+                setTimeout(() => router.reload(), 1500);
+            }
+        }
+    }
+
+    $effect(() => {
+        if (promoEndTimes.length > 0) {
+            computePromoCountdowns();
+            promoExpiryTimer = setInterval(computePromoCountdowns, 1000);
+        } else {
+            if (promoExpiryTimer) clearInterval(promoExpiryTimer);
+            promoExpiryTimer = null;
+        }
+        return () => {
+            if (promoExpiryTimer) clearInterval(promoExpiryTimer);
+        };
+    });
+
+    // Soonest expiring promo (to show main warning banner)
+    const soonestPromoCountdown = $derived(
+        promoCountdowns.length > 0 ? promoCountdowns[0] : null,
+    );
+
+    // Show urgent warning when promo expires in less than 5 minutes
+    const isPromoExpiringSoon = $derived(
+        soonestPromoCountdown !== null && soonestPromoCountdown.remaining < 5 * 60 * 1000,
+    );
 
     const statusColors: Record<string, string> = {
         belum_bayar: '#f59e0b',
@@ -592,6 +752,41 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Left Column -->
                 <div class="lg:col-span-2 space-y-4">
+
+                    <!-- Promo Expiry Warning Banner -->
+                    {#if promoCountdowns.length > 0}
+                        <div
+                            class="rounded-2xl px-4 py-3 flex items-center gap-3 border {isPromoExpiringSoon ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}"
+                        >
+                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center {isPromoExpiringSoon ? 'bg-red-100' : 'bg-amber-100'}">
+                                <i class="ti ti-clock-exclamation text-lg {isPromoExpiringSoon ? 'text-red-500' : 'text-amber-500'}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold {isPromoExpiringSoon ? 'text-red-700' : 'text-amber-700'}">
+                                    {soonestPromoCountdown?.name} berakhir dalam
+                                    <span class="font-black tabular-nums">{soonestPromoCountdown?.label}</span>
+                                </p>
+                                <p class="text-[11px] {isPromoExpiringSoon ? 'text-red-500' : 'text-amber-500'} mt-0.5">
+                                    Segera selesaikan checkout sebelum harga kembali normal.
+                                </p>
+                            </div>
+                        </div>
+                    {/if}
+
+                    {#if promoExpiredNames.length > 0}
+                        <div class="rounded-2xl px-4 py-3 flex items-center gap-3 bg-slate-50 border border-slate-200">
+                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100">
+                                <i class="ti ti-refresh text-lg text-slate-500 animate-spin"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold text-slate-700">Memperbarui harga...</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5">
+                                    {promoExpiredNames.join(', ')} telah berakhir. Harga sedang diperbarui ke harga normal.
+                                </p>
+                            </div>
+                        </div>
+                    {/if}
+
                     <!-- Address Section -->
                     <div
                         class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
@@ -1262,6 +1457,113 @@
                         {/if}
                     </div>
 
+                    <!-- Koin Saya Loyalty Section -->
+                    {#if coinsEnabled}
+                        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0">
+                                        <i class="ti ti-coins text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-outfit font-black text-xs uppercase tracking-wider text-slate-400">
+                                            Koin Toko
+                                        </h3>
+                                        <p class="text-[11px] font-bold text-slate-700 mt-0.5">
+                                            {formatNumber(userCoinsBalance)} Koin <span class="text-slate-400 font-normal">(Senilai Rp {formatNumber(userCoinsValue)})</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {#if isCoinsMinPurchaseMet && userCoinsBalance > 0 && maxCoinsRedeemAllowed > 0}
+                                    <!-- Premium Custom Toggle -->
+                                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            bind:checked={useCoins}
+                                            class="sr-only peer"
+                                        />
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                    </label>
+                                {/if}
+                            </div>
+
+                            {#if !isCoinsMinPurchaseMet}
+                                <!-- Warning alert: min purchase not met -->
+                                <div class="bg-amber-50/70 border border-amber-100 rounded-2xl p-3 flex gap-2.5 items-start">
+                                    <i class="ti ti-info-circle text-amber-500 text-sm mt-0.5 shrink-0"></i>
+                                    <div class="min-w-0">
+                                        <p class="text-[10px] font-bold text-amber-800 leading-normal">Koin Belum Dapat Digunakan</p>
+                                        <p class="text-[9px] text-amber-600 mt-0.5 leading-normal">
+                                            Minimal belanja untuk menggunakan koin adalah <span class="font-black">Rp {formatNumber(coinMinPurchaseRedeem)}</span> (Subtotal Anda: Rp {formatNumber(subtotal)}).
+                                        </p>
+                                    </div>
+                                </div>
+                            {:else if userCoinsBalance <= 0}
+                                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start">
+                                    <i class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"></i>
+                                    <div class="min-w-0">
+                                        <p class="text-[10px] font-bold text-slate-500 leading-normal">Saldo Koin Kosong</p>
+                                        <p class="text-[9px] text-slate-400 mt-0.5 leading-normal">
+                                            Belanja sekarang untuk mengumpulkan koin!
+                                        </p>
+                                    </div>
+                                </div>
+                            {:else if maxCoinsRedeemAllowed <= 0}
+                                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start">
+                                    <i class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"></i>
+                                    <div class="min-w-0">
+                                        <p class="text-[10px] font-bold text-slate-500 leading-normal">Koin Tidak Bisa Digunakan</p>
+                                        <p class="text-[9px] text-slate-400 mt-0.5 leading-normal">
+                                            Batas maksimum diskon voucher / promo telah melampaui aturan penggunaan koin.
+                                        </p>
+                                    </div>
+                                </div>
+                            {:else}
+                                <!-- Main Info Block -->
+                                <div class="bg-slate-50 rounded-2xl p-3.5 space-y-2 border border-slate-100/50">
+                                    <div class="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                        <span>Gunakan Koin:</span>
+                                        <span class={useCoins ? "text-emerald-600 font-black" : "text-slate-500 font-black"}>
+                                            {useCoins ? `${formatNumber(maxCoinsRedeemAllowed)} Koin` : 'Tidak digunakan'}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                        <span>Potongan Belanja:</span>
+                                        <span class={useCoins ? "text-emerald-600 font-black" : "text-slate-500 font-black"}>
+                                            {useCoins ? `-Rp ${formatNumber(coinDiscountAmount)}` : 'Rp 0'}
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Rules details small print -->
+                                    <div class="pt-2 border-t border-slate-100 text-[8.5px] text-slate-400 leading-normal space-y-0.5 font-sans">
+                                        <p>• Nilai Tukar: 1 Koin = Rp {formatNumber(coinConversionRate)}</p>
+                                        {#if coinMaxRedeemPercentage < 100}
+                                            <p>• Maksimal diskon koin: {coinMaxRedeemPercentage}% dari subtotal belanja (Rp {formatNumber((subtotal * coinMaxRedeemPercentage) / 100)})</p>
+                                        {/if}
+                                        {#if coinMaxRedeemPerTxn < 5000000}
+                                            <p>• Batas maksimal penggunaan koin per transaksi: Rp {formatNumber(coinMaxRedeemPerTxn)}</p>
+                                        {/if}
+                                    </div>
+                                </div>
+                            {/if}
+
+                            {#if prospectiveCoinsEarned > 0}
+                                <!-- Earn info badge -->
+                                <div class="bg-emerald-50/60 border border-emerald-100/50 rounded-2xl p-3 flex gap-2.5 items-center">
+                                    <div class="w-6 h-6 rounded-lg bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                                        <i class="ti ti-gift text-xs"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-[9px] text-emerald-800 leading-tight">
+                                            Dapatkan <span class="font-black text-emerald-600">{formatNumber(prospectiveCoinsEarned)} Koin</span> setelah pesanan Anda selesai!
+                                        </p>
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+
                     <!-- Notes -->
                     <div
                         class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
@@ -1422,6 +1724,16 @@
                                         <span>Diskon Voucher</span>
                                         <span class="font-semibold"
                                             >-{fmt(discountAmount)}</span
+                                        >
+                                    </div>
+                                {/if}
+                                {#if coinDiscountAmount > 0}
+                                    <div
+                                        class="flex justify-between text-emerald-600"
+                                    >
+                                        <span>Potongan Koin Saya</span>
+                                        <span class="font-semibold"
+                                            >-{fmt(coinDiscountAmount)}</span
                                         >
                                     </div>
                                 {/if}

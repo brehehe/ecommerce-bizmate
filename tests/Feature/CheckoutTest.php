@@ -7,6 +7,7 @@ use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Promotion;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -506,4 +507,61 @@ test('stackable voucher applies to all items including promo items', function ()
         'valid' => true,
         'discount_amount' => 900000.0, // 10% of entire 9,000,000
     ]);
+});
+
+test('customer earns coins when coins are enabled but not used/redeemed', function () {
+    Setting::updateOrCreate(['key' => 'coins_enabled'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'coin_earning_method'], ['value' => 'proportional']);
+    Setting::updateOrCreate(['key' => 'coin_earning_rate_rupiah'], ['value' => '1000']);
+    Setting::updateOrCreate(['key' => 'coin_earning_rate_coins'], ['value' => '1']);
+
+    $response = $this->actingAs($this->user)->post(route('checkout.store'), [
+        'customer_address_id' => $this->address->id,
+        'payment_method_id' => $this->paymentMethod->id,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+        'shipping_fee' => 25000,
+        'use_coins' => false,
+    ]);
+
+    $response->assertRedirect();
+    $transaction = Transaction::where('user_id', $this->user->id)->first();
+    expect($transaction)->not->toBeNull();
+    // Subtotal: 2 * 5.000.000 = 10.000.000
+    // Proportional earn rate: 10.000.000 / 1000 * 1 = 10.000 coins
+    expect((int) $transaction->coins_earned)->toBe(10000);
+    expect((int) $transaction->coins_redeemed)->toBe(0);
+});
+
+test('customer earns no coins when they redeem/use coins for checkout', function () {
+    Setting::updateOrCreate(['key' => 'coins_enabled'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'coin_conversion_rate'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'coin_min_purchase_redeem'], ['value' => '10000']);
+    Setting::updateOrCreate(['key' => 'coin_max_redeem_per_txn'], ['value' => '50000']);
+    Setting::updateOrCreate(['key' => 'coin_max_redeem_percentage'], ['value' => '100']);
+    Setting::updateOrCreate(['key' => 'coin_earning_method'], ['value' => 'proportional']);
+    Setting::updateOrCreate(['key' => 'coin_earning_rate_rupiah'], ['value' => '1000']);
+    Setting::updateOrCreate(['key' => 'coin_earning_rate_coins'], ['value' => '1']);
+
+    // Set user coins balance to 1000 coins
+    $this->user->update(['coins_balance' => 1000]);
+
+    $response = $this->actingAs($this->user)->post(route('checkout.store'), [
+        'customer_address_id' => $this->address->id,
+        'payment_method_id' => $this->paymentMethod->id,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+        'shipping_fee' => 25000,
+        'use_coins' => true,
+    ]);
+
+    $response->assertRedirect();
+    $transaction = Transaction::where('user_id', $this->user->id)->first();
+    expect($transaction)->not->toBeNull();
+    // Subtotal: 10.000.000. Min purchase met.
+    // Redeemed coins: 1000 coins (value = Rp 1000).
+    // Grand total before coins: 10.025.000. Grand total after coins: 10.024.000.
+    expect((int) $transaction->coins_redeemed)->toBe(1000);
+    // Since coins were redeemed, coins_earned must be exactly 0!
+    expect((int) $transaction->coins_earned)->toBe(0);
 });

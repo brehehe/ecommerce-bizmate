@@ -371,6 +371,7 @@
                       p.discount_percentage =
                           discountPercent || randomDiscount();
                       p.promo_stock = item.promo_stock || 0;
+                      p.remaining_promo_stock = item.remaining_promo_stock;
                       return p;
                   })
                 : flattenProductsWithVariants(newProducts).map((product) => {
@@ -454,7 +455,7 @@
             },
             destroy() {
                 node.removeEventListener('click', handler);
-            }
+            },
         };
     }
 
@@ -774,6 +775,17 @@
                                 {@const ori = product.is_promo
                                     ? (product.product_price?.price ?? price)
                                     : fakeOriginalPrice(price, disc)}
+                                {@const pct =
+                                    product.remaining_promo_stock !== null &&
+                                    product.remaining_promo_stock !==
+                                        undefined &&
+                                    product.promo_stock > 0
+                                        ? (product.remaining_promo_stock /
+                                              product.promo_stock) *
+                                          100
+                                        : product.remaining_promo_stock === 0
+                                          ? 0
+                                          : 100}
                                 <Link
                                     href="/products/{product.slug ||
                                         product.id}"
@@ -800,12 +812,20 @@
                                                 class="w-full h-full object-cover"
                                             />
                                         {/if}
-                                        <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                            style="background-color: {secondary};"
-                                        >
-                                            -{disc}%
-                                        </span>
+                                        {#if product.remaining_promo_stock !== null && product.remaining_promo_stock !== undefined && product.remaining_promo_stock <= 0}
+                                            <span
+                                                class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm bg-slate-500"
+                                            >
+                                                HABIS
+                                            </span>
+                                        {:else}
+                                            <span
+                                                class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                style="background-color: {secondary};"
+                                            >
+                                                -{disc}%
+                                            </span>
+                                        {/if}
                                     </div>
                                     <div class="p-2.5">
                                         <p
@@ -819,28 +839,61 @@
                                         >
                                             {formatPrice(price)}
                                         </p>
-                                        <p
-                                            class="text-[10px] text-slate-400 line-through"
-                                        >
-                                            {formatPrice(ori)}
-                                        </p>
-                                        <!-- Progress bar -->
+                                        {#if product.is_promo && ori > price}
+                                            <p
+                                                class="text-[10px] text-slate-400 line-through"
+                                            >
+                                                {formatPrice(ori)}
+                                            </p>
+                                        {/if}
+                                        <!-- Shopee Style Progress Bar & Remaining Stock -->
                                         <div
-                                            class="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden"
+                                            class="mt-3.5 relative w-full h-3.5 rounded-full overflow-hidden flex items-center justify-center border shadow-inner"
+                                            style="background-color: {primary}15; border-color: {primary}20;"
                                         >
-                                            <div
-                                                class="h-full rounded-full"
-                                                style="width: 100%; background: linear-gradient(90deg, {primary}, {secondary});"
-                                            ></div>
+                                            {#if product.remaining_promo_stock !== null && product.remaining_promo_stock !== undefined}
+                                                {#if product.remaining_promo_stock <= 0}
+                                                    <div
+                                                        class="absolute left-0 top-0 h-full w-0 bg-slate-200"
+                                                    ></div>
+                                                    <span
+                                                        class="absolute z-10 text-[9px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1"
+                                                    >
+                                                        <i
+                                                            class="ti ti-package-off text-[10px]"
+                                                        ></i>
+                                                        Habis Terjual!
+                                                    </span>
+                                                {:else}
+                                                    <div
+                                                        class="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                                                        style="width: {pct}%; background: linear-gradient(to right, {secondary}, {primary});"
+                                                    ></div>
+                                                    <span
+                                                        class="absolute z-10 text-[9px] font-black uppercase tracking-wider text-white drop-shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <i
+                                                            class="ti ti-flame text-[10px] animate-pulse"
+                                                        ></i>
+                                                        Tersisa {product.remaining_promo_stock}
+                                                        Stok
+                                                    </span>
+                                                {/if}
+                                            {:else}
+                                                <div
+                                                    class="absolute left-0 top-0 h-full rounded-full"
+                                                    style="width: 100%; background: linear-gradient(to right, {secondary}, {primary});"
+                                                ></div>
+                                                <span
+                                                    class="absolute z-10 text-[9px] font-black uppercase tracking-wider text-white drop-shadow-sm flex items-center gap-1"
+                                                >
+                                                    <i
+                                                        class="ti ti-flame text-[10px] animate-pulse"
+                                                    ></i>
+                                                    Hampir Habis!
+                                                </span>
+                                            {/if}
                                         </div>
-                                        <p
-                                            class="text-[9px] font-bold mt-0.5"
-                                            style="color: {secondary};"
-                                        >
-                                            {product.is_promo
-                                                ? `Tersisa ${product.promo_stock} Stok`
-                                                : 'Hampir Habis!'}
-                                        </p>
                                     </div>
                                 </Link>
                             {/each}
@@ -1152,7 +1205,9 @@
                             isReal && isPromo ? product.original_price : 0}
                         {@const discountPercentage =
                             isReal && isPromo ? product.discount_percentage : 0}
-                        <div class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full">
+                        <div
+                            class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
+                        >
                             <Link
                                 href={isReal
                                     ? `/products/${product.slug || product.id}`
@@ -1203,7 +1258,8 @@
                                                 class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
                                                 style="color: {primary};"
                                             >
-                                                {product.category?.name || 'PRODUK'}
+                                                {product.category?.name ||
+                                                    'PRODUK'}
                                             </p>
                                             <div
                                                 class="h-[2.5rem] overflow-hidden mb-1"
@@ -1227,7 +1283,9 @@
                                                     <p
                                                         class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
                                                     >
-                                                        {formatPrice(originalPrice)}
+                                                        {formatPrice(
+                                                            originalPrice,
+                                                        )}
                                                     </p>
                                                 {/if}
                                             </div>
@@ -1260,14 +1318,17 @@
                                     style="border-color: {primary}; color: {primary};"
                                     title="Tambah ke Keranjang"
                                 >
-                                    <i class="ti ti-plus text-base font-black"></i>
+                                    <i
+                                        class="ti ti-plus text-2xl sm:text-base font-black"
+                                    ></i>
                                 </button>
                             {/if}
                             {#if isReal && cartButtonStyle === 'button'}
                                 <div class="px-3 pb-3">
                                     <button
                                         type="button"
-                                        onclick={(e) => handleAddToCart(product, e)}
+                                        onclick={(e) =>
+                                            handleAddToCart(product, e)}
                                         class="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] cursor-pointer"
                                         style="background-color: {primary};"
                                         title="Tambah ke Keranjang"

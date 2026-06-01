@@ -52,6 +52,17 @@ class HandleInertiaRequests extends Middleware
         $setupTourCompleted = false;
         $cartButtonStyle = 'button';
 
+        $coinsEnabled = false;
+        $coinConversionRate = 1;
+        $coinEarningMethod = 'proportional';
+        $coinEarningRateRupiah = 1000;
+        $coinEarningRateCoins = 1;
+        $coinEarningTiers = [];
+        $coinMinPurchaseRedeem = 0;
+        $coinMaxRedeemPerTxn = 50000;
+        $coinMaxRedeemPercentage = 100;
+        $coinTermsConditions = '';
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -62,6 +73,23 @@ class HandleInertiaRequests extends Middleware
                 $storeLogo = Setting::where('key', 'store_logo')->value('value');
                 $setupTourCompleted = Setting::where('key', 'setup_tour_completed')->value('value') === '1';
                 $cartButtonStyle = Setting::where('key', 'storefront_cart_button_style')->value('value') ?? 'button';
+
+                $coinsEnabled = Setting::where('key', 'coins_enabled')->value('value') === '1';
+                $coinConversionRate = (float) (Setting::where('key', 'coin_conversion_rate')->value('value') ?? 1);
+                $coinEarningMethod = Setting::where('key', 'coin_earning_method')->value('value') ?? 'proportional';
+                $coinEarningRateRupiah = (float) (Setting::where('key', 'coin_earning_rate_rupiah')->value('value') ?? 1000);
+                $coinEarningRateCoins = (float) (Setting::where('key', 'coin_earning_rate_coins')->value('value') ?? 1);
+
+                $tiersVal = Setting::where('key', 'coin_earning_tiers')->value('value');
+                $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
+                if (! is_array($coinEarningTiers)) {
+                    $coinEarningTiers = [];
+                }
+
+                $coinMinPurchaseRedeem = (float) (Setting::where('key', 'coin_min_purchase_redeem')->value('value') ?? 0);
+                $coinMaxRedeemPerTxn = (float) (Setting::where('key', 'coin_max_redeem_per_txn')->value('value') ?? 50000);
+                $coinMaxRedeemPercentage = (float) (Setting::where('key', 'coin_max_redeem_percentage')->value('value') ?? 100);
+                $coinTermsConditions = Setting::where('key', 'coin_terms_conditions')->value('value') ?? '';
             }
         } catch (\Throwable $e) {
             // Fallback when database is not ready
@@ -92,6 +120,17 @@ class HandleInertiaRequests extends Middleware
                 'store_logo' => $storeLogo,
                 'setup_tour_completed' => $setupTourCompleted,
                 'storefront_cart_button_style' => $cartButtonStyle,
+
+                'coins_enabled' => $coinsEnabled,
+                'coin_conversion_rate' => $coinConversionRate,
+                'coin_earning_method' => $coinEarningMethod,
+                'coin_earning_rate_rupiah' => $coinEarningRateRupiah,
+                'coin_earning_rate_coins' => $coinEarningRateCoins,
+                'coin_earning_tiers' => $coinEarningTiers,
+                'coin_min_purchase_redeem' => $coinMinPurchaseRedeem,
+                'coin_max_redeem_per_txn' => $coinMaxRedeemPerTxn,
+                'coin_max_redeem_percentage' => $coinMaxRedeemPercentage,
+                'coin_terms_conditions' => $coinTermsConditions,
             ],
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)

@@ -445,6 +445,12 @@
                                     <span class="font-bold">-{fmt(transaction.discount_amount)}</span>
                                 </div>
                             {/if}
+                            {#if transaction.coins_value > 0}
+                                <div class="flex justify-between text-emerald-600">
+                                    <span>Potongan Koin ({new Intl.NumberFormat('id-ID').format(transaction.coins_redeemed)} Koin)</span>
+                                    <span class="font-bold">-{fmt(transaction.coins_value)}</span>
+                                </div>
+                            {/if}
                             <div class="flex justify-between text-slate-500">
                                 <span>Ongkir ({transaction.shipping_courier?.toUpperCase()} {transaction.shipping_service})</span>
                                 <span class="text-slate-800">{fmt(transaction.shipping_fee)}</span>
@@ -472,6 +478,21 @@
                                 <span class="font-outfit font-black text-lg" style="color:{primary}">{fmt(transaction.grand_total)}</span>
                             </div>
                         </div>
+
+                        {#if transaction.coins_earned > 0}
+                            <div class="mt-4 pt-3.5 border-t border-slate-100 flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/50">
+                                <i class="ti ti-coins text-sm text-amber-500"></i>
+                                <span>
+                                    {#if transaction.status === 'selesai'}
+                                        Customer mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin dari transaksi ini.
+                                    {:else if transaction.status === 'batal'}
+                                        Earning {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin dibatalkan.
+                                    {:else}
+                                        Customer akan mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin setelah transaksi selesai.
+                                    {/if}
+                                </span>
+                            </div>
+                        {/if}
                         {#if paymentMethod}
                             <div class="mt-4 pt-4 border-t border-slate-100 text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
                                 <i class="ti ti-credit-card text-sm text-slate-500"></i>

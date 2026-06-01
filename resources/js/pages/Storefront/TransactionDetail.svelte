@@ -1351,6 +1351,16 @@
                                     >
                                 </div>
                             {/if}
+                            {#if transaction.coins_value > 0}
+                                <div
+                                    class="flex justify-between text-emerald-600"
+                                >
+                                    <span>Potongan Koin Saya ({new Intl.NumberFormat('id-ID').format(transaction.coins_redeemed)} Koin)</span>
+                                    <span class="font-semibold"
+                                        >-{fmt(transaction.coins_value)}</span
+                                    >
+                                </div>
+                            {/if}
                             <div class="flex justify-between">
                                 <span class="text-slate-600">Ongkos Kirim</span>
                                 <span class="font-semibold"
@@ -1404,6 +1414,23 @@
                                 >
                             </div>
                         </div>
+
+                        {#if transaction.coins_earned > 0}
+                            <div
+                                class="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/50"
+                            >
+                                <i class="ti ti-coins text-base text-amber-500 shrink-0"></i>
+                                <span>
+                                    {#if transaction.status === 'selesai'}
+                                        Berhasil mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin Toko!
+                                    {:else if transaction.status === 'batal'}
+                                        Mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin dibatalkan
+                                    {:else}
+                                        Anda akan mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin setelah transaksi selesai.
+                                    {/if}
+                                </span>
+                            </div>
+                        {/if}
 
                         <div
                             class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2"

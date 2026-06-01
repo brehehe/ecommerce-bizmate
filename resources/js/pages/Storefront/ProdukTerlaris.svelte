@@ -286,7 +286,7 @@
             },
             destroy() {
                 node.removeEventListener('click', handler);
-            }
+            },
         };
     }
 </script>
@@ -627,7 +627,9 @@
                                     ? product.discount_percentage
                                     : 0}
 
-                                <div class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full">
+                                <div
+                                    class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
+                                >
                                     <Link
                                         href={`/products/${product.slug || product.id}`}
                                         prefetch
@@ -673,7 +675,9 @@
                                                     {product.category?.name ||
                                                         'PRODUK'}
                                                 </p>
-                                                <div class="h-[2.5rem] overflow-hidden mb-1">
+                                                <div
+                                                    class="h-[2.5rem] overflow-hidden mb-1"
+                                                >
                                                     <p
                                                         class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
                                                         style="color: #1e293b;"
@@ -685,7 +689,8 @@
                                                     <p
                                                         class="text-[9px] text-slate-400 font-medium mb-1"
                                                     >
-                                                        {product.sold_count >= 1000
+                                                        {product.sold_count >=
+                                                        1000
                                                             ? (
                                                                   product.sold_count /
                                                                   1000
@@ -699,7 +704,9 @@
                                                         terjual
                                                     </p>
                                                 {/if}
-                                                <hr class="border-slate-100 my-2" />
+                                                <hr
+                                                    class="border-slate-100 my-2"
+                                                />
                                                 <div class="mb-1">
                                                     <p
                                                         class="text-sm sm:text-base font-black leading-tight"
@@ -724,13 +731,14 @@
                                     {#if cartButtonStyle === 'icon'}
                                         <button
                                             type="button"
-                                            onclick={(e) => handleAddToCart(product, e)}
+                                            onclick={(e) =>
+                                                handleAddToCart(product, e)}
                                             class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
                                             style="border-color: {primary}; color: {primary};"
                                             title="Tambah ke Keranjang"
                                         >
                                             <i
-                                                class="ti ti-plus text-base font-black"
+                                                class="ti ti-plus text-2xl sm:text-base font-black"
                                             ></i>
                                         </button>
                                     {/if}
@@ -738,7 +746,8 @@
                                         <div class="px-2.5 pb-2.5">
                                             <button
                                                 type="button"
-                                                onclick={(e) => handleAddToCart(product, e)}
+                                                onclick={(e) =>
+                                                    handleAddToCart(product, e)}
                                                 class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] cursor-pointer"
                                                 style="background-color: {primary};"
                                                 title="Tambah ke Keranjang"

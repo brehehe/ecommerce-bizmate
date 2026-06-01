@@ -27,12 +27,16 @@
         const w = Number(userWeight);
         if (!h || !w || !product.size_chart?.rows) return null;
 
-        const matched = product.size_chart.rows.find(row => {
+        const matched = product.size_chart.rows.find((row) => {
             const hasHeightRule = row.min_height && row.max_height;
             const hasWeightRule = row.min_weight && row.max_weight;
 
-            const heightOk = hasHeightRule ? (h >= Number(row.min_height) && h <= Number(row.max_height)) : true;
-            const weightOk = hasWeightRule ? (w >= Number(row.min_weight) && w <= Number(row.max_weight)) : true;
+            const heightOk = hasHeightRule
+                ? h >= Number(row.min_height) && h <= Number(row.max_height)
+                : true;
+            const weightOk = hasWeightRule
+                ? w >= Number(row.min_weight) && w <= Number(row.max_weight)
+                : true;
 
             if (hasHeightRule || hasWeightRule) {
                 return heightOk && weightOk;
@@ -264,20 +268,24 @@
                 [slide.variationId]: slide.optionId,
             };
             variantOverride = slide.src;
-            const firstImgIdx = desktopSlides.findIndex(ds => ds.type === 'image');
+            const firstImgIdx = desktopSlides.findIndex(
+                (ds) => ds.type === 'image',
+            );
             activeDesktopSlideIdx = firstImgIdx !== -1 ? firstImgIdx : 0;
         } else if (slide.type === 'gallery') {
             activeIdx = slide.galleryIdx;
             variantOverride = null;
-            const dsIdx = desktopSlides.findIndex(ds => ds.type === 'image' && ds.idx === slide.galleryIdx);
+            const dsIdx = desktopSlides.findIndex(
+                (ds) => ds.type === 'image' && ds.idx === slide.galleryIdx,
+            );
             if (dsIdx !== -1) activeDesktopSlideIdx = dsIdx;
         } else if (slide.type === 'video') {
             variantOverride = null;
-            const dsIdx = desktopSlides.findIndex(ds => ds.type === 'video');
+            const dsIdx = desktopSlides.findIndex((ds) => ds.type === 'video');
             if (dsIdx !== -1) activeDesktopSlideIdx = dsIdx;
         } else if (slide.type === '3d') {
             variantOverride = null;
-            const dsIdx = desktopSlides.findIndex(ds => ds.type === '3d');
+            const dsIdx = desktopSlides.findIndex((ds) => ds.type === '3d');
             if (dsIdx !== -1) activeDesktopSlideIdx = dsIdx;
         }
     }
@@ -288,7 +296,11 @@
         const width = el.clientWidth;
         if (width > 0) {
             const index = Math.round(el.scrollLeft / width);
-            if (index !== activeSlideIdx && index >= 0 && index < combinedSlides.length) {
+            if (
+                index !== activeSlideIdx &&
+                index >= 0 &&
+                index < combinedSlides.length
+            ) {
                 activeSlideIdx = index;
                 syncActiveStatesForIndex(index);
             }
@@ -304,18 +316,18 @@
         const len = combinedSlides.length;
         if (len === 0) return;
         activeSlideIdx = ((idx % len) + len) % len;
-        
+
         if (sliderContainer) {
             isScrollingFromButton = true;
             sliderContainer.scrollTo({
                 left: activeSlideIdx * sliderContainer.clientWidth,
-                behavior: 'smooth'
+                behavior: 'smooth',
             });
             setTimeout(() => {
                 isScrollingFromButton = false;
             }, 350);
         }
-        
+
         syncActiveStatesForIndex(activeSlideIdx);
     }
 
@@ -344,7 +356,7 @@
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' },
-                audio: false
+                audio: false,
             });
             arModelPath = modelPath;
             arModelUsdz = usdzPath;
@@ -352,14 +364,18 @@
             isCameraModalOpen = true;
         } catch (err) {
             console.error('Gagal mengakses kamera:', err);
-            showToast('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.', 'error', 'top');
+            showToast(
+                'Gagal mengakses kamera. Pastikan izin kamera telah diberikan.',
+                'error',
+                'top',
+            );
         }
     }
 
     function closeCameraModal() {
         isCameraModalOpen = false;
         if (webcamStream) {
-            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream.getTracks().forEach((track) => track.stop());
             webcamStream = null;
         }
         arModelPath = '';
@@ -495,15 +511,17 @@
                 isScrollingFromButton = true;
                 sliderContainer.scrollTo({
                     left: idx * sliderContainer.clientWidth,
-                    behavior: 'auto'
+                    behavior: 'auto',
                 });
                 setTimeout(() => {
                     isScrollingFromButton = false;
                 }, 50);
             }
         }
-        
-        const firstImgIdx = desktopSlides.findIndex(ds => ds.type === 'image');
+
+        const firstImgIdx = desktopSlides.findIndex(
+            (ds) => ds.type === 'image',
+        );
         activeDesktopSlideIdx = firstImgIdx !== -1 ? firstImgIdx : 0;
     }
 
@@ -852,6 +870,36 @@
     );
     const isInStock = $derived(currentIsUnlimited || currentStock > 0);
 
+    // True when the promo stock limit has been fully consumed (remaining_promo_stock === 0)
+    const isPromoStockExhausted = $derived(
+        activePromoRule !== null &&
+            activePromoRule !== undefined &&
+            activePromoRule.remaining_promo_stock !== null &&
+            activePromoRule.remaining_promo_stock !== undefined &&
+            Number(activePromoRule.remaining_promo_stock) === 0,
+    );
+
+    // True when the product cannot be purchased (no physical stock OR promo quota fully gone)
+    const isEffectivelyOutOfStock = $derived(
+        !isInStock || isPromoStockExhausted,
+    );
+
+    // When promo stock is partially exhausted but product has regular stock,
+    // show how many units can still get promo price
+    const promoStockRemaining = $derived(
+        activePromoRule?.remaining_promo_stock !== null &&
+            activePromoRule?.remaining_promo_stock !== undefined
+            ? Number(activePromoRule.remaining_promo_stock)
+            : null,
+    );
+
+    // Whether qty exceeds promo stock quota (triggers split pricing on backend)
+    const isSplitPricing = $derived(
+        promoStockRemaining !== null &&
+            promoStockRemaining > 0 &&
+            qty > promoStockRemaining,
+    );
+
     // ═══════════════════════════════════════
     //  QUANTITY
     // ═══════════════════════════════════════
@@ -1134,6 +1182,11 @@
             return;
         }
 
+        if (!isInStock) {
+            showToast('Maaf, stok produk ini sudah habis.', 'error', 'top');
+            return;
+        }
+
         router.post(
             '/cart',
             {
@@ -1150,11 +1203,11 @@
                     );
                 },
                 onError: (errors: any) => {
-                    showToast(
-                        'Gagal menambahkan produk ke keranjang',
-                        'error',
-                        'top',
-                    );
+                    const errMsg =
+                        errors?.error ??
+                        errors?.message ??
+                        'Gagal menambahkan produk ke keranjang';
+                    showToast(errMsg, 'error', 'top');
                 },
             },
         );
@@ -1171,6 +1224,11 @@
             return;
         }
 
+        if (!isInStock) {
+            showToast('Maaf, stok produk ini sudah habis.', 'error', 'top');
+            return;
+        }
+
         router.post(
             '/cart',
             {
@@ -1183,7 +1241,11 @@
                     router.visit('/cart');
                 },
                 onError: (errors: any) => {
-                    showToast('Gagal memproses pembelian', 'error', 'top');
+                    const errMsg =
+                        errors?.error ??
+                        errors?.message ??
+                        'Gagal memproses pembelian';
+                    showToast(errMsg, 'error', 'top');
                 },
             },
         );
@@ -1285,7 +1347,10 @@
         content={product.summary ??
             `Beli ${product.name} di ${storeName}. Harga terbaik, pengiriman cepat.`}
     />
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+    <script
+        type="module"
+        src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"
+    ></script>
 </svelte:head>
 
 <svelte:window bind:scrollY />
@@ -1444,7 +1509,9 @@
 ───────────────────────────────────────────────────── -->
     <div class="bg-white pt-9 md:pt-0">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
-            <div class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-x-5 gap-y-2 lg:gap-10 items-start">
+            <div
+                class="grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[420px_1fr] gap-x-5 gap-y-2 lg:gap-10 items-start"
+            >
                 <!-- ══ LEFT: GALLERY ══════════════════════════════ -->
                 <div class="flex flex-col gap-3">
                     <!-- Mobile Gallery (Slider — combined product + variant images) -->
@@ -1460,11 +1527,17 @@
                                 style="scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;"
                             >
                                 {#each combinedSlides as slide, i}
-                                    <div class="w-full h-full shrink-0 snap-center relative aspect-square">
+                                    <div
+                                        class="w-full h-full shrink-0 snap-center relative aspect-square"
+                                    >
                                         {#if slide.type === 'video'}
-                                            <div class="w-full h-full bg-black z-20 relative">
+                                            <div
+                                                class="w-full h-full bg-black z-20 relative"
+                                            >
                                                 <PremiumVideoPlayer
-                                                    src={formatImagePath(slide.path)}
+                                                    src={formatImagePath(
+                                                        slide.path,
+                                                    )}
                                                     themeColor={secondary}
                                                 />
                                             </div>
@@ -1473,12 +1546,20 @@
                                                  can receive gestures for orbit/rotate/zoom -->
                                             <div
                                                 class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20"
-                                                ontouchstart={(e) => e.stopPropagation()}
-                                                ontouchmove={(e) => e.stopPropagation()}
+                                                ontouchstart={(e) =>
+                                                    e.stopPropagation()}
+                                                ontouchmove={(e) =>
+                                                    e.stopPropagation()}
                                             >
                                                 <model-viewer
-                                                    src={formatImagePath(slide.path)}
-                                                    ios-src={slide.usdz_path ? formatImagePath(slide.usdz_path) : ''}
+                                                    src={formatImagePath(
+                                                        slide.path,
+                                                    )}
+                                                    ios-src={slide.usdz_path
+                                                        ? formatImagePath(
+                                                              slide.usdz_path,
+                                                          )
+                                                        : ''}
                                                     ar
                                                     ar-modes="webxr scene-viewer quick-look"
                                                     camera-controls
@@ -1488,20 +1569,31 @@
                                                     style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                                 >
                                                     <!-- Two buttons side by side — raised above dot indicators and model-viewer AR icon -->
-                                                    <div class="absolute bottom-16 left-2 right-2 flex justify-between items-center gap-1.5 z-30">
+                                                    <div
+                                                        class="absolute bottom-16 left-2 right-2 flex justify-between items-center gap-1.5 z-30"
+                                                    >
                                                         <button
                                                             type="button"
-                                                            onclick={() => openCameraModal(slide.path, slide.usdz_path ?? '')}
+                                                            onclick={() =>
+                                                                openCameraModal(
+                                                                    slide.path,
+                                                                    slide.usdz_path ??
+                                                                        '',
+                                                                )}
                                                             class="bg-slate-900/80 hover:bg-slate-900 active:scale-95 backdrop-blur-sm text-white px-3 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-white/10"
                                                         >
-                                                            <i class="ti ti-camera text-[11px]"></i>
+                                                            <i
+                                                                class="ti ti-camera text-[11px]"
+                                                            ></i>
                                                             Buka Kamera AR
                                                         </button>
                                                         <button
                                                             slot="ar-button"
                                                             class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-3 py-1.5 rounded-full shadow-lg font-bold text-[10px] transition flex items-center gap-1 border border-orange-400/20"
                                                         >
-                                                            <i class="ti ti-augmented-reality text-[11px]"></i>
+                                                            <i
+                                                                class="ti ti-augmented-reality text-[11px]"
+                                                            ></i>
                                                             Lihat di Ruangan
                                                         </button>
                                                     </div>
@@ -1513,11 +1605,14 @@
                                                 src={slide.src}
                                                 alt="{product.name} {i + 1}"
                                                 class="w-full h-full object-cover transition-opacity duration-300 {slide.type ===
-                                                    'variant' && !slide.available
+                                                    'variant' &&
+                                                !slide.available
                                                     ? 'opacity-40'
                                                     : ''}"
                                                 onerror={(e) => {
-                                                    (e.currentTarget as HTMLImageElement).src =
+                                                    (
+                                                        e.currentTarget as HTMLImageElement
+                                                    ).src =
                                                         '/noimage/image.png';
                                                 }}
                                             />
@@ -1831,13 +1926,20 @@
                     <!-- Desktop Gallery (with Zoom and Thumbnails) -->
                     <div class="hidden md:flex flex-col gap-3">
                         <div
-                            class="relative aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 group select-none {(variantOverride || (desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'image')) && displayImage &&
+                            class="relative aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 group select-none {(variantOverride ||
+                                (desktopSlides[activeDesktopSlideIdx] &&
+                                    desktopSlides[activeDesktopSlideIdx]
+                                        .type === 'image')) &&
+                            displayImage &&
                             displayImage !== '/noimage/image.png' &&
                             !mainImageHasError
                                 ? 'cursor-zoom-in'
                                 : ''}"
                             onclick={() =>
-                                (variantOverride || (desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'image')) &&
+                                (variantOverride ||
+                                    (desktopSlides[activeDesktopSlideIdx] &&
+                                        desktopSlides[activeDesktopSlideIdx]
+                                            .type === 'image')) &&
                                 displayImage &&
                                 displayImage !== '/noimage/image.png' &&
                                 !mainImageHasError &&
@@ -1846,7 +1948,10 @@
                             tabindex="0"
                             onkeydown={(e) =>
                                 e.key === 'Enter' &&
-                                (variantOverride || (desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'image')) &&
+                                (variantOverride ||
+                                    (desktopSlides[activeDesktopSlideIdx] &&
+                                        desktopSlides[activeDesktopSlideIdx]
+                                            .type === 'image')) &&
                                 displayImage &&
                                 displayImage !== '/noimage/image.png' &&
                                 !mainImageHasError &&
@@ -1859,17 +1964,35 @@
                                     class="w-full h-full object-cover transition duration-500 group-hover:scale-[1.03]"
                                 />
                             {:else if desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'video'}
-                                <div class="w-full h-full bg-black z-20 relative">
+                                <div
+                                    class="w-full h-full bg-black z-20 relative"
+                                >
                                     <PremiumVideoPlayer
-                                        src={formatImagePath(desktopSlides[activeDesktopSlideIdx].path)}
+                                        src={formatImagePath(
+                                            desktopSlides[activeDesktopSlideIdx]
+                                                .path,
+                                        )}
                                         themeColor={secondary}
                                     />
                                 </div>
                             {:else if desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === '3d'}
-                                <div class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20">
+                                <div
+                                    class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20"
+                                >
                                     <model-viewer
-                                        src={formatImagePath(desktopSlides[activeDesktopSlideIdx].path)}
-                                        ios-src={desktopSlides[activeDesktopSlideIdx].usdz_path ? formatImagePath(desktopSlides[activeDesktopSlideIdx].usdz_path) : ''}
+                                        src={formatImagePath(
+                                            desktopSlides[activeDesktopSlideIdx]
+                                                .path,
+                                        )}
+                                        ios-src={desktopSlides[
+                                            activeDesktopSlideIdx
+                                        ].usdz_path
+                                            ? formatImagePath(
+                                                  desktopSlides[
+                                                      activeDesktopSlideIdx
+                                                  ].usdz_path,
+                                              )
+                                            : ''}
                                         ar
                                         ar-modes="webxr scene-viewer quick-look"
                                         camera-controls
@@ -1879,24 +2002,36 @@
                                         style="--poster-color: transparent; background-color: #f8fafc; touch-action: none;"
                                     >
                                         <!-- Two buttons side by side at bottom -->
-                                        <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30">
+                                        <div
+                                            class="absolute bottom-4 left-4 right-4 flex justify-between items-center gap-2 z-30"
+                                        >
                                             <button
                                                 type="button"
-                                                onclick={() => openCameraModal(
-                                                    desktopSlides[activeDesktopSlideIdx].path,
-                                                    desktopSlides[activeDesktopSlideIdx].usdz_path ?? ''
-                                                )}
+                                                onclick={() =>
+                                                    openCameraModal(
+                                                        desktopSlides[
+                                                            activeDesktopSlideIdx
+                                                        ].path,
+                                                        desktopSlides[
+                                                            activeDesktopSlideIdx
+                                                        ].usdz_path ?? '',
+                                                    )}
                                                 class="bg-slate-900/80 hover:bg-slate-900 active:scale-95 backdrop-blur-sm text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-white/10"
                                             >
-                                                <i class="ti ti-camera text-base"></i>
+                                                <i
+                                                    class="ti ti-camera text-base"
+                                                ></i>
                                                 Buka Kamera AR
                                             </button>
                                             <button
                                                 slot="ar-button"
                                                 class="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white px-4 py-2 rounded-full shadow-lg font-semibold text-xs transition flex items-center gap-1.5 border border-orange-400/20"
-                                                onclick={(e) => e.stopPropagation()}
+                                                onclick={(e) =>
+                                                    e.stopPropagation()}
                                             >
-                                                <i class="ti ti-augmented-reality text-base"></i>
+                                                <i
+                                                    class="ti ti-augmented-reality text-base"
+                                                ></i>
                                                 Lihat di Ruangan (AR)
                                             </button>
                                         </div>
@@ -1933,12 +2068,15 @@
 
                         <!-- Thumbnails row -->
                         {#if desktopSlides.length > 1}
-                            <div class="flex gap-2 overflow-x-auto pb-1 snap-x select-none">
+                            <div
+                                class="flex gap-2 overflow-x-auto pb-1 snap-x select-none"
+                            >
                                 {#each desktopSlides as slide, i}
                                     <button
                                         onclick={() => pickGallery(i)}
                                         class="w-[68px] h-[68px] sm:w-[76px] sm:h-[76px] rounded-xl overflow-hidden border-2 shrink-0 snap-start transition duration-200 relative
-                                           {activeDesktopSlideIdx === i && !variantOverride
+                                           {activeDesktopSlideIdx === i &&
+                                        !variantOverride
                                             ? 'border-orange-400 shadow-md shadow-orange-100'
                                             : 'border-slate-200 hover:border-slate-400 opacity-80 hover:opacity-100'}"
                                     >
@@ -1953,14 +2091,28 @@
                                                 }}
                                             />
                                         {:else if slide.type === 'video'}
-                                            <div class="w-full h-full bg-orange-50 flex flex-col items-center justify-center text-orange-600 border border-orange-100">
-                                                <i class="ti ti-video text-xl animate-pulse"></i>
-                                                <span class="text-[8px] font-black mt-0.5 tracking-wider uppercase leading-none">Video</span>
+                                            <div
+                                                class="w-full h-full bg-orange-50 flex flex-col items-center justify-center text-orange-600 border border-orange-100"
+                                            >
+                                                <i
+                                                    class="ti ti-video text-xl animate-pulse"
+                                                ></i>
+                                                <span
+                                                    class="text-[8px] font-black mt-0.5 tracking-wider uppercase leading-none"
+                                                    >Video</span
+                                                >
                                             </div>
                                         {:else if slide.type === '3d'}
-                                            <div class="w-full h-full bg-blue-50 flex flex-col items-center justify-center text-blue-600 border border-blue-100">
-                                                <i class="ti ti-3d-cube-sphere text-xl"></i>
-                                                <span class="text-[8px] font-black mt-0.5 tracking-wider uppercase leading-none">3D AR</span>
+                                            <div
+                                                class="w-full h-full bg-blue-50 flex flex-col items-center justify-center text-blue-600 border border-blue-100"
+                                            >
+                                                <i
+                                                    class="ti ti-3d-cube-sphere text-xl"
+                                                ></i>
+                                                <span
+                                                    class="text-[8px] font-black mt-0.5 tracking-wider uppercase leading-none"
+                                                    >3D AR</span
+                                                >
                                             </div>
                                         {/if}
                                     </button>
@@ -2057,8 +2209,6 @@
                                 >
                             {/if}
                         </div>
-
-
                     </div>
 
                     <!-- Flash Sale Banner -->
@@ -2823,40 +2973,69 @@
                         {/if}
                     </div>
 
+                    <!-- Split Pricing Info Banner (when qty > remaining promo stock) -->
+                    {#if isSplitPricing && promoStockRemaining !== null && promoStockRemaining > 0}
+                        <div
+                            class="mt-2 p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2 text-[11px] text-amber-700 font-medium max-w-md"
+                        >
+                            <i
+                                class="ti ti-info-circle text-amber-500 text-sm mt-0.5 shrink-0"
+                            ></i>
+                            <span>
+                                <strong>{promoStockRemaining} pcs</strong>
+                                dengan harga promo,
+                                <strong>{qty - promoStockRemaining} pcs</strong>
+                                dengan harga normal. Sisa kuota promo: {promoStockRemaining}
+                                pcs.
+                            </span>
+                        </div>
+                    {/if}
+
                     <!-- ── CTA BUTTONS ─────────────────────────── -->
                     <div class="pt-5 hidden md:flex flex-col sm:flex-row gap-3">
-                        <button
-                            onclick={() => {
-                                if (hasVariations && !fullySelected) {
-                                    showToast(
-                                        'Pilih variasi terlebih dahulu',
-                                        'error',
-                                        'top',
-                                    );
-                                    return;
-                                }
-                                addToCart();
-                            }}
-                            class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
-                            style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                primary,
-                                0.8,
-                            )});"
-                        >
-                            <i class="ti ti-shopping-cart text-base"></i>
-                            + Keranjang
-                        </button>
-                        <button
-                            onclick={() => buyNow()}
-                            class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
-                            style="background: linear-gradient(135deg, {secondary}, {withOpacity(
-                                secondary,
-                                0.8,
-                            )});"
-                        >
-                            <i class="ti ti-credit-card text-base"></i>
-                            Beli Sekarang
-                        </button>
+                        {#if isEffectivelyOutOfStock}
+                            <!-- Out-of-stock state -->
+                            <div
+                                class="flex-grow py-3.5 rounded-xl font-bold text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
+                            >
+                                {isPromoStockExhausted
+                                    ? 'Stok Promo Habis'
+                                    : 'Stok Habis'}
+                            </div>
+                        {:else}
+                            <button
+                                onclick={() => {
+                                    if (hasVariations && !fullySelected) {
+                                        showToast(
+                                            'Pilih variasi terlebih dahulu',
+                                            'error',
+                                            'top',
+                                        );
+                                        return;
+                                    }
+                                    addToCart();
+                                }}
+                                class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
+                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                    primary,
+                                    0.8,
+                                )});"
+                            >
+                                <i class="ti ti-shopping-cart text-base"></i>
+                                + Keranjang
+                            </button>
+                            <button
+                                onclick={() => buyNow()}
+                                class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
+                                style="background: linear-gradient(135deg, {secondary}, {withOpacity(
+                                    secondary,
+                                    0.8,
+                                )});"
+                            >
+                                <i class="ti ti-credit-card text-base"></i>
+                                Beli Sekarang
+                            </button>
+                        {/if}
                         <button
                             onclick={() => {
                                 if (window.innerWidth < 768) {
@@ -2953,22 +3132,31 @@
                     <div class="flex items-center gap-3">
                         <div
                             class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all"
-                            style="background: {withOpacity(primary, 0.08)}; color: {primary};"
+                            style="background: {withOpacity(
+                                primary,
+                                0.08,
+                            )}; color: {primary};"
                         >
                             <i class="ti ti-list text-lg"></i>
                         </div>
                         <div>
-                            <p class="text-sm font-bold text-slate-800">Spesifikasi Produk</p>
+                            <p class="text-sm font-bold text-slate-800">
+                                Spesifikasi Produk
+                            </p>
                             <p class="text-[11px] text-slate-400 mt-0.5">
                                 {#if product.brand || (product.brands && product.brands.length > 0)}
-                                    Merk: {product.brand || product.brands[0].name} • 
+                                    Merk: {product.brand ||
+                                        product.brands[0].name} •
                                 {/if}
                                 Lihat detail spesifikasi lengkap
                             </p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1.5 text-slate-400">
-                        <span class="text-xs font-semibold text-slate-500 hidden sm:inline">Lihat</span>
+                        <span
+                            class="text-xs font-semibold text-slate-500 hidden sm:inline"
+                            >Lihat</span
+                        >
                         <i class="ti ti-chevron-right text-lg"></i>
                     </div>
                 </button>
@@ -2979,7 +3167,8 @@
                 <h3
                     class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
                 >
-                    <i class="ti ti-file-text text-lg" style="color: {primary};"></i>
+                    <i class="ti ti-file-text text-lg" style="color: {primary};"
+                    ></i>
                     Deskripsi Produk
                 </h3>
                 {#if product.description}
@@ -3006,18 +3195,27 @@
                     <h3
                         class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
                     >
-                        <i class="ti ti-shirt text-lg" style="color: {primary};"></i>
+                        <i class="ti ti-shirt text-lg" style="color: {primary};"
+                        ></i>
                         Kalkulator & Panduan Ukuran
                     </h3>
 
                     <!-- Calculator Card -->
-                    <div class="bg-slate-50/70 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-5 shadow-sm/5">
-                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                            <i class="ti ti-calculator text-base text-slate-400"></i> Cari Ukuran Rekomendasi Anda
+                    <div
+                        class="bg-slate-50/70 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-5 shadow-sm/5"
+                    >
+                        <h4
+                            class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"
+                        >
+                            <i class="ti ti-calculator text-base text-slate-400"
+                            ></i> Cari Ukuran Rekomendasi Anda
                         </h4>
                         <div class="grid grid-cols-2 gap-4 items-end mb-4">
                             <div>
-                                <label for="height-input" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                                <label
+                                    for="height-input"
+                                    class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                >
                                     Tinggi Badan (cm)
                                 </label>
                                 <input
@@ -3029,7 +3227,10 @@
                                 />
                             </div>
                             <div>
-                                <label for="weight-input" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">
+                                <label
+                                    for="weight-input"
+                                    class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                >
                                     Berat Badan (kg)
                                 </label>
                                 <input
@@ -3044,45 +3245,89 @@
 
                         <!-- Calculator Results Alert -->
                         {#if recommendedSize}
-                            <div 
+                            <div
                                 class="p-4 rounded-xl flex items-center gap-3.5 transition-all duration-300 shadow-sm"
-                                style="background: {withOpacity(primary, 0.08)}; border: 1px solid {withOpacity(primary, 0.15)};"
+                                style="background: {withOpacity(
+                                    primary,
+                                    0.08,
+                                )}; border: 1px solid {withOpacity(
+                                    primary,
+                                    0.15,
+                                )};"
                             >
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm" style="background: linear-gradient(135deg, {primary}, {secondary}); color: #fff;">
+                                <div
+                                    class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                                    style="background: linear-gradient(135deg, {primary}, {secondary}); color: #fff;"
+                                >
                                     <i class="ti ti-sparkles text-base"></i>
                                 </div>
                                 <div>
-                                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Ukuran Rekomendasi</p>
-                                    <p class="text-sm font-black mt-0.5" style="color: {primary};">
-                                        Ukuran yang paling pas untuk Anda adalah <span class="bg-white px-2 py-0.5 rounded-md border border-slate-100 shadow-sm ml-1" style="color: {secondary};">{recommendedSize}</span>
+                                    <p
+                                        class="text-[10px] text-slate-500 font-bold uppercase tracking-wider"
+                                    >
+                                        Ukuran Rekomendasi
+                                    </p>
+                                    <p
+                                        class="text-sm font-black mt-0.5"
+                                        style="color: {primary};"
+                                    >
+                                        Ukuran yang paling pas untuk Anda adalah <span
+                                            class="bg-white px-2 py-0.5 rounded-md border border-slate-100 shadow-sm ml-1"
+                                            style="color: {secondary};"
+                                            >{recommendedSize}</span
+                                        >
                                     </p>
                                 </div>
                             </div>
                         {:else if userHeight || userWeight}
-                            <div class="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-600 font-medium">
+                            <div
+                                class="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-600 font-medium"
+                            >
                                 <i class="ti ti-info-circle text-base"></i>
-                                Belum ada ukuran yang pas untuk tinggi/berat tersebut. Silakan hubungi admin via chat.
+                                Belum ada ukuran yang pas untuk tinggi/berat tersebut.
+                                Silakan hubungi admin via chat.
                             </div>
                         {/if}
                     </div>
 
                     <!-- Size Guide Table -->
-                    <div class="overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5">
+                    <div
+                        class="overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5"
+                    >
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
-                                <tr class="bg-slate-50 border-b border-slate-100">
-                                    <th class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center">{product.size_chart.headers[0]}</th>
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-100"
+                                >
+                                    <th
+                                        class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
+                                        >{product.size_chart.headers[0]}</th
+                                    >
                                     {#each product.size_chart.headers.slice(1) as header}
-                                        <th class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center">{header}</th>
+                                        <th
+                                            class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
+                                            >{header}</th
+                                        >
                                     {/each}
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 {#each product.size_chart.rows as row}
-                                    <tr class="hover:bg-slate-50/40 transition {recommendedSize === row.size ? 'bg-slate-50/75 font-bold' : ''}">
-                                        <td class="p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20">{row.size}</td>
+                                    <tr
+                                        class="hover:bg-slate-50/40 transition {recommendedSize ===
+                                        row.size
+                                            ? 'bg-slate-50/75 font-bold'
+                                            : ''}"
+                                    >
+                                        <td
+                                            class="p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20"
+                                            >{row.size}</td
+                                        >
                                         {#each row.values as val}
-                                            <td class="p-3.5 text-center text-slate-600 font-semibold">{val}</td>
+                                            <td
+                                                class="p-3.5 text-center text-slate-600 font-semibold"
+                                                >{val}</td
+                                            >
                                         {/each}
                                     </tr>
                                 {/each}
@@ -3386,7 +3631,8 @@
                                     style="top: 0.375rem; right: 0.375rem; border-color: {primary}; color: {primary};"
                                     title="Tambah ke Keranjang"
                                 >
-                                    <i class="ti ti-plus text-base font-black"
+                                    <i
+                                        class="ti ti-plus text-2xl sm:text-base font-black"
                                     ></i>
                                 </button>
                             {/if}
@@ -3498,7 +3744,9 @@
             </model-viewer>
 
             <!-- Top bar: title + close -->
-            <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 z-30 bg-gradient-to-b from-black/70 to-transparent">
+            <div
+                class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 z-30 bg-gradient-to-b from-black/70 to-transparent"
+            >
                 <div class="flex items-center gap-2 text-white">
                     <i class="ti ti-camera text-lg"></i>
                     <span class="font-bold text-sm">Kamera AR Aktif</span>
@@ -3514,9 +3762,12 @@
             </div>
 
             <!-- Bottom hint -->
-            <div class="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16 z-30 bg-gradient-to-t from-black/70 to-transparent flex flex-col items-center gap-3">
+            <div
+                class="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16 z-30 bg-gradient-to-t from-black/70 to-transparent flex flex-col items-center gap-3"
+            >
                 <p class="text-white/80 text-xs text-center">
-                    Arahkan kamera ke permukaan datar · Gunakan gesture untuk memutar model 3D
+                    Arahkan kamera ke permukaan datar · Gunakan gesture untuk
+                    memutar model 3D
                 </p>
                 <button
                     type="button"
@@ -3624,32 +3875,40 @@
         </button>
 
         <!-- Beli Langsung (Outline style) -->
-        <button
-            onclick={() => {
-                drawerAction = 'buy';
-                drawerOpen = true;
-            }}
-            class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition active:scale-[0.98] text-center"
-            style="border-color: {primary}; color: {primary};"
-        >
-            Beli Langsung
-        </button>
-
-        <!-- + Keranjang (Solid style) -->
-        <button
-            onclick={() => {
-                if (hasVariations) {
-                    drawerAction = 'cart';
+        {#if isEffectivelyOutOfStock}
+            <div
+                class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
+            >
+                {isPromoStockExhausted ? 'Stok Promo Habis' : 'Stok Habis'}
+            </div>
+        {:else}
+            <button
+                onclick={() => {
+                    drawerAction = 'buy';
                     drawerOpen = true;
-                } else {
-                    addToCart();
-                }
-            }}
-            class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-[0.98] text-center shadow-md"
-            style="background-color: {primary};"
-        >
-            + Keranjang
-        </button>
+                }}
+                class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition active:scale-[0.98] text-center"
+                style="border-color: {primary}; color: {primary};"
+            >
+                Beli Langsung
+            </button>
+
+            <!-- + Keranjang (Solid style) -->
+            <button
+                onclick={() => {
+                    if (hasVariations) {
+                        drawerAction = 'cart';
+                        drawerOpen = true;
+                    } else {
+                        addToCart();
+                    }
+                }}
+                class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-[0.98] text-center shadow-md"
+                style="background-color: {primary};"
+            >
+                + Keranjang
+            </button>
+        {/if}
     </div>
 
     <!-- Bottom Drawer for Varian Produk (Mobile Only) -->
@@ -4020,7 +4279,15 @@
 
             <!-- Sticky Bottom CTA Button inside Drawer -->
             <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
-                {#if drawerAction === 'buy'}
+                {#if isEffectivelyOutOfStock}
+                    <div
+                        class="w-full py-3.5 rounded-xl font-bold text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
+                    >
+                        {isPromoStockExhausted
+                            ? 'Stok Promo Habis'
+                            : 'Stok Habis'}
+                    </div>
+                {:else if drawerAction === 'buy'}
                     <button
                         onclick={() => {
                             if (hasVariations && !fullySelected) {
@@ -4550,8 +4817,12 @@
             </div>
 
             <!-- Header Title + Close -->
-            <div class="px-5 pt-3 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-                <h3 class="text-base font-black text-slate-800 flex items-center gap-2">
+            <div
+                class="px-5 pt-3 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0"
+            >
+                <h3
+                    class="text-base font-black text-slate-800 flex items-center gap-2"
+                >
                     <i class="ti ti-list text-lg" style="color: {primary};"></i>
                     Spesifikasi Produk
                 </h3>
@@ -4565,10 +4836,14 @@
             </div>
 
             <!-- Content Area (Scrollable) -->
-            <div class="px-5 py-4 overflow-y-auto space-y-1 divide-y divide-slate-100">
+            <div
+                class="px-5 py-4 overflow-y-auto space-y-1 divide-y divide-slate-100"
+            >
                 {#each parsedSpecifications as [label, value]}
                     <div class="flex py-3.5 text-sm items-start gap-4">
-                        <span class="text-slate-400 w-1/3 font-bold uppercase tracking-wider text-[11px] shrink-0 mt-0.5">
+                        <span
+                            class="text-slate-400 w-1/3 font-bold uppercase tracking-wider text-[11px] shrink-0 mt-0.5"
+                        >
                             {label}
                         </span>
                         <span class="text-slate-700 font-semibold flex-1">
@@ -4597,8 +4872,8 @@
         display: none;
     }
     .no-scrollbar {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
     }
 
     @keyframes pop {

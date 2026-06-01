@@ -132,6 +132,13 @@ class StorefrontController extends Controller
             ->latest()
             ->first();
 
+        if ($activeFlashSale) {
+            foreach ($activeFlashSale->items as $item) {
+                $remainingStock = $this->getRemainingPromoStock($activeFlashSale->id, $item->product_id, $item->product_variant_id);
+                $item->setAttribute('remaining_promo_stock', $remainingStock);
+            }
+        }
+
         // Retrieve active store promotions (excluding flash sale as it is handled separately)
         $activePromotions = Promotion::with(['items'])
             ->where('is_active', true)
@@ -1009,6 +1016,12 @@ class StorefrontController extends Controller
                 foreach ($activeFlashSale->items as $item) {
                     if ($item->product) {
                         $p = clone $item->product;
+
+                        $remainingStock = $this->getRemainingPromoStock($activeFlashSale->id, $item->product_id, $item->product_variant_id);
+                        $p->setAttribute('remaining_promo_stock', $remainingStock);
+                        $p->setAttribute('promo_stock', $item->promo_stock);
+                        $p->setAttribute('product_variant_id', $item->product_variant_id);
+
                         if ($item->variant) {
                             if ($item->variant->productPrice) {
                                 $p->setRelation('productPrice', $item->variant->productPrice);
@@ -1061,21 +1074,42 @@ class StorefrontController extends Controller
                     }
                 }
 
-                if ($discountType === 'percentage') {
-                    $finalPrice = $basePrice - ($basePrice * ($discountValue / 100));
-                } elseif ($discountType === 'fixed') {
-                    $finalPrice = $basePrice - $discountValue;
-                } else {
-                    $finalPrice = $basePrice;
+                // Check if there is an item specific discount override
+                if ($activeFlashSale->items->isNotEmpty()) {
+                    $item = $activeFlashSale->items->first(function ($i) use ($p) {
+                        return $i->product_id === $p->id && ($p->product_variant_id ? $i->product_variant_id === $p->product_variant_id : is_null($i->product_variant_id));
+                    });
+                    if ($item) {
+                        $discountType = $item->discount_type ?? $discountType;
+                        $discountValue = $item->discount_value ?? $discountValue;
+                    }
                 }
 
-                $finalPrice = max(0, $finalPrice);
-                $p->is_promo = true;
-                $p->promo_price = $finalPrice;
-                $p->original_price = $basePrice;
-                if ($basePrice > 0) {
-                    $p->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
+                $remainingStock = $p->remaining_promo_stock;
+
+                if (is_null($remainingStock) || $remainingStock > 0) {
+                    if ($discountType === 'percentage') {
+                        $finalPrice = $basePrice - ($basePrice * ($discountValue / 100));
+                    } elseif ($discountType === 'fixed') {
+                        $finalPrice = $basePrice - $discountValue;
+                    } else {
+                        $finalPrice = $basePrice;
+                    }
+
+                    $finalPrice = max(0, $finalPrice);
+                    $p->is_promo = true;
+                    $p->promo_price = $finalPrice;
+                    $p->original_price = $basePrice;
+                    if ($basePrice > 0) {
+                        $p->discount_percentage = round((($basePrice - $finalPrice) / $basePrice) * 100);
+                    } else {
+                        $p->discount_percentage = 0;
+                    }
                 } else {
+                    // STOCK IS EXHAUSTED -> REVERT TO NORMAL PRICE!
+                    $p->is_promo = false;
+                    $p->promo_price = $basePrice;
+                    $p->original_price = $basePrice;
                     $p->discount_percentage = 0;
                 }
             }
@@ -1960,11 +1994,9 @@ class StorefrontController extends Controller
 
         $soldPromoQty = TransactionItem::where('applied_promotion_id', $promotionId)
             ->where('product_id', $productId)
-            ->where(function ($q) use ($variantId) {
-                if ($variantId) {
-                    $q->where('product_variant_id', $variantId);
-                } else {
-                    $q->whereNull('product_variant_id');
+            ->where(function ($q) use ($promoItem) {
+                if (! is_null($promoItem->product_variant_id)) {
+                    $q->where('product_variant_id', $promoItem->product_variant_id);
                 }
             })
             ->whereHas('transaction', function ($q) {
