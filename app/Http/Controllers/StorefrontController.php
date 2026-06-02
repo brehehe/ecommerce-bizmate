@@ -46,6 +46,8 @@ class StorefrontController extends Controller
             'variants.productStock',
             'variations.options',
         ])
+            ->withAvg('reviews as avg_rating', 'rating')
+            ->withCount('reviews as review_count')
             ->where('active', true)
             ->latest()
             ->take(12)
@@ -61,6 +63,8 @@ class StorefrontController extends Controller
             'variants.productStock',
             'variations.options',
         ])
+            ->withAvg('reviews as avg_rating', 'rating')
+            ->withCount('reviews as review_count')
             ->where('active', true)
             ->latest()
             ->take(50)

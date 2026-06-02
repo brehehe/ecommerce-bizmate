@@ -1586,7 +1586,7 @@
                                 </div>
                                 <div class="min-w-0">
                                     <h4 class="font-bold text-amber-800 text-xs uppercase tracking-tight">Toko Sedang Tutup</h4>
-                                    <p class="text-[10px] text-amber-700 font-semibold mt-1 leading-snug">Mohon maaf, Anda tidak dapat melakukan checkout saat ini karena toko sedang tutup atau dalam mode libur.</p>
+                                    <p class="text-[10px] text-amber-700 font-semibold mt-1 leading-snug">Mohon maaf, Anda tidak dapat melakukan checkout saat ini karena toko sedang tutup</p>
                                 </div>
                             </div>
                         {/if}

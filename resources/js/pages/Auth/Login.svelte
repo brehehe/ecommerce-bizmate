@@ -14,6 +14,8 @@
         remember: false,
     });
 
+    let showPassword = $state(false);
+
     const submit = () => {
         form.post('/login');
     };
@@ -24,7 +26,7 @@
 </svelte:head>
 
 <div
-    class="min-h-screen flex font-sans selection:text-white"
+    class="min-h-[100dvh] w-full flex font-sans selection:text-white bg-white"
     style="selection:bg-color: {primaryColor};"
 >
     <!-- Bagian Kiri: Gambar & Informasi (Disembunyikan di Mobile) -->
@@ -100,7 +102,7 @@
 
     <!-- Bagian Kanan: Form Login -->
     <div
-        class="w-full lg:w-1/2 flex flex-col justify-center py-12 px-6 sm:px-12 lg:px-24 bg-white relative"
+        class="w-full lg:w-1/2 flex flex-col justify-center py-8 px-6 sm:px-12 md:px-16 lg:px-24 bg-white relative"
     >
         <!-- Hiasan Bulat Dekoratif -->
         <div
@@ -207,13 +209,21 @@
                         </div>
                         <input
                             id="password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             bind:value={form.password}
                             required
-                            class="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition-all bg-slate-50 focus:bg-white hover:border-slate-300"
+                            class="block w-full pl-11 pr-12 py-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition-all bg-slate-50 focus:bg-white hover:border-slate-300"
                             style="--tw-ring-color: {primaryColor}30;"
                             placeholder="••••••••"
                         />
+                        <button
+                            type="button"
+                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                            onclick={() => showPassword = !showPassword}
+                            aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                        >
+                            <i class={showPassword ? "ti ti-eye-off text-lg" : "ti ti-eye text-lg"}></i>
+                        </button>
                     </div>
                 </div>
 

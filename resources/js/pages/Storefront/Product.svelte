@@ -134,6 +134,10 @@
     let lightboxOpen = $state(false);
     let mainImageHasError = $state(false);
 
+    // Lightbox for review media
+    let reviewLightboxOpen = $state(false);
+    let reviewLightboxMedia = $state<{ type: 'video' | 'image', url: string } | null>(null);
+
     type DesktopSlide =
         | { type: 'image'; src: string; idx: number }
         | { type: 'video'; path: string }
@@ -3510,18 +3514,20 @@
                                                         muted
                                                         playsinline
                                                         onclick={(e: any) => {
-                                                            const v =
-                                                                e.target as HTMLVideoElement;
-                                                            v.paused
-                                                                ? v.play()
-                                                                : v.pause();
+                                                            e.preventDefault();
+                                                            reviewLightboxMedia = { type: 'video', url: mediaUrl };
+                                                            reviewLightboxOpen = true;
                                                         }}
                                                     ></video>
                                                 {:else}
                                                     <img
                                                         src={mediaUrl}
                                                         alt="Foto ulasan"
-                                                        class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer"
+                                                        class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition"
+                                                        onclick={() => {
+                                                            reviewLightboxMedia = { type: 'image', url: mediaUrl };
+                                                            reviewLightboxOpen = true;
+                                                        }}
                                                         onerror={(e: any) => {
                                                             e.target.style.display =
                                                                 'none';
@@ -4895,6 +4901,50 @@
                 >
                     Tutup
                 </button>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Lightbox for Review Media -->
+    {#if reviewLightboxOpen && reviewLightboxMedia}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 sm:p-8 animate-pop"
+            onclick={() => { reviewLightboxOpen = false; }}
+        >
+            <button
+                class="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white transition p-2 bg-black/20 rounded-full"
+                aria-label="Tutup"
+                onclick={(e) => {
+                    e.stopPropagation();
+                    reviewLightboxOpen = false;
+                }}
+            >
+                <i class="ti ti-x text-2xl"></i>
+            </button>
+
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+                class="relative max-w-4xl w-full max-h-full flex items-center justify-center rounded-xl overflow-hidden"
+                onclick={(e) => e.stopPropagation()}
+            >
+                {#if reviewLightboxMedia.type === 'video'}
+                    <video
+                        src={reviewLightboxMedia.url}
+                        class="max-w-full h-auto max-h-[85vh] object-contain bg-black"
+                        controls
+                        autoplay
+                        playsinline
+                    ></video>
+                {:else}
+                    <img
+                        src={reviewLightboxMedia.url}
+                        alt="Preview ulasan"
+                        class="max-w-full h-auto max-h-[85vh] object-contain bg-white rounded-md"
+                    />
+                {/if}
             </div>
         </div>
     {/if}
