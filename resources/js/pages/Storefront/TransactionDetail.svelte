@@ -70,14 +70,18 @@
             returnQty: 0,
             price: item.harga_akhir ?? item.harga_jual ?? 0,
             selected: false,
-        }))
+        })),
     );
     let returFiles: File[] = $state([]);
     let returPreviews: { url: string; type: string }[] = $state([]);
     let submittingReturn = $state(false);
 
-    const activeReturn = $derived(transaction.active_return ?? transaction.returns?.[0] ?? null);
-    const canRetur = $derived(transaction.status === 'selesai' && !activeReturn);
+    const activeReturn = $derived(
+        transaction.active_return ?? transaction.returns?.[0] ?? null,
+    );
+    const canRetur = $derived(
+        transaction.status === 'selesai' && !activeReturn,
+    );
 
     const returnStatusColors: Record<string, { bg: string; text: string }> = {
         menunggu_review: { bg: '#fef3c7', text: '#92400e' },
@@ -90,7 +94,9 @@
     };
 
     // Check if mobile action bar should show
-    const hasMobileAction = $derived(canCancel || canChangePayment || canCompleteOrder || canRetur);
+    const hasMobileAction = $derived(
+        canCancel || canChangePayment || canCompleteOrder || canRetur,
+    );
 
     function openCancelModal() {
         cancelReason = '';
@@ -157,10 +163,16 @@
             {},
             {
                 onSuccess: () => {
-                    showToast('Pesanan telah diterima. Terima kasih!', 'success');
+                    showToast(
+                        'Pesanan telah diterima. Terima kasih!',
+                        'success',
+                    );
                 },
                 onError: () => {
-                    showToast('Gagal mengonfirmasi penerimaan pesanan.', 'error');
+                    showToast(
+                        'Gagal mengonfirmasi penerimaan pesanan.',
+                        'error',
+                    );
                 },
                 onFinish: () => {
                     completingOrder = false;
@@ -170,7 +182,10 @@
     }
 
     function isItemReviewed(item: any): boolean {
-        const key = String(item.product_id) + '_' + String(item.product_variant_id ?? '');
+        const key =
+            String(item.product_id) +
+            '_' +
+            String(item.product_variant_id ?? '');
         return !!userReviews[key];
     }
 
@@ -192,7 +207,13 @@
             if (reviewFiles.length >= 5) break;
             reviewFiles = [...reviewFiles, file];
             const url = URL.createObjectURL(file);
-            reviewPreviews = [...reviewPreviews, { url, type: file.type.startsWith('video/') ? 'video' : 'image' }];
+            reviewPreviews = [
+                ...reviewPreviews,
+                {
+                    url,
+                    type: file.type.startsWith('video/') ? 'video' : 'image',
+                },
+            ];
         }
         input.value = '';
     }
@@ -213,7 +234,10 @@
         const form = new FormData();
         form.append('product_id', String(reviewItem.product_id));
         if (reviewItem.product_variant_id) {
-            form.append('product_variant_id', String(reviewItem.product_variant_id));
+            form.append(
+                'product_variant_id',
+                String(reviewItem.product_variant_id),
+            );
         }
         form.append('rating', String(reviewRating));
         if (reviewComment.trim()) {
@@ -223,25 +247,21 @@
             form.append('files[]', file);
         }
 
-        router.post(
-            `/transactions/${transaction.id}/review`,
-            form as any,
-            {
-                forceFormData: true,
-                onSuccess: () => {
-                    showReviewModal = false;
-                    showToast('Ulasan berhasil dikirim. Terima kasih!', 'success');
-                    reviewPreviews.forEach(p => URL.revokeObjectURL(p.url));
-                },
-                onError: (errors: any) => {
-                    const first = Object.values(errors)[0] as string;
-                    showToast(first ?? 'Gagal mengirim ulasan.', 'error');
-                },
-                onFinish: () => {
-                    submittingReview = false;
-                },
+        router.post(`/transactions/${transaction.id}/review`, form as any, {
+            forceFormData: true,
+            onSuccess: () => {
+                showReviewModal = false;
+                showToast('Ulasan berhasil dikirim. Terima kasih!', 'success');
+                reviewPreviews.forEach((p) => URL.revokeObjectURL(p.url));
             },
-        );
+            onError: (errors: any) => {
+                const first = Object.values(errors)[0] as string;
+                showToast(first ?? 'Gagal mengirim ulasan.', 'error');
+            },
+            onFinish: () => {
+                submittingReview = false;
+            },
+        });
     }
 
     function fmt(price: any): string {
@@ -434,7 +454,13 @@
         for (const file of Array.from(input.files)) {
             if (returFiles.length >= 5) break;
             returFiles = [...returFiles, file];
-            returPreviews = [...returPreviews, { url: URL.createObjectURL(file), type: file.type.startsWith('video/') ? 'video' : 'image' }];
+            returPreviews = [
+                ...returPreviews,
+                {
+                    url: URL.createObjectURL(file),
+                    type: file.type.startsWith('video/') ? 'video' : 'image',
+                },
+            ];
         }
         input.value = '';
     }
@@ -446,7 +472,9 @@
     }
 
     function submitReturn() {
-        const selectedItems = returItems.filter(i => i.selected && i.returnQty > 0);
+        const selectedItems = returItems.filter(
+            (i) => i.selected && i.returnQty > 0,
+        );
         if (selectedItems.length === 0) {
             showToast('Pilih minimal 1 produk untuk diretur.', 'error');
             return;
@@ -465,17 +493,23 @@
         form.append('type', returType);
         form.append('reason', returReason);
         selectedItems.forEach((item, idx) => {
-            form.append(`items[${idx}][transaction_item_id]`, String(item.transaction_item_id));
-            form.append(`items[${idx}][quantity_returned]`, String(item.returnQty));
+            form.append(
+                `items[${idx}][transaction_item_id]`,
+                String(item.transaction_item_id),
+            );
+            form.append(
+                `items[${idx}][quantity_returned]`,
+                String(item.returnQty),
+            );
         });
-        returFiles.forEach(file => form.append('media[]', file));
+        returFiles.forEach((file) => form.append('media[]', file));
 
         router.post(`/transactions/${transaction.id}/return`, form as any, {
             forceFormData: true,
             onSuccess: () => {
                 showReturnModal = false;
                 showToast('Pengajuan retur berhasil dikirim!', 'success');
-                returPreviews.forEach(p => URL.revokeObjectURL(p.url));
+                returPreviews.forEach((p) => URL.revokeObjectURL(p.url));
             },
         });
     }
@@ -491,21 +525,27 @@
             return;
         }
         submittingTracking = true;
-        router.post(`/returns/${activeReturn.id}/tracking`, {
-            return_courier_name: returnCourierName,
-            return_tracking_number: returnTrackingNumber
-        }, {
-            onSuccess: () => {
-                showToast('Nomor resi retur berhasil dikirim!', 'success');
-                returnCourierName = '';
-                returnTrackingNumber = '';
+        router.post(
+            `/returns/${activeReturn.id}/tracking`,
+            {
+                return_courier_name: returnCourierName,
+                return_tracking_number: returnTrackingNumber,
             },
-            onError: (errors: any) => {
-                const first = Object.values(errors)[0] as string;
-                showToast(first ?? 'Gagal mengirim nomor resi.', 'error');
+            {
+                onSuccess: () => {
+                    showToast('Nomor resi retur berhasil dikirim!', 'success');
+                    returnCourierName = '';
+                    returnTrackingNumber = '';
+                },
+                onError: (errors: any) => {
+                    const first = Object.values(errors)[0] as string;
+                    showToast(first ?? 'Gagal mengirim nomor resi.', 'error');
+                },
+                onFinish: () => {
+                    submittingTracking = false;
+                },
             },
-            onFinish: () => { submittingTracking = false; }
-        });
+        );
     }
 </script>
 
@@ -548,7 +588,9 @@
                             style="background:{primary}"
                         >
                             <i class="ti ti-circle-check text-sm"></i>
-                            {completingOrder ? 'Memproses...' : 'Pesanan Diterima'}
+                            {completingOrder
+                                ? 'Memproses...'
+                                : 'Pesanan Diterima'}
                         </button>
                     {/if}
                     {#if canChangePayment}
@@ -595,10 +637,14 @@
                 <div class="lg:col-span-2 space-y-4">
                     <!-- Status Banner -->
                     {#if transaction.status === 'batal'}
-                        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+                        <div
+                            class="bg-white rounded-2xl shadow-sm overflow-hidden"
+                        >
                             <div class="h-1 w-full"></div>
                             <div class="p-5">
-                                <div class="flex items-center justify-between mb-4">
+                                <div
+                                    class="flex items-center justify-between mb-4"
+                                >
                                     <span
                                         class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-bold"
                                     >
@@ -631,8 +677,8 @@
                                         <p
                                             class="text-xs text-slate-500 mt-0.5 leading-relaxed"
                                         >
-                                            Pesanan ini telah dibatalkan dan tidak
-                                            dapat diproses lebih lanjut.
+                                            Pesanan ini telah dibatalkan dan
+                                            tidak dapat diproses lebih lanjut.
                                         </p>
                                     </div>
                                 </div>
@@ -733,26 +779,59 @@
 
                             <!-- Complete Order Banner (when status is dikirim) -->
                             {#if canCompleteOrder}
-                                <div class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                                        <i class="ti ti-truck-delivery text-orange-500 text-base"></i>
+                                <div
+                                    class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3"
+                                >
+                                    <div
+                                        class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0"
+                                    >
+                                        <i
+                                            class="ti ti-truck-delivery text-orange-500 text-base"
+                                        ></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold text-slate-800 leading-tight">Pesanan sedang dalam pengiriman</p>
-                                        <p class="text-[10px] text-slate-500 leading-relaxed mt-0.5">Jika pesanan sudah tiba, klik tombol "Pesanan Diterima".</p>
+                                        <p
+                                            class="text-xs font-bold text-slate-800 leading-tight"
+                                        >
+                                            Pesanan sedang dalam pengiriman
+                                        </p>
+                                        <p
+                                            class="text-[10px] text-slate-500 leading-relaxed mt-0.5"
+                                        >
+                                            Jika pesanan sudah tiba, klik tombol
+                                            "Pesanan Diterima".
+                                        </p>
                                     </div>
                                 </div>
                             {/if}
 
                             <!-- Order Completed Banner (when status is selesai) -->
                             {#if isCompleted}
-                                <div class="mt-4 p-3 rounded-xl flex items-center gap-3" style="background:{primary}10; border: 1px solid {primary}30;">
-                                    <div class="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style="background:{primary}20;">
-                                        <i class="ti ti-circle-check text-base" style="color:{primary}"></i>
+                                <div
+                                    class="mt-4 p-3 rounded-xl flex items-center gap-3"
+                                    style="background:{primary}10; border: 1px solid {primary}30;"
+                                >
+                                    <div
+                                        class="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                                        style="background:{primary}20;"
+                                    >
+                                        <i
+                                            class="ti ti-circle-check text-base"
+                                            style="color:{primary}"
+                                        ></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold text-slate-800 leading-tight">Pesanan selesai!</p>
-                                        <p class="text-[10px] text-slate-500 leading-relaxed mt-0.5">Terima kasih telah berbelanja. Jangan lupa beri ulasan produknya!</p>
+                                        <p
+                                            class="text-xs font-bold text-slate-800 leading-tight"
+                                        >
+                                            Pesanan selesai!
+                                        </p>
+                                        <p
+                                            class="text-[10px] text-slate-500 leading-relaxed mt-0.5"
+                                        >
+                                            Terima kasih telah berbelanja.
+                                            Jangan lupa beri ulasan produknya!
+                                        </p>
                                     </div>
                                 </div>
                             {/if}
@@ -760,48 +839,93 @@
 
                         <!-- Return Request Panel -->
                         {#if activeReturn}
-                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div
+                                class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                            >
                                 <div class="p-5">
-                                    <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                                    <div
+                                        class="flex items-center justify-between flex-wrap gap-2 mb-3"
+                                    >
                                         <div class="flex items-center gap-2">
-                                            <div class="w-9 h-9 rounded-xl font-black flex items-center justify-center text-orange-500" style="background-color: {secondary}15">
-                                                <i class="ti ti-arrow-back-up text-lg"></i>
+                                            <div
+                                                class="w-9 h-9 rounded-xl font-black flex items-center justify-center text-orange-500"
+                                                style="background-color: {secondary}15"
+                                            >
+                                                <i
+                                                    class="ti ti-arrow-back-up text-lg"
+                                                ></i>
                                             </div>
                                             <div>
-                                                <h3 class="font-bold text-slate-800 text-sm">
+                                                <h3
+                                                    class="font-bold text-slate-800 text-sm"
+                                                >
                                                     Detail Retur Pesanan
                                                 </h3>
-                                                <p class="text-[10px] font-mono text-slate-400">
+                                                <p
+                                                    class="text-[10px] font-mono text-slate-400"
+                                                >
                                                     #{activeReturn.return_number}
                                                 </p>
                                             </div>
                                         </div>
                                         <span
                                             class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold"
-                                            style="background-color: {returnStatusColors[activeReturn.status]?.bg ?? '#f1f5f9'}; color: {returnStatusColors[activeReturn.status]?.text ?? '#475569'}"
+                                            style="background-color: {returnStatusColors[
+                                                activeReturn.status
+                                            ]?.bg ??
+                                                '#f1f5f9'}; color: {returnStatusColors[
+                                                activeReturn.status
+                                            ]?.text ?? '#475569'}"
                                         >
-                                            {returnStatusLabels[activeReturn.status] ?? activeReturn.status}
+                                            {returnStatusLabels[
+                                                activeReturn.status
+                                            ] ?? activeReturn.status}
                                         </span>
                                     </div>
 
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                    <div
+                                        class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 bg-slate-50 p-4 rounded-2xl border border-slate-100"
+                                    >
                                         <div>
-                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Jenis Solusi</p>
-                                            <p class="text-xs font-bold text-slate-750 mt-0.5">
-                                                {activeReturn.type === 'refund' ? 'Refund Dana (Pengembalian Uang)' : 'Tukar Barang (Penggantian Produk Baru)'}
+                                            <p
+                                                class="text-[9px] font-bold text-slate-400 uppercase tracking-wider"
+                                            >
+                                                Jenis Solusi
+                                            </p>
+                                            <p
+                                                class="text-xs font-bold text-slate-750 mt-0.5"
+                                            >
+                                                {activeReturn.type === 'refund'
+                                                    ? 'Refund Dana (Pengembalian Uang)'
+                                                    : 'Tukar Barang (Penggantian Produk Baru)'}
                                             </p>
                                         </div>
                                         {#if activeReturn.type === 'refund'}
                                             <div>
-                                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Estimasi Pengembalian</p>
-                                                <p class="text-xs font-black mt-0.5" style="color: {primary}">
-                                                    {fmt(activeReturn.refund_amount)}
+                                                <p
+                                                    class="text-[9px] font-bold text-slate-400 uppercase tracking-wider"
+                                                >
+                                                    Estimasi Pengembalian
+                                                </p>
+                                                <p
+                                                    class="text-xs font-black mt-0.5"
+                                                    style="color: {primary}"
+                                                >
+                                                    {fmt(
+                                                        activeReturn.refund_amount,
+                                                    )}
                                                 </p>
                                             </div>
                                         {/if}
                                         <div class="md:col-span-2">
-                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Alasan Retur</p>
-                                            <p class="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-line">
+                                            <p
+                                                class="text-[9px] font-bold text-slate-400 uppercase tracking-wider"
+                                            >
+                                                Alasan Retur
+                                            </p>
+                                            <p
+                                                class="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-line"
+                                            >
                                                 {activeReturn.reason}
                                             </p>
                                         </div>
@@ -810,16 +934,36 @@
                                     <!-- Return Media Evidence -->
                                     {#if activeReturn.media && activeReturn.media.length > 0}
                                         <div class="mt-4">
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bukti Foto / Video</p>
+                                            <p
+                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2"
+                                            >
+                                                Bukti Foto / Video
+                                            </p>
                                             <div class="flex flex-wrap gap-2">
                                                 {#each activeReturn.media as media}
-                                                    <a href={formatImagePath(media.file_path)} target="_blank" class="relative w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-85 transition group">
+                                                    <a
+                                                        href={formatImagePath(
+                                                            media.file_path,
+                                                        )}
+                                                        target="_blank"
+                                                        class="relative w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-85 transition group"
+                                                    >
                                                         {#if media.file_type === 'video'}
-                                                            <div class="w-full h-full flex items-center justify-center bg-slate-900">
-                                                                <i class="ti ti-video text-white text-base"></i>
+                                                            <div
+                                                                class="w-full h-full flex items-center justify-center bg-slate-900"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-video text-white text-base"
+                                                                ></i>
                                                             </div>
                                                         {:else}
-                                                            <img src={formatImagePath(media.file_path)} alt="Bukti Retur" class="w-full h-full object-cover" />
+                                                            <img
+                                                                src={formatImagePath(
+                                                                    media.file_path,
+                                                                )}
+                                                                alt="Bukti Retur"
+                                                                class="w-full h-full object-cover"
+                                                            />
                                                         {/if}
                                                     </a>
                                                 {/each}
@@ -829,9 +973,17 @@
 
                                     <!-- Admin response notes if available -->
                                     {#if activeReturn.notes_admin}
-                                        <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                                            <p class="text-[9px] font-bold text-blue-500 uppercase tracking-wider">Catatan Admin</p>
-                                            <p class="text-xs text-slate-700 mt-1 leading-relaxed">
+                                        <div
+                                            class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl"
+                                        >
+                                            <p
+                                                class="text-[9px] font-bold text-blue-500 uppercase tracking-wider"
+                                            >
+                                                Catatan Admin
+                                            </p>
+                                            <p
+                                                class="text-xs text-slate-700 mt-1 leading-relaxed"
+                                            >
                                                 {activeReturn.notes_admin}
                                             </p>
                                         </div>
@@ -840,34 +992,72 @@
 
                                 <!-- Customer Input tracking form if return is approved and tracking code is empty -->
                                 {#if activeReturn.status === 'disetujui'}
-                                    <div class="bg-blue-50/30 p-5 border-t border-slate-100">
-                                        <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2">
-                                            <i class="ti ti-truck text-base" style="color: {primary}"></i>
+                                    <div
+                                        class="bg-blue-50/30 p-5 border-t border-slate-100"
+                                    >
+                                        <h4
+                                            class="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2"
+                                        >
+                                            <i
+                                                class="ti ti-truck text-base"
+                                                style="color: {primary}"
+                                            ></i>
                                             Kirimkan Barang Retur ke Toko
                                         </h4>
-                                        <p class="text-xs text-slate-500 mb-4 leading-relaxed">
-                                            Pengajuan retur Anda telah <strong>Disetujui</strong>. Silakan kirimkan produk yang ingin diretur ke alamat toko kami dan masukkan nomor resi pengiriman di bawah agar kami dapat memprosesnya segera.
+                                        <p
+                                            class="text-xs text-slate-500 mb-4 leading-relaxed"
+                                        >
+                                            Pengajuan retur Anda telah <strong
+                                                >Disetujui</strong
+                                            >. Silakan kirimkan produk yang
+                                            ingin diretur ke alamat toko kami
+                                            dan masukkan nomor resi pengiriman
+                                            di bawah agar kami dapat
+                                            memprosesnya segera.
                                         </p>
 
-                                        <form onsubmit={(e) => { e.preventDefault(); submitReturnTracking(); }} class="space-y-3">
-                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <form
+                                            onsubmit={(e) => {
+                                                e.preventDefault();
+                                                submitReturnTracking();
+                                            }}
+                                            class="space-y-3"
+                                        >
+                                            <div
+                                                class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                                            >
                                                 <div>
-                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" for="return-courier">Nama Kurir / Ekspedisi</label>
+                                                    <label
+                                                        class="block text-[10px] font-bold text-slate-500 uppercase mb-1"
+                                                        for="return-courier"
+                                                        >Nama Kurir / Ekspedisi</label
+                                                    >
                                                     <input
                                                         type="text"
                                                         id="return-courier"
-                                                        bind:value={returnCourierName}
+                                                        bind:value={
+                                                            returnCourierName
+                                                        }
                                                         placeholder="Contoh: JNE, J&T, SiCepat"
                                                         class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent bg-white"
                                                         style="--tw-ring-color: {primary}20"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" for="return-resi">Nomor Resi Pengiriman <span class="text-red-500">*</span></label>
+                                                    <label
+                                                        class="block text-[10px] font-bold text-slate-500 uppercase mb-1"
+                                                        for="return-resi"
+                                                        >Nomor Resi Pengiriman <span
+                                                            class="text-red-500"
+                                                            >*</span
+                                                        ></label
+                                                    >
                                                     <input
                                                         type="text"
                                                         id="return-resi"
-                                                        bind:value={returnTrackingNumber}
+                                                        bind:value={
+                                                            returnTrackingNumber
+                                                        }
                                                         placeholder="Masukkan nomor resi pengiriman"
                                                         class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent bg-white font-mono"
                                                         style="--tw-ring-color: {primary}20"
@@ -878,15 +1068,19 @@
                                             <div class="flex justify-end">
                                                 <button
                                                     type="submit"
-                                                    disabled={submittingTracking || !returnTrackingNumber.trim()}
+                                                    disabled={submittingTracking ||
+                                                        !returnTrackingNumber.trim()}
                                                     class="px-5 py-2.5 rounded-xl font-bold text-white text-xs transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                                                     style="background: {primary}"
                                                 >
                                                     {#if submittingTracking}
-                                                        <i class="ti ti-loader animate-spin"></i>
+                                                        <i
+                                                            class="ti ti-loader animate-spin"
+                                                        ></i>
                                                         Mengirim...
                                                     {:else}
-                                                        <i class="ti ti-send"></i>
+                                                        <i class="ti ti-send"
+                                                        ></i>
                                                         Kirim Resi
                                                     {/if}
                                                 </button>
@@ -894,14 +1088,28 @@
                                         </form>
                                     </div>
                                 {:else if activeReturn.return_tracking_number}
-                                    <div class="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                                    <div
+                                        class="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-between text-xs"
+                                    >
                                         <div>
-                                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Barang Dikirim oleh Anda</p>
-                                            <p class="font-bold text-slate-750 mt-0.5">
-                                                {activeReturn.return_courier_name || 'Kurir'} - <span class="font-mono">{activeReturn.return_tracking_number}</span>
+                                            <p
+                                                class="text-[9px] font-bold text-slate-400 uppercase tracking-wider"
+                                            >
+                                                Barang Dikirim oleh Anda
+                                            </p>
+                                            <p
+                                                class="font-bold text-slate-750 mt-0.5"
+                                            >
+                                                {activeReturn.return_courier_name ||
+                                                    'Kurir'} -
+                                                <span class="font-mono"
+                                                    >{activeReturn.return_tracking_number}</span
+                                                >
                                             </p>
                                         </div>
-                                        <span class="text-[10px] text-slate-400 font-semibold">
+                                        <span
+                                            class="text-[10px] text-slate-400 font-semibold"
+                                        >
                                             Resi telah diinput
                                         </span>
                                     </div>
@@ -911,39 +1119,71 @@
 
                         <!-- Status History Timeline -->
                         {#if transaction.status_histories && transaction.status_histories.length > 0}
-                            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                            <div
+                                class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
+                            >
                                 <div class="flex items-center gap-2 mb-4">
-                                    <i class="ti ti-timeline text-base" style="color:{primary}"></i>
-                                    <span class="font-bold text-slate-800 text-sm">Riwayat Status</span>
+                                    <i
+                                        class="ti ti-timeline text-base"
+                                        style="color:{primary}"
+                                    ></i>
+                                    <span
+                                        class="font-bold text-slate-800 text-sm"
+                                        >Riwayat Status</span
+                                    >
                                 </div>
                                 <div class="relative">
                                     <!-- Vertical line -->
-                                    <div class="absolute left-[11px] top-0 bottom-0 w-0.5 bg-slate-100"></div>
+                                    <div
+                                        class="absolute left-[11px] top-0 bottom-0 w-0.5 bg-slate-100"
+                                    ></div>
                                     <div class="space-y-3">
                                         {#each [...transaction.status_histories].reverse() as hist, i}
-                                            {@const histColor = statusColors[hist.status] ?? '#64748b'}
+                                            {@const histColor =
+                                                statusColors[hist.status] ??
+                                                '#64748b'}
                                             {@const isLatest = i === 0}
                                             <div class="flex gap-3 relative">
                                                 <div
                                                     class="rounded-full border-2 border-white flex items-center justify-center shrink-0 z-10 mt-0.5"
-                                                    style="background:{isLatest ? histColor : '#e2e8f0'}; min-width:22px; min-height:22px; max-width:22px; max-height:22px;"
+                                                    style="background:{isLatest
+                                                        ? histColor
+                                                        : '#e2e8f0'}; min-width:22px; min-height:22px; max-width:22px; max-height:22px;"
                                                 >
                                                     {#if isLatest}
-                                                        <i class="ti ti-circle-filled text-white" style="font-size:6px;"></i>
+                                                        <i
+                                                            class="ti ti-circle-filled text-white"
+                                                            style="font-size:6px;"
+                                                        ></i>
                                                     {/if}
                                                 </div>
-                                                <div class="flex-1 min-w-0 pb-1">
-                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                <div
+                                                    class="flex-1 min-w-0 pb-1"
+                                                >
+                                                    <div
+                                                        class="flex items-center gap-2 flex-wrap"
+                                                    >
                                                         <span
                                                             class="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider"
                                                             style="background:{histColor}18; color:{histColor};"
                                                         >
-                                                            {statusLabels[hist.status] ?? hist.status}
+                                                            {statusLabels[
+                                                                hist.status
+                                                            ] ?? hist.status}
                                                         </span>
-                                                        <span class="text-[10px] text-slate-400">{fmtDate(hist.created_at)}</span>
+                                                        <span
+                                                            class="text-[10px] text-slate-400"
+                                                            >{fmtDate(
+                                                                hist.created_at,
+                                                            )}</span
+                                                        >
                                                     </div>
                                                     {#if hist.description}
-                                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">{hist.description}</p>
+                                                        <p
+                                                            class="text-xs text-slate-500 mt-1 leading-relaxed"
+                                                        >
+                                                            {hist.description}
+                                                        </p>
                                                     {/if}
                                                 </div>
                                             </div>
@@ -975,7 +1215,12 @@
                                 <div class="px-4 py-3">
                                     <div class="flex gap-3">
                                         {#if item.product_image}
-                                            <Link href={item.product?.slug ? `/products/${item.product.slug}` : '#'} class="shrink-0">
+                                            <Link
+                                                href={item.product?.slug
+                                                    ? `/products/${item.product.slug}`
+                                                    : '#'}
+                                                class="shrink-0"
+                                            >
                                                 <img
                                                     src={formatImagePath(
                                                         item.product_image,
@@ -999,7 +1244,9 @@
                                         {/if}
                                         <div class="flex-1 min-w-0">
                                             <Link
-                                                href={item.product?.slug ? `/products/${item.product.slug}` : '#'}
+                                                href={item.product?.slug
+                                                    ? `/products/${item.product.slug}`
+                                                    : '#'}
                                                 class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words hover:text-brand-blueRoyal hover:underline transition"
                                             >
                                                 {item.product_name}
@@ -1020,7 +1267,8 @@
                                             <div
                                                 class="flex items-center justify-between mt-1.5"
                                             >
-                                                <span class="text-xs text-slate-500"
+                                                <span
+                                                    class="text-xs text-slate-500"
                                                     >x{item.quantity}</span
                                                 >
                                                 <div class="text-right">
@@ -1028,7 +1276,9 @@
                                                         <p
                                                             class="text-xs text-slate-400 line-through"
                                                         >
-                                                            {fmt(item.harga_jual)}
+                                                            {fmt(
+                                                                item.harga_jual,
+                                                            )}
                                                         </p>
                                                     {/if}
                                                     <p
@@ -1045,17 +1295,24 @@
                                     {#if isCompleted && !item.is_gift_item}
                                         <div class="mt-2 flex justify-end">
                                             {#if reviewed}
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-xl border border-green-200">
-                                                    <i class="ti ti-circle-check text-xs"></i>
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-xl border border-green-200"
+                                                >
+                                                    <i
+                                                        class="ti ti-circle-check text-xs"
+                                                    ></i>
                                                     Sudah Diulas
                                                 </span>
                                             {:else}
                                                 <button
-                                                    onclick={() => openReviewModal(item)}
+                                                    onclick={() =>
+                                                        openReviewModal(item)}
                                                     class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white transition active:scale-95 hover:opacity-90"
                                                     style="background:{primary}"
                                                 >
-                                                    <i class="ti ti-star text-xs"></i>
+                                                    <i
+                                                        class="ti ti-star text-xs"
+                                                    ></i>
                                                     Beri Ulasan
                                                 </button>
                                             {/if}
@@ -1271,31 +1528,60 @@
                     {/if}
 
                     <!-- Shipping Information (Resi) -->
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                    <div
+                        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
+                    >
                         <div class="flex items-center gap-2 mb-3">
-                            <i class="ti ti-truck-delivery text-base" style="color:{primary}"></i>
-                            <span class="font-bold text-slate-800 text-sm">Informasi Pengiriman</span>
+                            <i
+                                class="ti ti-truck-delivery text-base"
+                                style="color:{primary}"
+                            ></i>
+                            <span class="font-bold text-slate-800 text-sm"
+                                >Informasi Pengiriman</span
+                            >
                         </div>
                         <div class="space-y-3">
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-500">Kurir / Layanan</span>
-                                <span class="font-bold text-slate-800 uppercase">
-                                    {transaction.courier_name || transaction.shipping_courier || '-'} 
+                            <div
+                                class="flex justify-between items-center text-xs"
+                            >
+                                <span class="text-slate-500"
+                                    >Kurir / Layanan</span
+                                >
+                                <span
+                                    class="font-bold text-slate-800 uppercase"
+                                >
+                                    {transaction.courier_name ||
+                                        transaction.shipping_courier ||
+                                        '-'}
                                     {#if transaction.shipping_service}
                                         ({transaction.shipping_service})
                                     {/if}
                                 </span>
                             </div>
-                            
-                            <div class="pt-2 border-t border-slate-100 flex flex-col gap-1">
-                                <span class="text-xs text-slate-500">Nomor Resi</span>
+
+                            <div
+                                class="pt-2 border-t border-slate-100 flex flex-col gap-1"
+                            >
+                                <span class="text-xs text-slate-500"
+                                    >Nomor Resi</span
+                                >
                                 {#if transaction.tracking_number}
-                                    <div class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 mt-1">
-                                        <span class="font-mono font-bold text-sm text-slate-800 select-all">{transaction.tracking_number}</span>
-                                        <button 
+                                    <div
+                                        class="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 mt-1"
+                                    >
+                                        <span
+                                            class="font-mono font-bold text-sm text-slate-800 select-all"
+                                            >{transaction.tracking_number}</span
+                                        >
+                                        <button
                                             onclick={() => {
-                                                navigator.clipboard.writeText(transaction.tracking_number);
-                                                showToast('Nomor resi berhasil disalin!', 'success');
+                                                navigator.clipboard.writeText(
+                                                    transaction.tracking_number,
+                                                );
+                                                showToast(
+                                                    'Nomor resi berhasil disalin!',
+                                                    'success',
+                                                );
                                             }}
                                             class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-slate-600 transition"
                                             title="Salin Resi"
@@ -1304,9 +1590,14 @@
                                         </button>
                                     </div>
                                 {:else}
-                                    <div class="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 mt-1 text-xs">
-                                        <i class="ti ti-alert-circle text-sm"></i>
-                                        <span class="font-medium">Nomor resi belum tersedia</span>
+                                    <div
+                                        class="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-xl border border-amber-100 mt-1 text-xs"
+                                    >
+                                        <i class="ti ti-alert-circle text-sm"
+                                        ></i>
+                                        <span class="font-medium"
+                                            >Nomor resi belum tersedia</span
+                                        >
                                     </div>
                                 {/if}
                             </div>
@@ -1355,7 +1646,11 @@
                                 <div
                                     class="flex justify-between text-emerald-600"
                                 >
-                                    <span>Potongan Koin Saya ({new Intl.NumberFormat('id-ID').format(transaction.coins_redeemed)} Koin)</span>
+                                    <span
+                                        >Potongan Poin Saya ({new Intl.NumberFormat(
+                                            'id-ID',
+                                        ).format(transaction.coins_redeemed)} Poin)</span
+                                    >
                                     <span class="font-semibold"
                                         >-{fmt(transaction.coins_value)}</span
                                     >
@@ -1419,14 +1714,23 @@
                             <div
                                 class="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-1.5 text-xs text-emerald-600 font-bold bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/50"
                             >
-                                <i class="ti ti-coins text-base text-amber-500 shrink-0"></i>
+                                <i
+                                    class="ti ti-coins text-base text-amber-500 shrink-0"
+                                ></i>
                                 <span>
                                     {#if transaction.status === 'selesai'}
-                                        Berhasil mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin Toko!
+                                        Berhasil mendapatkan {new Intl.NumberFormat(
+                                            'id-ID',
+                                        ).format(transaction.coins_earned)} Poin Toko!
                                     {:else if transaction.status === 'batal'}
-                                        Mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin dibatalkan
+                                        Mendapatkan {new Intl.NumberFormat(
+                                            'id-ID',
+                                        ).format(transaction.coins_earned)} Poin dibatalkan
                                     {:else}
-                                        Anda akan mendapatkan {new Intl.NumberFormat('id-ID').format(transaction.coins_earned)} Koin setelah transaksi selesai.
+                                        Anda akan mendapatkan {new Intl.NumberFormat(
+                                            'id-ID',
+                                        ).format(transaction.coins_earned)} Poin setelah
+                                        transaksi selesai.
                                     {/if}
                                 </span>
                             </div>
@@ -1768,10 +2072,18 @@
                 class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl max-h-[90dvh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
             >
-                <div class="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between">
+                <div
+                    class="sticky top-0 bg-white px-5 pt-5 pb-3 border-b border-slate-100 flex items-center justify-between"
+                >
                     <div>
-                        <h3 class="font-bold text-slate-800 text-base">Beri Ulasan</h3>
-                        <p class="text-xs text-slate-500 mt-0.5 leading-tight line-clamp-1">{reviewItem.product_name}</p>
+                        <h3 class="font-bold text-slate-800 text-base">
+                            Beri Ulasan
+                        </h3>
+                        <p
+                            class="text-xs text-slate-500 mt-0.5 leading-tight line-clamp-1"
+                        >
+                            {reviewItem.product_name}
+                        </p>
                     </div>
                     <button
                         onclick={() => (showReviewModal = false)}
@@ -1782,52 +2094,86 @@
                 </div>
 
                 <div class="p-5 space-y-5">
-                    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div
+                        class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100"
+                    >
                         {#if reviewItem.product_image}
                             <img
                                 src={formatImagePath(reviewItem.product_image)}
                                 alt={reviewItem.product_name}
                                 class="w-12 h-12 object-cover rounded-lg shrink-0 border border-slate-100"
-                                onerror={(e: any) => { e.target.src = '/noimage/image.png'; }}
+                                onerror={(e: any) => {
+                                    e.target.src = '/noimage/image.png';
+                                }}
                             />
                         {:else}
-                            <div class="w-12 h-12 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center">
-                                <i class="ti ti-package text-slate-400 text-lg"></i>
+                            <div
+                                class="w-12 h-12 rounded-lg bg-slate-200 shrink-0 flex items-center justify-center"
+                            >
+                                <i class="ti ti-package text-slate-400 text-lg"
+                                ></i>
                             </div>
                         {/if}
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold text-slate-800 leading-tight line-clamp-2">{reviewItem.product_name}</p>
+                            <p
+                                class="text-sm font-bold text-slate-800 leading-tight line-clamp-2"
+                            >
+                                {reviewItem.product_name}
+                            </p>
                             {#if reviewItem.variant_name}
-                                <p class="text-xs text-slate-500 mt-0.5">{reviewItem.variant_name}</p>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    {reviewItem.variant_name}
+                                </p>
                             {/if}
                         </div>
                     </div>
 
                     <div>
-                        <p class="text-xs font-bold text-slate-700 mb-2">Penilaian Produk <span class="text-red-500">*</span></p>
+                        <p class="text-xs font-bold text-slate-700 mb-2">
+                            Penilaian Produk <span class="text-red-500">*</span>
+                        </p>
                         <div class="flex items-center gap-2">
                             {#each [1, 2, 3, 4, 5] as star}
                                 <button
                                     onclick={() => (reviewRating = star)}
-                                    onmouseenter={() => (reviewHoverRating = star)}
+                                    onmouseenter={() =>
+                                        (reviewHoverRating = star)}
                                     onmouseleave={() => (reviewHoverRating = 0)}
                                     class="text-3xl transition-transform hover:scale-110 active:scale-95"
-                                    style="color:{(reviewHoverRating || reviewRating) >= star ? '#f59e0b' : '#e2e8f0'};"
+                                    style="color:{(reviewHoverRating ||
+                                        reviewRating) >= star
+                                        ? '#f59e0b'
+                                        : '#e2e8f0'};"
                                 >
                                     <i class="ti ti-star-filled"></i>
                                 </button>
                             {/each}
                             {#if reviewRating > 0}
-                                <span class="text-xs font-bold text-amber-500 ml-1">
-                                    {reviewRating === 1 ? 'Buruk' : reviewRating === 2 ? 'Kurang' : reviewRating === 3 ? 'Cukup' : reviewRating === 4 ? 'Bagus' : 'Sempurna'}
+                                <span
+                                    class="text-xs font-bold text-amber-500 ml-1"
+                                >
+                                    {reviewRating === 1
+                                        ? 'Buruk'
+                                        : reviewRating === 2
+                                          ? 'Kurang'
+                                          : reviewRating === 3
+                                            ? 'Cukup'
+                                            : reviewRating === 4
+                                              ? 'Bagus'
+                                              : 'Sempurna'}
                                 </span>
                             {/if}
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-2" for="review-comment">
-                            Ulasan <span class="text-slate-400 font-normal">(opsional)</span>
+                        <label
+                            class="block text-xs font-bold text-slate-700 mb-2"
+                            for="review-comment"
+                        >
+                            Ulasan <span class="text-slate-400 font-normal"
+                                >(opsional)</span
+                            >
                         </label>
                         <textarea
                             id="review-comment"
@@ -1838,24 +2184,37 @@
                             class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 focus:border-transparent transition leading-relaxed"
                             style="focus-ring-color:{primary}40;"
                         ></textarea>
-                        <p class="text-[10px] text-slate-400 mt-1 text-right">{reviewComment.length}/1000</p>
+                        <p class="text-[10px] text-slate-400 mt-1 text-right">
+                            {reviewComment.length}/1000
+                        </p>
                     </div>
 
                     <div>
-                        <p class="text-xs font-bold text-slate-700 mb-2">Foto / Video <span class="text-slate-400 font-normal">(maks. 5 file)</span></p>
+                        <p class="text-xs font-bold text-slate-700 mb-2">
+                            Foto / Video <span
+                                class="text-slate-400 font-normal"
+                                >(maks. 5 file)</span
+                            >
+                        </p>
 
                         {#if reviewPreviews.length > 0}
                             <div class="grid grid-cols-5 gap-2 mb-3">
                                 {#each reviewPreviews as preview, idx}
-                                    <div class="relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group">
+                                    <div
+                                        class="relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group"
+                                    >
                                         {#if preview.type === 'video'}
                                             <video
                                                 src={preview.url}
                                                 class="w-full h-full object-cover"
                                                 muted
                                             ></video>
-                                            <div class="absolute inset-0 flex items-center justify-center bg-black/20">
-                                                <i class="ti ti-player-play text-white text-base"></i>
+                                            <div
+                                                class="absolute inset-0 flex items-center justify-center bg-black/20"
+                                            >
+                                                <i
+                                                    class="ti ti-player-play text-white text-base"
+                                                ></i>
                                             </div>
                                         {:else}
                                             <img
@@ -1865,16 +2224,25 @@
                                             />
                                         {/if}
                                         <button
-                                            onclick={() => removeReviewFile(idx)}
+                                            onclick={() =>
+                                                removeReviewFile(idx)}
                                             class="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                                         >
-                                            <i class="ti ti-x text-white" style="font-size:9px;"></i>
+                                            <i
+                                                class="ti ti-x text-white"
+                                                style="font-size:9px;"
+                                            ></i>
                                         </button>
                                     </div>
                                 {/each}
                                 {#if reviewPreviews.length < 5}
                                     <button
-                                        onclick={() => (document.getElementById('review-file-input') as HTMLInputElement)?.click()}
+                                        onclick={() =>
+                                            (
+                                                document.getElementById(
+                                                    'review-file-input',
+                                                ) as HTMLInputElement
+                                            )?.click()}
                                         class="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-slate-400 hover:text-slate-500 transition"
                                     >
                                         <i class="ti ti-plus text-lg"></i>
@@ -1883,12 +2251,21 @@
                             </div>
                         {:else}
                             <button
-                                onclick={() => (document.getElementById('review-file-input') as HTMLInputElement)?.click()}
+                                onclick={() =>
+                                    (
+                                        document.getElementById(
+                                            'review-file-input',
+                                        ) as HTMLInputElement
+                                    )?.click()}
                                 class="w-full border-2 border-dashed border-slate-200 rounded-xl py-6 flex flex-col items-center gap-2 text-slate-400 hover:border-slate-300 hover:text-slate-500 transition"
                             >
                                 <i class="ti ti-camera text-2xl"></i>
-                                <p class="text-xs font-semibold">Tambahkan foto atau video</p>
-                                <p class="text-[10px]">JPG, PNG, WEBP, MP4, MOV (maks. 20MB/file)</p>
+                                <p class="text-xs font-semibold">
+                                    Tambahkan foto atau video
+                                </p>
+                                <p class="text-[10px]">
+                                    JPG, PNG, WEBP, MP4, MOV (maks. 20MB/file)
+                                </p>
                             </button>
                         {/if}
                         <input
@@ -1933,7 +2310,9 @@
                 class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl p-5 max-h-[90dvh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
             >
-                <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                <div
+                    class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100"
+                >
                     <h3 class="font-outfit font-black text-slate-800 text-base">
                         Pengajuan Retur Produk
                     </h3>
@@ -1949,13 +2328,19 @@
                     <!-- Step 1: Items Selection -->
                     {#if returnStep === 'form'}
                         <div class="space-y-3">
-                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <p
+                                class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                            >
                                 1. Pilih Produk & Jumlah Retur
                             </p>
-                            
-                            <div class="space-y-2.5 max-h-[220px] overflow-y-auto divide-y divide-slate-100 pr-1">
+
+                            <div
+                                class="space-y-2.5 max-h-[220px] overflow-y-auto divide-y divide-slate-100 pr-1"
+                            >
                                 {#each returItems as item, idx}
-                                    <div class="pt-2.5 first:pt-0 flex items-start gap-3">
+                                    <div
+                                        class="pt-2.5 first:pt-0 flex items-start gap-3"
+                                    >
                                         <input
                                             type="checkbox"
                                             bind:checked={item.selected}
@@ -1963,37 +2348,53 @@
                                             style="accent-color: {primary}"
                                         />
                                         <div class="flex-grow min-w-0">
-                                            <p class="text-xs font-bold text-slate-800 leading-snug line-clamp-2">
+                                            <p
+                                                class="text-xs font-bold text-slate-800 leading-snug line-clamp-2"
+                                            >
                                                 {item.product_name}
                                             </p>
                                             {#if item.variant_name}
-                                                <p class="text-[10px] text-slate-400 font-medium mt-0.5">
+                                                <p
+                                                    class="text-[10px] text-slate-400 font-medium mt-0.5"
+                                                >
                                                     Varian: {item.variant_name}
                                                 </p>
                                             {/if}
-                                            <p class="text-xs font-black text-slate-900 mt-1">
-                                                Rp {new Intl.NumberFormat('id-ID').format(item.price)}
+                                            <p
+                                                class="text-xs font-black text-slate-900 mt-1"
+                                            >
+                                                Rp {new Intl.NumberFormat(
+                                                    'id-ID',
+                                                ).format(item.price)}
                                             </p>
                                         </div>
 
                                         {#if item.selected}
                                             <!-- Qty selector -->
-                                            <div class="flex items-center border border-slate-200 rounded-lg shrink-0 overflow-hidden bg-slate-50">
+                                            <div
+                                                class="flex items-center border border-slate-200 rounded-lg shrink-0 overflow-hidden bg-slate-50"
+                                            >
                                                 <button
                                                     type="button"
-                                                    disabled={item.returnQty <= 1}
-                                                    onclick={() => item.returnQty--}
+                                                    disabled={item.returnQty <=
+                                                        1}
+                                                    onclick={() =>
+                                                        item.returnQty--}
                                                     class="px-2.5 py-1 text-xs font-black text-slate-500 hover:bg-slate-100 transition disabled:opacity-30"
                                                 >
                                                     -
                                                 </button>
-                                                <span class="px-2 text-xs font-bold text-slate-700 min-w-[20px] text-center">
+                                                <span
+                                                    class="px-2 text-xs font-bold text-slate-700 min-w-[20px] text-center"
+                                                >
                                                     {item.returnQty}
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    disabled={item.returnQty >= item.quantity}
-                                                    onclick={() => item.returnQty++}
+                                                    disabled={item.returnQty >=
+                                                        item.quantity}
+                                                    onclick={() =>
+                                                        item.returnQty++}
                                                     class="px-2.5 py-1 text-xs font-black text-slate-500 hover:bg-slate-100 transition disabled:opacity-30"
                                                 >
                                                     +
@@ -2006,13 +2407,20 @@
 
                             <!-- Choose Return Type -->
                             <div class="pt-3 border-t border-slate-100">
-                                <label class="block text-xs font-bold text-slate-650 mb-2">
+                                <label
+                                    class="block text-xs font-bold text-slate-650 mb-2"
+                                >
                                     Pilih Solusi Retur
                                 </label>
                                 <div class="grid grid-cols-2 gap-3">
                                     <label
-                                        class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer hover:bg-slate-50 transition {returType === 'refund' ? 'border-brand-blueRoyal bg-brand-blueRoyal/5' : 'border-slate-200'}"
-                                        style={returType === 'refund' ? `border-color: ${primary}; background-color: ${primary}08;` : ''}
+                                        class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer hover:bg-slate-50 transition {returType ===
+                                        'refund'
+                                            ? 'border-brand-blueRoyal bg-brand-blueRoyal/5'
+                                            : 'border-slate-200'}"
+                                        style={returType === 'refund'
+                                            ? `border-color: ${primary}; background-color: ${primary}08;`
+                                            : ''}
                                     >
                                         <input
                                             type="radio"
@@ -2023,14 +2431,28 @@
                                             style="accent-color: {primary}"
                                         />
                                         <div class="min-w-0">
-                                            <p class="text-xs font-bold text-slate-700 leading-tight">Refund Dana</p>
-                                            <p class="text-[9px] text-slate-400 mt-0.5 leading-snug">Kembali uang</p>
+                                            <p
+                                                class="text-xs font-bold text-slate-700 leading-tight"
+                                            >
+                                                Refund Dana
+                                            </p>
+                                            <p
+                                                class="text-[9px] text-slate-400 mt-0.5 leading-snug"
+                                            >
+                                                Kembali uang
+                                            </p>
                                         </div>
                                     </label>
 
                                     <label
-                                        class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer hover:bg-slate-50 transition {returType === 'penggantian_barang' ? 'border-brand-blueRoyal bg-brand-blueRoyal/5' : 'border-slate-200'}"
-                                        style={returType === 'penggantian_barang' ? `border-color: ${primary}; background-color: ${primary}08;` : ''}
+                                        class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer hover:bg-slate-50 transition {returType ===
+                                        'penggantian_barang'
+                                            ? 'border-brand-blueRoyal bg-brand-blueRoyal/5'
+                                            : 'border-slate-200'}"
+                                        style={returType ===
+                                        'penggantian_barang'
+                                            ? `border-color: ${primary}; background-color: ${primary}08;`
+                                            : ''}
                                     >
                                         <input
                                             type="radio"
@@ -2041,8 +2463,16 @@
                                             style="accent-color: {primary}"
                                         />
                                         <div class="min-w-0">
-                                            <p class="text-xs font-bold text-slate-700 leading-tight">Tukar Barang</p>
-                                            <p class="text-[9px] text-slate-400 mt-0.5 leading-snug">Kirim barang baru</p>
+                                            <p
+                                                class="text-xs font-bold text-slate-700 leading-tight"
+                                            >
+                                                Tukar Barang
+                                            </p>
+                                            <p
+                                                class="text-[9px] text-slate-400 mt-0.5 leading-snug"
+                                            >
+                                                Kirim barang baru
+                                            </p>
                                         </div>
                                     </label>
                                 </div>
@@ -2058,9 +2488,14 @@
                             </button>
                             <button
                                 onclick={() => {
-                                    const selected = returItems.some(i => i.selected);
+                                    const selected = returItems.some(
+                                        (i) => i.selected,
+                                    );
                                     if (!selected) {
-                                        showToast('Pilih minimal 1 produk untuk diretur.', 'error');
+                                        showToast(
+                                            'Pilih minimal 1 produk untuk diretur.',
+                                            'error',
+                                        );
                                     } else {
                                         returnStep = 'items';
                                     }
@@ -2072,17 +2507,24 @@
                             </button>
                         </div>
 
-                    <!-- Step 2: Reason & Upload Evidence -->
+                        <!-- Step 2: Reason & Upload Evidence -->
                     {:else if returnStep === 'items'}
                         <div class="space-y-4">
-                            <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <p
+                                class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                            >
                                 2. Alasan & Bukti Retur
                             </p>
 
                             <!-- Textarea Reason -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-2" for="retur-reason">
-                                    Alasan Retur secara Detail <span class="text-red-500">*</span>
+                                <label
+                                    class="block text-xs font-bold text-slate-700 mb-2"
+                                    for="retur-reason"
+                                >
+                                    Alasan Retur secara Detail <span
+                                        class="text-red-500">*</span
+                                    >
                                 </label>
                                 <textarea
                                     id="retur-reason"
@@ -2093,45 +2535,69 @@
                                     style="--tw-ring-color: {primary}40"
                                     maxlength="1000"
                                 ></textarea>
-                                <p class="text-[10px] text-slate-400 text-right mt-1 font-semibold">
+                                <p
+                                    class="text-[10px] text-slate-400 text-right mt-1 font-semibold"
+                                >
                                     {returReason.length}/1000 karakter
                                 </p>
                             </div>
 
                             <!-- File uploads -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-2">
-                                    Lampirkan Foto/Video Bukti <span class="text-red-500">*</span>
+                                <label
+                                    class="block text-xs font-bold text-slate-700 mb-2"
+                                >
+                                    Lampirkan Foto/Video Bukti <span
+                                        class="text-red-500">*</span
+                                    >
                                 </label>
-                                <p class="text-[10px] text-slate-400 mb-3 leading-relaxed">
-                                    Wajib melampirkan minimal 1 foto/video kondisi produk yang ingin Anda retur. Maksimal 5 file (maks 50MB per file).
+                                <p
+                                    class="text-[10px] text-slate-400 mb-3 leading-relaxed"
+                                >
+                                    Wajib melampirkan minimal 1 foto/video
+                                    kondisi produk yang ingin Anda retur.
+                                    Maksimal 5 file (maks 50MB per file).
                                 </p>
 
                                 <div class="flex flex-wrap gap-2">
                                     <!-- Previews list -->
                                     {#each returPreviews as file, index}
-                                        <div class="relative w-16 h-16 rounded-xl border border-slate-200 overflow-hidden shrink-0 bg-slate-50">
+                                        <div
+                                            class="relative w-16 h-16 rounded-xl border border-slate-200 overflow-hidden shrink-0 bg-slate-50"
+                                        >
                                             {#if file.type === 'video'}
-                                                <div class="w-full h-full flex items-center justify-center bg-slate-800">
-                                                    <i class="ti ti-video text-white text-lg"></i>
+                                                <div
+                                                    class="w-full h-full flex items-center justify-center bg-slate-800"
+                                                >
+                                                    <i
+                                                        class="ti ti-video text-white text-lg"
+                                                    ></i>
                                                 </div>
                                             {:else}
-                                                <img src={file.url} alt="Preview" class="w-full h-full object-cover" />
+                                                <img
+                                                    src={file.url}
+                                                    alt="Preview"
+                                                    class="w-full h-full object-cover"
+                                                />
                                             {/if}
                                             <button
                                                 type="button"
-                                                onclick={() => removeReturnFile(index)}
+                                                onclick={() =>
+                                                    removeReturnFile(index)}
                                                 class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition"
                                                 aria-label="Hapus file"
                                             >
-                                                <i class="ti ti-x text-[8px]"></i>
+                                                <i class="ti ti-x text-[8px]"
+                                                ></i>
                                             </button>
                                         </div>
                                     {/each}
 
                                     <!-- Upload button -->
                                     {#if returFiles.length < 5}
-                                        <label class="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 transition flex flex-col items-center justify-center cursor-pointer shrink-0 bg-slate-50">
+                                        <label
+                                            class="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 transition flex flex-col items-center justify-center cursor-pointer shrink-0 bg-slate-50"
+                                        >
                                             <input
                                                 type="file"
                                                 multiple
@@ -2139,15 +2605,22 @@
                                                 onchange={handleReturnFileChange}
                                                 class="hidden"
                                             />
-                                            <i class="ti ti-camera text-base text-slate-400"></i>
-                                            <span class="text-[8px] font-bold text-slate-400 mt-1">Upload</span>
+                                            <i
+                                                class="ti ti-camera text-base text-slate-400"
+                                            ></i>
+                                            <span
+                                                class="text-[8px] font-bold text-slate-400 mt-1"
+                                                >Upload</span
+                                            >
                                         </label>
                                     {/if}
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex gap-3 pt-4 border-t border-slate-100 mt-2">
+                        <div
+                            class="flex gap-3 pt-4 border-t border-slate-100 mt-2"
+                        >
                             <button
                                 onclick={() => (returnStep = 'form')}
                                 class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition"
@@ -2161,7 +2634,9 @@
                                 style="background:{primary}"
                             >
                                 {#if submittingReturn}
-                                    <i class="ti ti-loader animate-spin text-sm mr-1.5"></i>
+                                    <i
+                                        class="ti ti-loader animate-spin text-sm mr-1.5"
+                                    ></i>
                                     Mengirim...
                                 {:else}
                                     Kirim Retur

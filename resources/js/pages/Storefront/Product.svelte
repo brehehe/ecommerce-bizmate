@@ -3117,11 +3117,11 @@
      DESKRIPSI / PENGIRIMAN / ULASAN (STACKED VERTICALLY)
  ───────────────────────────────────────────────────── -->
     <div
-        class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 py-6 flex flex-col gap-4 md:gap-6"
+        class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 py-6 flex flex-col gap-4 md:gap-6 w-full min-w-0 overflow-hidden"
     >
         <!-- Combined Spesifikasi & Deskripsi Section -->
         <div
-            class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
+            class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7 w-full min-w-0 overflow-hidden"
         >
             <!-- Spesifikasi Row Trigger (Merged inside Deskripsi) -->
             {#if parsedSpecifications.length > 0}
@@ -3292,20 +3292,20 @@
 
                     <!-- Size Guide Table -->
                     <div
-                        class="overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5"
+                        class="w-full max-w-full overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5"
                     >
-                        <table class="w-full text-left text-xs border-collapse">
+                        <table class="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-0">
                             <thead>
                                 <tr
                                     class="bg-slate-50 border-b border-slate-100"
                                 >
                                     <th
-                                        class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
+                                        class="p-2 sm:p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
                                         >{product.size_chart.headers[0]}</th
                                     >
                                     {#each product.size_chart.headers.slice(1) as header}
                                         <th
-                                            class="p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
+                                            class="p-2 sm:p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
                                             >{header}</th
                                         >
                                     {/each}
@@ -3320,12 +3320,12 @@
                                             : ''}"
                                     >
                                         <td
-                                            class="p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20"
+                                            class="p-2 sm:p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20"
                                             >{row.size}</td
                                         >
                                         {#each row.values as val}
                                             <td
-                                                class="p-3.5 text-center text-slate-600 font-semibold"
+                                                class="p-2 sm:p-3.5 text-center text-slate-600 font-semibold"
                                                 >{val}</td
                                             >
                                         {/each}
@@ -3333,6 +3333,12 @@
                                 {/each}
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Scroll Hint for Mobile -->
+                    <div class="flex items-center justify-end gap-1 text-[10px] text-slate-400 mt-2 sm:hidden">
+                        <i class="ti ti-arrows-horizontal text-xs"></i>
+                        <span>Geser tabel ke samping untuk melihat detail</span>
                     </div>
                 </div>
             {/if}
@@ -3631,8 +3637,7 @@
                                     style="top: 0.375rem; right: 0.375rem; border-color: {primary}; color: {primary};"
                                     title="Tambah ke Keranjang"
                                 >
-                                    <i
-                                        class="ti ti-plus text-2xl sm:text-base font-black"
+                                    <i class="ti ti-plus text-base font-black"
                                     ></i>
                                 </button>
                             {/if}

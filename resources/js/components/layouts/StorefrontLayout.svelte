@@ -73,8 +73,12 @@
 
     const cartCount = $derived((page.props as any).cartCount || 0);
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
-    const customerNotifications = $derived((page.props as any).customerNotifications || []);
-    const unreadNotifCount = $derived(customerNotifications.filter((n: any) => !n.is_read).length);
+    const customerNotifications = $derived(
+        (page.props as any).customerNotifications || [],
+    );
+    const unreadNotifCount = $derived(
+        customerNotifications.filter((n: any) => !n.is_read).length,
+    );
 
     // Desktop floating mini-chat state
     let desktopChatOpen = $state(false);
@@ -511,7 +515,11 @@
     function handleNotificationClick(notif: any) {
         isNotifOpen = false;
         if (!notif.is_read) {
-            router.post(`/notifications/${notif.id}/read`, {}, { preserveScroll: true });
+            router.post(
+                `/notifications/${notif.id}/read`,
+                {},
+                { preserveScroll: true },
+            );
         }
         if (notif.url) {
             router.visit(notif.url);
@@ -537,7 +545,11 @@
     let coinsTab = $state<'history' | 'terms'>('history');
     let coinsHistoryType = $state<'semua' | 'masuk' | 'keluar'>('semua');
     let coinsSearchQuery = $state('');
-    let coinsHistoryData = $state<any>({ data: [], current_page: 1, last_page: 1 });
+    let coinsHistoryData = $state<any>({
+        data: [],
+        current_page: 1,
+        last_page: 1,
+    });
     let coinsHistoryLoading = $state(false);
     let coinsHistoryPage = $state(1);
 
@@ -656,21 +668,25 @@
 
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-4 shrink-0">
-                    <!-- Koin Saya -->
+                    <!-- Poin Saya -->
                     {#if (page.props as any).settings?.coins_enabled}
                         <button
                             onclick={openCoinsModal}
                             class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                            aria-label="Koin Saya"
+                            aria-label="Poin Saya"
                         >
                             <i class="ti ti-coins text-2xl"></i>
                             {#if auth}
-                                <span class="text-[10px] font-bold text-white/80 mt-0.5">
-                                    {formatNumber(auth.coins_balance || 0)} Koin
+                                <span
+                                    class="text-[10px] font-bold text-white/80 mt-0.5"
+                                >
+                                    {formatNumber(auth.coins_balance || 0)} Poin
                                 </span>
                             {:else}
-                                <span class="text-[10px] font-bold text-white/80 mt-0.5">
-                                    0 Koin
+                                <span
+                                    class="text-[10px] font-bold text-white/80 mt-0.5"
+                                >
+                                    0 Poin
                                 </span>
                             {/if}
                         </button>
@@ -713,7 +729,8 @@
                                         {unreadNotifCount}
                                     </span>
                                 {/if}
-                                <span class="text-[10px] font-bold text-white/80 mt-0.5"
+                                <span
+                                    class="text-[10px] font-bold text-white/80 mt-0.5"
                                     >Notifikasi</span
                                 >
                             </button>
@@ -731,8 +748,13 @@
                                     class="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150 font-sans"
                                 >
                                     <!-- Header -->
-                                    <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                        <span class="text-sm font-black text-slate-800 tracking-tight">Notifikasi Anda</span>
+                                    <div
+                                        class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+                                    >
+                                        <span
+                                            class="text-sm font-black text-slate-800 tracking-tight"
+                                            >Notifikasi Anda</span
+                                        >
                                         {#if unreadNotifCount > 0}
                                             <button
                                                 onclick={markAllAsRead}
@@ -744,49 +766,93 @@
                                     </div>
 
                                     <!-- Notifications List -->
-                                    <div class="max-h-[350px] overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
+                                    <div
+                                        class="max-h-[350px] overflow-y-auto divide-y divide-slate-50 custom-scrollbar"
+                                    >
                                         {#if customerNotifications.length > 0}
                                             {#each customerNotifications as notif}
                                                 <button
-                                                    onclick={() => handleNotificationClick(notif)}
-                                                    class="w-full text-left p-4 hover:bg-slate-50/70 transition flex gap-3 items-start {!notif.is_read ? 'bg-slate-50/40' : ''}"
+                                                    onclick={() =>
+                                                        handleNotificationClick(
+                                                            notif,
+                                                        )}
+                                                    class="w-full text-left p-4 hover:bg-slate-50/70 transition flex gap-3 items-start {!notif.is_read
+                                                        ? 'bg-slate-50/40'
+                                                        : ''}"
                                                 >
                                                     <!-- Icon -->
-                                                    <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                                                        <i class="ti ti-package text-lg"></i>
+                                                    <div
+                                                        class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0"
+                                                    >
+                                                        <i
+                                                            class="ti ti-package text-lg"
+                                                        ></i>
                                                     </div>
-                                                    
+
                                                     <!-- Content -->
-                                                    <div class="flex-grow min-w-0">
-                                                        <div class="flex items-center justify-between gap-2 mb-0.5">
-                                                            <span class="text-xs font-black text-slate-800 truncate">{notif.title}</span>
-                                                            <span class="text-[10px] text-slate-400 shrink-0">{notif.created_at}</span>
+                                                    <div
+                                                        class="flex-grow min-w-0"
+                                                    >
+                                                        <div
+                                                            class="flex items-center justify-between gap-2 mb-0.5"
+                                                        >
+                                                            <span
+                                                                class="text-xs font-black text-slate-800 truncate"
+                                                                >{notif.title}</span
+                                                            >
+                                                            <span
+                                                                class="text-[10px] text-slate-400 shrink-0"
+                                                                >{notif.created_at}</span
+                                                            >
                                                         </div>
-                                                        <p class="text-xs text-slate-600 leading-normal line-clamp-2">{notif.message}</p>
+                                                        <p
+                                                            class="text-xs text-slate-600 leading-normal line-clamp-2"
+                                                        >
+                                                            {notif.message}
+                                                        </p>
                                                     </div>
 
                                                     <!-- Unread Dot Indicator -->
                                                     {#if !notif.is_read}
-                                                        <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" style="background-color: {secondary};"></div>
+                                                        <div
+                                                            class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                                                            style="background-color: {secondary};"
+                                                        ></div>
                                                     {/if}
                                                 </button>
                                             {/each}
                                         {:else}
                                             <div class="py-12 text-center">
-                                                <div class="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-3">
-                                                    <i class="ti ti-bell-off text-2xl"></i>
+                                                <div
+                                                    class="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-3"
+                                                >
+                                                    <i
+                                                        class="ti ti-bell-off text-2xl"
+                                                    ></i>
                                                 </div>
-                                                <p class="text-xs font-bold text-slate-800">Belum Ada Notifikasi</p>
-                                                <p class="text-[10px] text-slate-400 mt-1">Pembaruan pesanan Anda akan muncul di sini.</p>
+                                                <p
+                                                    class="text-xs font-bold text-slate-800"
+                                                >
+                                                    Belum Ada Notifikasi
+                                                </p>
+                                                <p
+                                                    class="text-[10px] text-slate-400 mt-1"
+                                                >
+                                                    Pembaruan pesanan Anda akan
+                                                    muncul di sini.
+                                                </p>
                                             </div>
                                         {/if}
                                     </div>
 
                                     <!-- Footer -->
-                                    <div class="p-3 border-t border-slate-100 bg-slate-50/30 text-center">
+                                    <div
+                                        class="p-3 border-t border-slate-100 bg-slate-50/30 text-center"
+                                    >
                                         <Link
                                             href="/transactions"
-                                            onclick={() => (isNotifOpen = false)}
+                                            onclick={() =>
+                                                (isNotifOpen = false)}
                                             class="text-xs font-black"
                                             style="color: {primary};"
                                         >
@@ -873,14 +939,18 @@
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                         >
-                                            <i class="ti ti-building-bank text-base"></i> Rekening Saya
+                                            <i
+                                                class="ti ti-building-bank text-base"
+                                            ></i> Rekening Saya
                                         </Link>
                                         <Link
                                             href="/returns"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                         >
-                                            <i class="ti ti-arrow-back-up text-base"></i> Retur Saya
+                                            <i
+                                                class="ti ti-arrow-back-up text-base"
+                                            ></i> Retur Saya
                                         </Link>
                                         <button
                                             onclick={() => {
@@ -889,10 +959,17 @@
                                             }}
                                             class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left"
                                         >
-                                            <i class="ti ti-message text-base"></i> Chat Saya
+                                            <i class="ti ti-message text-base"
+                                            ></i>
+                                            Chat Saya
                                             {#if chatUnreadCount > 0}
-                                                <span class="ml-auto w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white shrink-0" style="background-color: {secondary};">
-                                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                                                <span
+                                                    class="ml-auto w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white shrink-0"
+                                                    style="background-color: {secondary};"
+                                                >
+                                                    {chatUnreadCount > 99
+                                                        ? '99+'
+                                                        : chatUnreadCount}
                                                 </span>
                                             {/if}
                                         </button>
@@ -983,7 +1060,7 @@
                         <button
                             onclick={openCoinsModal}
                             class="relative text-white p-1.5 shrink-0"
-                            aria-label="Koin Saya"
+                            aria-label="Poin Saya"
                         >
                             <i class="ti ti-coins text-2xl"></i>
                         </button>
@@ -1118,7 +1195,10 @@
                 >
                     <i class="ti ti-message text-lg"></i> Chat Saya
                     {#if chatUnreadCount > 0}
-                        <span class="ml-auto w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white shrink-0" style="background-color: {secondary};">
+                        <span
+                            class="ml-auto w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white shrink-0"
+                            style="background-color: {secondary};"
+                        >
                             {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
                         </span>
                     {/if}
@@ -1140,8 +1220,13 @@
             class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl max-h-[calc(100vh-56px)] overflow-y-auto"
         >
             <!-- Header -->
-            <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <span class="text-sm font-black text-slate-800 tracking-tight font-sans">Notifikasi Anda</span>
+            <div
+                class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+            >
+                <span
+                    class="text-sm font-black text-slate-800 tracking-tight font-sans"
+                    >Notifikasi Anda</span
+                >
                 {#if unreadNotifCount > 0}
                     <button
                         onclick={markAllAsRead}
@@ -1153,46 +1238,75 @@
             </div>
 
             <!-- Notifications List -->
-            <div class="divide-y divide-slate-50 max-h-[350px] overflow-y-auto custom-scrollbar font-sans">
+            <div
+                class="divide-y divide-slate-50 max-h-[350px] overflow-y-auto custom-scrollbar font-sans"
+            >
                 {#if customerNotifications.length > 0}
                     {#each customerNotifications as notif}
                         <button
                             onclick={() => handleNotificationClick(notif)}
-                            class="w-full text-left p-4 hover:bg-slate-50/70 transition flex gap-3 items-start {!notif.is_read ? 'bg-slate-50/40' : ''}"
+                            class="w-full text-left p-4 hover:bg-slate-50/70 transition flex gap-3 items-start {!notif.is_read
+                                ? 'bg-slate-50/40'
+                                : ''}"
                         >
                             <!-- Icon -->
-                            <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                            <div
+                                class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0"
+                            >
                                 <i class="ti ti-package text-lg"></i>
                             </div>
-                            
+
                             <!-- Content -->
                             <div class="flex-grow min-w-0">
-                                <div class="flex items-center justify-between gap-2 mb-0.5">
-                                    <span class="text-xs font-black text-slate-800 truncate">{notif.title}</span>
-                                    <span class="text-[10px] text-slate-400 shrink-0">{notif.created_at}</span>
+                                <div
+                                    class="flex items-center justify-between gap-2 mb-0.5"
+                                >
+                                    <span
+                                        class="text-xs font-black text-slate-800 truncate"
+                                        >{notif.title}</span
+                                    >
+                                    <span
+                                        class="text-[10px] text-slate-400 shrink-0"
+                                        >{notif.created_at}</span
+                                    >
                                 </div>
-                                <p class="text-xs text-slate-600 leading-normal line-clamp-2">{notif.message}</p>
+                                <p
+                                    class="text-xs text-slate-600 leading-normal line-clamp-2"
+                                >
+                                    {notif.message}
+                                </p>
                             </div>
 
                             <!-- Unread Dot Indicator -->
                             {#if !notif.is_read}
-                                <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5" style="background-color: {secondary};"></div>
+                                <div
+                                    class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                                    style="background-color: {secondary};"
+                                ></div>
                             {/if}
                         </button>
                     {/each}
                 {:else}
                     <div class="py-12 text-center">
-                        <div class="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <div
+                            class="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-3"
+                        >
                             <i class="ti ti-bell-off text-2xl"></i>
                         </div>
-                        <p class="text-xs font-bold text-slate-800">Belum Ada Notifikasi</p>
-                        <p class="text-[10px] text-slate-400 mt-1">Pembaruan pesanan Anda akan muncul di sini.</p>
+                        <p class="text-xs font-bold text-slate-800">
+                            Belum Ada Notifikasi
+                        </p>
+                        <p class="text-[10px] text-slate-400 mt-1">
+                            Pembaruan pesanan Anda akan muncul di sini.
+                        </p>
                     </div>
                 {/if}
             </div>
 
             <!-- Footer -->
-            <div class="p-3 border-t border-slate-100 bg-slate-50/30 text-center font-sans">
+            <div
+                class="p-3 border-t border-slate-100 bg-slate-50/30 text-center font-sans"
+            >
                 <Link
                     href="/transactions"
                     onclick={() => (isNotifOpen = false)}
@@ -2004,12 +2118,19 @@
             onclick={(e) => e.stopPropagation()}
         >
             <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div
+                class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+            >
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                    <div
+                        class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center"
+                    >
                         <i class="ti ti-coins text-xl"></i>
                     </div>
-                    <span class="font-outfit font-black text-slate-800 tracking-tight">Koin Saya</span>
+                    <span
+                        class="font-outfit font-black text-slate-800 tracking-tight"
+                        >Poin Saya</span
+                    >
                 </div>
                 <button
                     onclick={() => (coinsModalOpen = false)}
@@ -2027,20 +2148,38 @@
                     style="background: linear-gradient(135deg, {primary}, {secondary});"
                 >
                     <!-- Decorative background shapes -->
-                    <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-                    <div class="absolute -left-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-                    
-                    <div class="relative z-10 flex items-center justify-between">
+                    <div
+                        class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/10 rounded-full blur-xl"
+                    ></div>
+                    <div
+                        class="absolute -left-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"
+                    ></div>
+
+                    <div
+                        class="relative z-10 flex items-center justify-between"
+                    >
                         <div>
-                            <span class="text-[10px] uppercase font-black tracking-wider text-white/80 font-sans">Total Saldo Koin</span>
+                            <span
+                                class="text-[10px] uppercase font-black tracking-wider text-white/80 font-sans"
+                                >Total Saldo Poin</span
+                            >
                             <h3 class="text-3xl font-black font-outfit mt-1">
-                                {formatNumber(auth?.coins_balance || 0)} <span class="text-xs font-bold">Koin</span>
+                                {formatNumber(auth?.coins_balance || 0)}
+                                <span class="text-xs font-bold">Poin</span>
                             </h3>
                             <p class="text-xs text-white/90 mt-1 font-sans">
-                                Setara dengan <span class="font-black">Rp {formatNumber((auth?.coins_balance || 0) * ((page.props as any).settings?.coin_conversion_rate || 1))}</span>
+                                Setara dengan <span class="font-black"
+                                    >Rp {formatNumber(
+                                        (auth?.coins_balance || 0) *
+                                            ((page.props as any).settings
+                                                ?.coin_conversion_rate || 1),
+                                    )}</span
+                                >
                             </p>
                         </div>
-                        <div class="w-16 h-16 bg-white/15 rounded-2xl flex items-center justify-center border border-white/20">
+                        <div
+                            class="w-16 h-16 bg-white/15 rounded-2xl flex items-center justify-center border border-white/20"
+                        >
                             <i class="ti ti-coins text-4xl animate-pulse"></i>
                         </div>
                     </div>
@@ -2051,14 +2190,22 @@
                     <button
                         onclick={() => (coinsTab = 'history')}
                         class="flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition font-sans"
-                        style="color: {coinsTab === 'history' ? primary : '#64748b'}; border-color: {coinsTab === 'history' ? primary : 'transparent'};"
+                        style="color: {coinsTab === 'history'
+                            ? primary
+                            : '#64748b'}; border-color: {coinsTab === 'history'
+                            ? primary
+                            : 'transparent'};"
                     >
                         Riwayat Transaksi
                     </button>
                     <button
                         onclick={() => (coinsTab = 'terms')}
                         class="flex-1 py-2.5 text-xs font-bold text-center border-b-2 transition font-sans"
-                        style="color: {coinsTab === 'terms' ? primary : '#64748b'}; border-color: {coinsTab === 'terms' ? primary : 'transparent'};"
+                        style="color: {coinsTab === 'terms'
+                            ? primary
+                            : '#64748b'}; border-color: {coinsTab === 'terms'
+                            ? primary
+                            : 'transparent'};"
                     >
                         Syarat & Ketentuan
                     </button>
@@ -2067,23 +2214,36 @@
                 {#if coinsTab === 'history'}
                     <!-- Filter and Search -->
                     <div class="flex flex-col gap-3 mb-4">
-                        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                        <div
+                            class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl"
+                        >
                             <button
                                 onclick={() => (coinsHistoryType = 'semua')}
-                                class="flex-1 py-1.5 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType === 'semua' ? 'bg-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                                style="color: {coinsHistoryType === 'semua' ? primary : ''}"
+                                class="flex-1 py-1.5 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType ===
+                                'semua'
+                                    ? 'bg-white shadow-xs'
+                                    : 'text-slate-500 hover:text-slate-800'}"
+                                style="color: {coinsHistoryType === 'semua'
+                                    ? primary
+                                    : ''}"
                             >
                                 Semua
                             </button>
                             <button
                                 onclick={() => (coinsHistoryType = 'masuk')}
-                                class="flex-1 py-1.5 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType === 'masuk' ? 'bg-white shadow-xs text-emerald-600' : 'text-slate-500 hover:text-slate-800'}"
+                                class="flex-1 py-1.5 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType ===
+                                'masuk'
+                                    ? 'bg-white shadow-xs text-emerald-600'
+                                    : 'text-slate-500 hover:text-slate-800'}"
                             >
                                 Masuk
                             </button>
                             <button
                                 onclick={() => (coinsHistoryType = 'keluar')}
-                                class="flex-1 py-1.5 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType === 'keluar' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500 hover:text-slate-800'}"
+                                class="flex-1 py-1.5 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType ===
+                                'keluar'
+                                    ? 'bg-white shadow-xs text-slate-800'
+                                    : 'text-slate-500 hover:text-slate-800'}"
                             >
                                 Keluar
                             </button>
@@ -2096,9 +2256,14 @@
                                 placeholder="Cari deskripsi atau no. pesanan..."
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-200 transition"
                             />
-                            <i class="ti ti-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                            <i
+                                class="ti ti-search absolute left-3 top-2.5 text-slate-400 text-sm"
+                            ></i>
                             {#if coinsSearchQuery}
-                                <button onclick={() => (coinsSearchQuery = '')} class="absolute right-3 top-2 text-slate-400 hover:text-slate-600">
+                                <button
+                                    onclick={() => (coinsSearchQuery = '')}
+                                    class="absolute right-3 top-2 text-slate-400 hover:text-slate-600"
+                                >
                                     <i class="ti ti-x text-xs"></i>
                                 </button>
                             {/if}
@@ -2106,37 +2271,77 @@
                     </div>
 
                     <!-- History list -->
-                    <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                    <div
+                        class="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar"
+                    >
                         {#if coinsHistoryLoading}
                             {#each Array(3) as _}
-                                <div class="bg-slate-50 rounded-xl p-3.5 animate-pulse flex justify-between items-center">
+                                <div
+                                    class="bg-slate-50 rounded-xl p-3.5 animate-pulse flex justify-between items-center"
+                                >
                                     <div class="space-y-2">
-                                        <div class="h-3 w-32 bg-slate-200 rounded-sm"></div>
-                                        <div class="h-2 w-20 bg-slate-100 rounded-sm"></div>
+                                        <div
+                                            class="h-3 w-32 bg-slate-200 rounded-sm"
+                                        ></div>
+                                        <div
+                                            class="h-2 w-20 bg-slate-100 rounded-sm"
+                                        ></div>
                                     </div>
-                                    <div class="h-4 w-12 bg-slate-200 rounded-sm"></div>
+                                    <div
+                                        class="h-4 w-12 bg-slate-200 rounded-sm"
+                                    ></div>
                                 </div>
                             {/each}
                         {:else if coinsHistoryData.data && coinsHistoryData.data.length > 0}
                             {#each coinsHistoryData.data as log}
-                                <div class="bg-slate-50 hover:bg-slate-100/50 rounded-xl p-3.5 border border-slate-100/50 flex items-center justify-between transition gap-3">
+                                <div
+                                    class="bg-slate-50 hover:bg-slate-100/50 rounded-xl p-3.5 border border-slate-100/50 flex items-center justify-between transition gap-3"
+                                >
                                     <div class="min-w-0">
-                                        <p class="text-xs font-bold text-slate-800 leading-normal line-clamp-2">{log.description}</p>
+                                        <p
+                                            class="text-xs font-bold text-slate-800 leading-normal line-clamp-2"
+                                        >
+                                            {log.description}
+                                        </p>
                                         {#if log.transaction}
-                                            <p class="text-[9px] text-slate-400 mt-0.5 tracking-tight font-sans">
-                                                No. Pesanan: <span class="font-bold">{log.transaction.transaction_number}</span>
+                                            <p
+                                                class="text-[9px] text-slate-400 mt-0.5 tracking-tight font-sans"
+                                            >
+                                                No. Pesanan: <span
+                                                    class="font-bold"
+                                                    >{log.transaction
+                                                        .transaction_number}</span
+                                                >
                                             </p>
                                         {/if}
-                                        <p class="text-[9px] text-slate-400 mt-1 font-sans">
-                                            {new Date(log.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        <p
+                                            class="text-[9px] text-slate-400 mt-1 font-sans"
+                                        >
+                                            {new Date(
+                                                log.created_at,
+                                            ).toLocaleString('id-ID', {
+                                                dateStyle: 'medium',
+                                                timeStyle: 'short',
+                                            })}
                                         </p>
                                     </div>
                                     <div class="text-right shrink-0">
-                                        <span class="text-xs font-black font-sans {log.amount > 0 ? 'text-emerald-600' : 'text-slate-700'}">
-                                            {log.amount > 0 ? '+' : ''}{formatNumber(log.amount)} Koin
+                                        <span
+                                            class="text-xs font-black font-sans {log.amount >
+                                            0
+                                                ? 'text-emerald-600'
+                                                : 'text-slate-700'}"
+                                        >
+                                            {log.amount > 0
+                                                ? '+'
+                                                : ''}{formatNumber(log.amount)} Poin
                                         </span>
-                                        <p class="text-[9px] text-slate-400 mt-0.5 font-sans">
-                                            {log.amount > 0 ? 'Koin Masuk' : 'Koin Keluar'}
+                                        <p
+                                            class="text-[9px] text-slate-400 mt-0.5 font-sans"
+                                        >
+                                            {log.amount > 0
+                                                ? 'Poin Masuk'
+                                                : 'Poin Keluar'}
                                         </p>
                                     </div>
                                 </div>
@@ -2144,20 +2349,31 @@
 
                             <!-- Pagination -->
                             {#if coinsHistoryData.last_page > 1}
-                                <div class="flex items-center justify-between pt-3 border-t border-slate-100 mt-4">
+                                <div
+                                    class="flex items-center justify-between pt-3 border-t border-slate-100 mt-4"
+                                >
                                     <button
                                         disabled={coinsHistoryPage === 1}
-                                        onclick={() => fetchCoinsHistory(coinsHistoryPage - 1)}
+                                        onclick={() =>
+                                            fetchCoinsHistory(
+                                                coinsHistoryPage - 1,
+                                            )}
                                         class="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition disabled:opacity-40"
                                     >
                                         Sebelumnya
                                     </button>
-                                    <span class="text-[10px] font-bold text-slate-500 font-sans">
+                                    <span
+                                        class="text-[10px] font-bold text-slate-500 font-sans"
+                                    >
                                         Halaman {coinsHistoryPage} dari {coinsHistoryData.last_page}
                                     </span>
                                     <button
-                                        disabled={coinsHistoryPage === coinsHistoryData.last_page}
-                                        onclick={() => fetchCoinsHistory(coinsHistoryPage + 1)}
+                                        disabled={coinsHistoryPage ===
+                                            coinsHistoryData.last_page}
+                                        onclick={() =>
+                                            fetchCoinsHistory(
+                                                coinsHistoryPage + 1,
+                                            )}
                                         class="px-3 py-1.5 text-[10px] font-bold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition disabled:opacity-40"
                                     >
                                         Selanjutnya
@@ -2165,20 +2381,43 @@
                                 </div>
                             {/if}
                         {:else}
-                            <div class="py-12 text-center bg-slate-50 rounded-2xl">
-                                <div class="w-12 h-12 bg-white text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                            <div
+                                class="py-12 text-center bg-slate-50 rounded-2xl"
+                            >
+                                <div
+                                    class="w-12 h-12 bg-white text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-slate-100"
+                                >
                                     <i class="ti ti-coins-off text-2xl"></i>
                                 </div>
-                                <p class="text-xs font-bold text-slate-800 font-sans">Belum ada riwayat koin</p>
-                                <p class="text-[10px] text-slate-400 mt-1 px-4 font-sans">Transaksi belanja Anda yang menghasilkan atau menggunakan koin akan tercatat di sini.</p>
+                                <p
+                                    class="text-xs font-bold text-slate-800 font-sans"
+                                >
+                                    Belum ada riwayat Poin
+                                </p>
+                                <p
+                                    class="text-[10px] text-slate-400 mt-1 px-4 font-sans"
+                                >
+                                    Transaksi belanja Anda yang menghasilkan
+                                    atau menggunakan Poin akan tercatat di sini.
+                                </p>
                             </div>
                         {/if}
                     </div>
                 {:else if coinsTab === 'terms'}
-                    <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                        <p class="text-xs font-bold text-slate-800 mb-3 font-sans">Syarat & Ketentuan Penggunaan Koin:</p>
-                        <p class="whitespace-pre-wrap text-[11px] text-slate-600 leading-relaxed font-sans">
-                            {(page.props as any).settings?.coin_terms_conditions || 'Belum ada Syarat & Ketentuan.'}
+                    <div
+                        class="bg-slate-50 rounded-2xl p-5 border border-slate-100"
+                    >
+                        <p
+                            class="text-xs font-bold text-slate-800 mb-3 font-sans"
+                        >
+                            Syarat & Ketentuan Penggunaan Poin:
+                        </p>
+                        <p
+                            class="whitespace-pre-wrap text-[11px] text-slate-600 leading-relaxed font-sans"
+                        >
+                            {(page.props as any).settings
+                                ?.coin_terms_conditions ||
+                                'Belum ada Syarat & Ketentuan.'}
                         </p>
                     </div>
                 {/if}
@@ -2198,17 +2437,26 @@
             onclick={(e) => e.stopPropagation()}
         >
             <!-- Drawer Drag Handle Indicator -->
-            <div class="w-full flex justify-center py-2.5 shrink-0 bg-slate-50/50">
+            <div
+                class="w-full flex justify-center py-2.5 shrink-0 bg-slate-50/50"
+            >
                 <div class="w-12 h-1 bg-slate-300 rounded-full"></div>
             </div>
 
             <!-- Drawer Header -->
-            <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div
+                class="px-5 py-3 border-b border-slate-100 flex items-center justify-between"
+            >
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                    <div
+                        class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center"
+                    >
                         <i class="ti ti-coins text-xl"></i>
                     </div>
-                    <span class="font-outfit font-black text-slate-800 tracking-tight">Koin Saya</span>
+                    <span
+                        class="font-outfit font-black text-slate-800 tracking-tight"
+                        >Poin Saya</span
+                    >
                 </div>
                 <button
                     onclick={() => (coinsModalOpen = false)}
@@ -2225,17 +2473,31 @@
                     class="rounded-2xl p-4 text-white mb-5 relative overflow-hidden shadow-sm"
                     style="background: linear-gradient(135deg, {primary}, {secondary});"
                 >
-                    <div class="relative z-10 flex items-center justify-between">
+                    <div
+                        class="relative z-10 flex items-center justify-between"
+                    >
                         <div>
-                            <span class="text-[9px] uppercase font-black tracking-wider text-white/80 font-sans">Total Saldo Koin</span>
+                            <span
+                                class="text-[9px] uppercase font-black tracking-wider text-white/80 font-sans"
+                                >Total Saldo Poin</span
+                            >
                             <h3 class="text-2xl font-black font-outfit mt-0.5">
-                                {formatNumber(auth?.coins_balance || 0)} <span class="text-xs font-bold">Koin</span>
+                                {formatNumber(auth?.coins_balance || 0)}
+                                <span class="text-xs font-bold">Poin</span>
                             </h3>
                             <p class="text-[11px] text-white/90 mt-1 font-sans">
-                                Setara dengan <span class="font-black">Rp {formatNumber((auth?.coins_balance || 0) * ((page.props as any).settings?.coin_conversion_rate || 1))}</span>
+                                Setara dengan <span class="font-black"
+                                    >Rp {formatNumber(
+                                        (auth?.coins_balance || 0) *
+                                            ((page.props as any).settings
+                                                ?.coin_conversion_rate || 1),
+                                    )}</span
+                                >
                             </p>
                         </div>
-                        <div class="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center border border-white/20">
+                        <div
+                            class="w-12 h-12 bg-white/15 rounded-xl flex items-center justify-center border border-white/20"
+                        >
                             <i class="ti ti-coins text-2xl"></i>
                         </div>
                     </div>
@@ -2246,14 +2508,22 @@
                     <button
                         onclick={() => (coinsTab = 'history')}
                         class="flex-1 py-2 text-xs font-bold text-center border-b-2 transition font-sans"
-                        style="color: {coinsTab === 'history' ? primary : '#64748b'}; border-color: {coinsTab === 'history' ? primary : 'transparent'};"
+                        style="color: {coinsTab === 'history'
+                            ? primary
+                            : '#64748b'}; border-color: {coinsTab === 'history'
+                            ? primary
+                            : 'transparent'};"
                     >
                         Riwayat Transaksi
                     </button>
                     <button
                         onclick={() => (coinsTab = 'terms')}
                         class="flex-1 py-2 text-xs font-bold text-center border-b-2 transition font-sans"
-                        style="color: {coinsTab === 'terms' ? primary : '#64748b'}; border-color: {coinsTab === 'terms' ? primary : 'transparent'};"
+                        style="color: {coinsTab === 'terms'
+                            ? primary
+                            : '#64748b'}; border-color: {coinsTab === 'terms'
+                            ? primary
+                            : 'transparent'};"
                     >
                         Syarat & Ketentuan
                     </button>
@@ -2262,23 +2532,36 @@
                 {#if coinsTab === 'history'}
                     <!-- Filter and Search -->
                     <div class="flex flex-col gap-2.5 mb-4">
-                        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                        <div
+                            class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl"
+                        >
                             <button
                                 onclick={() => (coinsHistoryType = 'semua')}
-                                class="flex-1 py-1 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType === 'semua' ? 'bg-white shadow-xs' : 'text-slate-500'}"
-                                style="color: {coinsHistoryType === 'semua' ? primary : ''}"
+                                class="flex-1 py-1 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType ===
+                                'semua'
+                                    ? 'bg-white shadow-xs'
+                                    : 'text-slate-500'}"
+                                style="color: {coinsHistoryType === 'semua'
+                                    ? primary
+                                    : ''}"
                             >
                                 Semua
                             </button>
                             <button
                                 onclick={() => (coinsHistoryType = 'masuk')}
-                                class="flex-1 py-1 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType === 'masuk' ? 'bg-white shadow-xs text-emerald-600' : 'text-slate-500'}"
+                                class="flex-1 py-1 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType ===
+                                'masuk'
+                                    ? 'bg-white shadow-xs text-emerald-600'
+                                    : 'text-slate-500'}"
                             >
                                 Masuk
                             </button>
                             <button
                                 onclick={() => (coinsHistoryType = 'keluar')}
-                                class="flex-1 py-1 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType === 'keluar' ? 'bg-white shadow-xs text-slate-800' : 'text-slate-500'}"
+                                class="flex-1 py-1 text-[10px] font-black rounded-lg transition font-sans {coinsHistoryType ===
+                                'keluar'
+                                    ? 'bg-white shadow-xs text-slate-800'
+                                    : 'text-slate-500'}"
                             >
                                 Keluar
                             </button>
@@ -2291,9 +2574,14 @@
                                 placeholder="Cari deskripsi atau no. pesanan..."
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-200 transition"
                             />
-                            <i class="ti ti-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                            <i
+                                class="ti ti-search absolute left-3 top-2.5 text-slate-400 text-sm"
+                            ></i>
                             {#if coinsSearchQuery}
-                                <button onclick={() => (coinsSearchQuery = '')} class="absolute right-3 top-2 text-slate-400 hover:text-slate-600">
+                                <button
+                                    onclick={() => (coinsSearchQuery = '')}
+                                    class="absolute right-3 top-2 text-slate-400 hover:text-slate-600"
+                                >
                                     <i class="ti ti-x text-xs"></i>
                                 </button>
                             {/if}
@@ -2301,37 +2589,77 @@
                     </div>
 
                     <!-- History list -->
-                    <div class="space-y-2.5 max-h-[250px] overflow-y-auto pr-0.5 custom-scrollbar">
+                    <div
+                        class="space-y-2.5 max-h-[250px] overflow-y-auto pr-0.5 custom-scrollbar"
+                    >
                         {#if coinsHistoryLoading}
                             {#each Array(3) as _}
-                                <div class="bg-slate-50 rounded-xl p-3 animate-pulse flex justify-between items-center">
+                                <div
+                                    class="bg-slate-50 rounded-xl p-3 animate-pulse flex justify-between items-center"
+                                >
                                     <div class="space-y-1">
-                                        <div class="h-3 w-24 bg-slate-200 rounded-sm"></div>
-                                        <div class="h-2.5 w-16 bg-slate-100 rounded-sm"></div>
+                                        <div
+                                            class="h-3 w-24 bg-slate-200 rounded-sm"
+                                        ></div>
+                                        <div
+                                            class="h-2.5 w-16 bg-slate-100 rounded-sm"
+                                        ></div>
                                     </div>
-                                    <div class="h-3.5 w-10 bg-slate-200 rounded-sm"></div>
+                                    <div
+                                        class="h-3.5 w-10 bg-slate-200 rounded-sm"
+                                    ></div>
                                 </div>
                             {/each}
                         {:else if coinsHistoryData.data && coinsHistoryData.data.length > 0}
                             {#each coinsHistoryData.data as log}
-                                <div class="bg-slate-50 hover:bg-slate-100/50 rounded-xl p-3 border border-slate-100/50 flex items-center justify-between transition gap-2">
+                                <div
+                                    class="bg-slate-50 hover:bg-slate-100/50 rounded-xl p-3 border border-slate-100/50 flex items-center justify-between transition gap-2"
+                                >
                                     <div class="min-w-0">
-                                        <p class="text-xs font-bold text-slate-800 leading-normal line-clamp-2">{log.description}</p>
+                                        <p
+                                            class="text-xs font-bold text-slate-800 leading-normal line-clamp-2"
+                                        >
+                                            {log.description}
+                                        </p>
                                         {#if log.transaction}
-                                            <p class="text-[9px] text-slate-400 mt-0.5 tracking-tight font-sans">
-                                                No. Pesanan: <span class="font-bold">{log.transaction.transaction_number}</span>
+                                            <p
+                                                class="text-[9px] text-slate-400 mt-0.5 tracking-tight font-sans"
+                                            >
+                                                No. Pesanan: <span
+                                                    class="font-bold"
+                                                    >{log.transaction
+                                                        .transaction_number}</span
+                                                >
                                             </p>
                                         {/if}
-                                        <p class="text-[9px] text-slate-400 mt-1 font-sans">
-                                            {new Date(log.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        <p
+                                            class="text-[9px] text-slate-400 mt-1 font-sans"
+                                        >
+                                            {new Date(
+                                                log.created_at,
+                                            ).toLocaleString('id-ID', {
+                                                dateStyle: 'medium',
+                                                timeStyle: 'short',
+                                            })}
                                         </p>
                                     </div>
                                     <div class="text-right shrink-0">
-                                        <span class="text-xs font-black font-sans {log.amount > 0 ? 'text-emerald-600' : 'text-slate-700'}">
-                                            {log.amount > 0 ? '+' : ''}{formatNumber(log.amount)}
+                                        <span
+                                            class="text-xs font-black font-sans {log.amount >
+                                            0
+                                                ? 'text-emerald-600'
+                                                : 'text-slate-700'}"
+                                        >
+                                            {log.amount > 0
+                                                ? '+'
+                                                : ''}{formatNumber(log.amount)}
                                         </span>
-                                        <p class="text-[8px] text-slate-400 mt-0.5 font-sans">
-                                            {log.amount > 0 ? 'Masuk' : 'Keluar'}
+                                        <p
+                                            class="text-[8px] text-slate-400 mt-0.5 font-sans"
+                                        >
+                                            {log.amount > 0
+                                                ? 'Masuk'
+                                                : 'Keluar'}
                                         </p>
                                     </div>
                                 </div>
@@ -2339,20 +2667,31 @@
 
                             <!-- Pagination -->
                             {#if coinsHistoryData.last_page > 1}
-                                <div class="flex items-center justify-between pt-3 border-t border-slate-100 mt-3">
+                                <div
+                                    class="flex items-center justify-between pt-3 border-t border-slate-100 mt-3"
+                                >
                                     <button
                                         disabled={coinsHistoryPage === 1}
-                                        onclick={() => fetchCoinsHistory(coinsHistoryPage - 1)}
+                                        onclick={() =>
+                                            fetchCoinsHistory(
+                                                coinsHistoryPage - 1,
+                                            )}
                                         class="px-2.5 py-1 text-[10px] font-bold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition disabled:opacity-40 font-sans"
                                     >
                                         Sebelum
                                     </button>
-                                    <span class="text-[9px] font-bold text-slate-500 font-sans">
+                                    <span
+                                        class="text-[9px] font-bold text-slate-500 font-sans"
+                                    >
                                         Hal {coinsHistoryPage} / {coinsHistoryData.last_page}
                                     </span>
                                     <button
-                                        disabled={coinsHistoryPage === coinsHistoryData.last_page}
-                                        onclick={() => fetchCoinsHistory(coinsHistoryPage + 1)}
+                                        disabled={coinsHistoryPage ===
+                                            coinsHistoryData.last_page}
+                                        onclick={() =>
+                                            fetchCoinsHistory(
+                                                coinsHistoryPage + 1,
+                                            )}
                                         class="px-2.5 py-1 text-[10px] font-bold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition disabled:opacity-40 font-sans"
                                     >
                                         Lanjut
@@ -2360,20 +2699,43 @@
                                 </div>
                             {/if}
                         {:else}
-                            <div class="py-10 text-center bg-slate-50 rounded-2xl">
-                                <div class="w-10 h-10 bg-white text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-2.5 border border-slate-100">
+                            <div
+                                class="py-10 text-center bg-slate-50 rounded-2xl"
+                            >
+                                <div
+                                    class="w-10 h-10 bg-white text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-2.5 border border-slate-100"
+                                >
                                     <i class="ti ti-coins-off text-xl"></i>
                                 </div>
-                                <p class="text-xs font-bold text-slate-800 font-sans">Belum ada riwayat koin</p>
-                                <p class="text-[9px] text-slate-400 mt-1 px-4 font-sans">Transaksi belanja Anda yang menghasilkan atau menggunakan koin akan tercatat di sini.</p>
+                                <p
+                                    class="text-xs font-bold text-slate-800 font-sans"
+                                >
+                                    Belum ada riwayat Poin
+                                </p>
+                                <p
+                                    class="text-[9px] text-slate-400 mt-1 px-4 font-sans"
+                                >
+                                    Transaksi belanja Anda yang menghasilkan
+                                    atau menggunakan Poin akan tercatat di sini.
+                                </p>
                             </div>
                         {/if}
                     </div>
                 {:else if coinsTab === 'terms'}
-                    <div class="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                        <p class="text-xs font-bold text-slate-800 mb-2 font-sans">Syarat & Ketentuan Penggunaan Koin:</p>
-                        <p class="whitespace-pre-wrap text-[10px] text-slate-600 leading-relaxed font-sans">
-                            {(page.props as any).settings?.coin_terms_conditions || 'Belum ada Syarat & Ketentuan.'}
+                    <div
+                        class="bg-slate-50 rounded-2xl p-4 border border-slate-100"
+                    >
+                        <p
+                            class="text-xs font-bold text-slate-800 mb-2 font-sans"
+                        >
+                            Syarat & Ketentuan Penggunaan Poin:
+                        </p>
+                        <p
+                            class="whitespace-pre-wrap text-[10px] text-slate-600 leading-relaxed font-sans"
+                        >
+                            {(page.props as any).settings
+                                ?.coin_terms_conditions ||
+                                'Belum ada Syarat & Ketentuan.'}
                         </p>
                     </div>
                 {/if}
