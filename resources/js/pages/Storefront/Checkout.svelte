@@ -105,6 +105,11 @@
             addresses[0]?.id ??
             null,
     );
+    $effect(() => {
+        if (!selectedAddressId && addresses && addresses.length > 0) {
+            selectedAddressId = addresses.find((a: any) => a.is_primary)?.id ?? addresses[0]?.id;
+        }
+    });
     let showAddressModal = $state(false);
 
     // Payment
@@ -140,6 +145,45 @@
     let selectedShipping: any = $state(null);
     let loadingShipping = $state(false);
     let shippingError = $state('');
+
+    async function autoSelectShipping(courierIndex = 0) {
+        if (!selectedAddressId) return;
+        if (courierIndex >= availableCouriers.length) {
+            selectedCourier = '';
+            shippingOptions = [];
+            selectedShipping = null;
+            shippingError = 'Tidak ada layanan pengiriman yang tersedia untuk alamat ini.';
+            return;
+        }
+
+        selectedCourier = availableCouriers[courierIndex];
+        await fetchShipping();
+
+        if (!shippingOptions || shippingOptions.length === 0) {
+            await autoSelectShipping(courierIndex + 1);
+        }
+    }
+
+    let lastAddressId = $state(selectedAddressId);
+    let initialAutoSelectDone = $state(false);
+
+    $effect(() => {
+        if (selectedAddressId && !initialAutoSelectDone && availableCouriers.length > 0) {
+            initialAutoSelectDone = true;
+            autoSelectShipping(0);
+        } else if (selectedAddressId && selectedAddressId !== lastAddressId) {
+            lastAddressId = selectedAddressId;
+            if (selectedCourier) {
+                fetchShipping().then(() => {
+                    if (!shippingOptions || shippingOptions.length === 0) {
+                        autoSelectShipping(0);
+                    }
+                });
+            } else {
+                autoSelectShipping(0);
+            }
+        }
+    });
 
     // Voucher
     let initialVoucherCode = $derived.by(() => {
@@ -532,6 +576,10 @@
             if (resp.ok && data.results && data.results.length > 0) {
                 const services = data.results[0]?.costs ?? [];
                 shippingOptions = services;
+                if (shippingOptions.length > 0) {
+                    shippingOptions.sort((a: any, b: any) => (a.cost?.[0]?.value ?? 0) - (b.cost?.[0]?.value ?? 0));
+                    selectedShipping = shippingOptions[0];
+                }
             } else {
                 shippingError =
                     data.error ?? 'Tidak ada layanan pengiriman tersedia.';
