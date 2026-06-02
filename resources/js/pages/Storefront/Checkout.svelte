@@ -93,7 +93,7 @@
         couriers.reduce((acc: Record<string, string>, c: any) => {
             acc[c.code] = c.name;
             return acc;
-        }, {})
+        }, {}),
     );
 
     let selectedCourier = $state('');
@@ -344,10 +344,18 @@
     const coinsSettings = $derived((page.props as any).settings);
     const authUser = $derived((page.props as any).auth?.user);
     const coinsEnabled = $derived(coinsSettings?.coins_enabled);
-    const coinConversionRate = $derived(Number(coinsSettings?.coin_conversion_rate || 1));
-    const coinMinPurchaseRedeem = $derived(Number(coinsSettings?.coin_min_purchase_redeem || 0));
-    const coinMaxRedeemPerTxn = $derived(Number(coinsSettings?.coin_max_redeem_per_txn || 50000));
-    const coinMaxRedeemPercentage = $derived(Number(coinsSettings?.coin_max_redeem_percentage || 100));
+    const coinConversionRate = $derived(
+        Number(coinsSettings?.coin_conversion_rate || 1),
+    );
+    const coinMinPurchaseRedeem = $derived(
+        Number(coinsSettings?.coin_min_purchase_redeem || 0),
+    );
+    const coinMaxRedeemPerTxn = $derived(
+        Number(coinsSettings?.coin_max_redeem_per_txn || 50000),
+    );
+    const coinMaxRedeemPercentage = $derived(
+        Number(coinsSettings?.coin_max_redeem_percentage || 100),
+    );
 
     // User's balance
     const userCoinsBalance = $derived(Number(authUser?.coins_balance || 0));
@@ -362,34 +370,52 @@
         const maxPercentValue = (subtotal * coinMaxRedeemPercentage) / 100;
         // Max cap per txn in Rupiah
         const maxCapValue = coinMaxRedeemPerTxn;
-        
+
         return Math.min(userCoinsValue, maxPercentValue, maxCapValue);
     });
 
-    const maxCoinsRedeemAllowed = $derived(Math.floor(maxCoinsRedeemValueAllowed / coinConversionRate));
-    
+    const maxCoinsRedeemAllowed = $derived(
+        Math.floor(maxCoinsRedeemValueAllowed / coinConversionRate),
+    );
+
     // Dynamic discount applied by coins
     const coinDiscountAmount = $derived.by(() => {
-        if (!useCoins || !coinsEnabled || !isCoinsMinPurchaseMet || maxCoinsRedeemAllowed <= 0) {
+        if (
+            !useCoins ||
+            !coinsEnabled ||
+            !isCoinsMinPurchaseMet ||
+            maxCoinsRedeemAllowed <= 0
+        ) {
             return 0;
         }
         return maxCoinsRedeemAllowed * coinConversionRate;
     });
 
     // Prospective coins earned
-    const coinEarningMethod = $derived(coinsSettings?.coin_earning_method || 'proportional');
-    const coinEarningRateRupiah = $derived(Number(coinsSettings?.coin_earning_rate_rupiah || 1000));
-    const coinEarningRateCoins = $derived(Number(coinsSettings?.coin_earning_rate_coins || 1));
+    const coinEarningMethod = $derived(
+        coinsSettings?.coin_earning_method || 'proportional',
+    );
+    const coinEarningRateRupiah = $derived(
+        Number(coinsSettings?.coin_earning_rate_rupiah || 1000),
+    );
+    const coinEarningRateCoins = $derived(
+        Number(coinsSettings?.coin_earning_rate_coins || 1),
+    );
     const coinEarningTiers = $derived(coinsSettings?.coin_earning_tiers || []);
 
     const prospectiveCoinsEarned = $derived.by(() => {
         if (!coinsEnabled || (useCoins && coinDiscountAmount > 0)) return 0;
-        
+
         if (coinEarningMethod === 'proportional') {
             if (coinEarningRateRupiah <= 0) return 0;
-            return Math.floor(subtotal / coinEarningRateRupiah) * coinEarningRateCoins;
+            return (
+                Math.floor(subtotal / coinEarningRateRupiah) *
+                coinEarningRateCoins
+            );
         } else if (coinEarningMethod === 'tiered') {
-            const sortedTiers = [...coinEarningTiers].sort((a, b) => Number(b.min_purchase) - Number(a.min_purchase));
+            const sortedTiers = [...coinEarningTiers].sort(
+                (a, b) => Number(b.min_purchase) - Number(a.min_purchase),
+            );
             for (const tier of sortedTiers) {
                 if (subtotal >= Number(tier.min_purchase)) {
                     return Number(tier.earn_coins);
@@ -422,9 +448,18 @@
 
     function getEtdLabel(etd: any): string {
         if (!etd) return 'Estimasi tidak tersedia';
-        const clean = etd.toString().toLowerCase().replace(/days?|hari/gi, '').trim();
+        const clean = etd
+            .toString()
+            .toLowerCase()
+            .replace(/days?|hari/gi, '')
+            .trim();
         if (clean === '' || clean === '-') return 'Estimasi tidak tersedia';
-        if (clean === '0' || clean === '0-0' || clean === '0-0 hari' || clean === '0 - 0') {
+        if (
+            clean === '0' ||
+            clean === '0-0' ||
+            clean === '0-0 hari' ||
+            clean === '0 - 0'
+        ) {
             return 'Hari yang sama (Same Day)';
         }
         return `Estimasi: ${clean} hari`;
@@ -643,9 +678,14 @@
                     const d = new Date(String(key).replace(' ', 'T'));
                     if (!isNaN(d.getTime())) {
                         times.push({
-                            name: src.promo_type === 'flash_sale' ? 'Flash Sale' :
-                                  src.promo_type === 'promo_produk' ? 'Promo Produk' :
-                                  src.promo_type === 'bundling_gift' ? 'Bundling Gift' : 'Promo',
+                            name:
+                                src.promo_type === 'flash_sale'
+                                    ? 'Flash Sale'
+                                    : src.promo_type === 'promo_produk'
+                                      ? 'Promo Produk'
+                                      : src.promo_type === 'bundling_gift'
+                                        ? 'Bundling Gift'
+                                        : 'Promo',
                             endTime: d,
                         });
                     }
@@ -656,7 +696,9 @@
         return times.sort((a, b) => a.endTime.getTime() - b.endTime.getTime());
     });
 
-    let promoCountdowns = $state<{ name: string; remaining: number; label: string }[]>([]);
+    let promoCountdowns = $state<
+        { name: string; remaining: number; label: string }[]
+    >([]);
     let promoExpiredNames = $state<string[]>([]);
     let promoExpiryTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -673,9 +715,10 @@
                 const h = Math.floor(diff / 3_600_000);
                 const m = Math.floor((diff % 3_600_000) / 60_000);
                 const s = Math.floor((diff % 60_000) / 1_000);
-                const label = h > 0
-                    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-                    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                const label =
+                    h > 0
+                        ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                        : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
                 updated.push({ name: item.name, remaining: diff, label });
             }
         }
@@ -684,7 +727,9 @@
 
         // If newly expired promos detected, reload to get fresh pricing from server
         if (expired.length > 0) {
-            const newExpired = expired.filter(n => !promoExpiredNames.includes(n));
+            const newExpired = expired.filter(
+                (n) => !promoExpiredNames.includes(n),
+            );
             if (newExpired.length > 0) {
                 promoExpiredNames = [...promoExpiredNames, ...newExpired];
                 showToast(
@@ -717,7 +762,8 @@
 
     // Show urgent warning when promo expires in less than 5 minutes
     const isPromoExpiringSoon = $derived(
-        soonestPromoCountdown !== null && soonestPromoCountdown.remaining < 5 * 60 * 1000,
+        soonestPromoCountdown !== null &&
+            soonestPromoCountdown.remaining < 5 * 60 * 1000,
     );
 
     const statusColors: Record<string, string> = {
@@ -752,36 +798,65 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Left Column -->
                 <div class="lg:col-span-2 space-y-4">
-
                     <!-- Promo Expiry Warning Banner -->
                     {#if promoCountdowns.length > 0}
                         <div
-                            class="rounded-2xl px-4 py-3 flex items-center gap-3 border {isPromoExpiringSoon ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}"
+                            class="rounded-2xl px-4 py-3 flex items-center gap-3 border {isPromoExpiringSoon
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-amber-50 border-amber-200'}"
                         >
-                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center {isPromoExpiringSoon ? 'bg-red-100' : 'bg-amber-100'}">
-                                <i class="ti ti-clock-exclamation text-lg {isPromoExpiringSoon ? 'text-red-500' : 'text-amber-500'}"></i>
+                            <div
+                                class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center {isPromoExpiringSoon
+                                    ? 'bg-red-100'
+                                    : 'bg-amber-100'}"
+                            >
+                                <i
+                                    class="ti ti-clock-exclamation text-lg {isPromoExpiringSoon
+                                        ? 'text-red-500'
+                                        : 'text-amber-500'}"
+                                ></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-xs font-bold {isPromoExpiringSoon ? 'text-red-700' : 'text-amber-700'}">
+                                <p
+                                    class="text-xs font-bold {isPromoExpiringSoon
+                                        ? 'text-red-700'
+                                        : 'text-amber-700'}"
+                                >
                                     {soonestPromoCountdown?.name} berakhir dalam
-                                    <span class="font-black tabular-nums">{soonestPromoCountdown?.label}</span>
+                                    <span class="font-black tabular-nums"
+                                        >{soonestPromoCountdown?.label}</span
+                                    >
                                 </p>
-                                <p class="text-[11px] {isPromoExpiringSoon ? 'text-red-500' : 'text-amber-500'} mt-0.5">
-                                    Segera selesaikan checkout sebelum harga kembali normal.
+                                <p
+                                    class="text-[11px] {isPromoExpiringSoon
+                                        ? 'text-red-500'
+                                        : 'text-amber-500'} mt-0.5"
+                                >
+                                    Segera selesaikan checkout sebelum harga
+                                    kembali normal.
                                 </p>
                             </div>
                         </div>
                     {/if}
 
                     {#if promoExpiredNames.length > 0}
-                        <div class="rounded-2xl px-4 py-3 flex items-center gap-3 bg-slate-50 border border-slate-200">
-                            <div class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100">
-                                <i class="ti ti-refresh text-lg text-slate-500 animate-spin"></i>
+                        <div
+                            class="rounded-2xl px-4 py-3 flex items-center gap-3 bg-slate-50 border border-slate-200"
+                        >
+                            <div
+                                class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100"
+                            >
+                                <i
+                                    class="ti ti-refresh text-lg text-slate-500 animate-spin"
+                                ></i>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="text-xs font-bold text-slate-700">Memperbarui harga...</p>
+                                <p class="text-xs font-bold text-slate-700">
+                                    Memperbarui harga...
+                                </p>
                                 <p class="text-[11px] text-slate-500 mt-0.5">
-                                    {promoExpiredNames.join(', ')} telah berakhir. Harga sedang diperbarui ke harga normal.
+                                    {promoExpiredNames.join(', ')} telah berakhir.
+                                    Harga sedang diperbarui ke harga normal.
                                 </p>
                             </div>
                         </div>
@@ -1267,7 +1342,11 @@
                                                                 class="ti ti-clock text-xs"
                                                             ></i>
                                                             <span
-                                                                >{getEtdLabel(opt.cost?.[0]?.etd)}</span
+                                                                >{getEtdLabel(
+                                                                    opt
+                                                                        .cost?.[0]
+                                                                        ?.etd,
+                                                                )}</span
                                                             >
                                                         </p>
                                                     </div>
@@ -1457,92 +1536,187 @@
                         {/if}
                     </div>
 
-                    <!-- Koin Saya Loyalty Section -->
+                    <!-- Poin Saya Loyalty Section -->
                     {#if coinsEnabled}
-                        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-4">
+                        <div
+                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-4"
+                        >
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0">
+                                    <div
+                                        class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"
+                                    >
                                         <i class="ti ti-coins text-xl"></i>
                                     </div>
                                     <div>
-                                        <h3 class="font-outfit font-black text-xs uppercase tracking-wider text-slate-400">
-                                            Koin Toko
+                                        <h3
+                                            class="font-outfit font-black text-xs uppercase tracking-wider text-slate-400"
+                                        >
+                                            Poin Toko
                                         </h3>
-                                        <p class="text-[11px] font-bold text-slate-700 mt-0.5">
-                                            {formatNumber(userCoinsBalance)} Koin <span class="text-slate-400 font-normal">(Senilai Rp {formatNumber(userCoinsValue)})</span>
+                                        <p
+                                            class="text-[11px] font-bold text-slate-700 mt-0.5"
+                                        >
+                                            {formatNumber(userCoinsBalance)} Poin
+                                            <span
+                                                class="text-slate-400 font-normal"
+                                                >(Senilai Rp {formatNumber(
+                                                    userCoinsValue,
+                                                )})</span
+                                            >
                                         </p>
                                     </div>
                                 </div>
 
                                 {#if isCoinsMinPurchaseMet && userCoinsBalance > 0 && maxCoinsRedeemAllowed > 0}
                                     <!-- Premium Custom Toggle -->
-                                    <label class="relative inline-flex items-center cursor-pointer select-none">
+                                    <label
+                                        class="relative inline-flex items-center cursor-pointer select-none"
+                                    >
                                         <input
                                             type="checkbox"
                                             bind:checked={useCoins}
                                             class="sr-only peer"
                                         />
-                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
+                                        ></div>
                                     </label>
                                 {/if}
                             </div>
 
                             {#if !isCoinsMinPurchaseMet}
                                 <!-- Warning alert: min purchase not met -->
-                                <div class="bg-amber-50/70 border border-amber-100 rounded-2xl p-3 flex gap-2.5 items-start">
-                                    <i class="ti ti-info-circle text-amber-500 text-sm mt-0.5 shrink-0"></i>
+                                <div
+                                    class="bg-amber-50/70 border border-amber-100 rounded-2xl p-3 flex gap-2.5 items-start"
+                                >
+                                    <i
+                                        class="ti ti-info-circle text-amber-500 text-sm mt-0.5 shrink-0"
+                                    ></i>
                                     <div class="min-w-0">
-                                        <p class="text-[10px] font-bold text-amber-800 leading-normal">Koin Belum Dapat Digunakan</p>
-                                        <p class="text-[9px] text-amber-600 mt-0.5 leading-normal">
-                                            Minimal belanja untuk menggunakan koin adalah <span class="font-black">Rp {formatNumber(coinMinPurchaseRedeem)}</span> (Subtotal Anda: Rp {formatNumber(subtotal)}).
+                                        <p
+                                            class="text-[10px] font-bold text-amber-800 leading-normal"
+                                        >
+                                            Poin Belum Dapat Digunakan
+                                        </p>
+                                        <p
+                                            class="text-[9px] text-amber-600 mt-0.5 leading-normal"
+                                        >
+                                            Minimal belanja untuk menggunakan
+                                            Poin adalah <span class="font-black"
+                                                >Rp {formatNumber(
+                                                    coinMinPurchaseRedeem,
+                                                )}</span
+                                            >
+                                            (Subtotal Anda: Rp {formatNumber(
+                                                subtotal,
+                                            )}).
                                         </p>
                                     </div>
                                 </div>
                             {:else if userCoinsBalance <= 0}
-                                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start">
-                                    <i class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"></i>
+                                <div
+                                    class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start"
+                                >
+                                    <i
+                                        class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"
+                                    ></i>
                                     <div class="min-w-0">
-                                        <p class="text-[10px] font-bold text-slate-500 leading-normal">Saldo Koin Kosong</p>
-                                        <p class="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                                            Belanja sekarang untuk mengumpulkan koin!
+                                        <p
+                                            class="text-[10px] font-bold text-slate-500 leading-normal"
+                                        >
+                                            Saldo Poin Kosong
+                                        </p>
+                                        <p
+                                            class="text-[9px] text-slate-400 mt-0.5 leading-normal"
+                                        >
+                                            Belanja sekarang untuk mengumpulkan
+                                            Poin!
                                         </p>
                                     </div>
                                 </div>
                             {:else if maxCoinsRedeemAllowed <= 0}
-                                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start">
-                                    <i class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"></i>
+                                <div
+                                    class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start"
+                                >
+                                    <i
+                                        class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"
+                                    ></i>
                                     <div class="min-w-0">
-                                        <p class="text-[10px] font-bold text-slate-500 leading-normal">Koin Tidak Bisa Digunakan</p>
-                                        <p class="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                                            Batas maksimum diskon voucher / promo telah melampaui aturan penggunaan koin.
+                                        <p
+                                            class="text-[10px] font-bold text-slate-500 leading-normal"
+                                        >
+                                            Poin Tidak Bisa Digunakan
+                                        </p>
+                                        <p
+                                            class="text-[9px] text-slate-400 mt-0.5 leading-normal"
+                                        >
+                                            Batas maksimum diskon voucher /
+                                            promo telah melampaui aturan
+                                            penggunaan Poin.
                                         </p>
                                     </div>
                                 </div>
                             {:else}
                                 <!-- Main Info Block -->
-                                <div class="bg-slate-50 rounded-2xl p-3.5 space-y-2 border border-slate-100/50">
-                                    <div class="flex items-center justify-between text-[10px] font-bold text-slate-600">
-                                        <span>Gunakan Koin:</span>
-                                        <span class={useCoins ? "text-emerald-600 font-black" : "text-slate-500 font-black"}>
-                                            {useCoins ? `${formatNumber(maxCoinsRedeemAllowed)} Koin` : 'Tidak digunakan'}
+                                <div
+                                    class="bg-slate-50 rounded-2xl p-3.5 space-y-2 border border-slate-100/50"
+                                >
+                                    <div
+                                        class="flex items-center justify-between text-[10px] font-bold text-slate-600"
+                                    >
+                                        <span>Gunakan Poin:</span>
+                                        <span
+                                            class={useCoins
+                                                ? 'text-emerald-600 font-black'
+                                                : 'text-slate-500 font-black'}
+                                        >
+                                            {useCoins
+                                                ? `${formatNumber(maxCoinsRedeemAllowed)} Poin`
+                                                : 'Tidak digunakan'}
                                         </span>
                                     </div>
-                                    <div class="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                    <div
+                                        class="flex items-center justify-between text-[10px] font-bold text-slate-600"
+                                    >
                                         <span>Potongan Belanja:</span>
-                                        <span class={useCoins ? "text-emerald-600 font-black" : "text-slate-500 font-black"}>
-                                            {useCoins ? `-Rp ${formatNumber(coinDiscountAmount)}` : 'Rp 0'}
+                                        <span
+                                            class={useCoins
+                                                ? 'text-emerald-600 font-black'
+                                                : 'text-slate-500 font-black'}
+                                        >
+                                            {useCoins
+                                                ? `-Rp ${formatNumber(coinDiscountAmount)}`
+                                                : 'Rp 0'}
                                         </span>
                                     </div>
-                                    
+
                                     <!-- Rules details small print -->
-                                    <div class="pt-2 border-t border-slate-100 text-[8.5px] text-slate-400 leading-normal space-y-0.5 font-sans">
-                                        <p>• Nilai Tukar: 1 Koin = Rp {formatNumber(coinConversionRate)}</p>
+                                    <div
+                                        class="pt-2 border-t border-slate-100 text-[8.5px] text-slate-400 leading-normal space-y-0.5 font-sans"
+                                    >
+                                        <p>
+                                            • Nilai Tukar: 1 Poin = Rp {formatNumber(
+                                                coinConversionRate,
+                                            )}
+                                        </p>
                                         {#if coinMaxRedeemPercentage < 100}
-                                            <p>• Maksimal diskon koin: {coinMaxRedeemPercentage}% dari subtotal belanja (Rp {formatNumber((subtotal * coinMaxRedeemPercentage) / 100)})</p>
+                                            <p>
+                                                • Maksimal diskon Poin: {coinMaxRedeemPercentage}%
+                                                dari subtotal belanja (Rp {formatNumber(
+                                                    (subtotal *
+                                                        coinMaxRedeemPercentage) /
+                                                        100,
+                                                )})
+                                            </p>
                                         {/if}
                                         {#if coinMaxRedeemPerTxn < 5000000}
-                                            <p>• Batas maksimal penggunaan koin per transaksi: Rp {formatNumber(coinMaxRedeemPerTxn)}</p>
+                                            <p>
+                                                • Batas maksimal penggunaan Poin
+                                                per transaksi: Rp {formatNumber(
+                                                    coinMaxRedeemPerTxn,
+                                                )}
+                                            </p>
                                         {/if}
                                     </div>
                                 </div>
@@ -1550,13 +1724,24 @@
 
                             {#if prospectiveCoinsEarned > 0}
                                 <!-- Earn info badge -->
-                                <div class="bg-emerald-50/60 border border-emerald-100/50 rounded-2xl p-3 flex gap-2.5 items-center">
-                                    <div class="w-6 h-6 rounded-lg bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                                <div
+                                    class="bg-emerald-50/60 border border-emerald-100/50 rounded-2xl p-3 flex gap-2.5 items-center"
+                                >
+                                    <div
+                                        class="w-6 h-6 rounded-lg bg-emerald-500 flex items-center justify-center text-white shrink-0"
+                                    >
                                         <i class="ti ti-gift text-xs"></i>
                                     </div>
                                     <div class="min-w-0">
-                                        <p class="text-[9px] text-emerald-800 leading-tight">
-                                            Dapatkan <span class="font-black text-emerald-600">{formatNumber(prospectiveCoinsEarned)} Koin</span> setelah pesanan Anda selesai!
+                                        <p
+                                            class="text-[9px] text-emerald-800 leading-tight"
+                                        >
+                                            Dapatkan <span
+                                                class="font-black text-emerald-600"
+                                                >{formatNumber(
+                                                    prospectiveCoinsEarned,
+                                                )} Poin</span
+                                            > setelah pesanan Anda selesai!
                                         </p>
                                     </div>
                                 </div>
@@ -1731,7 +1916,7 @@
                                     <div
                                         class="flex justify-between text-emerald-600"
                                     >
-                                        <span>Potongan Koin Saya</span>
+                                        <span>Potongan Poin Saya</span>
                                         <span class="font-semibold"
                                             >-{fmt(coinDiscountAmount)}</span
                                         >
@@ -2074,148 +2259,165 @@
                                             class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
                                             class:opacity-60={!minMet}
                                         >
-                                            <div class="relative flex items-stretch">
-                                            <!-- Left side color ribbon -->
                                             <div
-                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
-                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                                    primary,
-                                                    0.85,
-                                                )});"
+                                                class="relative flex items-stretch"
                                             >
-                                                <i
-                                                    class="ti ti-truck text-base mb-0.5 shrink-0"
-                                                ></i>
-                                                <span
-                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
-                                                >
-                                                    Free Ongkir
-                                                </span>
-                                            </div>
-
-                                            <!-- Dashed Ticket Divider line -->
-                                            <div
-                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
-                                            ></div>
-                                            <!-- Ticket Top & Bottom cutouts -->
-                                            <div
-                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-                                            <div
-                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-
-                                            <!-- Right side content -->
-                                            <div
-                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
-                                            >
-                                                <div class="min-w-0">
-                                                    <div
-                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
-                                                    >
-                                                        <span
-                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
-                                                            style="color: {primary}; border-color: {withOpacity(
-                                                                primary,
-                                                                0.35,
-                                                            )}; background: {withOpacity(
-                                                                primary,
-                                                                0.06,
-                                                            )};"
-                                                        >
-                                                            {voucher.code}
-                                                        </span>
-                                                        {#if isSelected}
-                                                            <span
-                                                                class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
-                                                                style="background-color: {primary};"
-                                                                >TERPASANG</span
-                                                            >
-                                                        {/if}
-                                                    </div>
-                                                    <h4
-                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
-                                                    >
-                                                        {voucher.name}
-                                                    </h4>
-                                                    <p
-                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
-                                                    >
-                                                        Gratis Ongkir s/d {fmt(
-                                                            voucher.max_discount ??
-                                                                0,
-                                                        )}
-                                                    </p>
-                                                </div>
-
+                                                <!-- Left side color ribbon -->
                                                 <div
-                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                        primary,
+                                                        0.85,
+                                                    )});"
                                                 >
-                                                    <div class="flex items-center gap-1.5 shrink-0">
-                                                        <span
-                                                            class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                    <i
+                                                        class="ti ti-truck text-base mb-0.5 shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                    >
+                                                        Free Ongkir
+                                                    </span>
+                                                </div>
+
+                                                <!-- Dashed Ticket Divider line -->
+                                                <div
+                                                    class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                                ></div>
+                                                <!-- Ticket Top & Bottom cutouts -->
+                                                <div
+                                                    class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+                                                <div
+                                                    class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+
+                                                <!-- Right side content -->
+                                                <div
+                                                    class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                                >
+                                                    <div class="min-w-0">
+                                                        <div
+                                                            class="flex items-center gap-1 mb-0.5 flex-wrap"
                                                         >
-                                                            Min. {fmt(
-                                                                voucher.min_purchase,
-                                                            )}
-                                                        </span>
-                                                        {#if voucher.settings?.terms}
-                                                            <button
-                                                                type="button"
-                                                                onclick={() => toggleTerms(voucher.id)}
-                                                                class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                            <span
+                                                                class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                                style="color: {primary}; border-color: {withOpacity(
+                                                                    primary,
+                                                                    0.35,
+                                                                )}; background: {withOpacity(
+                                                                    primary,
+                                                                    0.06,
+                                                                )};"
                                                             >
-                                                                S&K <i class="ti {expandedTerms[voucher.id] ? 'ti-chevron-up' : 'ti-chevron-down'} text-[8px]"></i>
-                                                            </button>
-                                                        {/if}
+                                                                {voucher.code}
+                                                            </span>
+                                                            {#if isSelected}
+                                                                <span
+                                                                    class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                    style="background-color: {primary};"
+                                                                    >TERPASANG</span
+                                                                >
+                                                            {/if}
+                                                        </div>
+                                                        <h4
+                                                            class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                        >
+                                                            {voucher.name}
+                                                        </h4>
+                                                        <p
+                                                            class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                        >
+                                                            Gratis Ongkir s/d {fmt(
+                                                                voucher.max_discount ??
+                                                                    0,
+                                                            )}
+                                                        </p>
                                                     </div>
 
-                                                    {#if minMet}
-                                                        <button
-                                                            onclick={() => {
-                                                                if (
-                                                                    isSelected
-                                                                ) {
-                                                                    deselectVoucher(
-                                                                        voucher,
-                                                                    );
-                                                                } else {
-                                                                    selectVoucher(
-                                                                        voucher,
-                                                                    );
-                                                                }
-                                                            }}
-                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
-                                                            style="background: {isSelected
-                                                                ? '#cbd5e1'
-                                                                : primary}; color: {isSelected
-                                                                ? '#475569'
-                                                                : 'white'};"
+                                                    <div
+                                                        class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-1.5 shrink-0"
                                                         >
-                                                            {isSelected
-                                                                ? 'Lepas'
-                                                                : 'Pakai'}
-                                                        </button>
-                                                    {:else}
-                                                        <span
-                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
-                                                        >
-                                                            Kurang {fmt(
-                                                                Number(
+                                                            <span
+                                                                class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                            >
+                                                                Min. {fmt(
                                                                     voucher.min_purchase,
-                                                                ) - subtotal,
-                                                            )}
-                                                        </span>
-                                                    {/if}
+                                                                )}
+                                                            </span>
+                                                            {#if voucher.settings?.terms}
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        toggleTerms(
+                                                                            voucher.id,
+                                                                        )}
+                                                                    class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                                >
+                                                                    S&K <i
+                                                                        class="ti {expandedTerms[
+                                                                            voucher
+                                                                                .id
+                                                                        ]
+                                                                            ? 'ti-chevron-up'
+                                                                            : 'ti-chevron-down'} text-[8px]"
+                                                                    ></i>
+                                                                </button>
+                                                            {/if}
+                                                        </div>
+
+                                                        {#if minMet}
+                                                            <button
+                                                                onclick={() => {
+                                                                    if (
+                                                                        isSelected
+                                                                    ) {
+                                                                        deselectVoucher(
+                                                                            voucher,
+                                                                        );
+                                                                    } else {
+                                                                        selectVoucher(
+                                                                            voucher,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                                style="background: {isSelected
+                                                                    ? '#cbd5e1'
+                                                                    : primary}; color: {isSelected
+                                                                    ? '#475569'
+                                                                    : 'white'};"
+                                                            >
+                                                                {isSelected
+                                                                    ? 'Lepas'
+                                                                    : 'Pakai'}
+                                                            </button>
+                                                        {:else}
+                                                            <span
+                                                                class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                            >
+                                                                Kurang {fmt(
+                                                                    Number(
+                                                                        voucher.min_purchase,
+                                                                    ) -
+                                                                        subtotal,
+                                                                )}
+                                                            </span>
+                                                        {/if}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            {#if expandedTerms[voucher.id] && voucher.settings?.terms}
+                                                <div
+                                                    class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed"
+                                                >
+                                                    {voucher.settings.terms}
+                                                </div>
+                                            {/if}
                                         </div>
-                                        {#if expandedTerms[voucher.id] && voucher.settings?.terms}
-                                            <div class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed">
-                                                {voucher.settings.terms}
-                                            </div>
-                                        {/if}
-                                    </div>
                                     {/each}
                                 </div>
                             </div>
@@ -2265,151 +2467,170 @@
                                             class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
                                             class:opacity-60={!minMet}
                                         >
-                                            <div class="relative flex items-stretch">
-                                            <!-- Left side color ribbon -->
                                             <div
-                                                class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
-                                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                                    primary,
-                                                    0.85,
-                                                )});"
+                                                class="relative flex items-stretch"
                                             >
-                                                <i
-                                                    class="ti ti-ticket text-base mb-0.5 shrink-0"
-                                                ></i>
-                                                <span
-                                                    class="text-[7.5px] font-black uppercase tracking-wider leading-none"
-                                                >
-                                                    Diskon
-                                                </span>
-                                            </div>
-
-                                            <!-- Dashed Ticket Divider line -->
-                                            <div
-                                                class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
-                                            ></div>
-                                            <!-- Ticket Top & Bottom cutouts -->
-                                            <div
-                                                class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-                                            <div
-                                                class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                            ></div>
-
-                                            <!-- Right side content -->
-                                            <div
-                                                class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
-                                            >
-                                                <div class="min-w-0">
-                                                    <div
-                                                        class="flex items-center gap-1 mb-0.5 flex-wrap"
-                                                    >
-                                                        <span
-                                                            class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
-                                                            style="color: {primary}; border-color: {withOpacity(
-                                                                primary,
-                                                                0.35,
-                                                            )}; background: {withOpacity(
-                                                                primary,
-                                                                0.06,
-                                                            )};"
-                                                        >
-                                                            {voucher.code}
-                                                        </span>
-                                                        {#if isSelected}
-                                                            <span
-                                                                class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
-                                                                style="background-color: {primary};"
-                                                                >TERPASANG</span
-                                                            >
-                                                        {/if}
-                                                    </div>
-                                                    <h4
-                                                        class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
-                                                    >
-                                                        {voucher.name}
-                                                    </h4>
-                                                    <p
-                                                        class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
-                                                    >
-                                                        Potongan {#if voucher.discount_type === 'percentage'}{Number(voucher.discount_value)}%{:else}{fmt(
-                                                                voucher.discount_value,
-                                                            )}{/if}
-                                                        {#if voucher.max_discount}s/d
-                                                            {fmt(
-                                                                voucher.max_discount,
-                                                            )}{/if}
-                                                    </p>
-                                                </div>
-
+                                                <!-- Left side color ribbon -->
                                                 <div
-                                                    class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
+                                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                                        primary,
+                                                        0.85,
+                                                    )});"
                                                 >
-                                                    <div class="flex items-center gap-1.5 shrink-0">
-                                                        <span
-                                                            class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                    <i
+                                                        class="ti ti-ticket text-base mb-0.5 shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[7.5px] font-black uppercase tracking-wider leading-none"
+                                                    >
+                                                        Diskon
+                                                    </span>
+                                                </div>
+
+                                                <!-- Dashed Ticket Divider line -->
+                                                <div
+                                                    class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
+                                                ></div>
+                                                <!-- Ticket Top & Bottom cutouts -->
+                                                <div
+                                                    class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+                                                <div
+                                                    class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
+                                                ></div>
+
+                                                <!-- Right side content -->
+                                                <div
+                                                    class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
+                                                >
+                                                    <div class="min-w-0">
+                                                        <div
+                                                            class="flex items-center gap-1 mb-0.5 flex-wrap"
                                                         >
-                                                            Min. {fmt(
-                                                                voucher.min_purchase,
-                                                            )}
-                                                        </span>
-                                                        {#if voucher.settings?.terms}
-                                                            <button
-                                                                type="button"
-                                                                onclick={() => toggleTerms(voucher.id)}
-                                                                class="text-[8px] text-slate-450 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                            <span
+                                                                class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
+                                                                style="color: {primary}; border-color: {withOpacity(
+                                                                    primary,
+                                                                    0.35,
+                                                                )}; background: {withOpacity(
+                                                                    primary,
+                                                                    0.06,
+                                                                )};"
                                                             >
-                                                                S&K <i class="ti {expandedTerms[voucher.id] ? 'ti-chevron-up' : 'ti-chevron-down'} text-[8px]"></i>
-                                                            </button>
-                                                        {/if}
+                                                                {voucher.code}
+                                                            </span>
+                                                            {#if isSelected}
+                                                                <span
+                                                                    class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
+                                                                    style="background-color: {primary};"
+                                                                    >TERPASANG</span
+                                                                >
+                                                            {/if}
+                                                        </div>
+                                                        <h4
+                                                            class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
+                                                        >
+                                                            {voucher.name}
+                                                        </h4>
+                                                        <p
+                                                            class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
+                                                        >
+                                                            Potongan {#if voucher.discount_type === 'percentage'}{Number(
+                                                                    voucher.discount_value,
+                                                                )}%{:else}{fmt(
+                                                                    voucher.discount_value,
+                                                                )}{/if}
+                                                            {#if voucher.max_discount}s/d
+                                                                {fmt(
+                                                                    voucher.max_discount,
+                                                                )}{/if}
+                                                        </p>
                                                     </div>
 
-                                                    {#if minMet}
-                                                        <button
-                                                            onclick={() => {
-                                                                if (
-                                                                    isSelected
-                                                                ) {
-                                                                    deselectVoucher(
-                                                                        voucher,
-                                                                    );
-                                                                } else {
-                                                                    selectVoucher(
-                                                                        voucher,
-                                                                    );
-                                                                }
-                                                            }}
-                                                            class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
-                                                            style="background: {isSelected
-                                                                ? '#cbd5e1'
-                                                                : primary}; color: {isSelected
-                                                                ? '#475569'
-                                                                : 'white'};"
+                                                    <div
+                                                        class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-1.5 shrink-0"
                                                         >
-                                                            {isSelected
-                                                                ? 'Lepas'
-                                                                : 'Pakai'}
-                                                        </button>
-                                                    {:else}
-                                                        <span
-                                                            class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
-                                                        >
-                                                            Kurang {fmt(
-                                                                Number(
+                                                            <span
+                                                                class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none"
+                                                            >
+                                                                Min. {fmt(
                                                                     voucher.min_purchase,
-                                                                ) - subtotal,
-                                                            )}
-                                                        </span>
-                                                    {/if}
+                                                                )}
+                                                            </span>
+                                                            {#if voucher.settings?.terms}
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        toggleTerms(
+                                                                            voucher.id,
+                                                                        )}
+                                                                    class="text-[8px] text-slate-450 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
+                                                                >
+                                                                    S&K <i
+                                                                        class="ti {expandedTerms[
+                                                                            voucher
+                                                                                .id
+                                                                        ]
+                                                                            ? 'ti-chevron-up'
+                                                                            : 'ti-chevron-down'} text-[8px]"
+                                                                    ></i>
+                                                                </button>
+                                                            {/if}
+                                                        </div>
+
+                                                        {#if minMet}
+                                                            <button
+                                                                onclick={() => {
+                                                                    if (
+                                                                        isSelected
+                                                                    ) {
+                                                                        deselectVoucher(
+                                                                            voucher,
+                                                                        );
+                                                                    } else {
+                                                                        selectVoucher(
+                                                                            voucher,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
+                                                                style="background: {isSelected
+                                                                    ? '#cbd5e1'
+                                                                    : primary}; color: {isSelected
+                                                                    ? '#475569'
+                                                                    : 'white'};"
+                                                            >
+                                                                {isSelected
+                                                                    ? 'Lepas'
+                                                                    : 'Pakai'}
+                                                            </button>
+                                                        {:else}
+                                                            <span
+                                                                class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
+                                                            >
+                                                                Kurang {fmt(
+                                                                    Number(
+                                                                        voucher.min_purchase,
+                                                                    ) -
+                                                                        subtotal,
+                                                                )}
+                                                            </span>
+                                                        {/if}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            {#if expandedTerms[voucher.id] && voucher.settings?.terms}
+                                                <div
+                                                    class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed"
+                                                >
+                                                    {voucher.settings.terms}
+                                                </div>
+                                            {/if}
                                         </div>
-                                        {#if expandedTerms[voucher.id] && voucher.settings?.terms}
-                                            <div class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed">
-                                                {voucher.settings.terms}
-                                            </div>
-                                        {/if}
-                                    </div>
                                     {/each}
                                 </div>
                             </div>

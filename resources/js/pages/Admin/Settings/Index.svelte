@@ -59,10 +59,13 @@
         bank_account: settings.bank_account || '',
         bank_holder: settings.bank_holder || '',
         shipping_rate: settings.shipping_rate || '',
-        
-        rajaongkir_url: settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
-        rajaongkir_key: settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
-        storefront_cart_button_style: settings.storefront_cart_button_style || 'button',
+
+        rajaongkir_url:
+            settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
+        rajaongkir_key:
+            settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
+        storefront_cart_button_style:
+            settings.storefront_cart_button_style || 'button',
         enable_cod:
             settings.enable_cod === 'true' ||
             settings.enable_cod === true ||
@@ -78,7 +81,9 @@
         coin_earning_rate_coins: settings.coin_earning_rate_coins || 1,
         coin_earning_tiers: Array.isArray(settings.coin_earning_tiers)
             ? settings.coin_earning_tiers
-            : (settings.coin_earning_tiers ? JSON.parse(settings.coin_earning_tiers) : []),
+            : settings.coin_earning_tiers
+              ? JSON.parse(settings.coin_earning_tiers)
+              : [],
         coin_min_purchase_redeem: settings.coin_min_purchase_redeem || 0,
         coin_max_redeem_per_txn: settings.coin_max_redeem_per_txn || 50000,
         coin_max_redeem_percentage: settings.coin_max_redeem_percentage || 100,
@@ -261,12 +266,14 @@
     function addEarningTier() {
         form.coin_earning_tiers = [
             ...form.coin_earning_tiers,
-            { min_purchase: 50000, earn_coins: 50 }
+            { min_purchase: 50000, earn_coins: 50 },
         ];
     }
 
     function removeEarningTier(index: number) {
-        form.coin_earning_tiers = form.coin_earning_tiers.filter((_, i) => i !== index);
+        form.coin_earning_tiers = form.coin_earning_tiers.filter(
+            (_, i) => i !== index,
+        );
     }
 
     function submit() {
@@ -621,12 +628,13 @@
                                 <h3
                                     class="font-outfit font-black text-slate-800 text-base leading-none"
                                 >
-                                    Sistem Loyalty Koin Toko
+                                    Sistem Loyalty Poin Toko
                                 </h3>
                                 <p
                                     class="text-xs text-slate-400 font-medium mt-1"
                                 >
-                                    Atur konversi koin belanja, batas penukaran, dan metode perolehan koin kustom.
+                                    Atur konversi Poin belanja, batas penukaran,
+                                    dan metode perolehan Poin kustom.
                                 </p>
                             </div>
                         </div>
@@ -635,17 +643,20 @@
                             <!-- Toggle Active -->
                             <Toggle
                                 bind:checked={form.coins_enabled}
-                                label="Aktifkan Sistem Koin Toko"
+                                label="Aktifkan Sistem Poin Toko"
                                 icon="ti-coin"
                             />
 
                             {#if form.coins_enabled}
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2" transition:slide>
-                                    <!-- Conversion rate: 1 koin = X Rupiah -->
+                                <div
+                                    class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2"
+                                    transition:slide
+                                >
+                                    <!-- Conversion rate: 1 Poin = X Rupiah -->
                                     <InputCurrency
                                         id="input-coin-rate"
                                         bind:value={form.coin_conversion_rate}
-                                        label="Nilai Tukar Koin (1 Koin = Berapa Rupiah?)"
+                                        label="Nilai Tukar Poin (1 Poin = Berapa Rupiah?)"
                                         placeholder="1"
                                         required={true}
                                     />
@@ -653,8 +664,10 @@
                                     <!-- Min purchase to redeem coins -->
                                     <InputCurrency
                                         id="input-coin-min-redeem"
-                                        bind:value={form.coin_min_purchase_redeem}
-                                        label="Minimal Subtotal Pembelian untuk Menukar Koin"
+                                        bind:value={
+                                            form.coin_min_purchase_redeem
+                                        }
+                                        label="Minimal Subtotal Pembelian untuk Menukar Poin"
                                         placeholder="0"
                                         required={true}
                                     />
@@ -662,16 +675,21 @@
                                     <!-- Max redeem per transaction -->
                                     <InputCurrency
                                         id="input-coin-max-redeem"
-                                        bind:value={form.coin_max_redeem_per_txn}
-                                        label="Maksimal Koin yang Dapat Ditukar per Transaksi"
+                                        bind:value={
+                                            form.coin_max_redeem_per_txn
+                                        }
+                                        label="Maksimal Poin yang Dapat Ditukar per Transaksi"
                                         placeholder="50000"
                                         required={true}
                                     />
 
                                     <!-- Max percentage of transaction that can be paid using coins -->
                                     <div class="space-y-1.5 font-sans">
-                                        <label for="input-coin-max-percentage" class="block text-xs font-bold text-slate-600">
-                                            Maksimal Persentase Diskon Koin (%)
+                                        <label
+                                            for="input-coin-max-percentage"
+                                            class="block text-xs font-bold text-slate-600"
+                                        >
+                                            Maksimal Persentase Diskon Poin (%)
                                         </label>
                                         <div class="relative">
                                             <input
@@ -679,12 +697,16 @@
                                                 type="number"
                                                 min="1"
                                                 max="100"
-                                                bind:value={form.coin_max_redeem_percentage}
+                                                bind:value={
+                                                    form.coin_max_redeem_percentage
+                                                }
                                                 class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition font-sans"
                                                 placeholder="Contoh: 50"
                                                 required
                                             />
-                                            <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400 font-bold font-sans">
+                                            <div
+                                                class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400 font-bold font-sans"
+                                            >
                                                 %
                                             </div>
                                         </div>
@@ -695,130 +717,239 @@
 
                                 <!-- EARNING METHOD -->
                                 <div class="space-y-4" transition:slide>
-                                    <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
-                                        Metode Perolehan Koin (Earning)
+                                    <span
+                                        class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                    >
+                                        Metode Perolehan Poin (Earning)
                                     </span>
-                                    
+
                                     <div class="grid grid-cols-2 gap-4">
                                         <button
                                             type="button"
-                                            onclick={() => form.coin_earning_method = 'proportional'}
+                                            onclick={() =>
+                                                (form.coin_earning_method =
+                                                    'proportional')}
                                             class="flex flex-col items-start p-4 rounded-2xl border text-left transition duration-200 hover:bg-slate-50 cursor-pointer
-                                                   {form.coin_earning_method === 'proportional'
-                                                       ? 'border-blue-500 bg-blue-50/20'
-                                                       : 'border-slate-200 bg-white'}"
+                                                   {form.coin_earning_method ===
+                                            'proportional'
+                                                ? 'border-blue-500 bg-blue-50/20'
+                                                : 'border-slate-200 bg-white'}"
                                         >
-                                            <span class="text-xs font-bold text-slate-800">Kelipatan Belanja (Akumulatif)</span>
-                                            <span class="text-[10px] text-slate-400 mt-1">Dapatkan koin berdasarkan kelipatan nilai total belanja.</span>
+                                            <span
+                                                class="text-xs font-bold text-slate-800"
+                                                >Kelipatan Belanja (Akumulatif)</span
+                                            >
+                                            <span
+                                                class="text-[10px] text-slate-400 mt-1"
+                                                >Dapatkan Poin berdasarkan
+                                                kelipatan nilai total belanja.</span
+                                            >
                                         </button>
 
                                         <button
                                             type="button"
-                                            onclick={() => form.coin_earning_method = 'tiered'}
+                                            onclick={() =>
+                                                (form.coin_earning_method =
+                                                    'tiered')}
                                             class="flex flex-col items-start p-4 rounded-2xl border text-left transition duration-200 hover:bg-slate-50 cursor-pointer
-                                                   {form.coin_earning_method === 'tiered'
-                                                       ? 'border-blue-500 bg-blue-50/20'
-                                                       : 'border-slate-200 bg-white'}"
+                                                   {form.coin_earning_method ===
+                                            'tiered'
+                                                ? 'border-blue-500 bg-blue-50/20'
+                                                : 'border-slate-200 bg-white'}"
                                         >
-                                            <span class="text-xs font-bold text-slate-800">Tingkat Belanja (Custom Tiers)</span>
-                                            <span class="text-[10px] text-slate-400 mt-1">Dapatkan jumlah koin tetap berdasarkan tingkat nominal belanja tertentu.</span>
+                                            <span
+                                                class="text-xs font-bold text-slate-800"
+                                                >Tingkat Belanja (Custom Tiers)</span
+                                            >
+                                            <span
+                                                class="text-[10px] text-slate-400 mt-1"
+                                                >Dapatkan jumlah Poin tetap
+                                                berdasarkan tingkat nominal
+                                                belanja tertentu.</span
+                                            >
                                         </button>
                                     </div>
 
                                     {#if form.coin_earning_method === 'proportional'}
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-2xl border border-slate-100/60 mt-3" transition:slide>
+                                        <div
+                                            class="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-2xl border border-slate-100/60 mt-3"
+                                            transition:slide
+                                        >
                                             <!-- Earning Rate: X Rupiah spent earns Y coins -->
                                             <InputCurrency
                                                 id="input-coin-earn-rupiah"
-                                                bind:value={form.coin_earning_rate_rupiah}
+                                                bind:value={
+                                                    form.coin_earning_rate_rupiah
+                                                }
                                                 label="Setiap Kelipatan Pembelian Sebesar"
                                                 placeholder="1000"
                                                 required={true}
                                             />
 
                                             <div class="space-y-1.5 font-sans">
-                                                <label for="input-coin-earn-coins" class="block text-xs font-bold text-slate-600">
-                                                    Mendapatkan Koin Sejumlah
+                                                <label
+                                                    for="input-coin-earn-coins"
+                                                    class="block text-xs font-bold text-slate-600"
+                                                >
+                                                    Mendapatkan Poin Sejumlah
                                                 </label>
                                                 <input
                                                     id="input-coin-earn-coins"
                                                     type="number"
                                                     min="1"
-                                                    bind:value={form.coin_earning_rate_coins}
+                                                    bind:value={
+                                                        form.coin_earning_rate_coins
+                                                    }
                                                     class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition font-sans"
                                                     placeholder="1"
                                                     required
                                                 />
                                             </div>
-                                            <p class="col-span-full text-[10px] text-slate-400 font-bold leading-normal italic font-sans">
-                                                * Contoh: Jika diset Rp 10.000 mendapatkan 1 Koin, pembeli dengan transaksi Rp 50.000 akan mendapatkan 5 Koin secara akumulatif.
+                                            <p
+                                                class="col-span-full text-[10px] text-slate-400 font-bold leading-normal italic font-sans"
+                                            >
+                                                * Contoh: Jika diset Rp 10.000
+                                                mendapatkan 1 Poin, pembeli
+                                                dengan transaksi Rp 50.000 akan
+                                                mendapatkan 5 Poin secara
+                                                akumulatif.
                                             </p>
                                         </div>
                                     {:else if form.coin_earning_method === 'tiered'}
-                                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100/60 space-y-4 mt-3" transition:slide>
-                                            <div class="flex justify-between items-center font-sans">
-                                                <span class="text-xs font-bold text-slate-700">Aturan Tingkat Earning Koin</span>
+                                        <div
+                                            class="bg-slate-50 p-5 rounded-2xl border border-slate-100/60 space-y-4 mt-3"
+                                            transition:slide
+                                        >
+                                            <div
+                                                class="flex justify-between items-center font-sans"
+                                            >
+                                                <span
+                                                    class="text-xs font-bold text-slate-700"
+                                                    >Aturan Tingkat Earning Poin</span
+                                                >
                                                 <button
                                                     type="button"
                                                     onclick={addEarningTier}
                                                     class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-xl flex items-center gap-1 transition shadow-sm"
                                                 >
-                                                    <i class="ti ti-plus"></i> Tambah Tingkatan
+                                                    <i class="ti ti-plus"></i> Tambah
+                                                    Tingkatan
                                                 </button>
                                             </div>
 
                                             {#if form.coin_earning_tiers.length === 0}
-                                                <div class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans">
-                                                    <i class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"></i>
-                                                    <span class="text-[11px] font-bold text-slate-500">Belum Ada Aturan Tingkatan</span>
-                                                    <p class="text-[9px] text-slate-400 mt-0.5 leading-none">Klik "+ Tambah Tingkatan" untuk membuat aturan baru.</p>
+                                                <div
+                                                    class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans"
+                                                >
+                                                    <i
+                                                        class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[11px] font-bold text-slate-500"
+                                                        >Belum Ada Aturan
+                                                        Tingkatan</span
+                                                    >
+                                                    <p
+                                                        class="text-[9px] text-slate-400 mt-0.5 leading-none"
+                                                    >
+                                                        Klik "+ Tambah
+                                                        Tingkatan" untuk membuat
+                                                        aturan baru.
+                                                    </p>
                                                 </div>
                                             {:else}
-                                                <div class="space-y-3.5 font-sans">
+                                                <div
+                                                    class="space-y-3.5 font-sans"
+                                                >
                                                     {#each form.coin_earning_tiers as tier, index}
-                                                        <div class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm" transition:slide>
-                                                            <div class="flex-grow grid grid-cols-2 gap-3.5">
-                                                                <div class="space-y-1">
-                                                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Min. Belanja (Subtotal)</span>
-                                                                    <div class="relative">
-                                                                        <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
+                                                        <div
+                                                            class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm"
+                                                            transition:slide
+                                                        >
+                                                            <div
+                                                                class="flex-grow grid grid-cols-2 gap-3.5"
+                                                            >
+                                                                <div
+                                                                    class="space-y-1"
+                                                                >
+                                                                    <span
+                                                                        class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
+                                                                        >Min.
+                                                                        Belanja
+                                                                        (Subtotal)</span
+                                                                    >
+                                                                    <div
+                                                                        class="relative"
+                                                                    >
+                                                                        <span
+                                                                            class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold"
+                                                                            >Rp</span
+                                                                        >
                                                                         <input
                                                                             type="number"
                                                                             min="0"
-                                                                            bind:value={tier.min_purchase}
+                                                                            bind:value={
+                                                                                tier.min_purchase
+                                                                            }
                                                                             class="w-full pl-9 pr-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
                                                                             placeholder="50000"
                                                                             required
                                                                         />
                                                                     </div>
                                                                 </div>
-                                                                <div class="space-y-1">
-                                                                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Koin yang Didapat</span>
-                                                                    <div class="relative font-sans">
+                                                                <div
+                                                                    class="space-y-1"
+                                                                >
+                                                                    <span
+                                                                        class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
+                                                                        >Poin
+                                                                        yang
+                                                                        Didapat</span
+                                                                    >
+                                                                    <div
+                                                                        class="relative font-sans"
+                                                                    >
                                                                         <input
                                                                             type="number"
                                                                             min="1"
-                                                                            bind:value={tier.earn_coins}
+                                                                            bind:value={
+                                                                                tier.earn_coins
+                                                                            }
                                                                             class="w-full px-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
                                                                             placeholder="50"
                                                                             required
                                                                         />
-                                                                        <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans">Koin</span>
+                                                                        <span
+                                                                            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans"
+                                                                            >Poin</span
+                                                                        >
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <button
                                                                 type="button"
-                                                                onclick={() => removeEarningTier(index)}
+                                                                onclick={() =>
+                                                                    removeEarningTier(
+                                                                        index,
+                                                                    )}
                                                                 class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition self-end cursor-pointer"
                                                                 title="Hapus Aturan"
                                                             >
-                                                                <i class="ti ti-trash text-sm"></i>
+                                                                <i
+                                                                    class="ti ti-trash text-sm"
+                                                                ></i>
                                                             </button>
                                                         </div>
                                                     {/each}
-                                                    <p class="text-[10px] text-slate-400 font-bold leading-normal italic font-sans">
-                                                        * Sistem akan memilih tingkatan dengan syarat nominal pembelian tertinggi yang berhasil dipenuhi oleh belanjaan pelanggan.
+                                                    <p
+                                                        class="text-[10px] text-slate-400 font-bold leading-normal italic font-sans"
+                                                    >
+                                                        * Sistem akan memilih
+                                                        tingkatan dengan syarat
+                                                        nominal pembelian
+                                                        tertinggi yang berhasil
+                                                        dipenuhi oleh belanjaan
+                                                        pelanggan.
                                                     </p>
                                                 </div>
                                             {/if}
@@ -833,8 +964,8 @@
                                     <Textarea
                                         id="input-coin-tnc"
                                         bind:value={form.coin_terms_conditions}
-                                        label="Syarat & Ketentuan Sistem Koin (S&K)"
-                                        placeholder="Tuliskan aturan, ketentuan kedaluwarsa, dan S&K penggunaan koin untuk dibaca oleh pelanggan..."
+                                        label="Syarat & Ketentuan Sistem Poin (S&K)"
+                                        placeholder="Tuliskan aturan, ketentuan kedaluwarsa, dan S&K penggunaan Poin untuk dibaca oleh pelanggan..."
                                         rows={3}
                                     />
                                 </div>
@@ -952,7 +1083,6 @@
                         </div>
                     </div>
 
-
                     <div
                         class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
                     >
@@ -1042,7 +1172,9 @@
                             </div> -->
 
                             <div class="space-y-3.5">
-                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                <span
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                >
                                     Konfigurasi Rajaongkir
                                 </span>
                                 <Input
@@ -1064,60 +1196,97 @@
                             <div class="h-px bg-slate-100"></div>
 
                             <div class="space-y-3">
-                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                <span
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                >
                                     Desain Tombol Keranjang (Storefront)
                                 </span>
                                 <p class="text-[11px] text-slate-400 font-bold">
-                                    Pilih tampilan tombol "+ Keranjang" pada daftar produk di halaman depan toko Anda.
+                                    Pilih tampilan tombol "+ Keranjang" pada
+                                    daftar produk di halaman depan toko Anda.
                                 </p>
                                 <div class="grid grid-cols-3 gap-2 mt-2">
                                     <button
                                         type="button"
-                                        onclick={() => form.storefront_cart_button_style = 'button'}
+                                        onclick={() =>
+                                            (form.storefront_cart_button_style =
+                                                'button')}
                                         class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
-                                               {form.storefront_cart_button_style === 'button'
-                                                   ? 'border-blue-500 bg-blue-50/20'
-                                                   : 'border-slate-200 bg-white'}"
+                                               {form.storefront_cart_button_style ===
+                                        'button'
+                                            ? 'border-blue-500 bg-blue-50/20'
+                                            : 'border-slate-200 bg-white'}"
                                     >
-                                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2">
-                                            <i class="ti ti-shopping-cart text-lg"></i>
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-2"
+                                        >
+                                            <i
+                                                class="ti ti-shopping-cart text-lg"
+                                            ></i>
                                         </div>
-                                        <span class="text-[11px] font-bold text-slate-700">Tombol Bawah</span>
-                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">"+ KERANJANG"</span>
+                                        <span
+                                            class="text-[11px] font-bold text-slate-700"
+                                            >Tombol Bawah</span
+                                        >
+                                        <span
+                                            class="text-[9px] text-slate-400 mt-0.5 leading-none"
+                                            >"+ KERANJANG"</span
+                                        >
                                     </button>
 
                                     <button
                                         type="button"
-                                        onclick={() => form.storefront_cart_button_style = 'icon'}
+                                        onclick={() =>
+                                            (form.storefront_cart_button_style =
+                                                'icon')}
                                         class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
-                                               {form.storefront_cart_button_style === 'icon'
-                                                   ? 'border-blue-500 bg-blue-50/20'
-                                                   : 'border-slate-200 bg-white'}"
+                                               {form.storefront_cart_button_style ===
+                                        'icon'
+                                            ? 'border-blue-500 bg-blue-50/20'
+                                            : 'border-slate-200 bg-white'}"
                                     >
-                                        <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2">
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center mb-2"
+                                        >
                                             <i class="ti ti-plus text-lg"></i>
                                         </div>
-                                        <span class="text-[11px] font-bold text-slate-700">Ikon Pojok</span>
-                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">"+" di Foto</span>
+                                        <span
+                                            class="text-[11px] font-bold text-slate-700"
+                                            >Ikon Pojok</span
+                                        >
+                                        <span
+                                            class="text-[9px] text-slate-400 mt-0.5 leading-none"
+                                            >"+" di Foto</span
+                                        >
                                     </button>
 
                                     <button
                                         type="button"
-                                        onclick={() => form.storefront_cart_button_style = 'none'}
+                                        onclick={() =>
+                                            (form.storefront_cart_button_style =
+                                                'none')}
                                         class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
-                                               {form.storefront_cart_button_style === 'none'
-                                                   ? 'border-blue-500 bg-blue-50/20'
-                                                   : 'border-slate-200 bg-white'}"
+                                               {form.storefront_cart_button_style ===
+                                        'none'
+                                            ? 'border-blue-500 bg-blue-50/20'
+                                            : 'border-slate-200 bg-white'}"
                                     >
-                                        <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2">
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2"
+                                        >
                                             <i class="ti ti-eye text-lg"></i>
                                         </div>
-                                        <span class="text-[11px] font-bold text-slate-700">Tanpa Tombol</span>
-                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">Hanya Detail</span>
+                                        <span
+                                            class="text-[11px] font-bold text-slate-700"
+                                            >Tanpa Tombol</span
+                                        >
+                                        <span
+                                            class="text-[9px] text-slate-400 mt-0.5 leading-none"
+                                            >Hanya Detail</span
+                                        >
                                     </button>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 

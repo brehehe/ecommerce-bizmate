@@ -2,10 +2,20 @@
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { page, router } from '@inertiajs/svelte';
 
-    let { transactions, statusLabels = {}, filters = {}, storeName = '', storeLogo = '' } = $props();
+    let {
+        transactions,
+        statusLabels = {},
+        filters = {},
+        storeName = '',
+        storeLogo = '',
+    } = $props();
 
-    const primary = $derived((page.props as any).theme?.primary_color ?? '#0c4cb4');
-    const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
+    const primary = $derived(
+        (page.props as any).theme?.primary_color ?? '#0c4cb4',
+    );
+    const secondary = $derived(
+        (page.props as any).theme?.secondary_color ?? '#fa7315',
+    );
 
     let filterStatus = $state((filters as any).status ?? '');
     let filterDateFrom = $state((filters as any).date_from ?? '');
@@ -32,7 +42,9 @@
         toastType = type;
         toastVisible = true;
         if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => { toastVisible = false; }, 3500);
+        toastTimer = setTimeout(() => {
+            toastVisible = false;
+        }, 3500);
     }
 
     // Bulk status update state and method
@@ -42,7 +54,14 @@
 
     // Bulk tracking (resi massal) state
     let showBulkResiModal = $state(false);
-    let bulkTrackingData = $state<{ id: number; transaction_number: string; tracking_number: string; courier_name: string }[]>([]);
+    let bulkTrackingData = $state<
+        {
+            id: number;
+            transaction_number: string;
+            tracking_number: string;
+            courier_name: string;
+        }[]
+    >([]);
     let submittingBulkResi = $state(false);
 
     function submitBulkStatus() {
@@ -53,12 +72,14 @@
 
         if (bulkStatusValue === 'dikirim') {
             // Open Bulk Resi Modal
-            const selectedTrxs = transactions.data.filter((t: any) => selectedIds.includes(t.id));
+            const selectedTrxs = transactions.data.filter((t: any) =>
+                selectedIds.includes(t.id),
+            );
             bulkTrackingData = selectedTrxs.map((t: any) => ({
                 id: t.id,
                 transaction_number: t.transaction_number,
                 tracking_number: t.tracking_number ?? '',
-                courier_name: t.courier_name ?? ''
+                courier_name: t.courier_name ?? '',
             }));
             showBulkResiModal = true;
             return;
@@ -75,30 +96,42 @@
             {
                 ids: selectedIds,
                 status: bulkStatusValue,
-                cancel_reason: bulkStatusValue === 'batal' ? bulkCancelReason.trim() : null,
+                cancel_reason:
+                    bulkStatusValue === 'batal'
+                        ? bulkCancelReason.trim()
+                        : null,
             },
             {
                 onSuccess: () => {
-                    showToast(`${selectedIds.length} transaksi berhasil diperbarui.`, 'success');
+                    showToast(
+                        `${selectedIds.length} transaksi berhasil diperbarui.`,
+                        'success',
+                    );
                     selectedIds = [];
                     bulkStatusValue = '';
                     bulkCancelReason = '';
                 },
                 onError: (err: any) => {
                     const first = Object.values(err)[0] as string;
-                    showToast(first ?? 'Gagal memperbarui status transaksi.', 'error');
+                    showToast(
+                        first ?? 'Gagal memperbarui status transaksi.',
+                        'error',
+                    );
                 },
                 onFinish: () => {
                     submittingBulkStatus = false;
                 },
-            }
+            },
         );
     }
 
     function submitBulkTracking() {
-        const missing = bulkTrackingData.some(d => !d.tracking_number.trim());
+        const missing = bulkTrackingData.some((d) => !d.tracking_number.trim());
         if (missing) {
-            showToast('Nomor resi untuk seluruh transaksi harus diisi.', 'error');
+            showToast(
+                'Nomor resi untuk seluruh transaksi harus diisi.',
+                'error',
+            );
             return;
         }
 
@@ -106,15 +139,18 @@
         router.post(
             '/admin/transactions/bulk-tracking',
             {
-                tracking_data: bulkTrackingData.map(d => ({
+                tracking_data: bulkTrackingData.map((d) => ({
                     id: d.id,
                     tracking_number: d.tracking_number.trim(),
-                    courier_name: d.courier_name.trim() || null
-                }))
+                    courier_name: d.courier_name.trim() || null,
+                })),
             },
             {
                 onSuccess: () => {
-                    showToast('Nomor resi massal berhasil disimpan.', 'success');
+                    showToast(
+                        'Nomor resi massal berhasil disimpan.',
+                        'success',
+                    );
                     selectedIds = [];
                     bulkStatusValue = '';
                     showBulkResiModal = false;
@@ -122,22 +158,29 @@
                 },
                 onError: (err: any) => {
                     const first = Object.values(err)[0] as string;
-                    showToast(first ?? 'Gagal menyimpan nomor resi massal.', 'error');
+                    showToast(
+                        first ?? 'Gagal menyimpan nomor resi massal.',
+                        'error',
+                    );
                 },
                 onFinish: () => {
                     submittingBulkResi = false;
-                }
-            }
+                },
+            },
         );
     }
 
     function applyFilters() {
-        router.get('/admin/transactions', {
-            status: filterStatus || undefined,
-            date_from: filterDateFrom || undefined,
-            date_to: filterDateTo || undefined,
-            search: filterSearch || undefined,
-        }, { preserveScroll: true });
+        router.get(
+            '/admin/transactions',
+            {
+                status: filterStatus || undefined,
+                date_from: filterDateFrom || undefined,
+                date_to: filterDateTo || undefined,
+                search: filterSearch || undefined,
+            },
+            { preserveScroll: true },
+        );
     }
 
     function resetFilters() {
@@ -203,7 +246,7 @@
         const selectableIds = transactions.data
             .filter((t: any) => t.status !== 'selesai' && t.status !== 'batal')
             .map((t: any) => t.id);
-            
+
         if (selectedIds.length === selectableIds.length) {
             selectedIds = [];
         } else {
@@ -212,8 +255,13 @@
     }
 
     const allSelected = $derived(
-        transactions.data.filter((t: any) => t.status !== 'selesai' && t.status !== 'batal').length > 0 && 
-        selectedIds.length === transactions.data.filter((t: any) => t.status !== 'selesai' && t.status !== 'batal').length
+        transactions.data.filter(
+            (t: any) => t.status !== 'selesai' && t.status !== 'batal',
+        ).length > 0 &&
+            selectedIds.length ===
+                transactions.data.filter(
+                    (t: any) => t.status !== 'selesai' && t.status !== 'batal',
+                ).length,
     );
 
     function openResiModal(trx: any) {
@@ -245,7 +293,10 @@
             },
             {
                 onSuccess: () => {
-                    showToast('Nomor resi berhasil disimpan. Status diubah ke Dikirim.', 'success');
+                    showToast(
+                        'Nomor resi berhasil disimpan. Status diubah ke Dikirim.',
+                        'success',
+                    );
                     closeResiModal();
                 },
                 onError: (errors: any) => {
@@ -255,53 +306,67 @@
                 onFinish: () => {
                     submittingResi = false;
                 },
-            }
+            },
         );
     }
 </script>
-
-<style>
-    .scrollbar-none::-webkit-scrollbar {
-        display: none;
-    }
-    .scrollbar-none {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-</style>
 
 <AdminLayout>
     <div class="flex-grow p-4 sm:p-8 w-full max-w-full mx-auto">
         <div class="space-y-6">
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+            >
                 <div>
-                    <h3 class="font-outfit font-black text-2xl text-slate-800">Transaksi</h3>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Kelola semua pesanan customer</p>
+                    <h3 class="font-outfit font-black text-2xl text-slate-800">
+                        Transaksi
+                    </h3>
+                    <p
+                        class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                    >
+                        Kelola semua pesanan customer
+                    </p>
                 </div>
             </div>
 
             <!-- Status Tabs -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-2 overflow-x-auto scrollbar-none flex gap-2">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-2 overflow-x-auto scrollbar-none flex gap-2"
+            >
                 <button
                     onclick={() => setStatusFilter('')}
-                    class="px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 border {filterStatus === '' ? 'bg-slate-900 border-slate-900 text-white shadow-sm' : 'bg-transparent border-slate-100 hover:bg-slate-50 text-slate-600'}"
+                    class="px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 border {filterStatus ===
+                    ''
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                        : 'bg-transparent border-slate-100 hover:bg-slate-50 text-slate-600'}"
                 >
                     <i class="ti ti-layout-grid text-sm"></i>
                     Semua Transaksi
                 </button>
                 {#each Object.entries(statusLabels) as [key, label]}
-                    {@const color = statusColors[key] ?? { bg: '#f1f5f9', text: '#475569' }}
+                    {@const color = statusColors[key] ?? {
+                        bg: '#f1f5f9',
+                        text: '#475569',
+                    }}
                     {@const icon = statusIcons[key] ?? 'ti-circle'}
                     {@const isActive = filterStatus === key}
                     <button
                         onclick={() => setStatusFilter(key)}
                         class="px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 border"
-                        style={isActive 
-                            ? `background: ${color.bg}; border-color: ${color.bg}; color: ${color.text}; box-shadow: 0 4px 12px -2px ${color.text}20;` 
+                        style={isActive
+                            ? `background: ${color.bg}; border-color: ${color.bg}; color: ${color.text}; box-shadow: 0 4px 12px -2px ${color.text}20;`
                             : `background: transparent; border-color: #f1f5f9; color: #475569;`}
-                        onmouseenter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-                        onmouseleave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        onmouseenter={(e) => {
+                            if (!isActive)
+                                e.currentTarget.style.backgroundColor =
+                                    '#f8fafc';
+                        }}
+                        onmouseleave={(e) => {
+                            if (!isActive)
+                                e.currentTarget.style.backgroundColor =
+                                    'transparent';
+                        }}
                     >
                         <i class="ti {icon} text-sm"></i>
                         {label}
@@ -310,26 +375,37 @@
             </div>
 
             <!-- Filters -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
+            >
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <!-- Search -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Cari</label>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
+                            >Cari</label
+                        >
                         <div class="relative">
-                            <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <i
+                                class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                            ></i>
                             <input
                                 type="text"
                                 bind:value={filterSearch}
                                 placeholder="No. transaksi / nama customer..."
                                 class="w-full pl-8 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
-                                onkeydown={(e: any) => e.key === 'Enter' && applyFilters()}
+                                onkeydown={(e: any) =>
+                                    e.key === 'Enter' && applyFilters()}
                             />
                         </div>
                     </div>
 
                     <!-- Date From -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Dari Tanggal</label>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
+                            >Dari Tanggal</label
+                        >
                         <input
                             type="date"
                             bind:value={filterDateFrom}
@@ -339,7 +415,10 @@
 
                     <!-- Date To -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Sampai Tanggal</label>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
+                            >Sampai Tanggal</label
+                        >
                         <input
                             type="date"
                             bind:value={filterDateTo}
@@ -367,16 +446,24 @@
 
             <!-- Bulk action bar (when items selected) -->
             {#if selectedIds.length > 0}
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-md px-5 py-3 flex items-center gap-4 flex-wrap">
+                <div
+                    class="bg-white rounded-2xl border border-slate-200 shadow-md px-5 py-3 flex items-center gap-4 flex-wrap"
+                >
                     <span class="text-sm font-bold text-slate-700">
-                        <i class="ti ti-checkbox text-base mr-1" style="color:{primary}"></i>
+                        <i
+                            class="ti ti-checkbox text-base mr-1"
+                            style="color:{primary}"
+                        ></i>
                         {selectedIds.length} transaksi dipilih
                     </span>
-                    
+
                     <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
-                    
+
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Ubah Status Massal:</span>
+                        <span
+                            class="text-xs font-bold text-slate-500 uppercase tracking-wider"
+                            >Ubah Status Massal:</span
+                        >
                         <select
                             bind:value={bulkStatusValue}
                             class="px-3 py-1.5 text-xs font-bold border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white"
@@ -386,9 +473,9 @@
                                 <option value={key}>{label as string}</option>
                             {/each}
                         </select>
-                        
+
                         {#if bulkStatusValue === 'batal'}
-                            <input 
+                            <input
                                 type="text"
                                 bind:value={bulkCancelReason}
                                 placeholder="Alasan batal..."
@@ -407,7 +494,11 @@
                     </div>
 
                     <button
-                        onclick={() => { selectedIds = []; bulkStatusValue = ''; bulkCancelReason = ''; }}
+                        onclick={() => {
+                            selectedIds = [];
+                            bulkStatusValue = '';
+                            bulkCancelReason = '';
+                        }}
                         class="text-xs text-slate-400 hover:text-slate-600 font-bold ml-auto"
                     >
                         Batalkan Pilihan
@@ -416,17 +507,27 @@
             {/if}
 
             <!-- Table -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden"
+            >
                 {#if transactions.data.length === 0}
-                    <div class="flex flex-col items-center justify-center py-16 text-center">
-                        <i class="ti ti-shopping-cart-off text-5xl text-slate-200 mb-3"></i>
-                        <p class="text-slate-500 font-semibold">Tidak ada transaksi</p>
+                    <div
+                        class="flex flex-col items-center justify-center py-16 text-center"
+                    >
+                        <i
+                            class="ti ti-shopping-cart-off text-5xl text-slate-200 mb-3"
+                        ></i>
+                        <p class="text-slate-500 font-semibold">
+                            Tidak ada transaksi
+                        </p>
                     </div>
                 {:else}
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">
+                                <tr
+                                    class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                                >
                                     <th class="py-5 px-4">
                                         <input
                                             type="checkbox"
@@ -446,38 +547,74 @@
                                     <th class="py-5 px-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                            <tbody
+                                class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
+                            >
                                 {#each transactions.data as trx}
-                                    {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
+                                    {@const statusStyle = statusColors[
+                                        trx.status
+                                    ] ?? { bg: '#f1f5f9', text: '#475569' }}
                                     {@const paymentStatus = trx.payment?.status}
-                                    {@const isSelected = selectedIds.includes(trx.id)}
-                                    <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected ? 'bg-blue-50/40' : ''}">
+                                    {@const isSelected = selectedIds.includes(
+                                        trx.id,
+                                    )}
+                                    <tr
+                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected
+                                            ? 'bg-blue-50/40'
+                                            : ''}"
+                                    >
                                         <td class="py-5 px-4">
                                             {#if trx.status !== 'selesai' && trx.status !== 'batal'}
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
-                                                    onchange={() => toggleSelect(trx.id)}
+                                                    onchange={() =>
+                                                        toggleSelect(trx.id)}
                                                     class="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-600"
                                                 />
                                             {/if}
                                         </td>
                                         <td class="py-5 px-4">
-                                            <p class="font-bold text-slate-800 font-mono text-xs break-all">{trx.transaction_number}</p>
+                                            <p
+                                                class="font-bold text-slate-800 font-mono text-xs break-all"
+                                            >
+                                                {trx.transaction_number}
+                                            </p>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <p class="font-bold text-slate-800 whitespace-pre-wrap break-words">{trx.user?.name ?? '-'}</p>
-                                            <p class="text-[11px] text-slate-400 font-bold mt-0.5 break-all">{trx.user?.email ?? ''}</p>
+                                            <p
+                                                class="font-bold text-slate-800 whitespace-pre-wrap break-words"
+                                            >
+                                                {trx.user?.name ?? '-'}
+                                            </p>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-bold mt-0.5 break-all"
+                                            >
+                                                {trx.user?.email ?? ''}
+                                            </p>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span class="text-slate-600 font-bold">{(trx.items ?? []).length} item</span>
+                                            <span
+                                                class="text-slate-600 font-bold"
+                                                >{(trx.items ?? []).length} item</span
+                                            >
                                         </td>
                                         <td class="py-5 px-4">
                                             <div class="flex flex-col">
-                                                <span class="font-black text-slate-800">{fmt(trx.grand_total)}</span>
+                                                <span
+                                                    class="font-black text-slate-800"
+                                                    >{fmt(
+                                                        trx.grand_total,
+                                                    )}</span
+                                                >
                                                 {#if trx.coins_redeemed > 0}
-                                                    <span class="text-[9px] font-black text-amber-600 flex items-center gap-0.5 mt-0.5" title="Koin yang digunakan">
-                                                        <i class="ti ti-coins"></i> -{fmt(trx.coins_value)}
+                                                    <span
+                                                        class="text-[9px] font-black text-amber-600 flex items-center gap-0.5 mt-0.5"
+                                                        title="Poin yang digunakan"
+                                                    >
+                                                        <i class="ti ti-coins"
+                                                        ></i>
+                                                        -{fmt(trx.coins_value)}
                                                     </span>
                                                 {/if}
                                             </div>
@@ -487,20 +624,32 @@
                                                 class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider"
                                                 style="background:{statusStyle.bg}; color:{statusStyle.text}"
                                             >
-                                                {statusLabels[trx.status] ?? trx.status}
+                                                {statusLabels[trx.status] ??
+                                                    trx.status}
                                             </span>
                                         </td>
                                         <!-- Nomor Resi Column -->
                                         <td class="py-5 px-4">
                                             {#if trx.tracking_number}
-                                                <div class="flex flex-col gap-0.5">
-                                                    <span class="font-bold text-slate-800 text-xs font-mono">{trx.tracking_number}</span>
+                                                <div
+                                                    class="flex flex-col gap-0.5"
+                                                >
+                                                    <span
+                                                        class="font-bold text-slate-800 text-xs font-mono"
+                                                        >{trx.tracking_number}</span
+                                                    >
                                                     {#if trx.courier_name}
-                                                        <span class="text-[10px] text-slate-400 font-semibold">{trx.courier_name}</span>
+                                                        <span
+                                                            class="text-[10px] text-slate-400 font-semibold"
+                                                            >{trx.courier_name}</span
+                                                        >
                                                     {/if}
                                                     {#if trx.status !== 'selesai' && trx.status !== 'batal'}
                                                         <button
-                                                            onclick={() => openResiModal(trx)}
+                                                            onclick={() =>
+                                                                openResiModal(
+                                                                    trx,
+                                                                )}
                                                             class="text-[10px] font-bold mt-0.5 underline text-left"
                                                             style="color:{primary}"
                                                         >
@@ -508,44 +657,66 @@
                                                         </button>
                                                     {/if}
                                                 </div>
+                                            {:else if trx.status !== 'selesai' && trx.status !== 'batal'}
+                                                <button
+                                                    onclick={() =>
+                                                        openResiModal(trx)}
+                                                    class="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border-2 border-dashed transition hover:bg-orange-50"
+                                                    style="border-color:{secondary}; color:{secondary}"
+                                                >
+                                                    <i
+                                                        class="ti ti-truck-delivery text-xs"
+                                                    ></i>
+                                                    Input Resi
+                                                </button>
                                             {:else}
-                                                {#if trx.status !== 'selesai' && trx.status !== 'batal'}
-                                                    <button
-                                                        onclick={() => openResiModal(trx)}
-                                                        class="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border-2 border-dashed transition hover:bg-orange-50"
-                                                        style="border-color:{secondary}; color:{secondary}"
-                                                    >
-                                                        <i class="ti ti-truck-delivery text-xs"></i>
-                                                        Input Resi
-                                                    </button>
-                                                {:else}
-                                                    <span class="text-xs text-slate-400 font-semibold">Resi tidak tersedia</span>
-                                                {/if}
+                                                <span
+                                                    class="text-xs text-slate-400 font-semibold"
+                                                    >Resi tidak tersedia</span
+                                                >
                                             {/if}
                                         </td>
                                         <td class="py-5 px-4">
                                             {#if paymentStatus === 'confirmed'}
-                                                <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider">Dikonfirmasi</span>
+                                                <span
+                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider"
+                                                    >Dikonfirmasi</span
+                                                >
                                             {:else if paymentStatus === 'rejected'}
-                                                <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200/50 uppercase tracking-wider">Ditolak</span>
+                                                <span
+                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200/50 uppercase tracking-wider"
+                                                    >Ditolak</span
+                                                >
                                             {:else if trx.payment?.proof_image}
-                                                <span class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/50 uppercase tracking-wider">Menunggu Review</span>
+                                                <span
+                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/50 uppercase tracking-wider"
+                                                    >Menunggu Review</span
+                                                >
                                             {:else}
-                                                <span class="text-xs text-slate-400 font-bold">Belum ada bukti</span>
+                                                <span
+                                                    class="text-xs text-slate-400 font-bold"
+                                                    >Belum ada bukti</span
+                                                >
                                             {/if}
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span class="text-xs text-slate-500 font-bold">{fmtDate(trx.created_at)}</span>
+                                            <span
+                                                class="text-xs text-slate-500 font-bold"
+                                                >{fmtDate(trx.created_at)}</span
+                                            >
                                         </td>
                                         <td class="py-5 px-4 text-center">
-                                            <div class="flex items-center justify-center gap-1.5">
+                                            <div
+                                                class="flex items-center justify-center gap-1.5"
+                                            >
                                                 <a
                                                     href="/admin/transactions/{trx.id}"
                                                     class="inline-flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl text-white transition font-outfit uppercase tracking-wider"
                                                     style="background:{primary};"
                                                     title="Detail Transaksi"
                                                 >
-                                                    <i class="ti ti-eye text-sm"></i>
+                                                    <i class="ti ti-eye text-sm"
+                                                    ></i>
                                                 </a>
                                                 <a
                                                     href="/admin/transactions/{trx.id}/print-invoice"
@@ -553,7 +724,9 @@
                                                     class="inline-flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition"
                                                     title="Cetak Invoice"
                                                 >
-                                                    <i class="ti ti-printer text-base"></i>
+                                                    <i
+                                                        class="ti ti-printer text-base"
+                                                    ></i>
                                                 </a>
                                                 {#if trx.tracking_number}
                                                     <a
@@ -562,7 +735,9 @@
                                                         class="inline-flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 transition"
                                                         title="Cetak Resi"
                                                     >
-                                                        <i class="ti ti-barcode text-base"></i>
+                                                        <i
+                                                            class="ti ti-barcode text-base"
+                                                        ></i>
                                                     </a>
                                                 {/if}
                                             </div>
@@ -575,18 +750,29 @@
 
                     <!-- Pagination -->
                     {#if transactions.last_page > 1}
-                        <div class="flex items-center justify-between px-6 py-5 border-t border-slate-100 bg-slate-50/20">
-                            <p class="text-xs font-bold text-slate-500 font-outfit">
-                                Menampilkan {transactions.from}–{transactions.to} dari {transactions.total} transaksi
+                        <div
+                            class="flex items-center justify-between px-6 py-5 border-t border-slate-100 bg-slate-50/20"
+                        >
+                            <p
+                                class="text-xs font-bold text-slate-500 font-outfit"
+                            >
+                                Menampilkan {transactions.from}–{transactions.to}
+                                dari {transactions.total} transaksi
                             </p>
                             <div class="flex gap-1">
                                 {#if transactions.prev_page_url}
-                                    <a href={transactions.prev_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition">
+                                    <a
+                                        href={transactions.prev_page_url}
+                                        class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition"
+                                    >
                                         <i class="ti ti-chevron-left"></i>
                                     </a>
                                 {/if}
                                 {#if transactions.next_page_url}
-                                    <a href={transactions.next_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition">
+                                    <a
+                                        href={transactions.next_page_url}
+                                        class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition"
+                                    >
                                         <i class="ti ti-chevron-right"></i>
                                     </a>
                                 {/if}
@@ -616,13 +802,29 @@
             role="presentation"
         >
             <!-- Modal header -->
-            <div class="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start gap-4">
-                <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style="background:{secondary}18;">
-                    <i class="ti ti-truck-delivery text-xl" style="color:{secondary}"></i>
+            <div
+                class="px-6 pt-6 pb-4 border-b border-slate-100 flex items-start gap-4"
+            >
+                <div
+                    class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+                    style="background:{secondary}18;"
+                >
+                    <i
+                        class="ti ti-truck-delivery text-xl"
+                        style="color:{secondary}"
+                    ></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3 class="font-outfit font-black text-slate-800 text-base leading-tight">Input Nomor Resi</h3>
-                    <p class="text-xs text-slate-400 font-semibold mt-0.5 truncate">{resiTransactionNumber}</p>
+                    <h3
+                        class="font-outfit font-black text-slate-800 text-base leading-tight"
+                    >
+                        Input Nomor Resi
+                    </h3>
+                    <p
+                        class="text-xs text-slate-400 font-semibold mt-0.5 truncate"
+                    >
+                        {resiTransactionNumber}
+                    </p>
                 </div>
                 <button
                     onclick={closeResiModal}
@@ -635,16 +837,26 @@
             <!-- Modal body -->
             <div class="px-6 py-5 space-y-4">
                 <!-- Info banner -->
-                <div class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70">
-                    <i class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"></i>
-                    <p class="text-xs text-orange-700 font-medium leading-relaxed">
-                        Setelah nomor resi disimpan, status transaksi akan <strong>otomatis berubah ke "Dikirim"</strong>.
+                <div
+                    class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70"
+                >
+                    <i
+                        class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"
+                    ></i>
+                    <p
+                        class="text-xs text-orange-700 font-medium leading-relaxed"
+                    >
+                        Setelah nomor resi disimpan, status transaksi akan <strong
+                            >otomatis berubah ke "Dikirim"</strong
+                        >.
                     </p>
                 </div>
 
                 <!-- Nomor Resi -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+                    <label
+                        class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
+                    >
                         Nomor Resi <span class="text-red-500">*</span>
                     </label>
                     <input
@@ -659,8 +871,13 @@
 
                 <!-- Nama Kurir -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Nama Kurir <span class="text-slate-300 font-normal normal-case">(opsional)</span>
+                    <label
+                        class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
+                    >
+                        Nama Kurir <span
+                            class="text-slate-300 font-normal normal-case"
+                            >(opsional)</span
+                        >
                     </label>
                     <input
                         type="text"
@@ -702,22 +919,39 @@
 <!-- Bulk Input Resi Modal (Resi Massal) -->
 {#if showBulkResiModal}
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div 
+        <div
             class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onclick={() => { showBulkResiModal = false; }}
-            onkeydown={() => { showBulkResiModal = false; }}
+            onclick={() => {
+                showBulkResiModal = false;
+            }}
+            onkeydown={() => {
+                showBulkResiModal = false;
+            }}
             role="button"
             tabindex="0"
         ></div>
-        <div class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div
+            class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        >
             <!-- Header -->
-            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+            <div
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
+            >
                 <div>
-                    <h3 class="font-outfit font-black text-slate-800 text-lg uppercase tracking-wider">Input Resi Massal</h3>
-                    <p class="text-xs text-slate-400 font-semibold mt-0.5">Masukkan nomor resi untuk {bulkTrackingData.length} transaksi yang dipilih.</p>
+                    <h3
+                        class="font-outfit font-black text-slate-800 text-lg uppercase tracking-wider"
+                    >
+                        Input Resi Massal
+                    </h3>
+                    <p class="text-xs text-slate-400 font-semibold mt-0.5">
+                        Masukkan nomor resi untuk {bulkTrackingData.length} transaksi
+                        yang dipilih.
+                    </p>
                 </div>
                 <button
-                    onclick={() => { showBulkResiModal = false; }}
+                    onclick={() => {
+                        showBulkResiModal = false;
+                    }}
                     class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0"
                 >
                     <i class="ti ti-x text-sm text-slate-500"></i>
@@ -726,24 +960,43 @@
 
             <!-- Body (Scrollable table of inputs) -->
             <div class="p-6 overflow-y-auto space-y-4 flex-1">
-                <div class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70 mb-2">
-                    <i class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"></i>
-                    <p class="text-xs text-orange-700 font-medium leading-relaxed">
-                        Setelah disimpan, nomor resi masing-masing transaksi akan di-update, dan statusnya otomatis berubah menjadi <strong>"Dikirim"</strong>.
+                <div
+                    class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200/70 mb-2"
+                >
+                    <i
+                        class="ti ti-info-circle text-sm text-orange-500 mt-0.5 shrink-0"
+                    ></i>
+                    <p
+                        class="text-xs text-orange-700 font-medium leading-relaxed"
+                    >
+                        Setelah disimpan, nomor resi masing-masing transaksi
+                        akan di-update, dan statusnya otomatis berubah menjadi <strong
+                            >"Dikirim"</strong
+                        >.
                     </p>
                 </div>
 
                 <div class="space-y-4">
                     {#each bulkTrackingData as row, i (row.id)}
-                        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col md:flex-row gap-4 items-start md:items-center">
+                        <div
+                            class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col md:flex-row gap-4 items-start md:items-center"
+                        >
                             <div class="flex-1 min-w-0">
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">No. Transaksi</span>
-                                <span class="text-xs font-mono font-black text-slate-800 block mt-0.5">{row.transaction_number}</span>
+                                <span
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block"
+                                    >No. Transaksi</span
+                                >
+                                <span
+                                    class="text-xs font-mono font-black text-slate-800 block mt-0.5"
+                                    >{row.transaction_number}</span
+                                >
                             </div>
-                            
+
                             <!-- Nomor Resi Input -->
                             <div class="w-full md:w-48 shrink-0">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1"
+                                >
                                     Resi <span class="text-red-500">*</span>
                                 </label>
                                 <input
@@ -756,7 +1009,9 @@
 
                             <!-- Courier Name Input -->
                             <div class="w-full md:w-36 shrink-0">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1"
+                                >
                                     Kurir
                                 </label>
                                 <input
@@ -772,9 +1027,13 @@
             </div>
 
             <!-- Footer -->
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+            <div
+                class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3"
+            >
                 <button
-                    onclick={() => { showBulkResiModal = false; }}
+                    onclick={() => {
+                        showBulkResiModal = false;
+                    }}
                     disabled={submittingBulkResi}
                     class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 bg-white text-xs font-bold hover:bg-slate-50 transition disabled:opacity-50 font-outfit uppercase tracking-wider"
                 >
@@ -782,7 +1041,8 @@
                 </button>
                 <button
                     onclick={submitBulkTracking}
-                    disabled={submittingBulkResi || bulkTrackingData.some(d => !d.tracking_number.trim())}
+                    disabled={submittingBulkResi ||
+                        bulkTrackingData.some((d) => !d.tracking_number.trim())}
                     class="flex-1 py-3 rounded-xl text-white text-xs font-bold transition disabled:opacity-50 flex items-center justify-center gap-2 font-outfit uppercase tracking-wider"
                     style="background:{secondary}; box-shadow: 0 4px 14px -2px {secondary}50;"
                 >
@@ -805,7 +1065,21 @@
         class="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-bold transition-all duration-300"
         style="background:{toastType === 'success' ? '#22c55e' : '#ef4444'};"
     >
-        <i class="ti {toastType === 'success' ? 'ti-circle-check' : 'ti-circle-x'} text-base"></i>
+        <i
+            class="ti {toastType === 'success'
+                ? 'ti-circle-check'
+                : 'ti-circle-x'} text-base"
+        ></i>
         {toastMsg}
     </div>
 {/if}
+
+<style>
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
