@@ -1108,11 +1108,11 @@
                                                     class="text-[10px] text-slate-400"
                                                     >({reviewCount})</span
                                                 >
-                                            {:else}
+                                                <!-- {:else}
                                                 <span
                                                     class="text-[10px] text-slate-400 italic"
                                                     >Belum ada ulasan</span
-                                                >
+                                                > -->
                                             {/if}
                                         </div>
                                         <hr class="border-slate-100 my-2" />
@@ -1160,7 +1160,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 7: BANNER WIDE (full width promo)
 ═══════════════════════════════════════════════════ -->
-    <section class="mt-2 px-3 sm:px-5 lg:px-8">
+    <section class="px-3 sm:px-5 lg:px-8 mt-4 mb-4">
         <div
             class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
         >
@@ -1210,6 +1210,14 @@
                             isReal && isPromo ? product.original_price : 0}
                         {@const discountPercentage =
                             isReal && isPromo ? product.discount_percentage : 0}
+                        {@const avgRating = isReal
+                            ? product.avg_rating
+                                ? Number(product.avg_rating)
+                                : null
+                            : null}
+                        {@const reviewCount = isReal
+                            ? (product.review_count ?? 0)
+                            : 0}
                         <div
                             class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
                         >
@@ -1275,6 +1283,25 @@
                                                 >
                                                     {product.name}
                                                 </p>
+                                            </div>
+                                            <div
+                                                class="flex items-center gap-1 mt-1"
+                                            >
+                                                {#if avgRating !== null && reviewCount > 0}
+                                                    <i
+                                                        class="ti ti-star-filled text-amber-500 text-[10px]"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[10px] text-slate-500 font-bold"
+                                                        >{avgRating.toFixed(
+                                                            1,
+                                                        )}</span
+                                                    >
+                                                    <span
+                                                        class="text-[10px] text-slate-400"
+                                                        >({reviewCount})</span
+                                                    >
+                                                {/if}
                                             </div>
                                             <hr class="border-slate-100 my-2" />
                                             <div class="mb-1">

@@ -38,12 +38,15 @@ class ProfileController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'current_password' => 'nullable|required_with:password|current_password',
             'password' => 'nullable|string|min:8|confirmed',
         ], [
             'name.required' => 'Nama wajib diisi.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
+            'current_password.required_with' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
+            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
             'password.min' => 'Kata sandi minimal harus 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);
@@ -80,12 +83,15 @@ class ProfileController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'current_password' => 'nullable|required_with:password|current_password',
             'password' => 'nullable|string|min:8|confirmed',
         ], [
             'name.required' => 'Nama wajib diisi.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
+            'current_password.required_with' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
+            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
             'password.min' => 'Kata sandi minimal harus 8 karakter.',
             'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);

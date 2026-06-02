@@ -10,6 +10,7 @@
     const form = useForm({
         name: (page.props.auth as any)?.user?.name || '',
         email: (page.props.auth as any)?.user?.email || '',
+        current_password: '',
         password: '',
         password_confirmation: '',
     });
@@ -19,7 +20,7 @@
             preserveScroll: true,
             onSuccess: () => {
                 showToast('Profil Anda berhasil diperbarui!', 'success', 'top');
-                form.reset('password', 'password_confirmation');
+                form.reset('current_password', 'password', 'password_confirmation');
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
@@ -128,6 +129,19 @@
                         Ubah Kata Sandi (Opsional)
                     </span>
                     <div>
+                        <label for="mob-current-password" class="block text-xs font-bold text-slate-600 mb-1.5">Kata Sandi Lama</label>
+                        <input
+                            id="mob-current-password"
+                            type="password"
+                            bind:value={form.current_password}
+                            placeholder="Kata sandi saat ini"
+                            class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition {form.errors.current_password ? 'border-rose-500' : ''}"
+                        />
+                        {#if form.errors.current_password}
+                            <p class="text-[10px] text-rose-500 font-bold mt-1">{form.errors.current_password}</p>
+                        {/if}
+                    </div>
+                    <div>
                         <label for="mob-password" class="block text-xs font-bold text-slate-600 mb-1.5">Kata Sandi Baru</label>
                         <input
                             id="mob-password"
@@ -227,6 +241,20 @@
                     <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
                         Ubah Kata Sandi (Opsional)
                     </span>
+
+                    <div>
+                        <label for="current_password" class="block text-xs font-bold text-slate-600 mb-1.5">Kata Sandi Lama</label>
+                        <input
+                            id="current_password"
+                            type="password"
+                            bind:value={form.current_password}
+                            placeholder="Kata sandi saat ini"
+                            class="w-full sm:w-1/2 px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition {form.errors.current_password ? 'border-rose-500' : ''}"
+                        />
+                        {#if form.errors.current_password}
+                            <p class="text-[10px] text-rose-500 font-bold mt-1">{form.errors.current_password}</p>
+                        {/if}
+                    </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
