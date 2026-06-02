@@ -18,6 +18,7 @@
     // Modal state
     let showModal = $state(false);
     let modalSearch = $state('');
+    let modalCategoryFilter = $state('all');
     let tempSelectedIds = $state<string[]>([]);
 
     // Bulk actions state
@@ -160,12 +161,18 @@
 
     let filteredSelectableItems = $derived.by(() => {
         const query = modalSearch.toLowerCase().trim();
-        if (!query) return selectableItems;
         return selectableItems.filter(
-            (item) =>
-                item.name.toLowerCase().includes(query) ||
-                item.sku.toLowerCase().includes(query),
+            (item) => {
+                const matchSearch = !query || item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query);
+                const matchCategory = modalCategoryFilter === 'all' || item.category_name === modalCategoryFilter;
+                return matchSearch && matchCategory;
+            }
         );
+    });
+
+    let uniqueCategories = $derived.by(() => {
+        const categories = selectableItems.map(item => item.category_name);
+        return [...new Set(categories)];
     });
 
     function toggleSelection(itemId: string) {
@@ -203,6 +210,7 @@
 
     function openSelectionModal() {
         modalSearch = '';
+        modalCategoryFilter = 'all';
         tempSelectedIds = form.items.map(
             (item) => `${item.product_id}-${item.product_variant_id}`,
         );
@@ -1603,6 +1611,17 @@
                                 placeholder="Cari nama produk atau SKU..."
                                 class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal text-xs font-semibold text-slate-700 h-9"
                             />
+                        </div>
+                        <div class="w-full sm:w-48">
+                            <select
+                                bind:value={modalCategoryFilter}
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal text-xs font-semibold text-slate-700 h-9 appearance-none"
+                            >
+                                <option value="all">Semua Kategori</option>
+                                {#each uniqueCategories as cat}
+                                    <option value={cat}>{cat}</option>
+                                {/each}
+                            </select>
                         </div>
                         <div class="flex items-center gap-2 self-end sm:self-center">
                             <span class="bg-blue-50 text-brand-blueRoyal text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg uppercase">
