@@ -25,6 +25,32 @@
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
 
+    const storeSettings = $derived((page.props as any).settings || {});
+    
+    // Store Open Logic
+    const isStoreOpen = $derived.by(() => {
+        if (storeSettings.holiday_mode) return false;
+        if (storeSettings.always_open) return true;
+        if (!storeSettings.operational_hours) return true;
+
+        const now = new Date();
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const currentDay = days[now.getDay()];
+        const currentHours = storeSettings.operational_hours[currentDay];
+
+        if (!currentHours || !currentHours.active) return false;
+
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        
+        const openParts = currentHours.open.split(':');
+        const openTime = parseInt(openParts[0]) * 60 + parseInt(openParts[1]);
+
+        const closeParts = currentHours.close.split(':');
+        const closeTime = parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
+
+        return currentTime >= openTime && currentTime <= closeTime;
+    });
+
     const visibleVouchers = $derived.by(() => {
         const base = (vouchers || []).filter(
             (v: any) =>
@@ -625,6 +651,10 @@
     }
 
     function submitCheckout() {
+        if (!isStoreOpen) {
+            showToast('Toko sedang tutup. Checkout tidak tersedia saat ini.', 'error');
+            return;
+        }
         if (!selectedAddressId) {
             showToast('Pilih alamat pengiriman terlebih dahulu.', 'error');
             return;
@@ -2007,12 +2037,23 @@
                             </div>
 
                             <!-- Desktop submit button -->
+                            {#if !isStoreOpen}
+                                <div class="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left">
+                                    <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                                        <i class="ti ti-clock-pause text-amber-600 text-lg"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h4 class="font-bold text-amber-800 text-[11px] uppercase tracking-tight">Toko Sedang Tutup</h4>
+                                        <p class="text-[9px] text-amber-700 font-semibold mt-1 leading-snug">Mohon maaf, proses pesanan dinonaktifkan sementara.</p>
+                                    </div>
+                                </div>
+                            {/if}
                             <button
                                 onclick={submitCheckout}
                                 disabled={isSubmitting ||
                                     !selectedAddressId ||
                                     !selectedPaymentMethodId ||
-                                    !selectedShipping}
+                                    !selectedShipping || !isStoreOpen}
                                 class="hidden lg:flex w-full mt-4 items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="background:linear-gradient(to right, {primary}, {primary})"
                             >
@@ -2046,7 +2087,7 @@
                     disabled={isSubmitting ||
                         !selectedAddressId ||
                         !selectedPaymentMethodId ||
-                        !selectedShipping}
+                        !selectedShipping || !isStoreOpen}
                     class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background:linear-gradient(to right, {primary}, {primary})"
                 >

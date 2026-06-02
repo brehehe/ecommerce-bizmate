@@ -36,6 +36,8 @@ class SettingController extends Controller
         foreach ($data as $key => $value) {
             if (is_bool($value)) {
                 $value = $value ? '1' : '0';
+            } elseif (is_array($value)) {
+                $value = json_encode($value);
             }
 
             Setting::updateOrCreate(

@@ -8,6 +8,7 @@
         autoplay = true,
         loop = true,
         playsinline = true,
+        muted = true,
         controls = ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
         themeColor = '#fa7315'
     } = $props();
@@ -26,6 +27,7 @@
             player = new Plyr(videoElement, {
                 controls,
                 autoplay,
+                muted,
                 loop: { active: loop },
                 keyboard: { focused: true, global: false }
             });
@@ -48,6 +50,7 @@
         bind:this={videoElement}
         src={src}
         {playsinline}
+        {muted}
         class="w-full h-full object-contain"
     >
     </video>

@@ -63,6 +63,10 @@ class HandleInertiaRequests extends Middleware
         $coinMaxRedeemPercentage = 100;
         $coinTermsConditions = '';
 
+        $holidayMode = false;
+        $alwaysOpen = true;
+        $operationalHours = [];
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -90,6 +94,22 @@ class HandleInertiaRequests extends Middleware
                 $coinMaxRedeemPerTxn = (float) (Setting::where('key', 'coin_max_redeem_per_txn')->value('value') ?? 50000);
                 $coinMaxRedeemPercentage = (float) (Setting::where('key', 'coin_max_redeem_percentage')->value('value') ?? 100);
                 $coinTermsConditions = Setting::where('key', 'coin_terms_conditions')->value('value') ?? '';
+
+                $holidayMode = Setting::where('key', 'holiday_mode')->value('value') === '1';
+                $alwaysOpen = Setting::where('key', 'always_open')->value('value') !== '0'; // default true if not set
+                $opsHoursVal = Setting::where('key', 'operational_hours')->value('value');
+                $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
+                    'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                    'tuesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                    'wednesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                    'thursday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                    'friday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                    'saturday' => ['active' => true, 'open' => '09:00', 'close' => '15:00'],
+                    'sunday' => ['active' => false, 'open' => '09:00', 'close' => '12:00']
+                ];
+                if (! is_array($operationalHours)) {
+                    $operationalHours = [];
+                }
             }
         } catch (\Throwable $e) {
             // Fallback when database is not ready
@@ -131,6 +151,10 @@ class HandleInertiaRequests extends Middleware
                 'coin_max_redeem_per_txn' => $coinMaxRedeemPerTxn,
                 'coin_max_redeem_percentage' => $coinMaxRedeemPercentage,
                 'coin_terms_conditions' => $coinTermsConditions,
+
+                'holiday_mode' => $holidayMode,
+                'always_open' => $alwaysOpen,
+                'operational_hours' => $operationalHours,
             ],
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)
