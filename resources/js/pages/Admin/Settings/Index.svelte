@@ -32,6 +32,7 @@
 
         primary_color: settings.primary_color || '#0c4cb4',
         secondary_color: settings.secondary_color || '#fa7315',
+        store_font: settings.store_font || 'Plus Jakarta Sans',
 
         tax_enabled:
             settings.tax_enabled === 'true' ||
@@ -138,12 +139,48 @@
 
     function setPreset(id: string) {
         if (id === 'custom') return;
-        const matched = themePresets.find(p => p.id === id);
-        if (matched) {
-            form.primary_color = matched.primary;
-            form.secondary_color = matched.secondary;
+        const p = themePresets.find(x => x.id === id);
+        if (p) {
+            form.primary_color = p.primary;
+            form.secondary_color = p.secondary;
         }
     }
+
+    const fontOptions = [
+        { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans' },
+        { id: 'Outfit', name: 'Outfit' },
+        { id: 'Arial', name: 'Arial (Sistem)' },
+        { id: 'Inter', name: 'Inter' },
+        { id: 'Roboto', name: 'Roboto' },
+        { id: 'Poppins', name: 'Poppins' },
+        { id: 'Montserrat', name: 'Montserrat' },
+        { id: 'Nunito', name: 'Nunito' },
+        { id: 'Ubuntu', name: 'Ubuntu' },
+        { id: 'Playfair Display', name: 'Playfair Display' },
+        { id: 'Merriweather', name: 'Merriweather' },
+    ];
+
+    $effect(() => {
+        if (form.store_font) {
+            document.documentElement.style.setProperty('--dynamic-font-sans', `'${form.store_font}', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'`, 'important');
+            document.documentElement.style.setProperty('--dynamic-font-outfit', `'${form.store_font}', sans-serif`, 'important');
+            
+            // Note: Google Fonts tag needs to be loaded if it's a google font, 
+            // but for preview purposes if it's not cached it might fallback, 
+            // but typically we can inject a link tag if not present.
+            if (!['Arial', 'Verdana', 'Helvetica', 'Times New Roman', 'Georgia'].includes(form.store_font)) {
+                const linkId = 'preview-font-' + form.store_font.replace(/\s+/g, '-');
+                if (!document.getElementById(linkId)) {
+                    const link = document.createElement('link');
+                    link.id = linkId;
+                    link.rel = 'stylesheet';
+                    link.href = `https://fonts.googleapis.com/css2?family=${form.store_font.replace(/\s+/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap`;
+                    document.head.appendChild(link);
+                }
+            }
+        }
+    });
+
 
     let imagePreview = $state(null);
 
@@ -1303,6 +1340,32 @@
                                     />
                                 </div>
                             {/if}
+                            
+                            <div class="mt-6 border-t border-slate-100 pt-5">
+                                <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight mb-3 block">
+                                    PILIH FONT WEBSITE
+                                </h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {#each fontOptions as font}
+                                        <button
+                                            type="button"
+                                            onclick={() => { form.store_font = font.id; }}
+                                            class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer text-left
+                                            {form.store_font === font.id ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                        >
+                                            <span class="font-bold text-sm text-slate-800" style="font-family: '{font.id}', sans-serif;">
+                                                {font.name}
+                                            </span>
+                                            <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {form.store_font === font.id ? 'text-white' : 'border-2 border-slate-200'}"
+                                                style={form.store_font === font.id ? `background-color: ${form.primary_color || '#0f766e'};` : ''}>
+                                                {#if form.store_font === font.id}
+                                                    <i class="ti ti-check text-xs"></i>
+                                                {/if}
+                                            </div>
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

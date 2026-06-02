@@ -5,10 +5,10 @@
 
 @theme inline {
     --font-sans:
-        'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif,
+        var(--dynamic-font-sans, 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif,
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
-    --font-outfit: 'Outfit', sans-serif;
+        'Noto Color Emoji');
+    --font-outfit: var(--dynamic-font-outfit, 'Outfit', sans-serif);
 
     --color-brand-blueRoyal: #0c4cb4;
     --color-brand-orange: #fa7315;
