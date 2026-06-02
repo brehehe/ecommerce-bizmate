@@ -89,7 +89,61 @@
         coin_max_redeem_per_txn: settings.coin_max_redeem_per_txn || 50000,
         coin_max_redeem_percentage: settings.coin_max_redeem_percentage || 100,
         coin_terms_conditions: settings.coin_terms_conditions || '',
+
+        holiday_mode:
+            settings.holiday_mode === 'true' ||
+            settings.holiday_mode === true ||
+            settings.holiday_mode === '1',
+        always_open:
+            settings.always_open === 'true' ||
+            settings.always_open === true ||
+            settings.always_open === '1' ||
+            settings.always_open === undefined, // default true
+        operational_hours: Array.isArray(settings.operational_hours)
+            ? settings.operational_hours
+            : settings.operational_hours
+              ? (typeof settings.operational_hours === 'string' ? JSON.parse(settings.operational_hours) : settings.operational_hours)
+              : {
+                  monday: { active: true, open: '09:00', close: '17:00' },
+                  tuesday: { active: true, open: '09:00', close: '17:00' },
+                  wednesday: { active: true, open: '09:00', close: '17:00' },
+                  thursday: { active: true, open: '09:00', close: '17:00' },
+                  friday: { active: true, open: '09:00', close: '17:00' },
+                  saturday: { active: true, open: '09:00', close: '15:00' },
+                  sunday: { active: false, open: '09:00', close: '12:00' }
+              },
     });
+
+    const dayLabels = {
+        monday: 'Senin',
+        tuesday: 'Selasa',
+        wednesday: 'Rabu',
+        thursday: 'Kamis',
+        friday: 'Jumat',
+        saturday: 'Sabtu',
+        sunday: 'Minggu'
+    };
+
+    const themePresets = [
+        { id: 'royal_blue', name: 'Royal Blue', sub: 'ROYAL BLUE', primary: '#0c4cb4', secondary: '#fa7315' },
+        { id: 'emerald', name: 'Emerald', sub: 'EMERALD', primary: '#059669', secondary: '#10b981' },
+        { id: 'sunset_orange', name: 'Sunset Orange', sub: 'SUNSET ORANGE', primary: '#ea580c', secondary: '#f97316' },
+        { id: 'velvet_purple', name: 'Velvet Purple', sub: 'VELVET PURPLE', primary: '#7c3aed', secondary: '#a855f7' },
+        { id: 'ocean_teal', name: 'Ocean Teal', sub: 'OCEAN TEAL', primary: '#0f766e', secondary: '#06b6d4' },
+    ];
+
+    let currentPreset = $derived(
+        themePresets.find(p => p.primary.toLowerCase() === form.primary_color.toLowerCase() && p.secondary.toLowerCase() === form.secondary_color.toLowerCase())?.id || 'custom'
+    );
+
+    function setPreset(id: string) {
+        if (id === 'custom') return;
+        const matched = themePresets.find(p => p.id === id);
+        if (matched) {
+            form.primary_color = matched.primary;
+            form.secondary_color = matched.secondary;
+        }
+    }
 
     let imagePreview = $state(null);
 
@@ -977,6 +1031,99 @@
                             {/if}
                         </div>
                     </div>
+
+
+                    <div
+                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
+                    >
+                        <div
+                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
+                        >
+                            <div
+                                class="p-2.5 bg-amber-50 text-amber-500 rounded-xl"
+                            >
+                                <i class="ti ti-clock text-lg"></i>
+                            </div>
+                            <div>
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                >
+                                    Jam Operasional & Status Toko
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-400 font-medium mt-1"
+                                >
+                                    Konfigurasi hari kerja, jam operasional, dan Mode Libur.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- HOLIDAY MODE -->
+                            <div class="bg-amber-50/50 border border-amber-100/50 rounded-2xl p-4 flex items-center justify-between gap-4">
+                                <div>
+                                    <h4 class="font-bold text-amber-700 text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                                        <i class="ti ti-ship text-amber-600 text-base"></i> MODE LIBUR TOKO (HOLIDAY MODE)
+                                    </h4>
+                                    <p class="text-xs text-amber-600/80 font-semibold leading-relaxed max-w-sm">
+                                        Aktifkan untuk menutup toko sementara. Seluruh halaman e-commerce akan menampilkan banner libur dan proses checkout dinonaktifkan sepenuhnya.
+                                    </p>
+                                </div>
+                                <div class="shrink-0 scale-125 origin-right">
+                                    <Toggle bind:checked={form.holiday_mode} />
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100 my-2"></div>
+
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">Toko Buka Terus (24 Jam)</span>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">Abaikan jadwal mingguan dan buka toko 24 jam penuh setiap harinya.</p>
+                                </div>
+                                <Toggle bind:checked={form.always_open} />
+                            </div>
+
+                            <!-- WEEKLY SCHEDULE -->
+                            {#if !form.always_open}
+                                <div transition:slide class="space-y-4 pt-2">
+                                    <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                        JADWAL OPERASIONAL MINGGUAN
+                                    </h4>
+                                    
+                                    <div class="border border-slate-100 rounded-2xl overflow-hidden">
+                                        <div class="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-3 border-b border-slate-100">
+                                            <div class="col-span-4 sm:col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">HARI</div>
+                                            <div class="col-span-3 sm:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">STATUS</div>
+                                            <div class="col-span-5 sm:col-span-7 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">JAM BUKA - TUTUP</div>
+                                        </div>
+
+                                        <div class="divide-y divide-slate-100">
+                                            {#each Object.keys(dayLabels) as day}
+                                                <div class="grid grid-cols-12 gap-2 px-4 py-4 items-center transition-colors {form.operational_hours[day].active ? 'bg-white' : 'bg-slate-50/50'}">
+                                                    <div class="col-span-4 sm:col-span-3 font-bold text-sm text-slate-700">
+                                                        {dayLabels[day]}
+                                                    </div>
+                                                    <div class="col-span-3 sm:col-span-2 flex justify-center">
+                                                        <Toggle bind:checked={form.operational_hours[day].active} />
+                                                    </div>
+                                                    <div class="col-span-5 sm:col-span-7 flex justify-end items-center gap-2">
+                                                        <div class="relative w-24">
+                                                            <input type="time" bind:value={form.operational_hours[day].open} disabled={!form.operational_hours[day].active} class="w-full text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center focus:ring-1 focus:ring-slate-300 outline-none disabled:opacity-50 disabled:bg-slate-50" />
+                                                        </div>
+                                                        <span class="text-slate-300 font-bold">-</span>
+                                                        <div class="relative w-24">
+                                                            <input type="time" bind:value={form.operational_hours[day].close} disabled={!form.operational_hours[day].active} class="w-full text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center focus:ring-1 focus:ring-slate-300 outline-none disabled:opacity-50 disabled:bg-slate-50" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="lg:col-span-4 space-y-8">
@@ -1073,18 +1220,89 @@
                         </div>
 
                         <div class="space-y-4">
-                            <ColorPicker
-                                id="primary_color"
-                                label="Primary Color"
-                                bind:value={form.primary_color}
-                                class="font-mono uppercase"
-                            />
-                            <ColorPicker
-                                id="secondary_color"
-                                label="Secondary Color"
-                                bind:value={form.secondary_color}
-                                class="font-mono uppercase"
-                            />
+                            <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight mb-2 block">
+                                PILIH PRESET WARNA
+                            </h4>
+
+                            <div class="flex flex-col gap-2.5">
+                                {#each themePresets as preset}
+                                    <button
+                                        type="button"
+                                        onclick={() => setPreset(preset.id)}
+                                        class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left
+                                        {currentPreset === preset.id ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                        style={currentPreset === preset.id ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${preset.primary}33;` : ''}
+                                    >
+                                        <div class="flex items-center gap-4">
+                                            <div class="flex -space-x-2">
+                                                <div class="w-6 h-6 rounded-full ring-2 ring-white z-10" style="background-color: {preset.primary};"></div>
+                                                <div class="w-6 h-6 rounded-full ring-2 ring-white" style="background-color: {preset.secondary};"></div>
+                                            </div>
+                                            <div>
+                                                <p class="font-outfit font-bold text-slate-800 text-sm leading-tight">{preset.name}</p>
+                                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{preset.sub}</p>
+                                            </div>
+                                        </div>
+                                        <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset === preset.id ? 'text-white' : 'border-2 border-slate-200'}"
+                                            style={currentPreset === preset.id ? `background-color: ${preset.primary};` : ''}>
+                                            {#if currentPreset === preset.id}
+                                                <i class="ti ti-check text-xs"></i>
+                                            {/if}
+                                        </div>
+                                    </button>
+                                {/each}
+
+                                <button
+                                    type="button"
+                                    class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left mt-1
+                                    {currentPreset === 'custom' ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                    style={currentPreset === 'custom' ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;` : ''}
+                                    onclick={() => {
+                                        // Change a bit so it becomes custom if it's currently a preset
+                                        if (currentPreset !== 'custom') {
+                                            form.primary_color = form.primary_color;
+                                            form.secondary_color = form.secondary_color;
+                                            // The derived state automatically switches to 'custom' when colors are edited manually
+                                            // To force custom without editing, we just select it. But wait, currentPreset is derived from colors.
+                                            // So "Kustom Warna Sendiri" is just an active state.
+                                        }
+                                    }}
+                                >
+                                    <div class="flex items-center gap-4">
+                                        <div class="flex -space-x-2">
+                                            <div class="w-6 h-6 rounded-full ring-2 ring-white z-10" style="background-color: {form.primary_color};"></div>
+                                            <div class="w-6 h-6 rounded-full ring-2 ring-white" style="background-color: {form.secondary_color};"></div>
+                                        </div>
+                                        <div>
+                                            <p class="font-outfit font-bold text-slate-800 text-sm leading-tight">Kustom Warna Sendiri</p>
+                                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">CUSTOM BRAND</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset === 'custom' ? 'text-white' : 'border-2 border-slate-200'}"
+                                        style={currentPreset === 'custom' ? `background-color: ${form.primary_color};` : ''}>
+                                        {#if currentPreset === 'custom'}
+                                            <i class="ti ti-check text-xs"></i>
+                                        {/if}
+                                    </div>
+                                </button>
+                            </div>
+                            
+                            {#if currentPreset === 'custom'}
+                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 mt-4" transition:slide>
+                                    <ColorPicker
+                                        id="primary_color"
+                                        label="Primary Color"
+                                        bind:value={form.primary_color}
+                                        class="font-mono uppercase"
+                                    />
+                                    <ColorPicker
+                                        id="secondary_color"
+                                        label="Secondary Color"
+                                        bind:value={form.secondary_color}
+                                        class="font-mono uppercase"
+                                    />
+                                </div>
+                            {/if}
                         </div>
                     </div>
 
