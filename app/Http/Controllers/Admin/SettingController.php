@@ -21,13 +21,21 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
-        $data = $request->except(['_token', 'store_logo']);
+        $data = $request->except(['_token', 'store_logo', 'store_icon']);
 
         // Handle File Uploads (like Logo)
         if ($request->hasFile('store_logo')) {
             $path = $request->file('store_logo')->store('logos', 'public');
             Setting::updateOrCreate(
                 ['key' => 'store_logo'],
+                ['value' => '/storage/'.$path]
+            );
+        }
+
+        if ($request->hasFile('store_icon')) {
+            $path = $request->file('store_icon')->store('logos', 'public');
+            Setting::updateOrCreate(
+                ['key' => 'store_icon'],
                 ['value' => '/storage/'.$path]
             );
         }

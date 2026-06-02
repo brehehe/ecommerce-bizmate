@@ -22,6 +22,7 @@
     // svelte-ignore state_referenced_locally
     const form = useForm({
         store_logo: null,
+        store_icon: null,
         store_name: settings.store_name || '',
         store_email: settings.store_email || '',
         store_phone: settings.store_phone || '',
@@ -186,6 +187,7 @@
 
 
     let imagePreview = $state(null);
+    let iconPreview = $state(null);
 
     let provinces = $state([]);
     let regencies = $state([]);
@@ -355,6 +357,22 @@
             }
             form.store_logo = file;
             imagePreview = URL.createObjectURL(file);
+        }
+    }
+
+    function handleIconChange(e) {
+        if (e.target.files.length) {
+            const file = e.target.files[0];
+            if (file.size > 2 * 1024 * 1024) {
+                showToast(
+                    'Ukuran berkas icon terlalu besar. Maksimal 2MB.',
+                    'error',
+                );
+                e.target.value = '';
+                return;
+            }
+            form.store_icon = file;
+            iconPreview = URL.createObjectURL(file);
         }
     }
 
@@ -1228,6 +1246,72 @@
                                 <span
                                     class="text-xs font-bold text-slate-400 transition-colors text-center px-4"
                                     >Upload gambar JPG/PNG</span
+                                >
+                            {/if}
+                        </div>
+                    </div>
+
+                    <div
+                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
+                    >
+                        <div
+                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
+                        >
+                            <div
+                                class="p-2.5 bg-pink-50 text-pink-500 rounded-xl"
+                            >
+                                <i class="ti ti-app-window text-lg"></i>
+                            </div>
+                            <div>
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                >
+                                    Icon Toko
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-400 font-medium mt-1"
+                                >
+                                    Klik kotak untuk mengganti favicon
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="relative w-full aspect-square max-w-[120px] mx-auto rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center overflow-hidden group"
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onchange={handleIconChange}
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+
+                            {#if iconPreview || settings.store_icon}
+                                <img
+                                    src={iconPreview || settings.store_icon}
+                                    alt="Icon"
+                                    class="w-full h-full object-cover"
+                                />
+                                <div
+                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center pointer-events-none"
+                                >
+                                    <div class="flex flex-col items-center">
+                                        <i
+                                            class="ti ti-photo-edit text-2xl text-white mb-1"
+                                        ></i>
+                                        <span
+                                            class="text-white font-bold text-xs"
+                                            >Ubah Icon</span
+                                        >
+                                    </div>
+                                </div>
+                            {:else}
+                                <i
+                                    class="ti ti-cloud-upload text-3xl text-slate-300 mb-1 transition-colors"
+                                ></i>
+                                <span
+                                    class="text-[10px] font-bold text-slate-400 transition-colors text-center px-2"
+                                    >Upload Icon</span
                                 >
                             {/if}
                         </div>
