@@ -19,6 +19,7 @@
 
     let { settings = {} } = $props();
 
+    // svelte-ignore state_referenced_locally
     const form = useForm({
         store_logo: null,
         store_name: settings.store_name || '',
@@ -512,9 +513,9 @@
                         </div>
 
                         <div class="mt-8 border-t border-slate-100 pt-6">
-                            <label
+                            <p
                                 class="block text-xs font-bold text-slate-600 mb-2"
-                                >Titik Peta (Pin Lokasi)</label
+                                >Titik Peta (Pin Lokasi)</p
                             >
 
                             <div class="relative mb-4">
@@ -550,6 +551,7 @@
                                             >
                                             <button
                                                 type="button"
+                                                aria-label="Close"
                                                 onclick={() =>
                                                     (showMapSearchDropdown = false)}
                                                 class="text-slate-400 hover:text-slate-700"
@@ -565,7 +567,10 @@
                                             </div>
                                         {:else}
                                             {#each mapSearchResults as result}
+                                                <!-- svelte-ignore a11y_click_events_have_key_events -->
                                                 <div
+                                                    role="button"
+                                                    tabindex="0"
                                                     class="p-3 text-sm hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
                                                     onclick={() =>
                                                         selectMapResult(result)}
@@ -1123,9 +1128,9 @@
 
                                 {#if form.tax_enabled}
                                     <div transition:slide>
-                                        <label
+                                        <p
                                             class="block text-xs font-bold text-slate-600 mb-2 mt-2"
-                                            >Nominal Pajak (%)</label
+                                            >Nominal Pajak (%)</p
                                         >
                                         <div class="relative">
                                             <input

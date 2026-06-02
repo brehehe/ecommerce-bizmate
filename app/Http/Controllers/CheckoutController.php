@@ -1114,9 +1114,9 @@ class CheckoutController extends Controller
                 $usedCount = Transaction::where('user_id', $user->id)
                     ->where(function ($q) use ($promotion) {
                         $q->where('voucher_code', $promotion->code)
-                            ->orWhere('voucher_code', 'like', "%,{$promotion->code}")
-                            ->orWhere('voucher_code', 'like', "{$promotion->code},%")
-                            ->orWhere('voucher_code', 'like', "%,{$promotion->code},%");
+                            ->orWhere('voucher_code', 'ilike', "%,{$promotion->code}")
+                            ->orWhere('voucher_code', 'ilike', "{$promotion->code},%")
+                            ->orWhere('voucher_code', 'ilike', "%,{$promotion->code},%");
                     })
                     ->count();
 

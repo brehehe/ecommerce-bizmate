@@ -13,6 +13,7 @@
     let { promotion, products = [] } = $props();
 
     // Targeting scope state
+    // svelte-ignore state_referenced_locally
     let targetScope = $state((promotion.items || []).length > 0 ? 'specific' : 'all');
 
     // Modal state
@@ -115,105 +116,109 @@
         form.settings.bundle.get_items = form.settings.bundle.get_items.filter((_, i) => i !== index);
     }
 
-    const form = useForm({
-        name: promotion.name || '',
-        type: promotion.type || 'promo_toko',
-        code: promotion.code || '',
-        discount_type: promotion.discount_type || 'percentage',
-        discount_value:
-            promotion.discount_value !== null
-                ? parseFloat(promotion.discount_value)
-                : '',
-        min_purchase:
-            promotion.min_purchase !== null
-                ? parseFloat(promotion.min_purchase)
-                : '',
-        max_discount:
-            promotion.max_discount !== null
-                ? parseFloat(promotion.max_discount)
-                : '',
-        quota: promotion.quota !== null ? promotion.quota : '',
-        start_time: formatForInput(promotion.start_time),
-        end_time: formatForInput(promotion.end_time),
-        is_active: promotion.is_active ?? true,
-        settings: (() => {
-            let settings = promotion.settings || {};
-            settings.terms = settings.terms ?? '';
-            settings.keep_tier_prices = settings.keep_tier_prices ?? false;
-            settings.max_uses_per_user = settings.max_uses_per_user ?? '';
-            settings.min_qty = settings.min_qty ?? 1;
-            settings.can_stack_with_promos = settings.can_stack_with_promos ?? true;
-            // If old structure exists, convert to new structure on the fly
-            if (settings.bundle && !settings.bundle.buy_items && settings.bundle.buy_product_id) {
-                settings.bundle = {
-                    buy_items: [
-                        {
-                            product_id: settings.bundle.buy_product_id,
-                            product_variant_id: settings.bundle.buy_variant_id || '',
-                            qty: settings.bundle.buy_qty || 1
-                        }
-                    ],
-                    get_items: [
-                        {
-                            product_id: settings.bundle.get_product_id,
-                            product_variant_id: settings.bundle.get_variant_id || '',
-                            qty: settings.bundle.get_qty || 1,
-                            discount_type: settings.bundle.get_discount_type || 'free',
-                            discount_value: settings.bundle.get_discount_value || 0
-                        }
-                    ]
+    function getInitialFormState() {
+        return {
+            name: promotion.name || '',
+            type: promotion.type || 'promo_toko',
+            code: promotion.code || '',
+            discount_type: promotion.discount_type || 'percentage',
+            discount_value:
+                promotion.discount_value !== null
+                    ? parseFloat(promotion.discount_value)
+                    : '',
+            min_purchase:
+                promotion.min_purchase !== null
+                    ? parseFloat(promotion.min_purchase)
+                    : '',
+            max_discount:
+                promotion.max_discount !== null
+                    ? parseFloat(promotion.max_discount)
+                    : '',
+            quota: promotion.quota !== null ? promotion.quota : '',
+            start_time: formatForInput(promotion.start_time),
+            end_time: formatForInput(promotion.end_time),
+            is_active: promotion.is_active ?? true,
+            settings: (() => {
+                let settings = promotion.settings || {};
+                settings.terms = settings.terms ?? '';
+                settings.keep_tier_prices = settings.keep_tier_prices ?? false;
+                settings.max_uses_per_user = settings.max_uses_per_user ?? '';
+                settings.min_qty = settings.min_qty ?? 1;
+                settings.can_stack_with_promos = settings.can_stack_with_promos ?? true;
+                // If old structure exists, convert to new structure on the fly
+                if (settings.bundle && !settings.bundle.buy_items && settings.bundle.buy_product_id) {
+                    settings.bundle = {
+                        buy_items: [
+                            {
+                                product_id: settings.bundle.buy_product_id,
+                                product_variant_id: settings.bundle.buy_variant_id || '',
+                                qty: settings.bundle.buy_qty || 1
+                            }
+                        ],
+                        get_items: [
+                            {
+                                product_id: settings.bundle.get_product_id,
+                                product_variant_id: settings.bundle.get_variant_id || '',
+                                qty: settings.bundle.get_qty || 1,
+                                discount_type: settings.bundle.get_discount_type || 'free',
+                                discount_value: settings.bundle.get_discount_value || 0
+                            }
+                        ]
+                    };
+                } else if (!settings.bundle || !settings.bundle.buy_items) {
+                    settings.bundle = {
+                        buy_items: [
+                            { product_id: '', product_variant_id: '', qty: 1 }
+                        ],
+                        get_items: [
+                            { product_id: '', product_variant_id: '', qty: 1, discount_type: 'free', discount_value: 0 }
+                        ]
+                    };
+                }
+                return settings;
+            })(),
+            items: (promotion.items || []).map((item: any) => {
+                const prod = products.find((p: any) => p.id == item.product_id);
+                let vName = 'Tanpa Varian';
+                let bPrice = prod ? prod.price : 0;
+                if (item.product_variant_id && prod) {
+                    const vari = prod.variants.find(
+                        (v: any) => v.id == item.product_variant_id,
+                    );
+                    vName = vari ? vari.name : 'Varian';
+                    bPrice = vari ? vari.price : 0;
+                } else if (prod && prod.variants.length > 0) {
+                    vName = 'Semua Varian';
+                }
+                return {
+                    product_id: item.product_id,
+                    product_variant_id: item.product_variant_id,
+                    product_name:
+                        item.product?.name || prod?.name || 'Produk Dihapus',
+                    variant_name: vName,
+                    base_price: bPrice,
+                    discount_type:
+                        item.discount_type ||
+                        promotion.discount_type ||
+                        'percentage',
+                    discount_value:
+                        item.discount_value !== null
+                            ? parseFloat(item.discount_value)
+                            : '',
+                    promo_price:
+                        item.promo_price !== null
+                            ? parseFloat(item.promo_price)
+                            : '',
+                    promo_stock:
+                        item.promo_stock !== null
+                            ? item.promo_stock
+                            : '',
                 };
-            } else if (!settings.bundle || !settings.bundle.buy_items) {
-                settings.bundle = {
-                    buy_items: [
-                        { product_id: '', product_variant_id: '', qty: 1 }
-                    ],
-                    get_items: [
-                        { product_id: '', product_variant_id: '', qty: 1, discount_type: 'free', discount_value: 0 }
-                    ]
-                };
-            }
-            return settings;
-        })(),
-        items: (promotion.items || []).map((item: any) => {
-            const prod = products.find((p) => p.id == item.product_id);
-            let vName = 'Tanpa Varian';
-            let bPrice = prod ? prod.price : 0;
-            if (item.product_variant_id && prod) {
-                const vari = prod.variants.find(
-                    (v) => v.id == item.product_variant_id,
-                );
-                vName = vari ? vari.name : 'Varian';
-                bPrice = vari ? vari.price : 0;
-            } else if (prod && prod.variants.length > 0) {
-                vName = 'Semua Varian';
-            }
-            return {
-                product_id: item.product_id,
-                product_variant_id: item.product_variant_id,
-                product_name:
-                    item.product?.name || prod?.name || 'Produk Dihapus',
-                variant_name: vName,
-                base_price: bPrice,
-                discount_type:
-                    item.discount_type ||
-                    promotion.discount_type ||
-                    'percentage',
-                discount_value:
-                    item.discount_value !== null
-                        ? parseFloat(item.discount_value)
-                        : '',
-                promo_price:
-                    item.promo_price !== null
-                        ? parseFloat(item.promo_price)
-                        : '',
-                promo_stock:
-                    item.promo_stock !== null
-                        ? item.promo_stock
-                        : '',
-            };
-        }),
-    });
+            }),
+        };
+    }
+
+    const form = useForm(getInitialFormState());
 
     // Flatten products and variants for single-level selection
     let selectableItems = $derived.by(() => {
@@ -604,7 +609,10 @@
         { id: 'fixed', name: 'Nominal Tetap (Rp)' },
     ];
 
-    let isTermsManuallyEdited = $state(!!promotion.settings?.terms);
+    function getIsTermsManuallyEdited() {
+        return !!promotion.settings?.terms;
+    }
+    let isTermsManuallyEdited = $state(getIsTermsManuallyEdited());
 
     function generateAutoTerms() {
         const rules: string[] = [];
@@ -874,6 +882,7 @@
                         >
                             <div>
                                 <label
+                                    for="gratis-ongkir-cap"
                                     class="text-xs font-bold text-slate-600 block mb-2"
                                     >Nilai Potongan Ongkir</label
                                 >
@@ -1111,6 +1120,7 @@
                                             {#if form.settings.bundle.buy_items.length > 1}
                                                 <button
                                                     type="button"
+                                                    aria-label="Hapus item beli"
                                                     onclick={() => removeBuyItem(i)}
                                                     class="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition duration-200 mb-1"
                                                 >
@@ -1197,6 +1207,7 @@
                                                 {#if form.settings.bundle.get_items.length > 1}
                                                     <button
                                                         type="button"
+                                                        aria-label="Hapus item dapat"
                                                         onclick={() => removeGetItem(i)}
                                                         class="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition duration-200 mb-1"
                                                     >
@@ -1509,8 +1520,9 @@
                                     </div>
                                     <div class="flex flex-wrap gap-3 items-end">
                                         <div class="w-full sm:w-48">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Tipe Potongan</label>
+                                            <label for="bulk-discount-type" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Tipe Potongan</label>
                                             <select
+                                                id="bulk-discount-type"
                                                 bind:value={bulkDiscountType}
                                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal text-xs font-semibold text-slate-700 h-10"
                                             >
@@ -1520,8 +1532,9 @@
                                             </select>
                                         </div>
                                         <div class="w-full sm:w-44">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nilai Potongan</label>
+                                            <label for="bulk-discount-value" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nilai Potongan</label>
                                             <input
+                                                id="bulk-discount-value"
                                                 type="number"
                                                 bind:value={bulkDiscountValue}
                                                 placeholder="Nilai potongan..."
@@ -1529,8 +1542,9 @@
                                             />
                                         </div>
                                         <div class="w-full sm:w-44">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Stok Promo (Ops.)</label>
+                                            <label for="bulk-promo-stock" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Stok Promo (Ops.)</label>
                                             <input
+                                                id="bulk-promo-stock"
                                                 type="number"
                                                 bind:value={bulkPromoStock}
                                                 placeholder="Stok Promo (Ops.)"
@@ -1640,6 +1654,7 @@
                                                     <td class="px-4 py-3 text-center">
                                                         <button
                                                             type="button"
+                                                            aria-label="Hapus produk target"
                                                             onclick={() => removeTargetItem(index)}
                                                             class="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded-lg transition"
                                                         >
@@ -1672,6 +1687,7 @@
                 <!-- Close button -->
                 <button
                     type="button"
+                    aria-label="Tutup popup"
                     onclick={() => showModal = false}
                     class="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition"
                 >

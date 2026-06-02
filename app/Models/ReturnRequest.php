@@ -67,14 +67,14 @@ class ReturnRequest extends Model
      */
     public static function generateNumber(): string
     {
-        $prefix = 'RTR-'.now()->format('Ymd').'-';
-        $last = static::where('return_number', 'like', $prefix.'%')
+        $prefix = 'RTR-' . now()->format('Ymd') . '-';
+        $last = static::where('return_number', 'ilike', $prefix . '%')
             ->orderByDesc('return_number')
             ->value('return_number');
 
         $seq = $last ? (int) substr($last, -5) + 1 : 1;
 
-        return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
 
     public function transaction(): BelongsTo

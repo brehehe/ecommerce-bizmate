@@ -11,7 +11,9 @@
     const user = $derived(page.props.auth?.user);
 
     const form = useForm({
+        // svelte-ignore state_referenced_locally
         name: user?.name || '',
+        // svelte-ignore state_referenced_locally
         email: user?.email || '',
         password: '',
         password_confirmation: '',

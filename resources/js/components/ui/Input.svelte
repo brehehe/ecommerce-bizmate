@@ -69,6 +69,7 @@
         {#if type === 'password'}
             <button 
                 type="button" 
+                aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                 tabindex="-1"
                 onclick={togglePassword}
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition flex items-center justify-center w-6 h-6"

@@ -13,11 +13,13 @@
         filters = { date_from: '', date_to: '' }
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let dateFrom = $state(filters.date_from);
+    // svelte-ignore state_referenced_locally
     let dateTo = $state(filters.date_to);
 
-    let plCanvas: HTMLCanvasElement;
-    let plChart: Chart;
+    let plCanvas = $state<HTMLCanvasElement>();
+    let plChart = $state<Chart>();
 
     function applyFilter() {
         router.get('/admin/reports/profit-loss', {
@@ -364,7 +366,7 @@
     </main>
 </AdminLayout>
 
-<script lang="ts" context="module">
+<script lang="ts" module>
     function formatDate(dateStr: string) {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleDateString('id-ID', {

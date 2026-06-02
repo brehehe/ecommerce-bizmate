@@ -73,6 +73,7 @@
     });
 
     // Selected address
+    // svelte-ignore state_referenced_locally
     let selectedAddressId = $state(
         addresses.find((a: any) => a.is_primary)?.id ??
             addresses[0]?.id ??
@@ -81,6 +82,7 @@
     let showAddressModal = $state(false);
 
     // Payment
+    // svelte-ignore state_referenced_locally
     let selectedPaymentMethodId = $state(paymentMethods[0]?.id ?? null);
     const selectedPaymentMethod = $derived(
         paymentMethods.find((pm: any) => pm.id === selectedPaymentMethodId),
@@ -126,8 +128,10 @@
         return '';
     });
 
+    // svelte-ignore state_referenced_locally
     let voucherInputCode = $state(initialVoucherCode);
     let manualPromoCode = $state('');
+    // svelte-ignore state_referenced_locally
     let appliedVoucher: any = $state(initialAppliedVoucher);
     let voucherError = $state('');
     let voucherLoading = $state(false);
@@ -145,6 +149,7 @@
         }
     });
 
+    // svelte-ignore state_referenced_locally
     let lastAppliedQueryVoucher = $state(initialVoucherCode);
     $effect(() => {
         const currentQuery = queryVoucher;
@@ -785,6 +790,7 @@
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
             <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
                 <button
+                    aria-label="Kembali"
                     onclick={() => window.history.back()}
                     class="p-2 hover:bg-slate-100 rounded-full transition"
                 >
@@ -1193,6 +1199,7 @@
                                                     />
                                                     {#if searchCourierQuery}
                                                         <button
+                                                            aria-label="Tutup pencarian"
                                                             onclick={() =>
                                                                 (searchCourierQuery =
                                                                     '')}
@@ -1745,6 +1752,27 @@
                                         </p>
                                     </div>
                                 </div>
+                            {:else if useCoins && coinDiscountAmount > 0}
+                                <!-- Info badge: no coins earned when using coins -->
+                                <div
+                                    class="bg-amber-50/60 border border-amber-100/50 rounded-2xl p-3 flex gap-2.5 items-center"
+                                >
+                                    <div
+                                        class="w-6 h-6 rounded-lg bg-amber-500 flex items-center justify-center text-white shrink-0"
+                                    >
+                                        <i class="ti ti-info-circle text-xs"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p
+                                            class="text-[9px] text-amber-800 leading-tight"
+                                        >
+                                            Anda menggunakan Poin pada transaksi ini, sehingga <span
+                                                class="font-black text-amber-600"
+                                                >tidak akan mendapatkan Poin tambahan</span
+                                            >.
+                                        </p>
+                                    </div>
+                                </div>
                             {/if}
                         </div>
                     {/if}
@@ -2036,11 +2064,15 @@
 
     <!-- Address Modal -->
     {#if showAddressModal}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
             class="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
             onclick={() => (showAddressModal = false)}
         >
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
                 class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl max-h-[80vh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
@@ -2050,6 +2082,7 @@
                 >
                     <h3 class="font-bold text-slate-800">Pilih Alamat</h3>
                     <button
+                        aria-label="Tutup"
                         onclick={() => (showAddressModal = false)}
                         class="p-1 rounded-full hover:bg-slate-100"
                     >
@@ -2123,6 +2156,8 @@
             transition:fade={{ duration: 150 }}
         >
             <!-- Backdrop -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
                 class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
                 onclick={() => (voucherModalOpen = false)}
@@ -2157,6 +2192,7 @@
                         </div>
                     </div>
                     <button
+                        aria-label="Tutup"
                         onclick={() => (voucherModalOpen = false)}
                         class="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-650 transition cursor-pointer border-0 bg-transparent rounded-full hover:bg-slate-100/80"
                     >

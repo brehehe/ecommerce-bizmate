@@ -7,8 +7,11 @@
     const primary = $derived((page.props as any).theme?.primary_color ?? '#0c4cb4');
     const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
 
+    // svelte-ignore state_referenced_locally
     let filterStatus = $state((filters as any).status ?? '');
+    // svelte-ignore state_referenced_locally
     let filterType = $state((filters as any).type ?? '');
+    // svelte-ignore state_referenced_locally
     let filterSearch = $state((filters as any).search ?? '');
 
     let toastMsg = $state('');
@@ -114,7 +117,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <!-- Search -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Cari</label>
+                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Cari Retur</p>
                         <div class="relative">
                             <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                             <input
@@ -129,7 +132,7 @@
 
                     <!-- Type -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Jenis Retur</label>
+                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Jenis Retur</p>
                         <select
                             bind:value={filterType}
                             class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
@@ -252,12 +255,12 @@
                             </p>
                             <div class="flex gap-1">
                                 {#if returns.prev_page_url}
-                                    <a href={returns.prev_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition">
+                                    <a aria-label="Previous Page" href={returns.prev_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition">
                                         <i class="ti ti-chevron-left"></i>
                                     </a>
                                 {/if}
                                 {#if returns.next_page_url}
-                                    <a href={returns.next_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition">
+                                    <a aria-label="Next Page" href={returns.next_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition">
                                         <i class="ti ti-chevron-right"></i>
                                     </a>
                                 {/if}

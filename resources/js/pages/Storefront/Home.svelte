@@ -512,7 +512,9 @@
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3">
                 <!-- Main slider (left, 2/3 width) -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
+                    role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
                     class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden aspect-[16/9] lg:aspect-[2.1/1] w-full bg-slate-100 group cursor-pointer shrink-0"
@@ -535,6 +537,7 @@
 
                     <!-- Prev / Next arrows -->
                     <button
+                        aria-label="Previous"
                         onclick={() =>
                             goHero(
                                 (activeHero - 1 + heroBanners.length) %
@@ -545,6 +548,7 @@
                         <i class="ti ti-chevron-left text-base"></i>
                     </button>
                     <button
+                        aria-label="Next"
                         onclick={() =>
                             goHero((activeHero + 1) % heroBanners.length)}
                         class="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/30 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition backdrop-blur-sm"
@@ -558,6 +562,7 @@
                     >
                         {#each heroBanners as _, i}
                             <button
+                                aria-label="Go to slide {i + 1}"
                                 onclick={() => goHero(i)}
                                 class="rounded-full transition-all duration-300 {activeHero ===
                                 i
@@ -808,7 +813,7 @@
                                         {:else}
                                             <img
                                                 src="/noimage/image.png"
-                                                alt="No Image"
+                                                alt="Tidak ada gambar"
                                                 class="w-full h-full object-cover"
                                             />
                                         {/if}
@@ -1054,7 +1059,7 @@
                                 {:else}
                                     <img
                                         src="/noimage/image.png"
-                                        alt="No Image"
+                                        alt="Tidak ada gambar"
                                         class="w-full h-full object-cover"
                                     />
                                 {/if}
@@ -1236,7 +1241,7 @@
                                     {:else}
                                         <img
                                             src="/noimage/image.png"
-                                            alt="No Image"
+                                            alt="Tidak ada gambar"
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
@@ -1425,6 +1430,7 @@
         >
             <!-- Close Button -->
             <button
+                aria-label="Close"
                 onclick={() => (activeLightboxImage = null)}
                 class="absolute top-5 right-5 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition border border-white/20 z-50"
             >
@@ -1432,7 +1438,9 @@
             </button>
 
             <!-- Image Container -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
+                role="presentation"
                 class="relative w-[92vw] max-w-4xl flex flex-col items-center justify-center p-2"
                 onclick={(e) => e.stopPropagation()}
             >

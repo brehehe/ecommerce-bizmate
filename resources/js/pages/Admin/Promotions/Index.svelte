@@ -17,9 +17,12 @@
         metrics = { total_promotions: 0, active_promotions: 0, total_vouchers: 0, active_flash_sales: 0 }
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let searchInput = $state(filters.search || '');
-    let filterType = $state(filters.type || 'all');
+    // svelte-ignore state_referenced_locally
     let filterStatus = $state(filters.status || 'all');
+    // svelte-ignore state_referenced_locally
+    let filterType = $state(filters.type || 'all');
 
     let expandedPromotions = $state(new Set());
 

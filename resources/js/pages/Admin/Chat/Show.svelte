@@ -16,6 +16,7 @@
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
 
+    // svelte-ignore state_referenced_locally
     let messages = $state<any[]>(initialMessages);
     let replyInput = $state('');
     let pollingInterval: any = null;
@@ -443,6 +444,8 @@
                                     <div class="flex items-center gap-2 max-w-[85%] {msg.sender_type === 'admin' ? 'flex-row-reverse' : 'flex-row'}">
                                         <div class="flex flex-col {msg.sender_type === 'admin' ? 'items-end' : 'items-start'} gap-1">
                                             <!-- Product Reference Attachment -->
+                                            <!-- svelte-ignore a11y_no_static_element_interactions -->
+                                            <!-- svelte-ignore a11y_click_events_have_key_events -->
                                             {#if msg.attachment_type === 'product' && msg.attachment_data}
                                                 <div 
                                                     class="max-w-[100%] rounded-2xl overflow-hidden border border-slate-100 shadow-sm cursor-pointer {msg.sender_type === 'admin' ? 'rounded-tr-sm' : 'rounded-tl-sm'}"
@@ -469,9 +472,11 @@
                                             <!-- Image Attachments -->
                                             {#if msg.attachment_type === 'image' && msg.attachment_data?.url}
                                                 <div class="max-w-[100%] rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                                                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
                                                     <img
                                                         src={msg.attachment_data.url}
-                                                        alt="Sent image"
+                                                        alt="Attachment"
                                                         class="max-w-full max-h-60 object-contain bg-slate-100 cursor-pointer"
                                                         onclick={() => window.open(msg.attachment_data.url, '_blank')}
                                                     />

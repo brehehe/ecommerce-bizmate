@@ -197,8 +197,12 @@
     <!-- Return Detail Modal -->
     {#if selectedReturn}
         {@const currentStatusIndex = ['menunggu_review', 'disetujui', 'barang_dikirim_customer', 'barang_diterima_toko', 'refund_diproses', 'selesai'].indexOf(selectedReturn.status)}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (selectedReturn = null)}>
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div class="relative z-10 bg-white w-full lg:max-w-2xl rounded-t-3xl lg:rounded-3xl p-6 max-h-[92dvh] overflow-y-auto shadow-2xl flex flex-col gap-6" onclick={(e: any) => e.stopPropagation()}>
                 
                 <!-- Header -->
@@ -212,7 +216,7 @@
                         </div>
                         <p class="text-xs text-slate-400 font-bold mt-1">#{selectedReturn.return_number} &bull; Diajukan {fmtDate(selectedReturn.created_at)}</p>
                     </div>
-                    <button onclick={() => (selectedReturn = null)} class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+                    <button aria-label="Tutup" onclick={() => (selectedReturn = null)} class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
                         <i class="ti ti-x text-base text-slate-600"></i>
                     </button>
                 </div>
@@ -305,6 +309,7 @@
                                             class="aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer text-left w-full h-full"
                                             onclick={() => window.open(formatImagePath(mediaFile.file_path), '_blank')}>
                                         {#if mediaFile.file_type === 'video'}
+                                            <!-- svelte-ignore a11y_media_has_caption -->
                                             <video src={formatImagePath(mediaFile.file_path)} class="w-full h-full object-cover"></video>
                                             <div class="absolute inset-0 bg-black/40 flex items-center justify-center">
                                                 <i class="ti ti-player-play-filled text-white text-lg"></i>

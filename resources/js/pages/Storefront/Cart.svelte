@@ -1029,6 +1029,7 @@
                                                         class="flex items-center border border-slate-200 rounded-lg overflow-hidden h-7 bg-white shadow-sm"
                                                     >
                                                         <button
+                                                            aria-label="Kurangi kuantitas"
                                                             onclick={() =>
                                                                 updateQty(
                                                                     item,
@@ -1086,6 +1087,7 @@
                                                             class="w-9 h-full text-center font-bold text-slate-700 bg-white border-x border-slate-200 tabular-nums text-[11px] focus:outline-none"
                                                         />
                                                         <button
+                                                            aria-label="Tambah kuantitas"
                                                             onclick={() =>
                                                                 updateQty(
                                                                     item,
@@ -1701,6 +1703,8 @@
             transition:fade={{ duration: 150 }}
         >
             <!-- Backdrop -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
                 class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
                 onclick={() => !checkoutLoading && (paymentModalOpen = false)}
@@ -1732,6 +1736,7 @@
                         </div>
                     </div>
                     <button
+                        aria-label="Tutup"
                         disabled={checkoutLoading}
                         onclick={() => (paymentModalOpen = false)}
                         class="text-slate-400 hover:text-slate-600 transition disabled:opacity-30 cursor-pointer border-0 bg-transparent"
@@ -2239,6 +2244,8 @@
             transition:fade={{ duration: 150 }}
         >
             <!-- Backdrop -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
                 class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
                 onclick={() => (voucherModalOpen = false)}
@@ -2273,6 +2280,7 @@
                         </div>
                     </div>
                     <button
+                        aria-label="Tutup"
                         onclick={() => (voucherModalOpen = false)}
                         class="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-650 transition cursor-pointer border-0 bg-transparent rounded-full hover:bg-slate-100/80"
                     >

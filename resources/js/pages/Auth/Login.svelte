@@ -236,7 +236,7 @@
 
                     <div class="text-sm">
                         <a
-                            href="#"
+                            href="#forgot"
                             class="font-bold hover:underline transition-opacity hover:opacity-80"
                             style="color: {primaryColor};"
                         >

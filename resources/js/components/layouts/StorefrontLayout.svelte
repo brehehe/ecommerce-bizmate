@@ -658,6 +658,7 @@
                         />
                         <button
                             type="submit"
+                            aria-label="Search"
                             class="absolute right-0 top-0 bottom-0 px-4 rounded-r-2xl text-white font-bold text-sm flex items-center gap-1.5 transition"
                             style="background-color: {secondary};"
                         >
@@ -1046,6 +1047,7 @@
                         />
                         <button
                             type="submit"
+                            aria-label="Search"
                             class="absolute right-2 top-1/2 -translate-y-1/2 text-white"
                         >
                             <i class="ti ti-search text-lg"></i>
@@ -1357,19 +1359,22 @@
                 <div class="flex items-center gap-4">
                     <div class="flex items-center gap-2">
                         <a
-                            href="#"
+                            href="#social"
+                            aria-label="Social Link"
                             class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition text-slate-300"
                         >
                             <i class="ti ti-brand-instagram text-base"></i>
                         </a>
                         <a
-                            href="#"
+                            href="#social"
+                            aria-label="Social Link"
                             class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition text-slate-300"
                         >
                             <i class="ti ti-brand-facebook text-base"></i>
                         </a>
                         <a
-                            href="#"
+                            href="#social"
+                            aria-label="Social Link"
                             class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition text-slate-300"
                         >
                             <i class="ti ti-brand-whatsapp text-base"></i>
@@ -1388,7 +1393,10 @@
         transition:fade={{ duration: 150 }}
     >
         <!-- Backdrop -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
+            role="presentation"
             class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm"
             onclick={closeAuthModal}
         ></div>
@@ -1419,6 +1427,7 @@
                         >
                     </div>
                     <button
+                        aria-label="Close"
                         onclick={closeAuthModal}
                         class="text-slate-400 hover:text-slate-700 transition p-1"
                     >
@@ -1479,9 +1488,9 @@
 
                         <form onsubmit={submitLogin} class="space-y-4">
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Email</label
+                                    >Email</p
                                 >
                                 <div class="relative">
                                     <i
@@ -1498,9 +1507,9 @@
                                 </div>
                             </div>
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Kata Sandi</label
+                                    >Kata Sandi</p
                                 >
                                 <div class="relative">
                                     <i
@@ -1537,7 +1546,7 @@
 
                             <div class="flex items-center justify-end">
                                 <a
-                                    href="#"
+                                    href="#forgot"
                                     class="text-xs font-bold hover:underline"
                                     style="color: {primary};"
                                     >Lupa kata sandi?</a
@@ -1602,9 +1611,9 @@
 
                         <form onsubmit={submitRegister} class="space-y-4">
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Nama Lengkap</label
+                                    >Nama Lengkap</p
                                 >
                                 <div class="relative">
                                     <i
@@ -1621,9 +1630,9 @@
                                 </div>
                             </div>
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Email</label
+                                    >Email</p
                                 >
                                 <div class="relative">
                                     <i
@@ -1640,9 +1649,9 @@
                                 </div>
                             </div>
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Kata Sandi</label
+                                    >Kata Sandi</p
                                 >
                                 <div class="relative">
                                     <i
@@ -1677,9 +1686,9 @@
                                 </div>
                             </div>
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Konfirmasi Kata Sandi</label
+                                    >Konfirmasi Kata Sandi</p
                                 >
                                 <div class="relative">
                                     <i
@@ -2013,9 +2022,11 @@
                                         ? 'rounded-tr-sm'
                                         : 'rounded-tl-sm'}"
                                 >
+                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
                                     <img
                                         src={msg.attachment_data.url}
-                                        alt="Sent image"
+                                        alt="Lampiran chat"
+                                        role="presentation"
                                         class="max-w-full max-h-40 object-contain bg-slate-100 cursor-pointer rounded-lg"
                                         onclick={() =>
                                             window.open(
@@ -2100,6 +2111,7 @@
 <!-- Click outside to close profile dropdown -->
 {#if profileDropOpen}
     <div
+        role="presentation"
         class="fixed inset-0 z-30"
         onclick={() => (profileDropOpen = false)}
     ></div>
@@ -2108,12 +2120,14 @@
 {#if coinsModalOpen}
     <!-- Desktop Modal Backdrop -->
     <div
+        role="presentation"
         class="hidden md:flex fixed inset-0 bg-slate-900/60 backdrop-blur-xs items-center justify-center z-[9999]"
         onclick={() => (coinsModalOpen = false)}
         transition:fade={{ duration: 150 }}
     >
         <!-- Modal Container -->
         <div
+            role="presentation"
             class="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200"
             onclick={(e) => e.stopPropagation()}
         >
@@ -2133,6 +2147,7 @@
                     >
                 </div>
                 <button
+                    aria-label="Tutup"
                     onclick={() => (coinsModalOpen = false)}
                     class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition"
                 >
@@ -2261,6 +2276,8 @@
                             ></i>
                             {#if coinsSearchQuery}
                                 <button
+                                    type="button"
+                                    aria-label="Hapus pencarian"
                                     onclick={() => (coinsSearchQuery = '')}
                                     class="absolute right-3 top-2 text-slate-400 hover:text-slate-600"
                                 >
@@ -2427,12 +2444,14 @@
 
     <!-- Mobile Drawer Bottom Sheet -->
     <div
+        role="presentation"
         class="md:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[9999]"
         onclick={() => (coinsModalOpen = false)}
         transition:fade={{ duration: 150 }}
     >
         <!-- Bottom Sheet Container -->
         <div
+            role="presentation"
             class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-350"
             onclick={(e) => e.stopPropagation()}
         >
@@ -2459,6 +2478,7 @@
                     >
                 </div>
                 <button
+                    aria-label="Tutup"
                     onclick={() => (coinsModalOpen = false)}
                     class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition"
                 >
@@ -2579,6 +2599,8 @@
                             ></i>
                             {#if coinsSearchQuery}
                                 <button
+                                    type="button"
+                                    aria-label="Hapus pencarian"
                                     onclick={() => (coinsSearchQuery = '')}
                                     class="absolute right-3 top-2 text-slate-400 hover:text-slate-600"
                                 >

@@ -13,7 +13,11 @@
         filters = {},
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
+    // svelte-ignore state_referenced_locally
+    let filterStatus = $state(filters.status || '');
+    // svelte-ignore state_referenced_locally
     let perPage = $state(filters.perPage || 10);
     let searchTimeout: any;
 
@@ -275,6 +279,7 @@
                                         <td class="py-6 px-6 text-center">
                                             <div class="flex items-center justify-center gap-2">
                                                 <button
+                                                    aria-label="Edit"
                                                     onclick={() => openEditModal(brand)}
                                                     class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-brand-blueLight hover:text-brand-blueRoyal text-slate-500 flex items-center justify-center transition"
                                                     title="Ubah Data"
@@ -327,6 +332,7 @@
                     {isEditing ? 'Ubah Brand Produk' : 'Tambah Brand Produk'}
                 </h3>
                 <button
+                    aria-label="Tutup"
                     type="button"
                     onclick={closeModal}
                     class="p-1 text-slate-400 hover:text-slate-700 transition"

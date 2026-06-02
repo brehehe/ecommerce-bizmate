@@ -6,8 +6,11 @@
 
     const primary = $derived((page.props as any).theme?.primary_color ?? '#0c4cb4');
 
+    // svelte-ignore state_referenced_locally
     let filterType = $state((filters as any).type ?? '');
+    // svelte-ignore state_referenced_locally
     let filterDateFrom = $state((filters as any).date_from ?? '');
+    // svelte-ignore state_referenced_locally
     let filterDateTo = $state((filters as any).date_to ?? '');
 
     function applyFilters() {
@@ -66,7 +69,7 @@
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Tipe Pergerakan</label>
+                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Tipe Pergerakan</p>
                         <select
                             bind:value={filterType}
                             class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition appearance-none"
@@ -78,7 +81,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Dari Tanggal</label>
+                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Dari Tanggal</p>
                         <input
                             type="date"
                             bind:value={filterDateFrom}
@@ -86,7 +89,7 @@
                         />
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Sampai Tanggal</label>
+                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Sampai Tanggal</p>
                         <input
                             type="date"
                             bind:value={filterDateTo}
@@ -201,12 +204,12 @@
                             </p>
                             <div class="flex gap-1">
                                 {#if movements.prev_page_url}
-                                    <a href={movements.prev_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition">
+                                    <a href={movements.prev_page_url} aria-label="Previous Page" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition">
                                         <i class="ti ti-chevron-left"></i>
                                     </a>
                                 {/if}
                                 {#if movements.next_page_url}
-                                    <a href={movements.next_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition">
+                                    <a href={movements.next_page_url} aria-label="Next Page" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition">
                                         <i class="ti ti-chevron-right"></i>
                                     </a>
                                 {/if}

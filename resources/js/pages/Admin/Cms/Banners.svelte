@@ -8,6 +8,7 @@
     const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
 
     // Create the Inertia form
+    // svelte-ignore state_referenced_locally
     const form = useForm({
         hero_banners: heroBanners.length > 0 ? [...heroBanners] : [
             { image: '/banners/promo-main.png', alt: 'Promo Spesial', link: '#' }
@@ -201,7 +202,7 @@
                                     <!-- Fields -->
                                     <div class="md:col-span-8 space-y-3">
                                         <div>
-                                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</label>
+                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.alt}
@@ -210,7 +211,7 @@
                                             />
                                         </div>
                                         <div>
-                                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</label>
+                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.link}
@@ -287,7 +288,7 @@
                                     <!-- Fields -->
                                     <div class="md:col-span-8 space-y-3">
                                         <div>
-                                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</label>
+                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.alt}
@@ -296,7 +297,7 @@
                                             />
                                         </div>
                                         <div>
-                                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</label>
+                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.link}
@@ -355,7 +356,7 @@
                             <!-- Fields -->
                             <div class="md:col-span-8 space-y-3">
                                 <div>
-                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</label>
+                                    <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</p>
                                     <input
                                         type="text"
                                         bind:value={form.middle_wide_banner.alt}
@@ -364,7 +365,7 @@
                                     />
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</label>
+                                    <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</p>
                                     <input
                                         type="text"
                                         bind:value={form.middle_wide_banner.link}
@@ -438,18 +439,18 @@
 
 <style>
     /* Custom Scrollbar styling */
-    .scrollbar-thin::-webkit-scrollbar {
+    :global(.scrollbar-thin::-webkit-scrollbar) {
         height: 6px;
     }
-    .scrollbar-thin::-webkit-scrollbar-track {
+    :global(.scrollbar-thin::-webkit-scrollbar-track) {
         background: #f1f5f9;
         border-radius: 9999px;
     }
-    .scrollbar-thin::-webkit-scrollbar-thumb {
+    :global(.scrollbar-thin::-webkit-scrollbar-thumb) {
         background: #cbd5e1;
         border-radius: 9999px;
     }
-    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    :global(.scrollbar-thin::-webkit-scrollbar-thumb:hover) {
         background: #94a3b8;
     }
 </style>

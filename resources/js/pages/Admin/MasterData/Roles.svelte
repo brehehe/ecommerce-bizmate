@@ -5,6 +5,7 @@
 
     let { roles = { data: [], links: [] }, filters = {} } = $props();
 
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
     let searchTimeout;
 
@@ -150,6 +151,7 @@
                                                 class="flex items-center justify-end gap-2"
                                             >
                                                 <button
+                                                    aria-label="Edit role"
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-brand-blueRoyal/10 hover:text-brand-blueRoyal transition"
                                                 >
                                                     <i
@@ -157,6 +159,7 @@
                                                     ></i>
                                                 </button>
                                                 <button
+                                                    aria-label="Delete role"
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition"
                                                 >
                                                     <i

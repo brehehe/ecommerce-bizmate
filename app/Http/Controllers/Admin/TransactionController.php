@@ -41,10 +41,10 @@ class TransactionController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('transaction_number', 'like', "%{$search}%")
+                $q->where('transaction_number', 'ilike', "%{$search}%")
                     ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
+                        $uq->where('name', 'ilike', "%{$search}%")
+                            ->orWhere('email', 'ilike', "%{$search}%");
                     });
             });
         }
@@ -226,7 +226,7 @@ class TransactionController extends Controller
             }
         });
 
-        return back()->with('success', count($ids).' transaksi berhasil diperbarui.');
+        return back()->with('success', count($ids) . ' transaksi berhasil diperbarui.');
     }
 
     /**
@@ -257,7 +257,7 @@ class TransactionController extends Controller
             }
         });
 
-        return back()->with('success', 'Nomor resi untuk '.count($request->tracking_data).' transaksi berhasil disimpan.');
+        return back()->with('success', 'Nomor resi untuk ' . count($request->tracking_data) . ' transaksi berhasil disimpan.');
     }
 
     /**
@@ -368,7 +368,7 @@ class TransactionController extends Controller
                     'quantity' => $item->quantity,
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
-                    'notes' => 'Pembatalan transaksi - '.$transaction->transaction_number,
+                    'notes' => 'Pembatalan transaksi - ' . $transaction->transaction_number,
                     'created_by' => $adminUser->id,
                 ]);
             }

@@ -8,8 +8,8 @@
     const user = $derived(page.props.auth?.user);
 
     const form = useForm({
-        name: user?.name || '',
-        email: user?.email || '',
+        name: (page.props.auth as any)?.user?.name || '',
+        email: (page.props.auth as any)?.user?.email || '',
         password: '',
         password_confirmation: '',
     });

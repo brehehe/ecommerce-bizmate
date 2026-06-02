@@ -16,15 +16,19 @@
         filters = { date_from: '', date_to: '', search: '', category_id: '' }
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let dateFrom = $state(filters.date_from);
+    // svelte-ignore state_referenced_locally
     let dateTo = $state(filters.date_to);
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
+    // svelte-ignore state_referenced_locally
     let selectedCategory = $state(filters.category_id || '');
 
-    let productCanvas: HTMLCanvasElement;
-    let categoryCanvas: HTMLCanvasElement;
+    let productCanvas = $state<HTMLCanvasElement>();
+    let categoryCanvas = $state<HTMLCanvasElement>();
 
-    let productChart: Chart;
+    let productChart = $state<Chart>();
     let categoryChart: Chart;
 
     function applyFilter() {

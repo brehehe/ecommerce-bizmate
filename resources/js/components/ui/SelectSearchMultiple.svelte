@@ -12,8 +12,8 @@
 
     let isOpen = $state(false);
     let search = $state('');
-    let containerNode;
-    let searchInput;
+    let containerNode: HTMLElement | null = $state(null);
+    let searchInput: HTMLInputElement | null = $state(null);
 
     // Derived filtered options
     let filteredOptions = $derived(
@@ -69,7 +69,7 @@
 
 <div class="space-y-2 relative" bind:this={containerNode}>
     {#if label}
-        <label class="text-xs font-bold text-slate-600 block">
+        <label class="text-xs font-bold text-slate-600 block" for="select-{label.toLowerCase().replace(/\s+/g, '-')}">
             {label}
             {#if required}
                 <span class="text-rose-500">*</span>
@@ -78,8 +78,15 @@
     {/if}
     
     <div 
-        class="w-full px-3 py-2 border rounded-xl text-sm transition min-h-[44px] flex flex-wrap gap-2 items-center {disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white cursor-pointer hover:border-brand-blueRoyal'} {error ? 'border-rose-500' : 'border-slate-200'}"
+        role="button"
+        tabindex="0"
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleOpen(); }}
+        id="select-{label ? label.toLowerCase().replace(/\s+/g, '-') : 'search-multiple'}"
+        class="w-full px-3 py-2 border rounded-xl text-sm transition min-h-[44px] flex flex-wrap gap-2 items-center text-left {disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white cursor-pointer hover:border-brand-blueRoyal'} {error ? 'border-rose-500' : 'border-slate-200'}"
         onclick={toggleOpen}
+        aria-disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
     >
         {#if selectedOptions.length === 0}
             <span class="text-slate-400 px-1">{placeholder}</span>
@@ -87,7 +94,7 @@
             {#each selectedOptions as option}
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-bold text-slate-700">
                     {option.name}
-                    <button type="button" onclick={(e) => removeOption(e, option.id || option.name)} class="text-slate-400 hover:text-rose-500 transition">
+                    <button type="button" aria-label="Remove {option.name}" onclick={(e) => removeOption(e, option.id || option.name)} class="text-slate-400 hover:text-rose-500 transition">
                         <i class="ti ti-x text-[10px]"></i>
                     </button>
                 </span>
@@ -104,7 +111,7 @@
     {/if}
 
     {#if isOpen}
-        <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
+        <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden" role="listbox">
             <div class="p-2 border-b border-slate-100 bg-slate-50 sticky top-0">
                 <div class="relative">
                     <i class="ti ti-search absolute left-3 top-2.5 text-slate-400"></i>

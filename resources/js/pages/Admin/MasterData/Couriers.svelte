@@ -13,7 +13,9 @@
         filters = {},
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
+    // svelte-ignore state_referenced_locally
     let perPage = $state(filters.perPage || 10);
     let searchTimeout: any;
 
@@ -330,6 +332,7 @@
                 </h3>
                 <button
                     type="button"
+                    aria-label="Close modal"
                     onclick={closeModal}
                     class="p-1 text-slate-400 hover:text-slate-700 transition"
                 >

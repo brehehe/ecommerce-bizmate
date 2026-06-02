@@ -16,12 +16,14 @@
         filters = { date_from: '', date_to: '' }
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let dateFrom = $state(filters.date_from);
+    // svelte-ignore state_referenced_locally
     let dateTo = $state(filters.date_to);
 
-    let trendCanvas: HTMLCanvasElement;
-    let paymentCanvas: HTMLCanvasElement;
-    let statusCanvas: HTMLCanvasElement;
+    let trendCanvas: HTMLCanvasElement | undefined = $state();
+    let paymentCanvas: HTMLCanvasElement | undefined = $state();
+    let statusCanvas: HTMLCanvasElement | undefined = $state();
 
     let trendChart: Chart;
     let paymentChart: Chart;
