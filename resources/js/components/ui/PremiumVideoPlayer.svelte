@@ -1,6 +1,5 @@
 <script lang="ts">
-    import { onDestroy } from 'svelte';
-    import Plyr from 'plyr';
+    import { onDestroy, onMount } from 'svelte';
     import 'plyr/dist/plyr.css';
 
     let {
@@ -14,17 +13,23 @@
     } = $props();
 
     let videoElement = $state<HTMLVideoElement | null>(null);
-    let player: Plyr | null = null;
+    let player: any = null;
+    let PlyrClass: any = null;
+
+    onMount(async () => {
+        const PlyrModule = await import('plyr');
+        PlyrClass = PlyrModule.default;
+    });
 
     $effect(() => {
-        if (src && videoElement) {
+        if (src && videoElement && PlyrClass) {
             // Re-initialize player if src changes
             if (player) {
                 player.destroy();
                 player = null;
             }
 
-            player = new Plyr(videoElement, {
+            player = new PlyrClass(videoElement, {
                 controls,
                 autoplay,
                 muted,

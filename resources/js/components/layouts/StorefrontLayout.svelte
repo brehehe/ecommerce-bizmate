@@ -21,12 +21,15 @@
         const flash = (page.props as any).flash;
         if (flash?.success) {
             showToast(flash.success, 'success');
+            flash.success = null;
         }
         if (flash?.error) {
             showToast(flash.error, 'error');
+            flash.error = null;
         }
         if (flash?.warning) {
             showToast(flash.warning, 'error');
+            flash.warning = null;
         }
     });
 
@@ -702,8 +705,8 @@
                         <i class="ti ti-shopping-cart text-2xl"></i>
                         {#if cartCount > 0}
                             <span
-                                class="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white"
-                                style="background-color: {secondary};"
+                                class="absolute top-1 right-2.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm font-sans"
+                                style="background-color: {secondary}; font-family: sans-serif;"
                             >
                                 {cartCount}
                             </span>
@@ -715,10 +718,10 @@
 
                     <!-- Notifications (Desktop) -->
                     {#if auth}
-                        <div class="relative flex items-center">
+                        <div class="relative">
                             <button
                                 onclick={() => (isNotifOpen = !isNotifOpen)}
-                                class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center justify-center shrink-0"
+                                class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                                 aria-label="Notifikasi"
                             >
                                 <i class="ti ti-bell text-2xl"></i>
