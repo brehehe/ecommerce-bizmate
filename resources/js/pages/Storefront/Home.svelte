@@ -508,7 +508,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->
-    <section class="bg-white px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
+    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3">
                 <!-- Main slider (left, 2/3 width) -->
@@ -639,9 +639,9 @@
     {#if categories.length > 0}
         <section
             id="categories-section"
-            class="bg-white mt-2 px-3 sm:px-5 lg:px-8 py-4"
+            class="mt-2 px-3 sm:px-5 lg:px-8"
         >
-            <div class="max-w-6xl mx-auto">
+            <div class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm">
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-4">
                     <h2
@@ -1092,7 +1092,7 @@
                                             </p>
                                         </div>
                                         <div
-                                            class="flex items-center gap-1 mt-1"
+                                            class="flex items-center gap-1 mt-1 h-4"
                                         >
                                             {#if avgRating !== null && reviewCount > 0}
                                                 <i
@@ -1285,7 +1285,7 @@
                                                 </p>
                                             </div>
                                             <div
-                                                class="flex items-center gap-1 mt-1"
+                                                class="flex items-center gap-1 mt-1 h-4"
                                             >
                                                 {#if avgRating !== null && reviewCount > 0}
                                                     <i

@@ -136,7 +136,10 @@
 
     // Lightbox for review media
     let reviewLightboxOpen = $state(false);
-    let reviewLightboxMedia = $state<{ type: 'video' | 'image', url: string } | null>(null);
+    let reviewLightboxMedia = $state<{
+        type: 'video' | 'image';
+        url: string;
+    } | null>(null);
 
     type DesktopSlide =
         | { type: 'image'; src: string; idx: number }
@@ -1139,6 +1142,29 @@
         if (!currentIsUnlimited && qty >= currentStock) return;
         qty++;
     }
+    function handleQtyInput(e: Event) {
+        const target = e.target as HTMLInputElement;
+        let val = parseInt(target.value);
+        if (isNaN(val)) {
+            return;
+        }
+        if (!currentIsUnlimited && val > currentStock) {
+            qty = currentStock;
+        } else {
+            qty = val;
+        }
+    }
+    function handleQtyBlur(e: Event) {
+        const target = e.target as HTMLInputElement;
+        let val = parseInt(target.value);
+        if (isNaN(val) || val < currentMinPurchase) {
+            qty = currentMinPurchase;
+        } else if (!currentIsUnlimited && val > currentStock) {
+            qty = currentStock;
+        } else {
+            qty = val;
+        }
+    }
 
     // ═══════════════════════════════════════
     //  WHATSAPP CTA
@@ -1199,13 +1225,13 @@
                 quantity: qty,
             },
             {
-                onSuccess: () => {
-                    showToast(
-                        'Produk berhasil ditambahkan ke keranjang!',
-                        'success',
-                        'top',
-                    );
-                },
+                // onSuccess: () => {
+                //     showToast(
+                //         'Produk berhasil ditambahkan ke keranjang!',
+                //         'success',
+                //         'top',
+                //     );
+                // },
                 onError: (errors: any) => {
                     const errMsg =
                         errors?.error ??
@@ -1284,13 +1310,13 @@
             },
             {
                 preserveScroll: true,
-                onSuccess: () => {
-                    showToast(
-                        'Produk berhasil ditambahkan ke keranjang!',
-                        'success',
-                        'top',
-                    );
-                },
+                // onSuccess: () => {
+                //     showToast(
+                //         'Produk berhasil ditambahkan ke keranjang!',
+                //         'success',
+                //         'top',
+                //     );
+                // },
                 onError: () => {
                     showToast(
                         'Gagal menambahkan produk ke keranjang.',
@@ -2890,10 +2916,15 @@
                                     >
                                         <i class="ti ti-minus text-sm"></i>
                                     </button>
-                                    <span
-                                        class="w-12 text-center text-sm font-black text-slate-800 tabular-nums"
-                                        >{qty}</span
-                                    >
+                                    <input
+                                        type="number"
+                                        value={qty}
+                                        min={currentMinPurchase}
+                                        max={currentIsUnlimited ? undefined : currentStock}
+                                        class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        oninput={handleQtyInput}
+                                        onblur={handleQtyBlur}
+                                    />
                                     <button
                                         aria-label="Increase quantity"
                                         onclick={incQty}
@@ -3218,7 +3249,9 @@
                             <i class="ti ti-calculator text-base text-slate-400"
                             ></i> Cari Ukuran Rekomendasi Anda
                         </h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mb-4">
+                        <div
+                            class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mb-4"
+                        >
                             <div>
                                 <label
                                     for="height-input"
@@ -3302,7 +3335,9 @@
                     <div
                         class="w-full max-w-full overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5"
                     >
-                        <table class="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-0">
+                        <table
+                            class="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-0"
+                        >
                             <thead>
                                 <tr
                                     class="bg-slate-50 border-b border-slate-100"
@@ -3344,7 +3379,9 @@
                     </div>
 
                     <!-- Scroll Hint for Mobile -->
-                    <div class="flex items-center justify-end gap-1 text-[10px] text-slate-400 mt-2 sm:hidden">
+                    <div
+                        class="flex items-center justify-end gap-1 text-[10px] text-slate-400 mt-2 sm:hidden"
+                    >
                         <i class="ti ti-arrows-horizontal text-xs"></i>
                         <span>Geser tabel ke samping untuk melihat detail</span>
                     </div>
@@ -3515,7 +3552,11 @@
                                                         playsinline
                                                         onclick={(e: any) => {
                                                             e.preventDefault();
-                                                            reviewLightboxMedia = { type: 'video', url: mediaUrl };
+                                                            reviewLightboxMedia =
+                                                                {
+                                                                    type: 'video',
+                                                                    url: mediaUrl,
+                                                                };
                                                             reviewLightboxOpen = true;
                                                         }}
                                                     ></video>
@@ -3525,7 +3566,11 @@
                                                         alt="Foto ulasan"
                                                         class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition"
                                                         onclick={() => {
-                                                            reviewLightboxMedia = { type: 'image', url: mediaUrl };
+                                                            reviewLightboxMedia =
+                                                                {
+                                                                    type: 'image',
+                                                                    url: mediaUrl,
+                                                                };
                                                             reviewLightboxOpen = true;
                                                         }}
                                                         onerror={(e: any) => {
@@ -4262,10 +4307,15 @@
                             >
                                 <i class="ti ti-minus text-sm"></i>
                             </button>
-                            <span
-                                class="w-12 text-center text-sm font-black text-slate-800 tabular-nums"
-                                >{qty}</span
-                            >
+                            <input
+                                type="number"
+                                value={qty}
+                                min={currentMinPurchase}
+                                max={currentIsUnlimited ? undefined : currentStock}
+                                class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                oninput={handleQtyInput}
+                                onblur={handleQtyBlur}
+                            />
                             <button
                                 type="button"
                                 aria-label="Tambah jumlah"
@@ -4911,7 +4961,9 @@
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
             class="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 sm:p-8 animate-pop"
-            onclick={() => { reviewLightboxOpen = false; }}
+            onclick={() => {
+                reviewLightboxOpen = false;
+            }}
         >
             <button
                 class="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white transition p-2 bg-black/20 rounded-full"

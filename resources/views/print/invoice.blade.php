@@ -333,7 +333,7 @@
                     <td style="text-align: right; color: #0c4cb4;">Rp {{ number_format($transaction->grand_total, 0, ',', '.') }}</td>
                 </tr>
             </table>
-            @if(setting('tax_enabled') == '1' || setting('tax_enabled') === true || setting('tax_enabled') == 'true')
+            @if(\App\Models\Setting::where('key', 'tax_enabled')->value('value') == '1')
                 <div style="text-align: right; font-size: 11px; color: #64748b; margin-top: 5px; font-style: italic;">
                     * Harga sudah termasuk Pajak
                 </div>
