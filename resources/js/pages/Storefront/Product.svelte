@@ -2779,15 +2779,6 @@
                                 <span class="font-bold text-slate-800">
                                     {shippingInfo.store_city || 'Lokasi toko'}
                                 </span>
-                                {#if shippingInfo.store_address}
-                                    <p
-                                        class="text-[11px] text-slate-400 mt-0.5"
-                                    >
-                                        {shippingInfo.store_address}{shippingInfo.postal_code
-                                            ? ` ${shippingInfo.postal_code}`
-                                            : ''}
-                                    </p>
-                                {/if}
                             </div>
                         </div>
                     </div>
@@ -3561,6 +3552,8 @@
                                                         }}
                                                     ></video>
                                                 {:else}
+                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                                                     <img
                                                         src={mediaUrl}
                                                         alt="Foto ulasan"
@@ -4989,7 +4982,9 @@
                         controls
                         autoplay
                         playsinline
-                    ></video>
+                    >
+                        <track kind="captions" />
+                    </video>
                 {:else}
                     <img
                         src={reviewLightboxMedia.url}

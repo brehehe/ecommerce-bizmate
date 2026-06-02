@@ -133,8 +133,10 @@
         { id: 'ocean_teal', name: 'Ocean Teal', sub: 'OCEAN TEAL', primary: '#0f766e', secondary: '#06b6d4' },
     ];
 
+    let forcedCustom = $state(false);
+
     let currentPreset = $derived(
-        themePresets.find(p => p.primary.toLowerCase() === form.primary_color.toLowerCase() && p.secondary.toLowerCase() === form.secondary_color.toLowerCase())?.id || 'custom'
+        forcedCustom ? 'custom' : (themePresets.find(p => p.primary.toLowerCase() === form.primary_color.toLowerCase() && p.secondary.toLowerCase() === form.secondary_color.toLowerCase())?.id || 'custom')
     );
 
     function setPreset(id: string) {
@@ -143,6 +145,7 @@
         if (p) {
             form.primary_color = p.primary;
             form.secondary_color = p.secondary;
+            forcedCustom = false;
         }
     }
 
@@ -1295,14 +1298,7 @@
                                     {currentPreset === 'custom' ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
                                     style={currentPreset === 'custom' ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;` : ''}
                                     onclick={() => {
-                                        // Change a bit so it becomes custom if it's currently a preset
-                                        if (currentPreset !== 'custom') {
-                                            form.primary_color = form.primary_color;
-                                            form.secondary_color = form.secondary_color;
-                                            // The derived state automatically switches to 'custom' when colors are edited manually
-                                            // To force custom without editing, we just select it. But wait, currentPreset is derived from colors.
-                                            // So "Kustom Warna Sendiri" is just an active state.
-                                        }
+                                        forcedCustom = true;
                                     }}
                                 >
                                     <div class="flex items-center gap-4">
