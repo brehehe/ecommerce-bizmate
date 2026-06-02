@@ -233,7 +233,17 @@
                             ? `color: ${primaryColor};`
                             : ''}
                     ></i>
-                    <span>Retur Pesanan</span>
+                    <span class="flex-grow flex items-center justify-between">
+                        <span>Retur Pesanan</span>
+                        {#if (adminNotifications?.returnCounts?.menunggu_review || 0) > 0}
+                            <span
+                                class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0 font-sans"
+                                style="background-color: {secondaryColor};"
+                            >
+                                {adminNotifications.returnCounts.menunggu_review}
+                            </span>
+                        {/if}
+                    </span>
                 </a>
             </div>
             <div class="relative">

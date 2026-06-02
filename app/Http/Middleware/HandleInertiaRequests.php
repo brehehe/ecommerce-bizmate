@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\ProductStock;
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Models\ReturnRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
@@ -193,6 +194,9 @@ class HandleInertiaRequests extends Middleware
                     'belum_bayar' => Transaction::where('status', 'belum_bayar')->count(),
                     'menunggu' => Transaction::where('status', 'menunggu')->count(),
                     'diproses' => Transaction::where('status', 'diproses')->count(),
+                ],
+                'returnCounts' => [
+                    'menunggu_review' => ReturnRequest::where('status', 'menunggu_review')->count(),
                 ],
                 'notifications' => Notification::whereNull('user_id')
                     ->orderBy('created_at', 'desc')
