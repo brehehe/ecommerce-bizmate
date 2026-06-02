@@ -231,7 +231,7 @@ class Transaction extends Model
 
                     if ($transaction->user && $transaction->user->email) {
                         Mail::to($transaction->user->email)
-                            ->send(new OrderStatusChanged($transaction, $storeName, $storeLogo));
+                            ->queue(new OrderStatusChanged($transaction, $storeName, $storeLogo));
                     }
                 } catch (\Throwable $e) {
                     Log::error('Order status change email failed for transaction ' . $transaction->transaction_number . ': ' . $e->getMessage());

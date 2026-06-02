@@ -755,7 +755,7 @@ class CheckoutController extends Controller
 
             $transaction->load(['items', 'user', 'customerAddress', 'paymentMethod']);
 
-            Mail::to($user->email)->send(new OrderConfirmation($transaction, $storeName, $storeLogo));
+            Mail::to($user->email)->queue(new OrderConfirmation($transaction, $storeName, $storeLogo));
         } catch (\Throwable $e) {
             Log::error('Order confirmation email failed for transaction ' . $transaction->transaction_number . ': ' . $e->getMessage());
         }

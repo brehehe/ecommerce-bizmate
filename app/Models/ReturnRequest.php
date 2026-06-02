@@ -111,4 +111,37 @@ class ReturnRequest extends Model
     {
         return $this->hasMany(ReturnMedia::class, 'return_id');
     }
+
+    protected static function booted(): void
+    {
+        static::created(function (ReturnRequest $return) {
+            try {
+                $storeName = \App\Models\Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                $storeLogo = \App\Models\Setting::where('key', 'store_logo')->value('value');
+                $return->loadMissing('user');
+                if ($return->user && $return->user->email) {
+                    \Illuminate\Support\Facades\Mail::to($return->user->email)
+                        ->queue(new \App\Mail\ReturnSubmitted($return, $storeName, $storeLogo));
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Return submitted email failed: ' . $e->getMessage());
+            }
+        });
+
+        static::updated(function (ReturnRequest $return) {
+            if ($return->isDirty('status')) {
+                try {
+                    $storeName = \App\Models\Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                    $storeLogo = \App\Models\Setting::where('key', 'store_logo')->value('value');
+                    $return->loadMissing('user');
+                    if ($return->user && $return->user->email) {
+                        \Illuminate\Support\Facades\Mail::to($return->user->email)
+                            ->queue(new \App\Mail\ReturnStatusChanged($return, $storeName, $storeLogo));
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Return status change email failed: ' . $e->getMessage());
+                }
+            }
+        });
+    }
 }

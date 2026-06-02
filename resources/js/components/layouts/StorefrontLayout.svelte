@@ -5,6 +5,9 @@
     import { showToast } from '@/utils/toast';
     import OfflineDetector from '@/components/OfflineDetector.svelte';
 
+    const shownFlashIds = new Set();
+
+
     let {
         children,
         hideMobileHeader = false,
@@ -19,17 +22,24 @@
 
     $effect(() => {
         const flash = (page.props as any).flash;
-        if (flash?.success) {
+        if (!flash || !flash.id || shownFlashIds.has(flash.id)) return;
+
+        let showed = false;
+        if (flash.success) {
             showToast(flash.success, 'success');
-            flash.success = null;
+            showed = true;
         }
-        if (flash?.error) {
+        if (flash.error) {
             showToast(flash.error, 'error');
-            flash.error = null;
+            showed = true;
         }
-        if (flash?.warning) {
+        if (flash.warning) {
             showToast(flash.warning, 'error');
-            flash.warning = null;
+            showed = true;
+        }
+
+        if (showed) {
+            shownFlashIds.add(flash.id);
         }
     });
 

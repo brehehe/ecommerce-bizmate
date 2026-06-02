@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use App\Models\Transaction;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -11,54 +10,33 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class OrderStatusChanged extends Mailable implements ShouldQueue
+class ReturnStatusChanged extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    /**
-     * Create a new message instance.
-     */
     public function __construct(
-        public readonly Transaction $transaction,
+        public readonly \App\Models\ReturnRequest $returnRequest,
         public readonly string $storeName,
         public readonly ?string $storeLogo = null,
     ) {}
 
-    /**
-     * Get the message envelope.
-     */
     public function envelope(): Envelope
     {
-        $statusLabels = [
-            'belum_bayar' => 'Belum Bayar',
-            'menunggu' => 'Menunggu Konfirmasi',
-            'diproses' => 'Sedang Diproses',
-            'dikemas' => 'Sedang Dikemas',
-            'dikirim' => 'Sedang Dikirim',
-            'selesai' => 'Selesai',
-            'batal' => 'Dibatalkan',
-        ];
-
-        $statusText = $statusLabels[$this->transaction->status] ?? ucfirst($this->transaction->status);
-
         return new Envelope(
-            subject: "Update Status Pesanan #{$this->transaction->transaction_number} — {$statusText}",
+            subject: "Status Retur Diperbarui (#{$this->returnRequest->return_number}) — {$this->storeName}",
         );
     }
 
-    /**
-     * Get the message content definition.
-     */
     public function content(): Content
     {
         return new Content(
-            view: 'emails.order-status-changed',
+            view: 'emails.returns.status_changed',
             with: [
-                'transaction' => $this->transaction,
+                'returnRequest' => $this->returnRequest,
                 'storeName' => $this->storeName,
                 'storeLogo' => $this->storeLogo,
                 'appUrl' => config('app.url'),
-            ],
+            ]
         );
     }
 

@@ -121,7 +121,6 @@
             {
                 onSuccess: () => {
                     showCancelModal = false;
-                    showToast('Pesanan berhasil dibatalkan.', 'success');
                 },
                 onError: () => {
                     showToast('Gagal membatalkan pesanan.', 'error');
@@ -150,7 +149,6 @@
             {
                 onSuccess: () => {
                     showChangePaymentModal = false;
-                    showToast('Metode pembayaran berhasil diubah.', 'success');
                 },
                 onError: () => {
                     showToast('Gagal mengubah metode pembayaran.', 'error');
@@ -169,10 +167,6 @@
             {},
             {
                 onSuccess: () => {
-                    showToast(
-                        'Pesanan telah diterima. Terima kasih!',
-                        'success',
-                    );
                 },
                 onError: () => {
                     showToast(
@@ -257,7 +251,6 @@
             forceFormData: true,
             onSuccess: () => {
                 showReviewModal = false;
-                showToast('Ulasan berhasil dikirim. Terima kasih!', 'success');
                 reviewPreviews.forEach((p) => URL.revokeObjectURL(p.url));
             },
             onError: (errors: any) => {
@@ -420,7 +413,6 @@
             {
                 forceFormData: true,
                 onSuccess: () => {
-                    showToast('Bukti pembayaran berhasil diunggah!', 'success');
                     showUploadModal = false;
                     proofFile = null;
                     proofPreview = '';
@@ -514,7 +506,6 @@
             forceFormData: true,
             onSuccess: () => {
                 showReturnModal = false;
-                showToast('Pengajuan retur berhasil dikirim!', 'success');
                 returPreviews.forEach((p) => URL.revokeObjectURL(p.url));
             },
         });
@@ -539,7 +530,6 @@
             },
             {
                 onSuccess: () => {
-                    showToast('Nomor resi retur berhasil dikirim!', 'success');
                     returnCourierName = '';
                     returnTrackingNumber = '';
                 },

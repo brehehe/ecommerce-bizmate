@@ -123,6 +123,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
                 'warning' => $request->session()->get('warning'),
+                'id' => \Str::uuid()->toString(),
             ],
             'auth' => [
                 'user' => $request->user(),
