@@ -200,10 +200,10 @@
                                         </div>
 
                                         <!-- Footer -->
-                                        <div class="px-4 py-3 border-t border-slate-50 bg-slate-50/20 flex items-center justify-between">
-                                            <div>
+                                        <div class="px-4 py-3 border-t border-slate-50 bg-slate-50/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div class="flex flex-col">
                                                 <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Pembayaran</span>
-                                                <div class="flex items-center gap-2 mt-0.5">
+                                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
                                                     <p class="text-sm font-black" style="color:{primary}">{fmt(trx.grand_total)}</p>
                                                     {#if trx.coins_redeemed > 0}
                                                         <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-50 text-amber-600 border border-amber-200/50">
@@ -212,20 +212,20 @@
                                                     {/if}
                                                 </div>
                                             </div>
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                                                 <button
                                                     onclick={(e) => {
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         window.open(`/transactions/${trx.id}/print-invoice?download=1`, '_blank');
                                                     }}
-                                                    class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition"
+                                                    class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-2 sm:py-1.5 rounded-xl hover:bg-slate-100 transition"
                                                     title="Cetak Invoice"
                                                 >
                                                     <i class="ti ti-printer text-base"></i>
-                                                    <span class="hidden sm:inline">Cetak Invoice</span>
+                                                    <span>Cetak Invoice</span>
                                                 </button>
-                                                <div class="flex items-center gap-1 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-50 hover:text-slate-700 hover:shadow-3xs transition">
+                                                <div class="flex-1 sm:flex-initial flex items-center justify-center gap-1 text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-2 sm:py-1.5 rounded-xl hover:bg-slate-55 hover:text-slate-700 hover:shadow-3xs transition">
                                                     <span>Lihat Detail</span>
                                                     <i class="ti ti-chevron-right text-xs"></i>
                                                 </div>
