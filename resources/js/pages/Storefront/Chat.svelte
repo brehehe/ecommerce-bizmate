@@ -472,8 +472,9 @@
                                     <div class="flex flex-col {msg.sender_type === 'user' ? 'items-end' : 'items-start'} gap-1">
                                         <!-- Product Attachment -->
                                         {#if msg.attachment_type === 'product' && msg.attachment_data}
-                                            <div 
-                                                class="max-w-[100%] rounded-2xl overflow-hidden border shadow-sm cursor-pointer {msg.sender_type === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'}"
+                                            <button 
+                                                type="button"
+                                                class="text-left block w-full max-w-[100%] rounded-2xl overflow-hidden border shadow-sm cursor-pointer {msg.sender_type === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'} border-0"
                                                 style="background-color: {msg.sender_type === 'user' ? primary : 'white'};"
                                                 onclick={() => msg.attachment_data.id && router.visit(`/products/${msg.attachment_data.id}`)}
                                             >
@@ -491,18 +492,24 @@
                                                         </p>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </button>
                                         {/if}
 
                                         <!-- Image Attachment -->
                                         {#if msg.attachment_type === 'image' && msg.attachment_data?.url}
                                             <div class="max-w-[100%] rounded-2xl overflow-hidden border shadow-sm">
-                                                <img
-                                                    src={msg.attachment_data.url}
-                                                    alt="Sent attachment"
-                                                    class="max-w-full max-h-72 object-contain bg-slate-100 cursor-pointer"
+                                                <button
+                                                    type="button"
+                                                    aria-label="Lihat gambar"
+                                                    class="block w-full text-left p-0 border-0 bg-transparent cursor-pointer"
                                                     onclick={() => window.open(msg.attachment_data.url, '_blank')}
-                                                />
+                                                >
+                                                    <img
+                                                        src={msg.attachment_data.url}
+                                                        alt="Gambar terlampir"
+                                                        class="max-w-full max-h-72 object-contain bg-slate-100"
+                                                    />
+                                                </button>
                                             </div>
                                         {/if}
 
@@ -678,14 +685,3 @@
         </div>
     {/if}
 </StorefrontLayout>
-
-<style>
-    /* Prevent scrollbar overlaying on quick replies */
-    .no-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-    .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-</style>

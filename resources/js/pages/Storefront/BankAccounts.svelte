@@ -400,12 +400,12 @@
 
     <!-- Add Modal -->
     {#if showAddModal}
-        <div class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (showAddModal = false)}>
+        <div role="presentation" class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (showAddModal = false)}>
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-            <div class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92dvh] overflow-y-auto" onclick={(e: any) => e.stopPropagation()}>
+            <div role="presentation" class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92dvh] overflow-y-auto" onclick={(e: any) => e.stopPropagation()}>
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="font-bold text-slate-800 text-base">Tambah Rekening Bank</h3>
-                    <button onclick={() => (showAddModal = false)} class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+                    <button aria-label="Tutup" onclick={() => (showAddModal = false)} class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
                         <i class="ti ti-x text-sm text-slate-600"></i>
                     </button>
                 </div>
@@ -507,12 +507,12 @@
 
     <!-- Edit Modal -->
     {#if showEditModal && editingAccount}
-        <div class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (showEditModal = false)}>
+        <div role="presentation" class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (showEditModal = false)}>
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-            <div class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92dvh] overflow-y-auto" onclick={(e: any) => e.stopPropagation()}>
+            <div role="presentation" class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5 max-h-[92dvh] overflow-y-auto" onclick={(e: any) => e.stopPropagation()}>
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="font-bold text-slate-800 text-base">Edit Rekening Bank</h3>
-                    <button onclick={() => (showEditModal = false)} class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
+                    <button aria-label="Tutup" onclick={() => (showEditModal = false)} class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition">
                         <i class="ti ti-x text-sm text-slate-600"></i>
                     </button>
                 </div>
@@ -593,9 +593,9 @@
 
     <!-- Delete Confirm Modal -->
     {#if showDeleteModal && deletingAccount}
-        <div class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (showDeleteModal = false)}>
+        <div role="presentation" class="fixed inset-0 z-50 flex items-end lg:items-center justify-center" onclick={() => (showDeleteModal = false)}>
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-            <div class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5" onclick={(e: any) => e.stopPropagation()}>
+            <div role="presentation" class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5" onclick={(e: any) => e.stopPropagation()}>
                 <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
                     <i class="ti ti-trash text-2xl text-red-500"></i>
                 </div>

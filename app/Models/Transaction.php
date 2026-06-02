@@ -264,7 +264,7 @@ class Transaction extends Model
     public static function generateNumber(): string
     {
         $prefix = 'TRX-' . now()->format('Ymd') . '-';
-        $last = static::where('transaction_number', 'like', $prefix . '%')
+        $last = static::where('transaction_number', 'ilike', $prefix . '%')
             ->orderByDesc('transaction_number')
             ->value('transaction_number');
 

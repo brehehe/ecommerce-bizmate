@@ -12,7 +12,9 @@
         filters = { search: '', status: '' }
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
+    // svelte-ignore state_referenced_locally
     let selectedStatus = $state(filters.status || '');
 
     function applyFilter() {

@@ -771,9 +771,9 @@
                             class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-slate-100"
                         >
                             <div>
-                                <label
+                                <p
                                     class="text-xs font-bold text-slate-600 block mb-2"
-                                    >Nilai Potongan Ongkir</label
+                                    >Nilai Potongan Ongkir</p
                                 >
                                 <div
                                     class="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-500"
@@ -1010,6 +1010,7 @@
                                             {#if form.settings.bundle.buy_items.length > 1}
                                                 <button
                                                     type="button"
+                                                    aria-label="Remove"
                                                     onclick={() => removeBuyItem(i)}
                                                     class="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition duration-200 mb-1"
                                                 >
@@ -1096,6 +1097,7 @@
                                                 {#if form.settings.bundle.get_items.length > 1}
                                                     <button
                                                         type="button"
+                                                        aria-label="Remove"
                                                         onclick={() => removeGetItem(i)}
                                                         class="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition duration-200 mb-1"
                                                     >
@@ -1408,7 +1410,7 @@
                                     </div>
                                     <div class="flex flex-wrap gap-3 items-end">
                                         <div class="w-full sm:w-48">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Tipe Potongan</label>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Tipe Potongan</p>
                                             <select
                                                 bind:value={bulkDiscountType}
                                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal text-xs font-semibold text-slate-700 h-10"
@@ -1419,7 +1421,7 @@
                                             </select>
                                         </div>
                                         <div class="w-full sm:w-44">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nilai Potongan</label>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nilai Potongan</p>
                                             <input
                                                 type="number"
                                                 bind:value={bulkDiscountValue}
@@ -1428,7 +1430,7 @@
                                             />
                                         </div>
                                         <div class="w-full sm:w-44">
-                                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Stok Promo (Ops.)</label>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Stok Promo (Ops.)</p>
                                             <input
                                                 type="number"
                                                 bind:value={bulkPromoStock}
@@ -1539,6 +1541,7 @@
                                                     <td class="px-4 py-3 text-center">
                                                         <button
                                                             type="button"
+                                                            aria-label="Remove item"
                                                             onclick={() => removeTargetItem(index)}
                                                             class="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded-lg transition"
                                                         >
@@ -1571,6 +1574,7 @@
                 <!-- Close button -->
                 <button
                     type="button"
+                    aria-label="Close modal"
                     onclick={() => showModal = false}
                     class="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition"
                 >

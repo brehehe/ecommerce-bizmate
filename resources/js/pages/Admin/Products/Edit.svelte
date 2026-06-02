@@ -21,47 +21,50 @@
         page.props.settings?.tax_percentage ?? 0,
     );
 
+    // svelte-ignore state_referenced_locally
+    const p = $state.snapshot(product);
+    // svelte-ignore state_referenced_locally
     const form = useForm({
         _method: 'PUT',
-        name: product.name,
-        sku: product.sku,
-        category_ids: product.categories ? product.categories.map((c) => c.id) : (product.category_id ? [product.category_id] : []),
-        brand_ids: product.brands ? product.brands.map((b) => b.id) : (product.brand_id ? [product.brand_id] : []),
-        specifications: product.specifications || {},
-        size_chart: product.size_chart || null,
+        name: p.name,
+        sku: p.sku,
+        category_ids: p.categories ? p.categories.map((c) => c.id) : (p.category_id ? [p.category_id] : []),
+        brand_ids: p.brands ? p.brands.map((b) => b.id) : (p.brand_id ? [p.brand_id] : []),
+        specifications: p.specifications || {},
+        size_chart: p.size_chart || null,
 
-        price: product.product_price?.price || '',
-        cost: product.product_price?.cost || '',
+        price: p.product_price?.price || '',
+        cost: p.product_price?.cost || '',
 
-        stock: product.product_stock?.stock || '',
-        min_stock: product.product_stock?.min_stock || '',
-        min_purchase: product.product_stock?.min_purchase || 1,
-        is_unlimited: !!product.product_stock?.is_unlimited,
-        stock_status: product.stock_status || 'Tersedia (In Stock)',
+        stock: p.product_stock?.stock || '',
+        min_stock: p.product_stock?.min_stock || '',
+        min_purchase: p.product_stock?.min_purchase || 1,
+        is_unlimited: !!p.product_stock?.is_unlimited,
+        stock_status: p.stock_status || 'Tersedia (In Stock)',
 
-        summary: product.summary || '',
-        description: product.description || '',
-        weight: product.weight || '',
-        length: product.length || '',
-        width: product.width || '',
-        height: product.height || '',
-        tax_enabled: !!product.tax_enabled,
-        tax_rate: product.tax_rate || '',
-        active: !!product.active,
+        summary: p.summary || '',
+        description: p.description || '',
+        weight: p.weight || '',
+        length: p.length || '',
+        width: p.width || '',
+        height: p.height || '',
+        tax_enabled: !!p.tax_enabled,
+        tax_rate: p.tax_rate || '',
+        active: !!p.active,
         photos: [],
         variations: [],
         variants: [],
-        tier_prices: product.tier_prices
-            ? product.tier_prices.map((tp) => ({
+        tier_prices: p.tier_prices
+            ? p.tier_prices.map((tp) => ({
                   min_qty: tp.min_qty,
                   price: tp.price,
               }))
             : [],
-        video_url: product.video_path || '',
+        video_url: p.video_path || '',
         video_file: null,
-        model_3d_url: product.model_3d_path || '',
+        model_3d_url: p.model_3d_path || '',
         model_3d_file: null,
-        model_3d_usdz_url: product.model_3d_usdz_path || '',
+        model_3d_usdz_url: p.model_3d_usdz_path || '',
         model_3d_usdz_file: null,
     });
 
@@ -77,20 +80,21 @@
         return '/' + path;
     }
 
+    // svelte-ignore state_referenced_locally
     let uploadedPhotos = $state(
         product.images
             ? product.images.map((img) => formatImagePath(img.path))
             : [],
     );
     let enableVariants = $state(
-        !!(product.variations && product.variations.length > 0),
+        !!(p.variations && p.variations.length > 0),
     );
     let useVariantImages = $state(false);
 
     // Interactive Media Previews & Handlers
-    let videoPreview = $state(product.video_path ? formatImagePath(product.video_path) : '');
-    let model3dFileName = $state(product.model_3d_path ? product.model_3d_path.split('/').pop() : '');
-    let model3dUsdzFileName = $state(product.model_3d_usdz_path ? product.model_3d_usdz_path.split('/').pop() : '');
+    let videoPreview = $state(p.video_path ? formatImagePath(p.video_path) : '');
+    let model3dFileName = $state(p.model_3d_path ? p.model_3d_path.split('/').pop() : '');
+    let model3dUsdzFileName = $state(p.model_3d_usdz_path ? p.model_3d_usdz_path.split('/').pop() : '');
 
     // AI Image-to-3D Generator State
     let isImageTo3dModalOpen = $state(false);
@@ -1952,7 +1956,7 @@
         model3dUsdzFileName = '';
     }
     let variations = $state(
-        (product.variations || []).map((v, idx) => ({
+        (p.variations || []).map((v, idx) => ({
             id: v.id,
             name: v.name,
             use_images:
@@ -1970,8 +1974,8 @@
 
     // Map variants back from server to UI format
     let variants = $state(
-        product.variants
-            ? product.variants.map((v) => {
+        p.variants
+            ? p.variants.map((v) => {
                   const sortedOptions = v.options
                       ? [...v.options].sort(
                             (a, b) =>
@@ -2014,39 +2018,39 @@
     );
 
     let globalCustomPrice = $state(
-        product.variants
-            ? product.variants.some((v) => v.product_price !== null)
+        p.variants
+            ? p.variants.some((v) => v.product_price !== null)
             : false,
     );
     let globalCustomStock = $state(
-        product.variants
-            ? product.variants.some((v) => v.product_stock !== null)
+        p.variants
+            ? p.variants.some((v) => v.product_stock !== null)
             : false,
     );
     let globalCustomWeight = $state(
-        product.variants
-            ? product.variants.some((v) => v.weight !== null)
+        p.variants
+            ? p.variants.some((v) => v.weight !== null)
             : false,
     );
 
     // Track last product ID for SPA/Inertia hydration sync
-    let lastProductId = $state(product.id);
+    let lastProductId = $state(p.id);
 
     let specifications = $state(
-        product.specifications
-            ? Object.entries(product.specifications).map(([label, value]) => ({
+        p.specifications
+            ? Object.entries(p.specifications).map(([label, value]) => ({
                   label,
                   value: String(value),
               }))
             : [],
     );
 
-    let showSizeChart = $state(!!(product.size_chart && product.size_chart.enabled));
+    let showSizeChart = $state(!!(p.size_chart && p.size_chart.enabled));
     let sizeChartHeaders = $state(
-        product.size_chart?.headers || ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)']
+        p.size_chart?.headers || ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)']
     );
     let sizeChartRows = $state(
-        product.size_chart?.rows || [
+        p.size_chart?.rows || [
             { size: 'S', values: ['48', '68', '21'], min_height: 150, max_height: 160, min_weight: 45, max_weight: 55 },
             { size: 'M', values: ['50', '70', '22'], min_height: 160, max_height: 170, min_weight: 55, max_weight: 65 },
             { size: 'L', values: ['52', '72', '23'], min_height: 170, max_height: 180, min_weight: 65, max_weight: 75 },
@@ -2588,6 +2592,7 @@
                                     </div>
                                 {/if}
                                 <button
+                                    aria-label="Remove image"
                                     type="button"
                                     onclick={() => removePhoto(i)}
                                     class="absolute top-2 right-2 w-6 h-6 rounded-full bg-slate-900/60 text-white hover:bg-rose-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
@@ -3231,7 +3236,9 @@
                                 <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
                                     {#if videoPreview}
                                         <div class="w-full relative rounded-lg overflow-hidden border border-slate-100 bg-black aspect-video max-h-40">
-                                            <video src={videoPreview} class="w-full h-full object-contain" controls></video>
+                                            <video src={videoPreview} class="w-full h-full object-contain" controls>
+                                                <track kind="captions" />
+                                            </video>
                                             <button
                                                 type="button"
                                                 onclick={removeVideo}
@@ -3256,7 +3263,7 @@
                                 </div>
                                 <!-- Video URL -->
                                 <div class="flex flex-col justify-center">
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau Masukkan URL / Path Video</label>
+                                    <label for="video_url" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau Masukkan URL / Path Video</label>
                                     <Input
                                         id="video_url"
                                         placeholder="Cth: storage/products/videos/demo.mp4"
@@ -3315,7 +3322,7 @@
                                         {/if}
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model GLB</label>
+                                        <label for="model_3d_url" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model GLB</label>
                                         <Input
                                             id="model_3d_url"
                                             placeholder="Cth: storage/products/models/item.glb"
@@ -3359,7 +3366,7 @@
                                         {/if}
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model USDZ</label>
+                                        <label for="model_3d_usdz_url" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model USDZ</label>
                                         <Input
                                             id="model_3d_usdz_url"
                                             placeholder="Cth: storage/products/models/item.usdz"
@@ -3444,6 +3451,8 @@
                                                 class="flex items-center bg-white border rounded-xl overflow-hidden p-1"
                                             >
                                                 {#if v.use_images}
+                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
                                                     <div
                                                         class="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 cursor-pointer group mr-1.5"
                                                         onclick={() =>
@@ -3501,6 +3510,7 @@
                                                     placeholder="Opsi"
                                                 />
                                                 <button
+                                                    aria-label="Remove option"
                                                     type="button"
                                                     onclick={() =>
                                                         removeOption(
@@ -3529,6 +3539,7 @@
                                                 }}
                                             />
                                             <button
+                                                aria-label="Remove option"
                                                 type="button"
                                                 onclick={() =>
                                                     addOption(vIndex)}
@@ -4185,7 +4196,7 @@
                             <p class="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-0.5">Konversi gambar produk Anda menjadi model 3D interaktif</p>
                         </div>
                     </div>
-                    <button type="button" onclick={closeImageTo3dModal} class="w-8 h-8 rounded-full bg-slate-800 hover:bg-rose-600 hover:text-white flex items-center justify-center text-slate-300 transition cursor-pointer">
+                    <button aria-label="Close" type="button" onclick={closeImageTo3dModal} class="w-8 h-8 rounded-full bg-slate-800 hover:bg-rose-600 hover:text-white flex items-center justify-center text-slate-300 transition cursor-pointer">
                         <i class="ti ti-x text-sm"></i>
                     </button>
                 </div>
@@ -4222,7 +4233,7 @@
                                                     <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFile ? customGenFile.name : 'Gambar Galeri'}</p>
                                                     <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Tampak Depan (Wajib)</p>
                                                 </div>
-                                                <button type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
+                                                <button aria-label="Remove image" type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
                                                     <i class="ti ti-trash text-sm"></i>
                                                 </button>
                                             </div>
@@ -4242,7 +4253,7 @@
                                                     <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFileBack ? customGenFileBack.name : 'Gambar Belakang'}</p>
                                                     <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Tampak Belakang (Opsional)</p>
                                                 </div>
-                                                <button type="button" onclick={() => { selectedGenImageBack = ''; customGenFileBack = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
+                                                <button aria-label="Remove image" type="button" onclick={() => { selectedGenImageBack = ''; customGenFileBack = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
                                                     <i class="ti ti-trash text-sm"></i>
                                                 </button>
                                             </div>
@@ -4269,7 +4280,7 @@
                                                     <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customMockupFile.name}</p>
                                                     <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Mockup 3D (.GLB)</p>
                                                 </div>
-                                                <button type="button" onclick={() => { customMockupFile = null; customMockupUrl = ''; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
+                                                <button aria-label="Remove image" type="button" onclick={() => { customMockupFile = null; customMockupUrl = ''; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
                                                     <i class="ti ti-trash text-sm"></i>
                                                 </button>
                                             </div>
@@ -4289,7 +4300,7 @@
                                                     <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFile ? customGenFile.name : 'Gambar Logo'}</p>
                                                     <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Gambar Logo / Sablon</p>
                                                 </div>
-                                                <button type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
+                                                <button aria-label="Remove image" type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
                                                     <i class="ti ti-trash text-sm"></i>
                                                 </button>
                                             </div>
@@ -4328,7 +4339,7 @@
                                                 <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFile ? customGenFile.name : 'Gambar Input'}</p>
                                                 <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Input Foto AI</p>
                                             </div>
-                                            <button type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
+                                            <button aria-label="Hapus Foto" type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
                                                 <i class="ti ti-trash text-sm"></i>
                                             </button>
                                         </div>
@@ -4401,7 +4412,7 @@
 
                                         <!-- Model Type & presets selector -->
                                         <div class="space-y-1">
-                                            <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Tipe Mockup Objek</label>
+                                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Tipe Mockup Objek</p>
                                             <select bind:value={modelType} onchange={updateThreeMesh} class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white font-bold text-slate-700 focus:outline-none focus:border-brand-blueRoyal cursor-pointer">
                                                 <option value="plane">Siluet Gambar Asli (3D Card Solid)</option>
                                                 <option value="shirt">Kaos Polos (T-Shirt)</option>

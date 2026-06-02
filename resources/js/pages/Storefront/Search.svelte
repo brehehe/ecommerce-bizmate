@@ -69,32 +69,46 @@
         );
     }
 
+    function getCategoriesFromFilter(val: any): string[] {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        return typeof val === 'string' ? val.split(',') : [val.toString()];
+    }
+
+    function getBrandsFromFilter(val: any): string[] {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        return typeof val === 'string' ? val.split(',') : [val.toString()];
+    }
+
     // Filter states
-    let searchQ = $state(filters.q || '');
-
-    function getCategoriesFromFilter(catFilter: any) {
-        if (!catFilter) return [];
-        if (Array.isArray(catFilter)) return catFilter;
-        return [catFilter];
+    function initSearchState(f: any) {
+        return {
+            searchQ: f.q || '',
+            selectedCategories: getCategoriesFromFilter(f.category),
+            selectedBrands: getBrandsFromFilter(f.brand),
+            selectedSort: f.sort || 'relevance',
+            minPrice: f.min_price || '',
+            maxPrice: f.max_price || '',
+            promoOnly: f.promo || false,
+            initialPromoOnly: f.promo || false
+        };
     }
+    // svelte-ignore state_referenced_locally
+    const initState = initSearchState(filters);
 
-    function getBrandsFromFilter(brandFilter: any) {
-        if (!brandFilter) return [];
-        if (Array.isArray(brandFilter)) return brandFilter;
-        return [brandFilter];
-    }
-
-    let selectedCategories = $state(getCategoriesFromFilter(filters.category));
-    let selectedBrands = $state(getBrandsFromFilter(filters.brand));
-    let selectedSort = $state(filters.sort || 'relevance');
-    let minPrice = $state(filters.min_price || '');
-    let maxPrice = $state(filters.max_price || '');
-    let promoOnly = $state(filters.promo || false);
+    let searchQ = $state(initState.searchQ);
+    let selectedCategories = $state(initState.selectedCategories);
+    let selectedBrands = $state(initState.selectedBrands);
+    let selectedSort = $state(initState.selectedSort);
+    let minPrice = $state(initState.minPrice);
+    let maxPrice = $state(initState.maxPrice);
+    let promoOnly = $state(initState.promoOnly);
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
 
-    let initialPromoOnly = filters.promo || false;
+    let initialPromoOnly = initState.initialPromoOnly;
 
     // Sync state if props change (Inertia navigate)
     $effect(() => {
@@ -208,24 +222,36 @@
         return null;
     }
 
+    function initProductsState(p: any) {
+        return {
+            data: p.data || [],
+            currentPage: p.current_page || 1,
+            nextPageUrl: p.next_page_url || null
+        };
+    }
+    // svelte-ignore state_referenced_locally
+    const initProd = initProductsState(products);
+
     // ── Infinite Scroll ──────────────────────────────────────────────────────
     // Accumulate products across pages
-    let allProducts = $state<any[]>(products.data || []);
+    let allProducts = $state<any[]>(initProd.data);
     let isLoadingMore = $state(false);
-    let currentPage = $state(products.current_page || 1);
-    let nextPageUrl = $state(products.next_page_url || null);
+    let currentPage = $state(initProd.currentPage);
+    let nextPageUrl = $state(initProd.nextPageUrl);
 
-    let lastFilterKey = $state(
-        JSON.stringify({
-            q: filters.q,
-            category: filters.category,
-            brand: filters.brand,
-            sort: filters.sort,
-            min_price: filters.min_price,
-            max_price: filters.max_price,
-            promo: filters.promo,
-        }),
-    );
+    function getInitialFilterKey(f: any) {
+        return JSON.stringify({
+            q: f.q,
+            category: f.category,
+            brand: f.brand,
+            sort: f.sort,
+            min_price: f.min_price,
+            max_price: f.max_price,
+            promo: f.promo,
+        });
+    }
+    // svelte-ignore state_referenced_locally
+    let lastFilterKey = $state(getInitialFilterKey(filters));
 
     // Detect filter change vs page change and reset or append
     $effect(() => {
@@ -411,6 +437,7 @@
                     {#if searchQ}
                         <button
                             type="button"
+                            aria-label="Hapus pencarian"
                             onclick={() => {
                                 searchQ = '';
                                 applyFilters();
@@ -791,6 +818,9 @@
 
                     <!-- Promo Toko Checkbox -->
                     <div
+                        role="button"
+                        tabindex="0"
+                        onkeydown={(e) => e.key === 'Enter' && setTimeout(applyFilters, 0)}
                         onclick={() => {
                             setTimeout(applyFilters, 0);
                         }}
@@ -888,7 +918,7 @@
                                             {:else}
                                                 <img
                                                     src="/noimage/image.png"
-                                                    alt="No Image"
+                                                    alt="Produk tanpa gambar"
                                                     class="w-full h-full object-cover"
                                                 />
                                             {/if}
@@ -1028,6 +1058,8 @@
             <div class="fixed inset-0 z-50 flex justify-end md:hidden">
                 <!-- Backdrop -->
                 <button
+                    type="button"
+                    aria-label="Tutup filter"
                     onclick={() => (showMobileFilters = false)}
                     class="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full cursor-default"
                 ></button>
@@ -1049,6 +1081,8 @@
                                 ></i> Filter
                             </span>
                             <button
+                                type="button"
+                                aria-label="Tutup filter"
                                 onclick={() => (showMobileFilters = false)}
                                 class="text-slate-400 hover:text-slate-600"
                             >

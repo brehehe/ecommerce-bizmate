@@ -8,14 +8,15 @@
     import Chart from 'chart.js/auto';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
 
-    let { stats, orderStats, recentOrders, topProducts, chartData, currentFilter = '7_hari' } = $props();
+    let { stats, orderStats, recentOrders, topProducts, chartData, currentFilter: initialFilter = '7_hari' } = $props();
 
-    let selectedFilter = $state(currentFilter);
+    // svelte-ignore state_referenced_locally
+    let selectedFilter = $state(initialFilter);
     let canvas: HTMLCanvasElement;
     let chartInstance: Chart | null = null;
 
     $effect(() => {
-        selectedFilter = currentFilter;
+        selectedFilter = initialFilter;
     });
 
     $effect(() => {
@@ -470,6 +471,7 @@
                         </p>
                     </div>
                     <button
+                        aria-label="Unduh"
                         class="p-2 text-slate-400 rounded-lg hover:bg-slate-50 transition hover:text-[var(--hover-color)]"
                         style="--tw-text-opacity: 1; --hover-color: {primaryColor};"
                     >

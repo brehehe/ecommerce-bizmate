@@ -15,12 +15,15 @@
         filters = { date_from: '', date_to: '', search: '' }
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let dateFrom = $state(filters.date_from);
+    // svelte-ignore state_referenced_locally
     let dateTo = $state(filters.date_to);
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
 
-    let regCanvas: HTMLCanvasElement;
-    let regChart: Chart;
+    let regCanvas = $state<HTMLCanvasElement>();
+    let regChart = $state<Chart>();
 
     function applyFilter() {
         router.get('/admin/reports/customers', {

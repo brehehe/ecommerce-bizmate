@@ -33,7 +33,12 @@
 
     // Change payment method modal
     let showChangePaymentModal = $state(false);
-    let selectedPaymentMethodId = $state(transaction?.payment_method_id ?? '');
+    let selectedPaymentMethodId = $state('');
+    $effect(() => {
+        if (!selectedPaymentMethodId && transaction?.payment_method_id) {
+            selectedPaymentMethodId = transaction.payment_method_id;
+        }
+    });
     let changingPayment = $state(false);
 
     // Complete order
@@ -61,6 +66,7 @@
     let returnStep = $state<'form' | 'items'>('form');
     let returType = $state<'refund' | 'penggantian_barang'>('refund');
     let returReason = $state('');
+    // svelte-ignore state_referenced_locally
     let returItems = $state(
         (transaction.items ?? []).map((item: any) => ({
             transaction_item_id: item.id,
@@ -1833,12 +1839,18 @@
 
     <!-- Upload Proof Modal -->
     {#if showUploadModal}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
+            role="presentation"
             class="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
             onclick={() => (showUploadModal = false)}
         >
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
+                role="presentation"
                 class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
                 onclick={(e: any) => e.stopPropagation()}
             >
@@ -1846,7 +1858,10 @@
                     Upload Bukti Pembayaran
                 </h3>
 
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <div
+                    role="button"
+                    tabindex="0"
                     class="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-slate-400 transition"
                     onclick={() =>
                         (
@@ -1904,12 +1919,18 @@
 
     <!-- Cancel Order Modal -->
     {#if showCancelModal}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
+            role="presentation"
             class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
             onclick={() => (showCancelModal = false)}
         >
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
+                role="presentation"
                 class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
                 onclick={(e: any) => e.stopPropagation()}
             >
@@ -1969,12 +1990,18 @@
 
     <!-- Change Payment Method Modal -->
     {#if showChangePaymentModal}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
+            role="presentation"
             class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
             onclick={() => (showChangePaymentModal = false)}
         >
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
+                role="presentation"
                 class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
                 onclick={(e: any) => e.stopPropagation()}
             >
@@ -2064,11 +2091,13 @@
     <!-- Beri Ulasan Modal -->
     {#if showReviewModal && reviewItem}
         <div
+            role="presentation"
             class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
             onclick={() => (showReviewModal = false)}
         >
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
             <div
+                role="presentation"
                 class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl max-h-[90dvh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
             >
@@ -2086,6 +2115,7 @@
                         </p>
                     </div>
                     <button
+                        aria-label="Tutup"
                         onclick={() => (showReviewModal = false)}
                         class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition"
                     >
@@ -2135,6 +2165,7 @@
                         <div class="flex items-center gap-2">
                             {#each [1, 2, 3, 4, 5] as star}
                                 <button
+                                    aria-label="Rating {star}"
                                     onclick={() => (reviewRating = star)}
                                     onmouseenter={() =>
                                         (reviewHoverRating = star)}
@@ -2224,6 +2255,7 @@
                                             />
                                         {/if}
                                         <button
+                                            aria-label="Hapus file"
                                             onclick={() =>
                                                 removeReviewFile(idx)}
                                             class="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
@@ -2237,6 +2269,7 @@
                                 {/each}
                                 {#if reviewPreviews.length < 5}
                                     <button
+                                        aria-label="Tambah file"
                                         onclick={() =>
                                             (
                                                 document.getElementById(
@@ -2302,11 +2335,13 @@
     <!-- ===== Return Request Modal ===== -->
     {#if showReturnModal}
         <div
+            role="presentation"
             class="fixed inset-0 z-50 flex items-end lg:items-center justify-center font-sans"
             onclick={() => (showReturnModal = false)}
         >
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
             <div
+                role="presentation"
                 class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl p-5 max-h-[90dvh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
             >
@@ -2317,6 +2352,7 @@
                         Pengajuan Retur Produk
                     </h3>
                     <button
+                        aria-label="Tutup"
                         onclick={() => (showReturnModal = false)}
                         class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition"
                     >
@@ -2407,11 +2443,11 @@
 
                             <!-- Choose Return Type -->
                             <div class="pt-3 border-t border-slate-100">
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-650 mb-2"
                                 >
                                     Pilih Solusi Retur
-                                </label>
+                                </p>
                                 <div class="grid grid-cols-2 gap-3">
                                     <label
                                         class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer hover:bg-slate-50 transition {returType ===
@@ -2544,13 +2580,13 @@
 
                             <!-- File uploads -->
                             <div>
-                                <label
+                                <p
                                     class="block text-xs font-bold text-slate-700 mb-2"
                                 >
                                     Lampirkan Foto/Video Bukti <span
                                         class="text-red-500">*</span
                                     >
-                                </label>
+                                </p>
                                 <p
                                     class="text-[10px] text-slate-400 mb-3 leading-relaxed"
                                 >

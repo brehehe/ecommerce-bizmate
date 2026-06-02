@@ -17,10 +17,21 @@
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
 
-    let filterStatus = $state((filters as any).status ?? '');
-    let filterDateFrom = $state((filters as any).date_from ?? '');
-    let filterDateTo = $state((filters as any).date_to ?? '');
-    let filterSearch = $state((filters as any).search ?? '');
+    function initFiltersState(f: any) {
+        return {
+            status: f.status ?? '',
+            dateFrom: f.date_from ?? '',
+            dateTo: f.date_to ?? '',
+            search: f.search ?? '',
+        };
+    }
+    // svelte-ignore state_referenced_locally
+    const initState = initFiltersState(filters);
+
+    let filterStatus = $state(initState.status);
+    let filterDateFrom = $state(initState.dateFrom);
+    let filterDateTo = $state(initState.dateTo);
+    let filterSearch = $state(initState.search);
 
     // Checkbox & Resi modal state
     let selectedIds: number[] = $state([]);
@@ -382,6 +393,7 @@
                     <!-- Search -->
                     <div>
                         <label
+                            for="search-input"
                             class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
                             >Cari</label
                         >
@@ -390,6 +402,7 @@
                                 class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
                             ></i>
                             <input
+                                id="search-input"
                                 type="text"
                                 bind:value={filterSearch}
                                 placeholder="No. transaksi / nama customer..."
@@ -403,10 +416,12 @@
                     <!-- Date From -->
                     <div>
                         <label
+                            for="date-from-input"
                             class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
                             >Dari Tanggal</label
                         >
                         <input
+                            id="date-from-input"
                             type="date"
                             bind:value={filterDateFrom}
                             class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
@@ -416,10 +431,12 @@
                     <!-- Date To -->
                     <div>
                         <label
+                            for="date-to-input"
                             class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
                             >Sampai Tanggal</label
                         >
                         <input
+                            id="date-to-input"
                             type="date"
                             bind:value={filterDateTo}
                             class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
@@ -762,6 +779,7 @@
                             <div class="flex gap-1">
                                 {#if transactions.prev_page_url}
                                     <a
+                                        aria-label="Halaman sebelumnya"
                                         href={transactions.prev_page_url}
                                         class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition"
                                     >
@@ -770,6 +788,7 @@
                                 {/if}
                                 {#if transactions.next_page_url}
                                     <a
+                                        aria-label="Halaman selanjutnya"
                                         href={transactions.next_page_url}
                                         class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-brand-blueLight hover:text-brand-blueRoyal flex items-center justify-center transition"
                                     >
@@ -827,6 +846,8 @@
                     </p>
                 </div>
                 <button
+                    type="button"
+                    aria-label="Tutup"
                     onclick={closeResiModal}
                     class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0"
                 >
@@ -855,11 +876,13 @@
                 <!-- Nomor Resi -->
                 <div>
                     <label
+                        for="resi-input"
                         class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
                     >
                         Nomor Resi <span class="text-red-500">*</span>
                     </label>
                     <input
+                        id="resi-input"
                         type="text"
                         bind:value={resiInput}
                         placeholder="Contoh: JNE1234567890"
@@ -872,6 +895,7 @@
                 <!-- Nama Kurir -->
                 <div>
                     <label
+                        for="courier-input"
                         class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
                     >
                         Nama Kurir <span
@@ -880,6 +904,7 @@
                         >
                     </label>
                     <input
+                        id="courier-input"
                         type="text"
                         bind:value={courierInput}
                         placeholder="Contoh: JNE, JT Express, SiCepat, dll."
@@ -949,6 +974,8 @@
                     </p>
                 </div>
                 <button
+                    type="button"
+                    aria-label="Tutup"
                     onclick={() => {
                         showBulkResiModal = false;
                     }}
@@ -995,11 +1022,13 @@
                             <!-- Nomor Resi Input -->
                             <div class="w-full md:w-48 shrink-0">
                                 <label
+                                    for={`bulk-resi-input-${row.id}`}
                                     class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1"
                                 >
                                     Resi <span class="text-red-500">*</span>
                                 </label>
                                 <input
+                                    id={`bulk-resi-input-${row.id}`}
                                     type="text"
                                     bind:value={row.tracking_number}
                                     placeholder="Resi"
@@ -1010,11 +1039,13 @@
                             <!-- Courier Name Input -->
                             <div class="w-full md:w-36 shrink-0">
                                 <label
+                                    for={`bulk-courier-input-${row.id}`}
                                     class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1"
                                 >
                                     Kurir
                                 </label>
                                 <input
+                                    id={`bulk-courier-input-${row.id}`}
                                     type="text"
                                     bind:value={row.courier_name}
                                     placeholder="JNE, J&T, etc."

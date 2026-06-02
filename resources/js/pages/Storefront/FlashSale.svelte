@@ -66,7 +66,9 @@
     }
 
     // Filter states
+    // svelte-ignore state_referenced_locally
     let searchQ = $state(filters.q || '');
+    // svelte-ignore state_referenced_locally
     let selectedSort = $state(filters.sort || 'relevance');
 
     function getCategoriesFromFilter(catFilter: any) {
@@ -75,8 +77,11 @@
         return [catFilter];
     }
 
+    // svelte-ignore state_referenced_locally
     let selectedCategories = $state(getCategoriesFromFilter(filters.category));
+    // svelte-ignore state_referenced_locally
     let minPrice = $state(filters.min_price || '');
+    // svelte-ignore state_referenced_locally
     let maxPrice = $state(filters.max_price || '');
 
     // Mobile filter overlay state
@@ -208,9 +213,12 @@
     }
 
     // ── Infinite Scroll ──────────────────────────────────────────────────────
+    // svelte-ignore state_referenced_locally
     let allProducts = $state<any[]>(products.data || []);
     let isLoadingMore = $state(false);
+    // svelte-ignore state_referenced_locally
     let currentPage = $state(products.current_page || 1);
+    // svelte-ignore state_referenced_locally
     let nextPageUrl = $state(products.next_page_url || null);
 
     $effect(() => {
@@ -379,6 +387,7 @@
                     />
                     {#if searchQ}
                         <button
+                            aria-label="Tutup"
                             type="button"
                             onclick={() => {
                                 searchQ = '';
@@ -770,7 +779,7 @@
                                             {:else}
                                                 <img
                                                     src="/noimage/image.png"
-                                                    alt="No Image"
+                                                    alt=""
                                                     class="w-full h-full object-cover"
                                                 />
                                             {/if}
@@ -1021,6 +1030,7 @@
             <div class="fixed inset-0 z-50 flex justify-end md:hidden">
                 <!-- Backdrop -->
                 <button
+                    aria-label="Tutup"
                     onclick={() => (showMobileFilters = false)}
                     class="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full cursor-default border-0"
                 ></button>
@@ -1042,6 +1052,7 @@
                                 ></i> Filter
                             </span>
                             <button
+                                aria-label="Tutup"
                                 onclick={() => (showMobileFilters = false)}
                                 class="text-slate-400 hover:text-slate-600"
                             >

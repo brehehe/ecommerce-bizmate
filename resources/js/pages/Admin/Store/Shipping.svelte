@@ -68,6 +68,7 @@
         }
     }
 
+    // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
     let searchTimeout;
 

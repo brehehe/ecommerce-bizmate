@@ -388,12 +388,14 @@
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button
+                                            aria-label="Edit"
                                             onclick={() =>
                                                 editCategory(category)}
                                             class="p-1 text-brand-blueRoyal hover:text-brand-blueRoyal"
                                             ><i class="ti ti-edit"></i></button
                                         >
                                         <button
+                                            aria-label="Hapus"
                                             onclick={() =>
                                                 confirmDelete(category.id)}
                                             class="p-1 text-red-500 hover:text-red-600"
@@ -453,6 +455,7 @@
                                                     class="flex items-center gap-2"
                                                 >
                                                     <button
+                                                        aria-label="Edit"
                                                         onclick={() =>
                                                             editCategory(sub)}
                                                         class="text-brand-blueRoyal hover:text-brand-blueRoyal"
@@ -460,6 +463,7 @@
                                                         ></i></button
                                                     >
                                                     <button
+                                                        aria-label="Hapus Kategori"
                                                         onclick={() =>
                                                             confirmDelete(
                                                                 sub.id,
@@ -549,11 +553,11 @@
                         />
 
                         <div>
-                            <label
+                            <p
                                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
                                 >Tipe Media Visual <span class="text-rose-500"
                                     >*</span
-                                ></label
+                                ></p
                             >
                             <div class="flex bg-slate-100 p-1 rounded-xl">
                                 <button
@@ -581,9 +585,9 @@
 
                         {#if form.media_type === 'icon'}
                             <div class="relative">
-                                <label
+                                <p
                                     class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                    >Cari & Pilih Icon</label
+                                    >Cari & Pilih Icon</p
                                 >
                                 <div class="relative relative-z">
                                     <span
@@ -616,6 +620,7 @@
                                         {#each filteredIcons as icon}
                                             <button
                                                 type="button"
+                                                aria-label="Pilih Icon"
                                                 onclick={() => {
                                                     form.icon = icon;
                                                     showDropdown = false;
@@ -648,9 +653,9 @@
                             </div>
                         {:else}
                             <div>
-                                <label
+                                <p
                                     class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                    >Upload Gambar</label
+                                    >Upload Gambar</p
                                 >
                                 <div class="flex items-center gap-4">
                                     {#if imagePreview}
@@ -689,9 +694,9 @@
                         {/if}
 
                         <div>
-                            <label
+                            <p
                                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                >Kategori Induk (Parent)</label
+                                >Kategori Induk (Parent)</p
                             >
                             <select
                                 bind:value={form.parent_id}

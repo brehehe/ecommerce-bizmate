@@ -93,7 +93,7 @@ class StorefrontController extends Controller
             ->where('active', true)
             ->whereIn('id', $bestSellerIds)
             ->get()
-            ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
+            ->sortBy(fn($p) => array_search($p->id, $bestSellerIds))
             ->values();
 
         // If there are fewer than 10 best sellers, pad with latest active products
@@ -212,7 +212,7 @@ class StorefrontController extends Controller
 
         // Calculate actual sold count from completed transactions
         $soldCount = TransactionItem::where('product_id', $product->id)
-            ->whereHas('transaction', fn ($q) => $q->where('status', 'selesai'))
+            ->whereHas('transaction', fn($q) => $q->where('status', 'selesai'))
             ->sum('quantity');
 
         $product->sold_count = (int) $soldCount;
@@ -319,8 +319,8 @@ class StorefrontController extends Controller
 
         /** @var array{address: string, district_name: string, regency_name: string, province_name: string, postal_code: string, shipping_rate: string, enable_cod: string} $shippingSettings */
         $shippingInfo = [
-            'store_address' => trim(($shippingSettings['address'] ?? '').', '.($shippingSettings['district_name'] ?? '')),
-            'store_city' => trim(($shippingSettings['regency_name'] ?? '').', '.($shippingSettings['province_name'] ?? '')),
+            'store_address' => trim(($shippingSettings['address'] ?? '') . ', ' . ($shippingSettings['district_name'] ?? '')),
+            'store_city' => trim(($shippingSettings['regency_name'] ?? '') . ', ' . ($shippingSettings['province_name'] ?? '')),
             'postal_code' => $shippingSettings['postal_code'] ?? '',
             'shipping_rate' => (int) ($shippingSettings['shipping_rate'] ?? 0),
             'enable_cod' => ($shippingSettings['enable_cod'] ?? '0') === '1',
@@ -770,7 +770,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = config('database.default') === 'sqlite' ? 'like' : 'ilike';
+        $like = config('database.default') === 'sqlite' ? 'ilike' : 'ilike';
 
         // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
         if ($query) {
@@ -781,14 +781,14 @@ class StorefrontController extends Controller
                         // Cari di nama dan deskripsi produk
                         $subQ->where('name', $like, "%{$term}%")
                             ->orWhere('description', $like, "%{$term}%")
-                             // Cari di nama kategori
+                            // Cari di nama kategori
                             ->orWhereHas('category', function ($qc) use ($term, $like) {
                                 $qc->where('name', $like, "%{$term}%");
                             })
                             ->orWhereHas('categories', function ($qc) use ($term, $like) {
                                 $qc->where('name', $like, "%{$term}%");
                             })
-                             // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
+                            // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
                             ->orWhereHas('variants', function ($qv) use ($term, $like) {
                                 $qv->where('sku', $like, "%{$term}%")
                                     ->orWhereHas('options', function ($qo) use ($term, $like) {
@@ -1027,7 +1027,7 @@ class StorefrontController extends Controller
                                 $p->setRelation('productPrice', $item->variant->productPrice);
                             }
                             $optionNames = $item->variant->options
-                                ? $item->variant->options->map(fn ($o) => $o->name)->join(' - ')
+                                ? $item->variant->options->map(fn($o) => $o->name)->join(' - ')
                                 : '';
                             if ($optionNames) {
                                 $p->name = "{$p->name} - {$optionNames}";
@@ -1121,9 +1121,11 @@ class StorefrontController extends Controller
                 $descLower = strtolower($p->description ?? '');
                 $categoryNameLower = strtolower($p->category?->name ?? '');
                 foreach ($terms as $term) {
-                    if (! str_contains($nameLower, $term) &&
+                    if (
+                        ! str_contains($nameLower, $term) &&
                         ! str_contains($descLower, $term) &&
-                        ! str_contains($categoryNameLower, $term)) {
+                        ! str_contains($categoryNameLower, $term)
+                    ) {
                         return false;
                     }
                 }
@@ -1248,7 +1250,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = config('database.default') === 'sqlite' ? 'like' : 'ilike';
+        $like = config('database.default') === 'sqlite' ? 'ilike' : 'ilike';
 
         // Filter by keyword (similar to search method)
         if ($query) {
@@ -1427,7 +1429,7 @@ class StorefrontController extends Controller
             ->where('active', true)
             ->where('category_id', $categoryModel->id);
 
-        $like = config('database.default') === 'sqlite' ? 'like' : 'ilike';
+        $like = config('database.default') === 'sqlite' ? 'ilike' : 'ilike';
 
         // Filter by keyword (search in name, description, variant SKU, etc.)
         if ($query) {
@@ -1648,7 +1650,7 @@ class StorefrontController extends Controller
             ->where('transaction_id', $transaction->id)
             ->get()
             ->keyBy(function ($review) {
-                return $review->product_id.'_'.$review->product_variant_id;
+                return $review->product_id . '_' . $review->product_variant_id;
             });
 
         // Auto-check gateway payment status if the transaction is still unpaid and is a gateway payment
@@ -1665,7 +1667,7 @@ class StorefrontController extends Controller
 
                         $isSandbox = str_contains($baseUrl, 'sandbox');
                         $apiUrl = $isSandbox ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
-                        $midtransUrl = rtrim($apiUrl, '/').'/v2/'.$transaction->transaction_number.'/status';
+                        $midtransUrl = rtrim($apiUrl, '/') . '/v2/' . $transaction->transaction_number . '/status';
 
                         $response = Http::withBasicAuth($serverKey, '')
                             ->timeout(10)
@@ -1701,7 +1703,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Midtrans Auto-check Exception: '.$e->getMessage());
+                        Log::error('Midtrans Auto-check Exception: ' . $e->getMessage());
                     }
                 } elseif (str_contains(strtolower($transaction->paymentMethod->name), 'flip')) {
                     try {
@@ -1709,7 +1711,7 @@ class StorefrontController extends Controller
                         $baseUrl = $transaction->paymentMethod->settings['url'] ?? config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
                         $billId = $latestPayment->gateway_transaction_id;
 
-                        $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/'.$billId.'/bill';
+                        $flipUrl = rtrim($baseUrl, '/') . '/v2/pwf/' . $billId . '/bill';
 
                         $response = Http::withBasicAuth($secretKey, '')
                             ->timeout(10)
@@ -1745,7 +1747,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Flip Auto-check Exception: '.$e->getMessage());
+                        Log::error('Flip Auto-check Exception: ' . $e->getMessage());
                     }
                 } else {
                     try {
@@ -1756,7 +1758,7 @@ class StorefrontController extends Controller
                             ? $transaction->paymentMethod->settings['url']
                             : config('app.xendit.url', 'https://api.xendit.co');
 
-                        $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices/'.$invoiceId;
+                        $xenditUrl = rtrim($baseUrl, '/') . '/v2/invoices/' . $invoiceId;
 
                         $response = Http::withBasicAuth($secretKey, '')
                             ->timeout(10)
@@ -1793,7 +1795,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Xendit Auto-check Exception: '.$e->getMessage());
+                        Log::error('Xendit Auto-check Exception: ' . $e->getMessage());
                     }
                 }
             }
@@ -1954,7 +1956,7 @@ class StorefrontController extends Controller
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
                 $path = $file->store('reviews', 'public');
-                $mediaPaths[] = '/storage/'.$path;
+                $mediaPaths[] = '/storage/' . $path;
             }
         }
 

@@ -63,8 +63,8 @@
     let L: any;
     let map: any;
     let marker: any;
-    let mapContainer: HTMLDivElement;
-    let desktopMapContainer: HTMLDivElement;
+    let mapContainer: HTMLDivElement | undefined = $state();
+    let desktopMapContainer: HTMLDivElement | undefined = $state();
 
     // Local address list filtering
     const filteredAddresses = $derived(
@@ -748,7 +748,10 @@
                     </div>
                 {:else}
                     {#each filteredAddresses as addr (addr.id)}
+                        <!-- svelte-ignore a11y_click_events_have_key_events -->
                         <div
+                            role="button"
+                            tabindex="0"
                             onclick={() => selectAndSetPrimary(addr.id)}
                             class="relative p-4 border rounded-2xl transition cursor-pointer flex flex-col gap-2.5 {selectedAddressId ===
                             addr.id
@@ -897,6 +900,7 @@
                     />
                     {#if searchInput}
                         <button
+                            aria-label="Clear search"
                             onclick={() => {
                                 searchInput = '';
                                 searchResults = [];
@@ -1501,7 +1505,10 @@
                     </div>
                 {:else}
                     {#each filteredAddresses as addr (addr.id)}
+                        <!-- svelte-ignore a11y_click_events_have_key_events -->
                         <div
+                            role="button"
+                            tabindex="0"
                             onclick={() => selectAndSetPrimary(addr.id)}
                             class="relative p-4 border rounded-2xl transition cursor-pointer flex flex-col gap-2.5 {selectedAddressId === addr.id ? 'bg-emerald-50/20' : 'hover:bg-slate-50/50 bg-white shadow-sm'}"
                             style="border-color: {selectedAddressId === addr.id ? primary : '#e2e8f0'};"
@@ -1600,7 +1607,7 @@
                             <input type="text" bind:value={searchInput} oninput={handleSearchInput} placeholder="Contoh: Surabaya"
                                 class="w-full pl-10 pr-10 py-3 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition" />
                             {#if searchInput}
-                                <button onclick={() => { searchInput = ''; searchResults = []; }} class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <button aria-label="Clear search" onclick={() => { searchInput = ''; searchResults = []; }} class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                                     <i class="ti ti-x text-base"></i>
                                 </button>
                             {/if}

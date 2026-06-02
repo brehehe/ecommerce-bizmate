@@ -17,9 +17,13 @@
         filters = { search: '', category: [], brand: [], status: 'all' },
     } = $props();
 
+    // svelte-ignore state_referenced_locally
     let searchInput = $state(filters.search || '');
+    // svelte-ignore state_referenced_locally
     let filterCategories = $state(filters.category || []);
+    // svelte-ignore state_referenced_locally
     let filterBrands = $state(filters.brand || []);
+    // svelte-ignore state_referenced_locally
     let filterStatus = $state(filters.status || 'all');
 
     let currentViewMode = $state('list'); // 'list' or 'grid'

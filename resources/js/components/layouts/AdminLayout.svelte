@@ -355,6 +355,8 @@
         >
             <div class="flex items-center gap-4 flex-grow">
                 <button
+                    type="button"
+                    aria-label="Toggle sidebar"
                     onclick={toggleSidebar}
                     class="lg:hidden p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition"
                 >

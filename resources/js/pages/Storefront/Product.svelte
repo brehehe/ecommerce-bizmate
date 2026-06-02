@@ -1381,6 +1381,7 @@
                     />
                     <button
                         type="submit"
+                        aria-label="Search"
                         class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
                     >
                         <i class="ti ti-search text-base"></i>
@@ -1545,6 +1546,7 @@
                                             <!-- Stop touch propagation to scroll-snap container so model-viewer
                                                  can receive gestures for orbit/rotate/zoom -->
                                             <div
+                                                role="presentation"
                                                 class="w-full h-full bg-slate-50 relative flex items-center justify-center z-20"
                                                 ontouchstart={(e) =>
                                                     e.stopPropagation()}
@@ -1718,7 +1720,7 @@
                         {:else}
                             <img
                                 src="/noimage/image.png"
-                                alt="No Image"
+                                alt="Tidak ada gambar"
                                 class="w-full h-full object-cover"
                             />
                         {/if}
@@ -2050,7 +2052,7 @@
                                 {:else}
                                     <img
                                         src="/noimage/image.png"
-                                        alt="No Image"
+                                        alt="Tidak ada gambar"
                                         class="w-full h-full object-cover"
                                     />
                                 {/if}
@@ -2877,6 +2879,7 @@
                                     class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white"
                                 >
                                     <button
+                                        aria-label="Decrease quantity"
                                         onclick={decQty}
                                         disabled={qty <= currentMinPurchase}
                                         class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
@@ -2888,6 +2891,7 @@
                                         >{qty}</span
                                     >
                                     <button
+                                        aria-label="Increase quantity"
                                         onclick={incQty}
                                         disabled={!currentIsUnlimited &&
                                             qty >= currentStock}
@@ -3163,7 +3167,7 @@
             {/if}
 
             <!-- Deskripsi Section -->
-            <div>
+            <div class="w-full min-w-0 overflow-x-auto">
                 <h3
                     class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
                 >
@@ -3173,7 +3177,7 @@
                 </h3>
                 {#if product.description}
                     <div
-                        class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700"
+                        class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700 min-w-0"
                     >
                         {@html product.description}
                     </div>
@@ -3210,7 +3214,7 @@
                             <i class="ti ti-calculator text-base text-slate-400"
                             ></i> Cari Ukuran Rekomendasi Anda
                         </h4>
-                        <div class="grid grid-cols-2 gap-4 items-end mb-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mb-4">
                             <div>
                                 <label
                                     for="height-input"
@@ -3617,7 +3621,7 @@
                             {:else}
                                 <img
                                     src="/noimage/image.png"
-                                    alt="No Image"
+                                    alt="Produk tanpa gambar"
                                     class="w-full h-full object-cover"
                                 />
                             {/if}
@@ -3694,17 +3698,20 @@
                             </div>
                             {#if cartButtonStyle === 'button'}
                                 <div class="mt-auto pt-3">
-                                    <span
-                                        onclick={(e) =>
-                                            handleDirectAddToCart(rp, e)}
-                                        class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98]"
+                                    <button
+                                        type="button"
+                                        onclick={(e) => {
+                                            e.preventDefault();
+                                            handleDirectAddToCart(rp, e);
+                                        }}
+                                        class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] border-0"
                                         style="background-color: {primary};"
                                     >
                                         <i
                                             class="ti ti-shopping-cart text-xs sm:text-sm"
                                         ></i>
                                         + KERANJANG
-                                    </span>
+                                    </button>
                                 </div>
                             {/if}
                         </div>
@@ -3799,6 +3806,8 @@
         >
             <!-- Close -->
             <button
+                type="button"
+                aria-label="Tutup"
                 onclick={() => (lightboxOpen = false)}
                 class="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20 z-50"
             >
@@ -3808,6 +3817,8 @@
             <!-- Prev/Next (only if gallery has multiple) -->
             {#if gallery.length > 1}
                 <button
+                    type="button"
+                    aria-label="Sebelumnya"
                     onclick={(e) => {
                         e.stopPropagation();
                         lightboxPrev();
@@ -3817,6 +3828,8 @@
                     <i class="ti ti-chevron-left text-xl"></i>
                 </button>
                 <button
+                    type="button"
+                    aria-label="Selanjutnya"
                     onclick={(e) => {
                         e.stopPropagation();
                         lightboxNext();
@@ -3830,6 +3843,7 @@
             <!-- Image -->
             <div
                 class="relative w-[92vw] max-w-3xl px-10 sm:px-16"
+                role="presentation"
                 onclick={(e) => e.stopPropagation()}
             >
                 <img
@@ -3846,6 +3860,8 @@
                     <div class="flex justify-center gap-2 mt-4">
                         {#each gallery as _, i}
                             <button
+                                type="button"
+                                aria-label="Gambar {i + 1}"
                                 onclick={(e) => {
                                     e.stopPropagation();
                                     pickGallery(i);
@@ -3920,6 +3936,7 @@
     {#if drawerOpen}
         <!-- Backdrop -->
         <div
+            role="presentation"
             class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm md:hidden"
             onclick={() => (drawerOpen = false)}
             transition:fade={{ duration: 150 }}
@@ -3939,6 +3956,7 @@
                 >
                 <button
                     type="button"
+                    aria-label="Tutup"
                     onclick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -4230,6 +4248,8 @@
                             class="flex items-center border border-slate-300 rounded-lg overflow-hidden shrink-0 bg-white"
                         >
                             <button
+                                type="button"
+                                aria-label="Kurangi jumlah"
                                 onclick={decQty}
                                 disabled={qty <= currentMinPurchase}
                                 class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
@@ -4241,6 +4261,8 @@
                                 >{qty}</span
                             >
                             <button
+                                type="button"
+                                aria-label="Tambah jumlah"
                                 onclick={incQty}
                                 disabled={!currentIsUnlimited &&
                                     qty >= currentStock}
@@ -4458,16 +4480,22 @@
                                     ? 'rounded-tr-sm'
                                     : 'rounded-tl-sm'}"
                             >
-                                <img
-                                    src={msg.attachment_data.url}
-                                    alt="Sent image"
-                                    class="max-w-full max-h-60 object-contain bg-slate-100 cursor-pointer rounded-xl"
+                                <button
+                                    type="button"
+                                    aria-label="Lihat gambar"
                                     onclick={() =>
                                         window.open(
                                             msg.attachment_data.url,
                                             '_blank',
                                         )}
-                                />
+                                    class="block w-full text-left p-0 border-0 bg-transparent cursor-pointer"
+                                >
+                                    <img
+                                        src={msg.attachment_data.url}
+                                        alt="Gambar terlampir"
+                                        class="max-w-full max-h-60 object-contain bg-slate-100 rounded-xl"
+                                    />
+                                </button>
                             </div>
                         {/if}
 

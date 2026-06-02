@@ -43,15 +43,18 @@
 
 <div class="space-y-2 relative" bind:this={containerNode}>
     {#if label}
-        <label class="text-xs font-bold text-slate-600 block">
+        <p class="text-xs font-bold text-slate-600 block">
             {label}
             {#if required}
                 <span class="text-rose-500">*</span>
             {/if}
-        </label>
+        </p>
     {/if}
     
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div 
+        role="button"
+        tabindex="0"
         class="w-full px-3 py-2 border rounded-xl text-sm transition flex justify-between items-center {disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white cursor-pointer hover:border-brand-blueRoyal'} {error ? 'border-rose-500' : 'border-slate-200'}"
         onclick={toggleOpen}
     >
@@ -72,7 +75,10 @@
                     <div class="p-4 text-center text-sm text-slate-500">Tidak ada pilihan</div>
                 {:else}
                     {#each options as option}
+                        <!-- svelte-ignore a11y_click_events_have_key_events -->
                         <div 
+                            role="button"
+                            tabindex="0"
                             class="px-4 py-2.5 text-sm hover:bg-slate-50 cursor-pointer {value == option.id || value == option.name ? 'bg-brand-blueRoyal/5 text-brand-blueRoyal font-bold' : 'text-slate-700'}"
                             onclick={() => selectOption(option.id || option.name)}
                         >
