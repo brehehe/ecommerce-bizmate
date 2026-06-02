@@ -4,6 +4,7 @@
     import {
         store as adminProductsStore,
         index as adminProductsIndex,
+        create as adminProductsCreate,
     } from '@/routes/admin/products';
 
     // Import new UI components
@@ -2322,6 +2323,90 @@
             : [];
         form.post(adminProductsStore.url());
     }
+
+    function submitAndCreate() {
+        form.photos = $state.snapshot(uploadedPhotos);
+        const rawVariations = $state.snapshot(variations);
+        const rawVariants = $state.snapshot(variants);
+
+        form.tier_prices = form.tier_prices
+            ? form.tier_prices.filter(
+                  (tp) =>
+                      tp.min_qty >= 2 &&
+                      tp.price !== '' &&
+                      tp.price !== null &&
+                      Number(tp.price) > 0,
+              )
+            : [];
+
+        const specObj = {};
+        specifications.forEach((spec) => {
+            if (spec.label.trim()) {
+                specObj[spec.label.trim()] = spec.value.trim();
+            }
+        });
+        form.specifications = specObj;
+
+        form.size_chart = showSizeChart ? {
+            enabled: true,
+            headers: $state.snapshot(sizeChartHeaders),
+            rows: $state.snapshot(sizeChartRows)
+        } : null;
+
+        form.variations = enableVariants ? rawVariations : [];
+        form.variants = enableVariants
+            ? rawVariants
+                  .filter((v) => v.active)
+                  .map((v) => {
+                      const isCustom =
+                          globalCustomPrice ||
+                          globalCustomStock ||
+                          globalCustomWeight;
+                      return {
+                          ...v,
+                          is_custom: isCustom,
+                          custom_price: globalCustomPrice,
+                          custom_stock: globalCustomStock,
+                          custom_weight: globalCustomWeight,
+                          price: isCustom && globalCustomPrice ? v.price : '',
+                          cost: isCustom && globalCustomPrice ? v.cost : '',
+                          tier_prices:
+                              isCustom && globalCustomPrice && v.tier_prices
+                                  ? v.tier_prices.filter(
+                                        (tp) =>
+                                            tp.min_qty >= 2 &&
+                                            tp.price !== '' &&
+                                            tp.price !== null &&
+                                            Number(tp.price) > 0,
+                                    )
+                                  : [],
+                          stock: isCustom && globalCustomStock ? v.stock : '',
+                          min_stock:
+                              isCustom && globalCustomStock ? v.min_stock : '',
+                          min_purchase:
+                              isCustom && globalCustomStock
+                                  ? v.min_purchase
+                                  : 1,
+                          is_unlimited:
+                              isCustom && globalCustomStock
+                                  ? v.is_unlimited
+                                  : false,
+                          weight:
+                              isCustom && globalCustomWeight ? v.weight : '',
+                          length:
+                              isCustom && globalCustomWeight ? v.length : '',
+                          width: isCustom && globalCustomWeight ? v.width : '',
+                          height:
+                              isCustom && globalCustomWeight ? v.height : '',
+                      };
+                  })
+            : [];
+        form.post(adminProductsStore.url(), {
+            onSuccess: () => {
+                window.location.href = adminProductsCreate.url();
+            },
+        });
+    }
 </script>
 
 <svelte:head>
@@ -3889,12 +3974,22 @@
                     {/if}
                 </div>
 
-                <div class="flex justify-end gap-4">
+                <div class="flex justify-end gap-3">
+                    <button
+                        type="button"
+                        disabled={form.processing}
+                        onclick={submitAndCreate}
+                        class="px-6 py-3.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition flex items-center gap-2"
+                    >
+                        <i class="ti ti-circle-plus text-base"></i>
+                        {form.processing ? 'Menyimpan...' : 'Simpan & Tambah'}
+                    </button>
                     <button
                         type="submit"
                         disabled={form.processing}
-                        class="px-8 py-3.5 bg-brand-blueRoyal text-white font-bold rounded-xl shadow-lg hover:bg-blue-800 transition"
+                        class="px-8 py-3.5 bg-brand-blueRoyal text-white font-bold rounded-xl shadow-lg hover:bg-blue-800 transition flex items-center gap-2"
                     >
+                        <i class="ti ti-device-floppy text-base"></i>
                         {form.processing ? 'Menyimpan...' : 'Simpan Produk'}
                     </button>
                 </div>

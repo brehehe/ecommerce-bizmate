@@ -174,7 +174,7 @@
 
             <!-- Search Bar Card -->
             <div
-                class="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-soft flex flex-col sm:flex-row items-center gap-4 justify-between"
+                class="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-soft flex flex-col sm:flex-row items-center gap-4 justify-between"
             >
                 <div class="relative w-full sm:max-w-md">
                     <span
@@ -222,287 +222,224 @@
                     }}
                     class="space-y-4 pb-24"
                 >
-                    {#each localProducts as product (product.id)}
-                        <div
-                            class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-soft transition-all"
-                        >
-                            <!-- Product Row Header -->
-                            <div
-                                class="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/40"
-                            >
-                                <div class="flex items-center gap-3">
-                                    <div
-                                        class="w-10 h-10 rounded-xl bg-brand-blueRoyal/5 border border-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0"
-                                    >
-                                        <i class="ti ti-box text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h4
-                                            class="font-outfit font-black text-slate-800 text-base"
-                                        >
-                                            {product.name}
-                                        </h4>
-                                        <span
-                                            class="px-2 py-0.5 bg-slate-100 text-slate-500 font-bold text-[9px] uppercase tracking-wider rounded-md"
-                                            >{product.category_name}</span
-                                        >
-                                    </div>
-                                </div>
-
-                                <div class="flex items-center gap-4">
-                                    {#if product.has_variants}
-                                        <!-- Centralized Toggle for Custom vs Master -->
-                                        <div
-                                            class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm"
-                                        >
-                                            <span
-                                                class="text-xs font-bold text-slate-500"
-                                                >Stok Varian:</span
-                                            >
-                                            <label
-                                                class="relative inline-flex items-center cursor-pointer"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    bind:checked={
-                                                        product.use_custom
-                                                    }
-                                                    onchange={() =>
-                                                        handleToggleCustom(
-                                                            product,
-                                                        )}
-                                                    class="sr-only peer"
-                                                />
-                                                <div
-                                                    class="w-9 h-5 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-brand-blueRoyal/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-blueRoyal"
-                                                ></div>
-                                            </label>
-                                            <span
-                                                class="text-xs font-bold {product.use_custom
-                                                    ? 'text-brand-blueRoyal'
-                                                    : 'text-emerald-600'}"
-                                            >
-                                                {product.use_custom
-                                                    ? 'Kustom'
-                                                    : 'Ikut Master'}
-                                            </span>
-                                        </div>
-
-                                        {#if product.use_custom}
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    (product.expanded =
-                                                        !product.expanded)}
-                                                class="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition"
-                                            >
-                                                <span
-                                                    >{product.variants.length} Varian</span
-                                                >
-                                                <i
-                                                    class="ti {product.expanded
-                                                        ? 'ti-chevron-up'
-                                                        : 'ti-chevron-down'} text-sm"
-                                                ></i>
-                                            </button>
-                                        {/if}
-                                    {:else}
-                                        <div
-                                            class="border-r pr-4 border-slate-200"
-                                        >
-                                            <Toggle
-                                                bind:checked={
-                                                    product.is_unlimited
-                                                }
-                                                label="Stok Tidak Terbatas"
-                                            />
-                                        </div>
-                                    {/if}
-                                </div>
-                            </div>
-
-                            <!-- Product Fields (Only if NO variants OR if variants are inheriting master stock) -->
-                            {#if !product.has_variants || !product.use_custom}
-                                <div
-                                    class="p-5 sm:p-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6"
-                                >
-                                    <Input
-                                        bind:value={product.stock}
-                                        type="number"
-                                        min="0"
-                                        id={`stock-${product.id}`}
-                                        label="Stok Saat Ini *"
-                                        readonly={product.is_unlimited}
-                                        placeholder={product.is_unlimited
-                                            ? '∞ Unlimited'
-                                            : 'Masukkan stok'}
-                                    />
-                                    <Input
-                                        bind:value={product.min_stock}
-                                        type="number"
-                                        min="0"
-                                        id={`min-stock-${product.id}`}
-                                        label="Batas Minimum (Alert)"
-                                        placeholder="0"
-                                    />
-                                    <Input
-                                        bind:value={product.min_purchase}
-                                        type="number"
-                                        min="1"
-                                        id={`min-purchase-${product.id}`}
-                                        label="Min Pembelian"
-                                        placeholder="1"
-                                    />
-                                </div>
-                            {/if}
-
-                            <!-- Accordion Varian List -->
-                            {#if product.has_variants && product.use_custom && product.expanded}
-                                <div
-                                    class="border-t border-slate-100 bg-slate-50/20 p-4 sm:p-6 space-y-4"
-                                >
-                                    <div
-                                        class="flex justify-between items-center px-2"
-                                    >
-                                        <span
-                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider"
-                                            >Daftar Kombinasi Varian</span
-                                        >
-                                        <div class="scale-90 origin-right">
-                                            <Toggle
-                                                bind:checked={
-                                                    product.is_unlimited
-                                                }
-                                                label="Semua Varian Tidak Terbatas"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div class="grid grid-cols-1 gap-4">
-                                        {#each product.variants as variant (variant.id)}
-                                            <div
-                                                class="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-6 shadow-sm"
-                                            >
-                                                <!-- Variant Name / SKU -->
-                                                <div
-                                                    class="flex items-center gap-3 min-w-[200px]"
-                                                >
-                                                    <div
-                                                        class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 text-base font-bold shrink-0"
-                                                    >
-                                                        <i class="ti ti-box"
-                                                        ></i>
-                                                    </div>
-                                                    <div>
-                                                        <h5
-                                                            class="font-bold text-slate-800 text-sm leading-tight"
-                                                        >
-                                                            {variant.name}
-                                                        </h5>
-                                                        <span
-                                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
-                                                            >{variant.sku ||
-                                                                'TANPA SKU'}</span
-                                                        >
-                                                    </div>
+                    <!-- Table Container -->
+                    <div class="bg-white rounded-3xl border border-slate-200 shadow-soft overflow-hidden">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-slate-50/80 border-b border-slate-200">
+                                    <th class="text-left px-5 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider w-[35%]">
+                                        Produk
+                                    </th>
+                                    <th class="text-left px-4 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                        Stok Saat Ini
+                                    </th>
+                                    <th class="text-left px-4 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                        Batas Min. (Alert)
+                                    </th>
+                                    <th class="text-left px-4 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                        Min. Beli
+                                    </th>
+                                    <th class="text-left px-4 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                                        Opsi
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each localProducts as product (product.id)}
+                                    <!-- Master Row -->
+                                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                                        <!-- Product Name -->
+                                        <td class="px-5 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-lg bg-brand-blueRoyal/5 border border-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0">
+                                                    <i class="ti ti-box text-sm"></i>
                                                 </div>
+                                                <div class="min-w-0">
+                                                    <p class="font-outfit font-black text-slate-800 text-sm leading-tight truncate">
+                                                        {product.name}
+                                                    </p>
+                                                    <span class="px-1.5 py-0.5 bg-slate-100 text-slate-500 font-bold text-[9px] uppercase tracking-wider rounded-md">
+                                                        {product.category_name}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
 
-                                                <!-- Stock Fields (Always Visible) -->
-                                                <div
-                                                    class="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-grow max-w-xl"
-                                                >
+                                        <!-- Stock -->
+                                        <td class="px-4 py-4">
+                                            {#if !product.has_variants || !product.use_custom}
+                                                <Input
+                                                    bind:value={product.stock}
+                                                    type="number"
+                                                    min="0"
+                                                    id={`stock-${product.id}`}
+                                                    placeholder={product.is_unlimited ? '∞ Unlimited' : '0'}
+                                                    readonly={product.is_unlimited}
+                                                />
+                                            {:else}
+                                                <span class="text-[11px] text-slate-400 italic">Per varian</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Min Stock -->
+                                        <td class="px-4 py-4">
+                                            {#if !product.has_variants || !product.use_custom}
+                                                <Input
+                                                    bind:value={product.min_stock}
+                                                    type="number"
+                                                    min="0"
+                                                    id={`min-stock-${product.id}`}
+                                                    placeholder="0"
+                                                />
+                                            {:else}
+                                                <span class="text-[11px] text-slate-400 italic">Per varian</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Min Purchase -->
+                                        <td class="px-4 py-4">
+                                            {#if !product.has_variants || !product.use_custom}
+                                                <Input
+                                                    bind:value={product.min_purchase}
+                                                    type="number"
+                                                    min="1"
+                                                    id={`min-purchase-${product.id}`}
+                                                    placeholder="1"
+                                                />
+                                            {:else}
+                                                <span class="text-[11px] text-slate-400 italic">Per varian</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Options -->
+                                        <td class="px-4 py-4">
+                                            <div class="flex items-center gap-3 flex-wrap">
+                                                {#if product.has_variants}
+                                                    <!-- Toggle Kustom Varian -->
+                                                    <label class="flex items-center gap-1.5 cursor-pointer" title="Aktifkan stok kustom per varian">
+                                                        <div class="relative">
+                                                            <input
+                                                                type="checkbox"
+                                                                bind:checked={product.use_custom}
+                                                                onchange={() => handleToggleCustom(product)}
+                                                                class="sr-only peer"
+                                                            />
+                                                            <div class="w-8 h-4 bg-slate-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-brand-blueRoyal/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-blueRoyal"></div>
+                                                        </div>
+                                                        <span class="text-[10px] font-bold {product.use_custom ? 'text-brand-blueRoyal' : 'text-emerald-600'} whitespace-nowrap">
+                                                            {product.use_custom ? 'Kustom' : 'Master'}
+                                                        </span>
+                                                    </label>
+
+                                                    {#if product.use_custom}
+                                                        <button
+                                                            type="button"
+                                                            onclick={() => (product.expanded = !product.expanded)}
+                                                            class="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold rounded-lg transition"
+                                                        >
+                                                            <span>{product.variants.length} Varian</span>
+                                                            <i class="ti {product.expanded ? 'ti-chevron-up' : 'ti-chevron-down'} text-xs"></i>
+                                                        </button>
+                                                    {/if}
+                                                {:else}
+                                                    <Toggle
+                                                        bind:checked={product.is_unlimited}
+                                                        label="Unlimited"
+                                                    />
+                                                {/if}
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Variant Rows (expanded accordion) -->
+                                    {#if product.has_variants && product.use_custom && product.expanded}
+                                        <!-- Variant header sub-row -->
+                                        <tr class="bg-brand-blueRoyal/3">
+                                            <td colspan="5" class="px-5 py-2">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-[10px] font-black text-brand-blueRoyal uppercase tracking-wider flex items-center gap-1.5">
+                                                        <i class="ti ti-list-details text-xs"></i>
+                                                        Stok Per Varian — {product.name}
+                                                    </span>
+                                                    <Toggle
+                                                        bind:checked={product.is_unlimited}
+                                                        label="Semua Unlimited"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {#each product.variants as variant (variant.id)}
+                                            <tr class="bg-slate-50/60 hover:bg-brand-blueRoyal/2 transition-colors border-l-2 border-brand-blueRoyal/20">
+                                                <!-- Variant Name -->
+                                                <td class="pl-12 pr-4 py-3">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-6 h-6 rounded-md bg-slate-200/70 flex items-center justify-center text-slate-400 text-xs shrink-0">
+                                                            <i class="ti ti-box"></i>
+                                                        </div>
+                                                        <div>
+                                                            <p class="font-bold text-slate-700 text-xs leading-tight">{variant.name}</p>
+                                                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{variant.sku || 'TANPA SKU'}</span>
+                                                        </div>
+                                                        {#if variant.stock === '' || variant.stock === null}
+                                                            <span class="ml-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                                                <i class="ti ti-info-circle text-[9px]"></i> Ikut Master
+                                                            </span>
+                                                        {:else}
+                                                            <span class="ml-1 text-[9px] font-bold text-brand-blueRoyal bg-brand-blueRoyal/5 border border-brand-blueRoyal/20 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                                                <i class="ti ti-settings text-[9px]"></i> Kustom
+                                                            </span>
+                                                        {/if}
+                                                    </div>
+                                                </td>
+
+                                                <!-- Variant Stock -->
+                                                <td class="px-4 py-3">
                                                     <Input
-                                                        bind:value={
-                                                            variant.stock
-                                                        }
+                                                        bind:value={variant.stock}
                                                         type="number"
                                                         min="0"
                                                         id={`v-stock-${variant.id}`}
-                                                        label="Stok Saat Ini *"
-                                                        readonly={variant.is_unlimited ||
-                                                            product.is_unlimited}
-                                                        placeholder={variant.is_unlimited ||
-                                                        product.is_unlimited
-                                                            ? '∞ Unlimited'
-                                                            : product.is_unlimited
-                                                              ? '∞ Unlimited'
-                                                              : product.stock !==
-                                                                      '' &&
-                                                                  product.stock !==
-                                                                      null
-                                                                ? product.stock.toString()
-                                                                : '0'}
+                                                        readonly={variant.is_unlimited || product.is_unlimited}
+                                                        placeholder={variant.is_unlimited || product.is_unlimited ? '∞ Unlimited' : '0'}
                                                     />
+                                                </td>
+
+                                                <!-- Variant Min Stock -->
+                                                <td class="px-4 py-3">
                                                     <Input
-                                                        bind:value={
-                                                            variant.min_stock
-                                                        }
+                                                        bind:value={variant.min_stock}
                                                         type="number"
                                                         min="0"
                                                         id={`v-min-stock-${variant.id}`}
-                                                        label="Batas Minimum"
-                                                        placeholder={product.min_stock !==
-                                                            '' &&
-                                                        product.min_stock !==
-                                                            null
-                                                            ? product.min_stock.toString()
-                                                            : '0'}
+                                                        placeholder={product.min_stock !== '' && product.min_stock !== null ? product.min_stock.toString() : '0'}
                                                     />
+                                                </td>
+
+                                                <!-- Variant Min Purchase -->
+                                                <td class="px-4 py-3">
                                                     <Input
-                                                        bind:value={
-                                                            variant.min_purchase
-                                                        }
+                                                        bind:value={variant.min_purchase}
                                                         type="number"
                                                         min="1"
                                                         id={`v-min-purchase-${variant.id}`}
-                                                        label="Min Beli"
-                                                        placeholder={product.min_purchase !==
-                                                            '' &&
-                                                        product.min_purchase !==
-                                                            null
-                                                            ? product.min_purchase.toString()
-                                                            : '1'}
+                                                        placeholder={product.min_purchase !== '' && product.min_purchase !== null ? product.min_purchase.toString() : '1'}
                                                     />
-                                                </div>
+                                                </td>
 
-                                                <!-- Dynamic Custom / Master Fallback Badge & Unlimited Toggle -->
-                                                <div
-                                                    class="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0"
-                                                >
-                                                    {#if variant.stock === '' || variant.stock === null}
-                                                        <div
-                                                            class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/55 px-2.5 py-1 rounded-lg flex items-center gap-1"
-                                                        >
-                                                            <i
-                                                                class="ti ti-info-circle text-xs"
-                                                            ></i> Ikut Master
-                                                        </div>
-                                                    {:else}
-                                                        <div
-                                                            class="text-[10px] font-bold text-brand-blueRoyal bg-brand-blueRoyal/5 border border-brand-blueRoyal/20 px-2.5 py-1 rounded-lg flex items-center gap-1"
-                                                        >
-                                                            <i
-                                                                class="ti ti-settings text-xs"
-                                                            ></i> Stok Kustom
-                                                        </div>
-                                                    {/if}
-                                                    <div
-                                                        class="scale-90 origin-left"
-                                                    >
-                                                        <Toggle
-                                                            bind:checked={
-                                                                variant.is_unlimited
-                                                            }
-                                                            label="Varian Unlimited"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                <!-- Variant Unlimited Toggle -->
+                                                <td class="px-4 py-3">
+                                                    <Toggle
+                                                        bind:checked={variant.is_unlimited}
+                                                        label="Unlimited"
+                                                    />
+                                                </td>
+                                            </tr>
                                         {/each}
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    {/each}
+                                    {/if}
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div>
                         <Pagination paginator={products} />
