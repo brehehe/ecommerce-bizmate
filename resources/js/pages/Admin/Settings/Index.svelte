@@ -354,7 +354,7 @@
         cropBox = { x: 0, y: 0, w: 0, h: 0 };
     }
 
-    function getCropEventPos(e: MouseEvent | TouchEvent, el: HTMLDivElement) {
+    function getCropEventPos(e: MouseEvent | TouchEvent, el: HTMLCanvasElement) {
         const rect = el.getBoundingClientRect();
         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -365,16 +365,18 @@
     }
 
     function onCropPointerDown(e: MouseEvent | TouchEvent) {
-        if (!isCropMode || !cropPreviewEl) { return; }
-        const pos = getCropEventPos(e, cropPreviewEl);
+        if (!isCropMode || !editorCanvas) { return; }
+        e.preventDefault();
+        const pos = getCropEventPos(e, editorCanvas);
         cropStart = pos;
         cropBox = { x: pos.x, y: pos.y, w: 0, h: 0 };
         cropDragging = true;
     }
 
     function onCropPointerMove(e: MouseEvent | TouchEvent) {
-        if (!cropDragging || !cropPreviewEl) { return; }
-        const pos = getCropEventPos(e, cropPreviewEl);
+        if (!cropDragging || !editorCanvas) { return; }
+        e.preventDefault();
+        const pos = getCropEventPos(e, editorCanvas);
         cropBox = {
             x: Math.min(pos.x, cropStart.x),
             y: Math.min(pos.y, cropStart.y),
@@ -388,14 +390,14 @@
     }
 
     function applyCrop() {
-        if (!editorCanvas || !cropPreviewEl || cropBox.w < 4 || cropBox.h < 4) {
+        if (!editorCanvas || cropBox.w < 4 || cropBox.h < 4) {
             showToast('Area crop terlalu kecil.', 'error');
             return;
         }
-        // Compute scale factor from preview div to actual canvas dimensions
-        const previewRect = cropPreviewEl.getBoundingClientRect();
-        const scaleX = editorCanvas.width / previewRect.width;
-        const scaleY = editorCanvas.height / previewRect.height;
+        // Compute scale factor from displayed canvas size to actual canvas pixel dimensions
+        const canvasRect = editorCanvas.getBoundingClientRect();
+        const scaleX = editorCanvas.width / canvasRect.width;
+        const scaleY = editorCanvas.height / canvasRect.height;
 
         const cx = Math.round(cropBox.x * scaleX);
         const cy = Math.round(cropBox.y * scaleY);
@@ -2621,17 +2623,20 @@
                         {/if}
 
                         <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <!-- Canvas wrapper: aspect ratio follows output dimensions so preview is accurate -->
                         <div
                             bind:this={cropPreviewEl}
-                            class="checkerboard w-full h-full max-w-[320px] max-h-[320px] aspect-square rounded-xl shadow-inner border {isCropMode ? 'border-amber-400 cursor-crosshair' : 'border-slate-200 cursor-default'} overflow-hidden flex items-center justify-center relative select-none"
-                            onmousedown={isCropMode ? onCropPointerDown : undefined}
-                            onmousemove={isCropMode ? onCropPointerMove : undefined}
-                            onmouseup={isCropMode ? onCropPointerUp : undefined}
-                            onmouseleave={isCropMode ? onCropPointerUp : undefined}
+                            class="checkerboard rounded-xl shadow-inner border {isCropMode ? 'border-amber-400' : 'border-slate-200'} overflow-hidden relative select-none"
+                            style="width: min(320px, 100%); aspect-ratio: {editorWidth} / {editorHeight}; max-height: 280px;"
                         >
+                            <!-- svelte-ignore a11y_no_static_element_interactions -->
                             <canvas
                                 bind:this={editorCanvas}
-                                class="max-w-full max-h-full object-contain pointer-events-none"
+                                class="w-full h-full {isCropMode ? 'cursor-crosshair' : 'cursor-default'}"
+                                onmousedown={isCropMode ? onCropPointerDown : undefined}
+                                onmousemove={isCropMode ? onCropPointerMove : undefined}
+                                onmouseup={isCropMode ? onCropPointerUp : undefined}
+                                onmouseleave={isCropMode ? onCropPointerUp : undefined}
                             ></canvas>
 
                             <!-- Crop selection overlay -->

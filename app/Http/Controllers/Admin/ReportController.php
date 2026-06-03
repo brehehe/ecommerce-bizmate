@@ -632,7 +632,7 @@ class ReportController extends Controller
                 ->get();
         }
 
-        // Hitung kumulatif & persentase
+        // Hitung kumulatif & persentase berdasarkan value (omset/qty)
         $total = $rawItems->sum('value');
         $cumulativeValue = 0;
         $items = $rawItems->values()->map(function ($item, $index) use ($total, &$cumulativeValue) {
@@ -652,7 +652,63 @@ class ReportController extends Controller
             ];
         });
 
-        // Hitung metrik ringkasan
+        // --- Klasifikasi Moving / Tier untuk SEMUA tipe analisis ---
+        // Produk (revenue/qty) : Fast/Medium/Slow berdasarkan kumulatif QTY terjual
+        // Pelanggan            : High Value / Mid Value / Low Value berdasarkan kumulatif VALUE belanja
+        // Kategori             : Unggulan / Menengah / Lemah berdasarkan kumulatif VALUE omset
+        // Threshold: fast = posisi kumulatif mulai < 50%, medium = 50–80%, slow/low = ≥ 80%
+        $isProductType = in_array($type, ['product_revenue', 'product_qty']);
+        $movingMetrics = [
+            'fast'   => ['count' => 0, 'qty' => 0, 'value' => 0.0],
+            'medium' => ['count' => 0, 'qty' => 0, 'value' => 0.0],
+            'slow'   => ['count' => 0, 'qty' => 0, 'value' => 0.0],
+        ];
+
+        // Tentukan basis sorting & total untuk kumulatif moving
+        if ($isProductType) {
+            // Produk → basis kumulatif = qty terjual
+            $sortedForMoving = $items->sortByDesc('qty_sold')->values();
+            $totalMoving = $sortedForMoving->sum('qty_sold');
+            $movingKey = 'qty_sold';
+        } else {
+            // Pelanggan / Kategori → basis kumulatif = value (omset / spending)
+            $sortedForMoving = $items->sortByDesc('value')->values();
+            $totalMoving = $sortedForMoving->sum('value');
+            $movingKey = 'value';
+        }
+
+        // Hitung label moving berdasarkan posisi kumulatif SEBELUM item ini ditambahkan.
+        // Produk/item #1 (tertinggi) selalu dimulai dari 0% → selalu masuk fast.
+        $labelMap = [];
+        $cumulativeMoving = 0;
+        foreach ($sortedForMoving as $it) {
+            $prevCumulativePct = $totalMoving > 0 ? ($cumulativeMoving / $totalMoving) * 100 : 0;
+            $cumulativeMoving += (float) $it[$movingKey];
+            if ($prevCumulativePct < 50) {
+                $labelMap[$it['label']] = 'fast';
+            } elseif ($prevCumulativePct < 80) {
+                $labelMap[$it['label']] = 'medium';
+            } else {
+                $labelMap[$it['label']] = 'slow';
+            }
+        }
+
+        // Terapkan moving_category ke setiap item (urutan asli = sorted by value desc)
+        $items = $items->map(function ($it) use ($labelMap) {
+            $it['moving_category'] = $labelMap[$it['label']] ?? 'slow';
+
+            return $it;
+        });
+
+        // Hitung ringkasan per kategori moving
+        foreach ($items as $it) {
+            $cat = $it['moving_category'];
+            $movingMetrics[$cat]['count']++;
+            $movingMetrics[$cat]['qty'] += $it['qty_sold'];
+            $movingMetrics[$cat]['value'] += $it['value'];
+        }
+
+        // Hitung metrik ringkasan pareto
         $vitalFewCount = $items->filter(fn ($i) => $i['is_vital_few'])->count();
         $vitalFewValue = $items->filter(fn ($i) => $i['is_vital_few'])->sum('value');
         $trivialManyCount = $items->count() - $vitalFewCount;
@@ -677,6 +733,8 @@ class ReportController extends Controller
                 'trivial_many_value' => (float) $trivialManyValue,
                 'vital_few_pct' => $items->count() > 0 ? round(($vitalFewCount / $items->count()) * 100, 1) : 0,
             ],
+            'movingMetrics' => $movingMetrics,
+            'isProductType' => $isProductType,
             'filters' => [
                 'date_from' => $dateFrom->format('Y-m-d'),
                 'date_to' => $dateTo->format('Y-m-d'),

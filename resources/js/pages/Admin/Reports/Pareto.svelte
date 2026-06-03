@@ -10,6 +10,8 @@
         items = [],
         chartData = { labels: [], values: [], cumulativePercentages: [] },
         metrics = { total_items: 0, total_value: 0, vital_few_count: 0, vital_few_value: 0, trivial_many_count: 0, trivial_many_value: 0, vital_few_pct: 0 },
+        movingMetrics = { fast: { count: 0, qty: 0, value: 0 }, medium: { count: 0, qty: 0, value: 0 }, slow: { count: 0, qty: 0, value: 0 } },
+        isProductType = false,
         filters = { date_from: '', date_to: '', type: 'product_revenue' },
     } = $props();
 
@@ -19,6 +21,15 @@
     let dateTo = $state(filters.date_to);
     // svelte-ignore state_referenced_locally
     let selectedType = $state(filters.type);
+
+    // Moving filter tab: 'all' | 'fast' | 'medium' | 'slow'
+    let movingFilter = $state<'all' | 'fast' | 'medium' | 'slow'>('all');
+
+    const filteredItems = $derived(
+        movingFilter === 'all' || !isProductType
+            ? (items as any[])
+            : (items as any[]).filter((i: any) => i.moving_category === movingFilter)
+    );
 
     let paretoCanvas: HTMLCanvasElement | undefined = $state();
     let paretoChart: Chart | null = null;
@@ -30,7 +41,14 @@
         { value: 'category_revenue', label: 'Kategori — Omset Tertinggi', icon: 'ti-category', color: '#ef4444' },
     ];
 
+    const movingConfig = {
+        fast:   { label: 'Fast Moving',   emoji: '🚀', color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: 'ti-trending-up',   desc: 'Produk dengan perputaran cepat' },
+        medium: { label: 'Medium Moving', emoji: '📦', color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: 'ti-trending-neutral', desc: 'Produk dengan perputaran sedang' },
+        slow:   { label: 'Slow Moving',   emoji: '🐢', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: 'ti-trending-down',  desc: 'Produk dengan perputaran lambat' },
+    } as const;
+
     function applyFilter() {
+        movingFilter = 'all';
         router.get('/admin/reports/pareto', {
             date_from: dateFrom,
             date_to: dateTo,
@@ -65,9 +83,15 @@
         return '';
     }
 
+    function getMovingBadge(cat: string) {
+        const cfg = movingConfig[cat as keyof typeof movingConfig];
+        if (!cfg) return null;
+        return cfg;
+    }
+
     function exportToCSV() {
         const typeLabel = typeOptions.find(t => t.value === selectedType)?.label ?? selectedType;
-        const headers = ['Rank', 'Nama', getSubLabelHeader() || 'Info', 'Qty', getColumnHeader(), 'Kontribusi (%)', 'Kumulatif (%)', 'Kategori Pareto'];
+        const headers = ['Rank', 'Nama', getSubLabelHeader() || 'Info', 'Qty', getColumnHeader(), 'Kontribusi (%)', 'Kumulatif (%)', 'Kategori Pareto', 'Moving'];
         const csvRows = [headers.join(',')];
 
         (items as any[]).forEach((item: any) => {
@@ -80,6 +104,7 @@
                 item.percentage,
                 item.cumulative_percentage,
                 item.is_vital_few ? 'Vital Few (80%)' : 'Trivial Many (20%)',
+                item.moving_category ?? '-',
             ];
             csvRows.push(row.join(','));
         });
@@ -100,10 +125,21 @@
         const ctx = paretoCanvas.getContext('2d');
         if (!ctx) { return; }
 
-        // Spread into plain arrays to avoid Svelte 5 $state conflict with Chart.js
         const labels = [...(chartData.labels as string[])];
         const values = [...(chartData.values as number[])];
         const cumulative = [...(chartData.cumulativePercentages as number[])];
+
+        // Color bars by moving_category if product type
+        const barColors = labels.map((lbl, i) => {
+            if (isProductType) {
+                const item = (items as any[]).find((it: any) => it.label === lbl);
+                if (item?.moving_category === 'fast')   return '#10b981cc';
+                if (item?.moving_category === 'medium') return '#f59e0bcc';
+                if (item?.moving_category === 'slow')   return '#ef4444cc';
+            }
+            const pct = cumulative[i] ?? 100;
+            return pct <= 80 ? primaryColor + 'cc' : '#cbd5e1';
+        });
 
         paretoChart = new Chart(ctx, {
             type: 'bar',
@@ -114,10 +150,7 @@
                         type: 'bar',
                         label: getColumnHeader(),
                         data: values,
-                        backgroundColor: labels.map((_, i) => {
-                            const pct = cumulative[i] ?? 100;
-                            return pct <= 80 ? primaryColor + 'cc' : '#cbd5e1';
-                        }),
+                        backgroundColor: barColors,
                         borderRadius: 6,
                         order: 2,
                         yAxisID: 'y',
@@ -154,6 +187,14 @@
                                 }
                                 return `${getColumnHeader()}: ${getValueLabel(context.parsed.y)}`;
                             },
+                            afterLabel: function (context) {
+                                if (!isProductType || context.dataset.type === 'line') return '';
+                                const lbl = context.label;
+                                const item = (items as any[]).find((it: any) => it.label === lbl);
+                                if (!item?.moving_category) return '';
+                                const cfg = movingConfig[item.moving_category as keyof typeof movingConfig];
+                                return cfg ? `${cfg.emoji} ${cfg.label}` : '';
+                            },
                         },
                     },
                 },
@@ -188,11 +229,7 @@
         });
     }
 
-    // $effect reruns whenever chartData or paretoCanvas changes.
-    // This is required because Inertia preserveState does NOT remount the component,
-    // so onMount would never fire again when the user switches tabs.
     $effect(() => {
-        // Access chartData properties to subscribe to reactivity
         const _labels = chartData.labels;
         const _values = chartData.values;
         const _cum = chartData.cumulativePercentages;
@@ -338,12 +375,105 @@
             </div>
         </div>
 
+        <!-- ═══════════════════════════════════════════════════════════════
+             FAST / MEDIUM / SLOW MOVING — hanya tampil untuk type produk
+             ═══════════════════════════════════════════════════════════════ -->
+        {#if isProductType && (items as any[]).length > 0}
+            <div class="space-y-4">
+                <!-- Section Header -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-lg shadow-md shadow-emerald-200">
+                        <i class="ti ti-activity"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-outfit font-black text-lg text-slate-800 leading-none">Klasifikasi Perputaran Produk</h3>
+                        <p class="text-xs text-slate-500 font-medium mt-0.5">Berdasarkan distribusi kumulatif qty terjual — Fast ≤50%, Medium 50–80%, Slow >80%</p>
+                    </div>
+                </div>
+
+                <!-- Moving Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {#each (['fast', 'medium', 'slow'] as const) as cat}
+                        {@const cfg = movingConfig[cat]}
+                        {@const data = movingMetrics[cat]}
+                        <button
+                            onclick={() => movingFilter = movingFilter === cat ? 'all' : cat}
+                            class="text-left p-5 rounded-3xl border-2 transition-all duration-200 cursor-pointer hover:shadow-md group"
+                            style="border-color: {movingFilter === cat ? cfg.color : cfg.border}; background: {movingFilter === cat ? cfg.bg : 'white'};"
+                        >
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-base" style="background-color: {cfg.color};">
+                                        <i class="ti {cfg.icon}"></i>
+                                    </span>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase tracking-widest" style="color: {cfg.color};">{cfg.label}</p>
+                                        <p class="text-[9px] text-slate-400 font-medium">{cfg.desc}</p>
+                                    </div>
+                                </div>
+                                {#if movingFilter === cat}
+                                    <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full text-white" style="background-color: {cfg.color};">
+                                        Filter Aktif
+                                    </span>
+                                {/if}
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 mt-2">
+                                <div class="bg-white/70 rounded-xl p-2 text-center">
+                                    <p class="font-outfit font-black text-xl text-slate-800">{data.count}</p>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase">Produk</p>
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2 text-center">
+                                    <p class="font-outfit font-black text-xl text-slate-800">{formatNumber(data.qty)}</p>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase">Total Qty</p>
+                                </div>
+                                <div class="bg-white/70 rounded-xl p-2 text-center">
+                                    <p class="font-outfit font-black text-sm text-slate-800 leading-tight">
+                                        {selectedType === 'product_qty' ? formatNumber(data.value) : formatRupiah(data.value)}
+                                    </p>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase">Nilai</p>
+                                </div>
+                            </div>
+                            <!-- Progress bar showing share of total qty -->
+                            {#if movingMetrics.fast.qty + movingMetrics.medium.qty + movingMetrics.slow.qty > 0}
+                                {@const totalQtyAll = movingMetrics.fast.qty + movingMetrics.medium.qty + movingMetrics.slow.qty}
+                                {@const pct = Math.round((data.qty / totalQtyAll) * 100)}
+                                <div class="mt-3 flex items-center gap-2">
+                                    <div class="flex-grow bg-slate-100 rounded-full h-1.5">
+                                        <div class="h-1.5 rounded-full transition-all duration-500" style="width: {pct}%; background-color: {cfg.color};"></div>
+                                    </div>
+                                    <span class="text-[9px] font-black" style="color: {cfg.color};">{pct}% qty</span>
+                                </div>
+                            {/if}
+                        </button>
+                    {/each}
+                </div>
+
+                <!-- Moving filter active notice -->
+                {#if movingFilter !== 'all'}
+                    {@const cfg = movingConfig[movingFilter]}
+                    <div class="flex items-center gap-3 px-4 py-3 rounded-2xl border" style="border-color: {cfg.border}; background: {cfg.bg};">
+                        <i class="ti {cfg.icon} text-base" style="color: {cfg.color};"></i>
+                        <p class="text-xs font-bold flex-grow" style="color: {cfg.color};">
+                            Menampilkan {filteredItems.length} produk <strong>{cfg.label}</strong>. Klik kartu lagi atau pilih "Semua" untuk reset.
+                        </p>
+                        <button onclick={() => movingFilter = 'all'} class="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-lg text-white" style="background-color: {cfg.color};">
+                            Semua
+                        </button>
+                    </div>
+                {/if}
+            </div>
+        {/if}
+
         <!-- Pareto Chart -->
         <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
             <div class="mb-4">
                 <h3 class="font-outfit font-black text-lg text-slate-800">Diagram Pareto</h3>
                 <p class="text-xs text-slate-500 font-medium">
-                    Batang berwarna = Vital Few (berkontribusi ≤80% kumulatif). Garis = % kumulatif.
+                    {#if isProductType}
+                        Warna batang: 🚀 Fast Moving · 📦 Medium Moving · 🐢 Slow Moving. Garis = % kumulatif.
+                    {:else}
+                        Batang berwarna = Vital Few (berkontribusi ≤80% kumulatif). Garis = % kumulatif.
+                    {/if}
                 </p>
             </div>
             <div class="h-80 w-full">
@@ -356,6 +486,17 @@
                     <canvas bind:this={paretoCanvas}></canvas>
                 {/if}
             </div>
+            {#if isProductType && (items as any[]).length > 0}
+                <div class="mt-4 flex flex-wrap gap-3 justify-center">
+                    {#each (['fast', 'medium', 'slow'] as const) as cat}
+                        {@const cfg = movingConfig[cat]}
+                        <span class="flex items-center gap-1.5 text-[10px] font-bold" style="color: {cfg.color};">
+                            <span class="w-3 h-3 rounded-sm inline-block" style="background-color: {cfg.color};"></span>
+                            {cfg.emoji} {cfg.label}
+                        </span>
+                    {/each}
+                </div>
+            {/if}
         </div>
 
         <!-- 80/20 Insight Box -->
@@ -373,6 +514,11 @@
                         untuk hasil yang optimal. Sisa <strong class="text-slate-800">{metrics.trivial_many_count} item</strong> ({100 - metrics.vital_few_pct}%)
                         hanya berkontribusi pada sisanya.
                     </p>
+                    {#if isProductType && movingMetrics.slow.count > 0}
+                        <p class="text-sm text-slate-600 font-medium mt-2 leading-relaxed">
+                            ⚠️ Terdapat <strong class="text-red-600">{movingMetrics.slow.count} produk Slow Moving</strong> yang perlu perhatian — pertimbangkan promosi, bundling, atau clearance untuk meningkatkan perputarannya.
+                        </p>
+                    {/if}
                 </div>
             </div>
         </div>
@@ -380,12 +526,13 @@
 
         <!-- Detail Table -->
         <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div class="p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h3 class="font-outfit font-black text-lg text-slate-800">Tabel Detail</h3>
                     <p class="text-xs text-slate-500 font-medium">Lengkap dengan persentase kontribusi dan kumulatif.</p>
                 </div>
-                <div class="flex items-center gap-3 text-xs font-bold">
+                <div class="flex flex-wrap items-center gap-3 text-xs font-bold">
+                    <!-- Pareto legend -->
                     <span class="flex items-center gap-1.5">
                         <span class="w-3 h-3 rounded-full inline-block" style="background-color: {primaryColor};"></span>
                         Vital Few
@@ -394,8 +541,45 @@
                         <span class="w-3 h-3 rounded-full inline-block bg-slate-300"></span>
                         Trivial Many
                     </span>
+                    {#if isProductType}
+                        <span class="w-px h-4 bg-slate-200"></span>
+                        {#each (['fast', 'medium', 'slow'] as const) as cat}
+                            {@const cfg = movingConfig[cat]}
+                            <span class="flex items-center gap-1" style="color: {cfg.color};">
+                                <i class="ti {cfg.icon} text-sm"></i>
+                                {cfg.label}
+                            </span>
+                        {/each}
+                    {/if}
                 </div>
             </div>
+
+            <!-- Moving Tab Filter (produk saja) -->
+            {#if isProductType && (items as any[]).length > 0}
+                <div class="px-6 pt-4 flex items-center gap-2 flex-wrap">
+                    <button
+                        onclick={() => movingFilter = 'all'}
+                        class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all {movingFilter === 'all' ? 'text-white shadow-sm' : 'text-slate-500 bg-slate-100 hover:bg-slate-200'}"
+                        style={movingFilter === 'all' ? `background-color: ${primaryColor};` : ''}
+                    >
+                        Semua ({(items as any[]).length})
+                    </button>
+                    {#each (['fast', 'medium', 'slow'] as const) as cat}
+                        {@const cfg = movingConfig[cat]}
+                        {@const count = movingMetrics[cat].count}
+                        <button
+                            onclick={() => movingFilter = movingFilter === cat ? 'all' : cat}
+                            class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all border-2"
+                            style={movingFilter === cat
+                                ? `background-color: ${cfg.color}; border-color: ${cfg.color}; color: white;`
+                                : `border-color: ${cfg.border}; color: ${cfg.color}; background: ${cfg.bg};`}
+                        >
+                            {cfg.emoji} {cfg.label} ({count})
+                        </button>
+                    {/each}
+                </div>
+            {/if}
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-[900px]">
                     <thead>
@@ -412,18 +596,23 @@
                             <th class="py-4 px-5 text-right">Kontribusi</th>
                             <th class="py-4 px-5 text-right">Kumulatif</th>
                             <th class="py-4 px-5 text-center">Pareto</th>
+                            {#if isProductType}
+                                <th class="py-4 px-5 text-center">Moving</th>
+                            {/if}
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
-                        {#if (items as any[]).length === 0}
+                        {#if filteredItems.length === 0}
                             <tr>
-                                <td colspan="8" class="py-12 text-center text-slate-400 font-bold font-outfit">
+                                <td colspan="9" class="py-12 text-center text-slate-400 font-bold font-outfit">
                                     <i class="ti ti-chart-bar-off text-3xl block mb-2 text-slate-300"></i>
                                     Tidak ada data pada periode ini.
                                 </td>
                             </tr>
                         {:else}
-                            {#each items as item}
+                            {#each filteredItems as item}
+                                {@const movCat = (item as any).moving_category as keyof typeof movingConfig | undefined}
+                                {@const movCfg = movCat ? movingConfig[movCat] : null}
                                 <tr class="hover:bg-slate-50/50 transition {(item as any).is_vital_few ? '' : 'opacity-60'}">
                                     <td class="py-3 px-5">
                                         <span class="w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center"
@@ -472,6 +661,19 @@
                                             </span>
                                         {/if}
                                     </td>
+                                    {#if isProductType}
+                                        <td class="py-3 px-5 text-center">
+                                            {#if movCfg}
+                                                <span
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider"
+                                                    style="background-color: {movCfg.bg}; color: {movCfg.color}; border: 1px solid {movCfg.border};"
+                                                >
+                                                    <i class="ti {movCfg.icon} text-xs"></i>
+                                                    {movCfg.label.replace(' Moving', '')}
+                                                </span>
+                                            {/if}
+                                        </td>
+                                    {/if}
                                 </tr>
                             {/each}
                         {/if}
