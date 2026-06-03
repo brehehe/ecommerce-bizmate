@@ -841,11 +841,17 @@ class KomerceService
                 );
 
                 if (isset($calcRes['results'][0]['costs'])) {
+                    $found = false;
                     foreach ($calcRes['results'][0]['costs'] as $c) {
                         if (strtoupper($c['service']) === strtoupper($serviceNorm)) {
                             $shippingCost = (int) ($c['cost'][0]['value'] ?? $shippingCost);
+                            $found = true;
                             break;
                         }
+                    }
+
+                    if (! $found && ! empty($calcRes['results'][0]['costs'])) {
+                        $shippingCost = (int) ($calcRes['results'][0]['costs'][0]['cost'][0]['value'] ?? $shippingCost);
                     }
                 }
             } catch (\Exception $e) {
