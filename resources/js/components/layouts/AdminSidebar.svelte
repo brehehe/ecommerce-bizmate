@@ -37,6 +37,11 @@
     const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
     const storeIcon = $derived((page.props as any).settings?.store_icon || null);
     const fallbackEmail = $derived('superadmin@' + storeName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.id');
+    const storeNameFontClass = $derived(
+        storeName.length <= 10 ? 'text-xl' :
+        storeName.length <= 16 ? 'text-base' :
+        'text-sm'
+    );
 
     $effect(() => {
         if (isTourActive) {
@@ -86,7 +91,7 @@
             {/if}
             <div class="flex flex-col">
                 <span
-                    class="font-outfit font-black text-xl text-slate-800 tracking-tight leading-none"
+                    class="font-outfit font-black {storeNameFontClass} text-slate-800 tracking-tight leading-snug"
                     >{storeName}</span
                 >
                 <span
@@ -1024,17 +1029,17 @@
             onclick={() => (isProfileDropdownOpen = !isProfileDropdownOpen)}
             class="w-full flex items-center gap-3 px-2 py-2 cursor-pointer hover:bg-slate-50 rounded-xl transition text-left"
         >
-            <div
-                class="w-10 h-10 rounded-full border-2 p-0.5 flex items-center justify-center shrink-0 overflow-hidden"
-                style="border-color: {secondaryColor};"
-            >
-                {#if user?.avatar}
-                    <img
-                        src="/storage/{user.avatar}"
-                        alt={user.name}
-                        class="w-full h-full rounded-full object-cover"
-                    />
-                {:else}
+                <div
+                    class="w-10 h-10 rounded-full border-2 p-0.5 flex items-center justify-center shrink-0 overflow-hidden"
+                    style="border-color: {secondaryColor};"
+                >
+                    {#if user?.avatar}
+                        <img
+                            src="/storage/{user.avatar}"
+                            alt={user.name}
+                            class="w-full h-full rounded-full object-cover"
+                        />
+                    {:else}
                     <div
                         class="w-full h-full text-white font-bold text-[11px] rounded-full flex items-center justify-center uppercase"
                         style="background-color: {primaryColor};"
