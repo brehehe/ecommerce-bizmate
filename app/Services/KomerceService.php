@@ -899,7 +899,7 @@ class KomerceService
             $payload['commodity_code'] = 'ELG150';
         }
 
-        $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+        $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
 
         try {
             $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
@@ -992,7 +992,7 @@ class KomerceService
             ],
         ];
 
-        $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+        $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
 
         try {
             $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
@@ -1136,7 +1136,7 @@ class KomerceService
                 }
             }
 
-            $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
             if ($isSandbox) {
                 // Fallback for staging: return a fallback view or direct download url
                 $transaction = Transaction::where('booking_code', $bookingCode)->first();
@@ -1180,7 +1180,7 @@ class KomerceService
                 return ['success' => true, 'message' => 'Pengiriman berhasil dibatalkan.'];
             }
 
-            $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
             if ($isSandbox) {
                 return [
                     'success' => true,
@@ -1226,7 +1226,7 @@ class KomerceService
 
             Log::warning("Komerce getShipmentHistory failed for waybill {$airwayBill}: ".$response->body());
 
-            $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
             if ($isSandbox) {
                 // Fallback simulated tracking for testing (progresses dynamically based on transaction status)
                 $transaction = Transaction::where('tracking_number', $airwayBill)->first();
@@ -1285,7 +1285,7 @@ class KomerceService
                 ];
             }
 
-            $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
             if ($isSandbox) {
                 // Return dynamic simulated details matching transaction database
                 $transaction = Transaction::where('booking_code', $bookingCode)->first();
@@ -1381,7 +1381,7 @@ class KomerceService
                 return ['success' => true, 'message' => 'Webhook berhasil didaftarkan.'];
             }
 
-            $isSandbox = app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
             if ($isSandbox) {
                 return [
                     'success' => true,
