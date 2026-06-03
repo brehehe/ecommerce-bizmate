@@ -278,6 +278,11 @@
     let editorWidth = $state(512);
     let editorHeight = $state(512);
     let lockAspectRatio = $state(true);
+
+    // Landscape validation for logo: must be wider than tall
+    const isLogoNotLandscape = $derived(
+        editorTarget === 'logo' && editorWidth <= editorHeight,
+    );
     let originalAspectRatio = $state(1);
 
     // Crop states
@@ -538,6 +543,15 @@
     function applyEdits() {
         if (!editorCanvas) return;
 
+        // Block non-landscape logos
+        if (editorTarget === 'logo' && editorWidth <= editorHeight) {
+            showToast(
+                'Logo harus berformat landscape (lebar > tinggi). Sesuaikan dimensi terlebih dahulu.',
+                'error',
+            );
+            return;
+        }
+
         editorCanvas.toBlob((blob) => {
             if (blob) {
                 const editedFile = new File(
@@ -761,7 +775,20 @@
                 e.target.value = ''; // Reset file input
                 return;
             }
-            openEditor(file, 'logo');
+            // Pre-check orientation before opening editor
+            const preImg = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            preImg.onload = () => {
+                URL.revokeObjectURL(objectUrl);
+                if (preImg.naturalWidth <= preImg.naturalHeight) {
+                    showToast(
+                        'Perhatian: Gambar ini bukan format landscape. Logo toko wajib berformat landscape (lebar > tinggi). Sesuaikan dimensi di editor sebelum menyimpan.',
+                        'error',
+                    );
+                }
+                openEditor(file, 'logo');
+            };
+            preImg.src = objectUrl;
             e.target.value = '';
         }
     }
@@ -1893,29 +1920,24 @@
                         {/if}
 
                         <div
-                            class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100"
+                            class="flex items-start gap-2.5 bg-amber-50 p-3.5 rounded-2xl border border-amber-200"
                         >
                             <i
-                                class="ti ti-info-circle text-slate-400 text-base mt-0.5"
+                                class="ti ti-alert-triangle text-amber-500 text-base mt-0.5 shrink-0"
                             ></i>
                             <div>
                                 <span
-                                    class="text-[10px] font-black text-slate-700 uppercase tracking-tight block"
-                                    >Rekomendasi Dimensi Logo</span
+                                    class="text-[10px] font-black text-amber-700 uppercase tracking-tight block"
+                                    >Logo Wajib Format Landscape</span
                                 >
                                 <p
-                                    class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed"
+                                    class="text-[10px] text-amber-700 font-semibold mt-0.5 leading-relaxed"
                                 >
-                                    Mendukung format PNG/JPG dengan ukuran
-                                    maksimal 2MB.<br />
-                                    Resolusi Minimum:
-                                    <strong class="text-slate-600"
-                                        >512 x 512 px</strong
-                                    >
-                                    (Persegi) atau
-                                    <strong class="text-slate-600"
-                                        >1024 x 576 px</strong
-                                    > (Lanskap 16:9).
+                                    Logo harus <strong>lebih lebar dari tingginya</strong> (orientasi landscape).<br />
+                                    Format PNG/JPG, maks. 2MB.<br />
+                                    Resolusi rekomendasi:
+                                    <strong>1024 × 512 px</strong> (2:1) atau
+                                    <strong>1200 × 400 px</strong> (3:1).
                                 </p>
                             </div>
                         </div>
@@ -2719,30 +2741,57 @@
 
                                 <!-- Preset sizes -->
                                 <div class="flex flex-wrap gap-1.5 mt-1">
-                                    <button
-                                        type="button"
-                                        onclick={() =>
-                                            setPresetDimensions(512, 512)}
-                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
-                                    >
-                                        512x512
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onclick={() =>
-                                            setPresetDimensions(1024, 576)}
-                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
-                                    >
-                                        1024x576 (16:9)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onclick={() =>
-                                            setPresetDimensions(128, 128)}
-                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
-                                    >
-                                        128x128
-                                    </button>
+                                    {#if editorTarget === 'logo'}
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setPresetDimensions(1024, 576)}
+                                            class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                        >
+                                            1024x576 (16:9)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setPresetDimensions(1200, 400)}
+                                            class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                        >
+                                            1200x400 (3:1)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setPresetDimensions(1024, 512)}
+                                            class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                        >
+                                            1024x512 (2:1)
+                                        </button>
+                                    {:else}
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setPresetDimensions(512, 512)}
+                                            class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                        >
+                                            512x512
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setPresetDimensions(256, 256)}
+                                            class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                        >
+                                            256x256
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setPresetDimensions(128, 128)}
+                                            class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                        >
+                                            128x128
+                                        </button>
+                                    {/if}
                                     <button
                                         type="button"
                                         onclick={() => {
@@ -2911,6 +2960,20 @@
                             </div>
                         </div>
 
+                        <!-- Landscape warning banner for logo -->
+                        {#if isLogoNotLandscape}
+                            <div class="flex items-start gap-2.5 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3">
+                                <i class="ti ti-rotate-rectangle text-rose-500 text-base mt-0.5 shrink-0"></i>
+                                <div>
+                                    <span class="text-[11px] font-black text-rose-700 uppercase tracking-tight block">Bukan Format Landscape</span>
+                                    <p class="text-[10px] text-rose-600 font-semibold mt-0.5 leading-relaxed">
+                                        Logo toko <strong>wajib berformat landscape</strong> (lebar &gt; tinggi).<br />
+                                        Sesuaikan dimensi lebar &amp; tinggi di atas, atau gunakan preset landscape, sebelum menekan Terapkan.
+                                    </p>
+                                </div>
+                            </div>
+                        {/if}
+
                         <!-- Footer Buttons -->
                         <div
                             class="flex items-center gap-3 pt-4 border-t border-slate-100"
@@ -2927,9 +2990,8 @@
                                 <!-- Crop apply button -->
                                 <button
                                     type="button"
-                                    class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600"
+                                    class="py-3 px-4 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition text-center uppercase tracking-wider flex items-center gap-2"
                                     onclick={applyCrop}
-                                    disabled={cropBox.w < 4 || cropBox.h < 4}
                                 >
                                     <i class="ti ti-crop"></i>
                                     Terapkan Crop
@@ -2948,11 +3010,17 @@
 
                                 <button
                                     type="button"
-                                    class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
-                                    style="background-color: {primaryColor}; shadow-color: {primaryColor}33"
+                                    class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none"
+                                    style="background-color: {isLogoNotLandscape ? '#94a3b8' : primaryColor};"
                                     onclick={applyEdits}
+                                    disabled={isLogoNotLandscape}
+                                    title={isLogoNotLandscape ? 'Logo harus landscape sebelum dapat diterapkan' : 'Terapkan perubahan'}
                                 >
-                                    Terapkan
+                                    {#if isLogoNotLandscape}
+                                        <i class="ti ti-alert-triangle mr-1"></i>Wajib Landscape
+                                    {:else}
+                                        Terapkan
+                                    {/if}
                                 </button>
                             {/if}
                         </div>

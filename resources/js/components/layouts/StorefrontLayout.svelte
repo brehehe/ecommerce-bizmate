@@ -7,7 +7,6 @@
 
     const shownFlashIds = new Set();
 
-
     let {
         children,
         hideMobileHeader = false,
@@ -646,7 +645,7 @@
                             <img
                                 src={storeLogo}
                                 alt={storeName}
-                                class="h-10 w-auto object-contain"
+                                class="h-15 w-auto object-contain"
                             />
                         {:else}
                             <div
@@ -886,11 +885,19 @@
                                     (profileDropOpen = !profileDropOpen)}
                                 class="flex items-center gap-2 text-white hover:bg-white/20 px-3 py-2 rounded-xl transition"
                             >
-                                <div class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-black text-xs border border-white/40 shrink-0">
+                                <div
+                                    class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-black text-xs border border-white/40 shrink-0"
+                                >
                                     {#if auth.avatar}
-                                        <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
+                                        <img
+                                            src="/storage/{auth.avatar}"
+                                            alt={auth.name}
+                                            class="w-full h-full object-cover"
+                                        />
                                     {:else}
-                                        <div class="w-full h-full bg-white/20 flex items-center justify-center">
+                                        <div
+                                            class="w-full h-full bg-white/20 flex items-center justify-center"
+                                        >
                                             {getInitials(auth.name)}
                                         </div>
                                     {/if}
@@ -1143,9 +1150,15 @@
                             class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0"
                         >
                             {#if auth.avatar}
-                                <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
+                                <img
+                                    src="/storage/{auth.avatar}"
+                                    alt={auth.name}
+                                    class="w-full h-full object-cover"
+                                />
                             {:else}
-                                <div class="w-full h-full bg-white/20 flex items-center justify-center">
+                                <div
+                                    class="w-full h-full bg-white/20 flex items-center justify-center"
+                                >
                                     {getInitials(auth.name)}
                                 </div>
                             {/if}
@@ -1170,9 +1183,16 @@
             class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl"
         >
             <div class="p-4 border-b border-slate-100 flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-black text-sm text-white shrink-0" style="background-color: {primary};">
+                <div
+                    class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-black text-sm text-white shrink-0"
+                    style="background-color: {primary};"
+                >
                     {#if auth.avatar}
-                        <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
+                        <img
+                            src="/storage/{auth.avatar}"
+                            alt={auth.name}
+                            class="w-full h-full object-cover"
+                        />
                     {:else}
                         {getInitials(auth.name)}
                     {/if}
@@ -1530,8 +1550,9 @@
                             <div>
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Email</p
                                 >
+                                    Email
+                                </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-mail absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1549,8 +1570,9 @@
                             <div>
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Kata Sandi</p
                                 >
+                                    Kata Sandi
+                                </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1587,7 +1609,7 @@
                             <div class="flex items-center justify-end">
                                 <Link
                                     href="/forgot-password"
-                                    onclick={() => authModalOpen = false}
+                                    onclick={() => (authModalOpen = false)}
                                     class="text-xs font-bold hover:underline"
                                     style="color: {primary};"
                                     >Lupa kata sandi?</Link
@@ -1654,8 +1676,9 @@
                             <div>
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Nama Lengkap</p
                                 >
+                                    Nama Lengkap
+                                </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1673,8 +1696,9 @@
                             <div>
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Email</p
                                 >
+                                    Email
+                                </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-mail absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1692,8 +1716,9 @@
                             <div>
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Kata Sandi</p
                                 >
+                                    Kata Sandi
+                                </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1729,8 +1754,9 @@
                             <div>
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
-                                    >Konfirmasi Kata Sandi</p
                                 >
+                                    Konfirmasi Kata Sandi
+                                </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-lock-check absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
