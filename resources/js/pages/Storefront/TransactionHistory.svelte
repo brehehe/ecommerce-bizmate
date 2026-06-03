@@ -197,6 +197,30 @@
                                             {#if (trx.items ?? []).length > 2}
                                                 <p class="text-xs text-slate-400 font-bold mt-2 pt-2 border-t border-slate-50">+{(trx.items ?? []).length - 2} produk lainnya</p>
                                             {/if}
+                                            {#if trx.shipping_courier || trx.tracking_number || trx.booking_code}
+                                                <div class="pt-2 flex items-center justify-between text-xs gap-2">
+                                                    <div class="flex items-center gap-1 text-slate-500">
+                                                        <i class="ti ti-truck text-slate-400"></i>
+                                                        <span>
+                                                            Kurir: <span class="font-bold text-slate-700">{trx.courier_name || trx.shipping_courier}</span>
+                                                            {#if trx.shipping_service}
+                                                                <span class="text-slate-400">({trx.shipping_service})</span>
+                                                            {/if}
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 shrink-0">
+                                                        {#if trx.tracking_number}
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
+                                                                Resi: {trx.tracking_number}
+                                                            </span>
+                                                        {:else if trx.booking_code}
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                                                                Booking: {trx.booking_code}
+                                                            </span>
+                                                        {/if}
+                                                    </div>
+                                                </div>
+                                            {/if}
                                         </div>
 
                                         <!-- Footer -->

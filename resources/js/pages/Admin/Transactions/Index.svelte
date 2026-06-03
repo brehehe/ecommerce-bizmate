@@ -226,6 +226,7 @@
         menunggu: { bg: '#dbeafe', text: '#1e40af' },
         diproses: { bg: '#ede9fe', text: '#5b21b6' },
         dikemas: { bg: '#cffafe', text: '#0e7490' },
+        out_for_pickup: { bg: '#fef3c7', text: '#b45309' }, // Amber-100 / Amber-700
         dikirim: { bg: '#ffedd5', text: '#9a3412' },
         selesai: { bg: '#dcfce7', text: '#166534' },
         batal: { bg: '#fee2e2', text: '#991b1b' },
@@ -235,6 +236,7 @@
         menunggu: 'ti-hourglass-low',
         diproses: 'ti-settings',
         dikemas: 'ti-package',
+        out_for_pickup: 'ti-truck-delivery',
         dikirim: 'ti-truck-delivery',
         selesai: 'ti-circle-check',
         batal: 'ti-circle-x',

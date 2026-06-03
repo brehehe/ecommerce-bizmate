@@ -95,6 +95,7 @@
         { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
         { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
         { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
+        { key: 'out_for_pickup', label: 'Out for Pickup', icon: 'ti-truck-delivery' },
         { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck' },
         { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check' },
     ];
@@ -110,6 +111,7 @@
         menunggu: { bg: '#dbeafe', text: '#1e40af' },
         diproses: { bg: '#ede9fe', text: '#5b21b6' },
         dikemas: { bg: '#cffafe', text: '#0e7490' },
+        out_for_pickup: { bg: '#fef3c7', text: '#b45309' }, // Amber-100 / Amber-700
         dikirim: { bg: '#ffedd5', text: '#9a3412' },
         selesai: { bg: '#dcfce7', text: '#166534' },
         batal: { bg: '#fee2e2', text: '#991b1b' },
@@ -201,6 +203,95 @@
             return path;
         }
         return '/storage/' + path;
+    }
+
+    let pickupTime = $state('');
+    let showPickupModal = $state(false);
+    let vehicleType = $state('motorcycle');
+    let bookingLoading = $state(false);
+    let trackingTimeline = $state([]);
+    let trackingLoading = $state(false);
+    let trackingErr = $state('');
+
+    async function loadAdminTracking() {
+        if (!transaction.tracking_number) return;
+        trackingLoading = true;
+        trackingErr = '';
+        try {
+            const resp = await fetch(`/admin/transactions/${transaction.id}/komerce/track`);
+            const data = await resp.json();
+            if (resp.ok && data.success) {
+                trackingTimeline = data.history;
+            } else {
+                trackingErr = data.error ?? 'Gagal memuat history tracking.';
+            }
+        } catch {
+            trackingErr = 'Gagal melacak pengiriman.';
+        } finally {
+            trackingLoading = false;
+        }
+    }
+
+    $effect(() => {
+        if (transaction.tracking_number) {
+            loadAdminTracking();
+        }
+    });
+
+    function storeKomerceShipment() {
+        bookingLoading = true;
+        router.post(`/admin/transactions/${transaction.id}/komerce/store`, {}, {
+            onSuccess: () => {
+                showToast('Booking pengiriman Komerce berhasil!', 'success');
+            },
+            onError: (err) => {
+                const first = Object.values(err)[0] as string;
+                showToast(first ?? 'Gagal booking pengiriman.', 'error');
+            },
+            onFinish: () => {
+                bookingLoading = false;
+            }
+        });
+    }
+
+    function cancelKomerceShipment() {
+        bookingLoading = true;
+        router.post(`/admin/transactions/${transaction.id}/komerce/cancel`, {}, {
+            onSuccess: () => {
+                showToast('Booking pengiriman berhasil dibatalkan.', 'success');
+            },
+            onError: (err) => {
+                const first = Object.values(err)[0] as string;
+                showToast(first ?? 'Gagal membatalkan booking.', 'error');
+            },
+            onFinish: () => {
+                bookingLoading = false;
+            }
+        });
+    }
+
+    function requestPickupKomerce() {
+        if (!pickupTime) {
+            showToast('Silakan pilih waktu pickup.', 'error');
+            return;
+        }
+        bookingLoading = true;
+        router.post(`/admin/transactions/${transaction.id}/komerce/pickup`, {
+            pickup_time: pickupTime,
+            vehicle_type: vehicleType,
+        }, {
+            onSuccess: () => {
+                showToast('Request pickup berhasil diajukan!', 'success');
+                showPickupModal = false;
+            },
+            onError: (err) => {
+                const first = Object.values(err)[0] as string;
+                showToast(first ?? 'Gagal mengajukan request pickup.', 'error');
+            },
+            onFinish: () => {
+                bookingLoading = false;
+            }
+        });
     }
 </script>
 
@@ -638,6 +729,132 @@
 
                 <!-- Sidebar -->
                 <div class="space-y-6">
+                    <!-- Komerce Shipping Delivery Dashboard -->
+                    <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                            <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
+                                <i class="ti ti-truck text-lg" style="color:{primary}"></i>
+                                Komerce Shipping
+                            </h3>
+                            {#if transaction.booking_code}
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                    Booked
+                                </span>
+                            {:else}
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                                    Ready
+                                </span>
+                            {/if}
+                        </div>
+
+                        <div class="space-y-4">
+                            {#if !transaction.booking_code}
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    Pesan kurir pengiriman secara otomatis melalui integrasi Komerce Delivery.
+                                </p>
+                                <button
+                                    onclick={storeKomerceShipment}
+                                    disabled={bookingLoading}
+                                    class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-blueRoyal/10"
+                                    style="background:{primary}"
+                                >
+                                    <i class="ti ti-package-export text-sm"></i>
+                                    {bookingLoading ? 'Memproses Booking...' : 'Pesan Pengiriman (Komerce)'}
+                                </button>
+                            {:else}
+                                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400 font-bold uppercase text-[9px]">Kode Booking</span>
+                                        <span class="font-mono font-bold text-slate-800 select-all">{transaction.booking_code}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400 font-bold uppercase text-[9px]">Nomor Resi / AWB</span>
+                                        <span class="font-mono font-bold text-slate-800 select-all">{transaction.tracking_number ?? '-'}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400 font-bold uppercase text-[9px]">Kurir</span>
+                                        <span class="font-bold text-slate-800 uppercase">{transaction.shipping_courier} ({transaction.shipping_service})</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col gap-2 pt-2">
+                                    <!-- Print Label -->
+                                    <a
+                                        href="/admin/transactions/{transaction.id}/komerce/print"
+                                        target="_blank"
+                                        class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition active:scale-95 shadow-sm"
+                                    >
+                                        <i class="ti ti-printer text-sm text-slate-500"></i>
+                                        Cetak Label Pengiriman
+                                    </a>
+                                    <!-- Request Pickup -->
+                                    {#if ['diproses', 'dikemas'].includes(transaction.status)}
+                                        <button
+                                            onclick={() => (showPickupModal = true)}
+                                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
+                                            style="background:{secondary}"
+                                        >
+                                            <i class="ti ti-calendar-event text-sm"></i>
+                                            Request Courier Pickup
+                                        </button>
+                                    {/if}
+
+                                    <!-- Cancel Booking -->
+                                    {#if ['diproses', 'dikemas'].includes(transaction.status)}
+                                        <button
+                                            onclick={cancelKomerceShipment}
+                                            disabled={bookingLoading}
+                                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 text-xs font-bold text-red-600 bg-white hover:bg-red-50/50 transition active:scale-[0.98]"
+                                        >
+                                            <i class="ti ti-trash text-sm text-red-500"></i>
+                                            Batalkan Booking Komerce
+                                        </button>
+                                    {/if}
+                                </div>
+
+                                <!-- Live tracking subpanel -->
+                                {#if transaction.tracking_number}
+                                    <div class="mt-4 pt-4 border-t border-slate-100">
+                                        <h4 class="font-bold text-slate-800 text-xs mb-3 flex items-center gap-1.5">
+                                            <i class="ti ti-timeline text-slate-400"></i>
+                                            Riwayat Perjalanan Paket
+                                        </h4>
+                                        
+                                        {#if trackingLoading}
+                                            <div class="space-y-3 py-1">
+                                                {#each [1, 2] as _}
+                                                    <div class="flex gap-2.5 animate-pulse">
+                                                        <div class="w-2 h-2 rounded-full bg-slate-200 mt-1 shrink-0"></div>
+                                                        <div class="space-y-1 w-full">
+                                                            <div class="h-2.5 bg-slate-200 rounded w-1/4"></div>
+                                                            <div class="h-2.5 bg-slate-200 rounded w-5/6"></div>
+                                                        </div>
+                                                    </div>
+                                                {/each}
+                                            </div>
+                                        {:else if trackingErr}
+                                            <p class="text-[10px] text-slate-400 italic">{trackingErr}</p>
+                                        {:else if trackingTimeline && trackingTimeline.length > 0}
+                                            <div class="relative pl-3 border-l border-slate-100 space-y-3 py-1">
+                                                {#each trackingTimeline as step}
+                                                    <div class="relative">
+                                                        <div class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full bg-slate-300 border border-white"></div>
+                                                        <div>
+                                                            <p class="text-[9px] text-slate-400 font-bold">{step.date}</p>
+                                                            <p class="text-[11px] text-slate-600 mt-0.5 leading-snug">{step.desc}</p>
+                                                        </div>
+                                                    </div>
+                                                {/each}
+                                            </div>
+                                        {:else}
+                                            <p class="text-[10px] text-slate-400 italic">Belum ada history tracking.</p>
+                                        {/if}
+                                    </div>
+                                {/if}
+                            {/if}
+                        </div>
+                    </div>
+
                     <!-- Customer Info -->
                     <div
                         class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
@@ -1120,6 +1337,94 @@
                         {:else}
                             <i class="ti ti-truck-delivery text-sm"></i>
                             Simpan Resi
+                        {/if}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Komerce Pickup Modal -->
+    {#if showPickupModal}
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onclick={() => (showPickupModal = false)}
+            onkeypress={() => (showPickupModal = false)}
+            role="button"
+            tabindex="-1"
+        >
+            <div
+                class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            ></div>
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div
+                class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm"
+                onclick={(e: any) => e.stopPropagation()}
+                onkeypress={(e: any) => e.stopPropagation()}
+                role="document"
+            >
+                <h3
+                    class="font-outfit font-black text-slate-800 text-sm mb-4 uppercase tracking-wider flex items-center gap-1.5"
+                >
+                    <i class="ti ti-calendar-event text-base" style="color:{primary}"></i>
+                    Request Pickup Kurir
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
+                            for="pickup-time-input"
+                        >
+                            Waktu Pickup <span class="text-red-500">*</span>
+                        </label>
+                        <input
+                            id="pickup-time-input"
+                            type="datetime-local"
+                            bind:value={pickupTime}
+                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition text-slate-700"
+                        />
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
+                            for="vehicle-type-select"
+                        >
+                            Tipe Kendaraan
+                        </label>
+                        <select
+                            id="vehicle-type-select"
+                            bind:value={vehicleType}
+                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition text-slate-700 font-medium"
+                        >
+                            <option value="motorcycle">Motor (Regular)</option>
+                            <option value="car">Mobil (Cargo/Besar)</option>
+                            <option value="truck">Truk (Sangat Besar/Berat &gt;= 10kg)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button
+                        onclick={() => (showPickupModal = false)}
+                        class="flex-1 py-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 transition uppercase tracking-wider font-outfit"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={requestPickupKomerce}
+                        disabled={bookingLoading || !pickupTime}
+                        class="flex-1 py-3 rounded-xl text-xs font-bold text-white transition uppercase tracking-wider font-outfit disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        style="background:{secondary}"
+                    >
+                        {#if bookingLoading}
+                            <i class="ti ti-loader-2 animate-spin text-sm"></i>
+                            Memproses...
+                        {:else}
+                            <i class="ti ti-check text-sm"></i>
+                            Request Pickup
                         {/if}
                     </button>
                 </div>

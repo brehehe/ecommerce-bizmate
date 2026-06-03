@@ -280,8 +280,14 @@ class TransactionController extends Controller
     /**
      * Print transaction shipping label.
      */
-    public function printShippingLabel(Transaction $transaction)
+    public function printShippingLabel($transactionId)
     {
+        if (is_numeric($transactionId)) {
+            $transaction = Transaction::findOrFail($transactionId);
+        } else {
+            $transaction = Transaction::where('booking_code', $transactionId)->firstOrFail();
+        }
+
         $transaction->load([
             'customerAddress',
             'paymentMethod',

@@ -645,7 +645,7 @@
                             <img
                                 src={storeLogo}
                                 alt={storeName}
-                                class="h-15 w-auto object-contain"
+                                class="h-10 w-auto object-contain"
                             />
                         {:else}
                             <div

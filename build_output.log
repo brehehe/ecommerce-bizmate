@@ -2,7 +2,8 @@ $ vite build
 10:01:51 AM [vite-plugin-svelte] no Svelte config found at /Users/macbookair/Documents/website/burningroom/ecommerce/ecommerce/ecommerce - using default configuration.
 vite v8.0.13 building client environment for production...
 [plugin @laravel/vite-plugin-wayfinder] Types generated for actions, routes
-[2Ktransforming...10:01:52 AM [vite-plugin-svelte] resources/js/pages/Admin/MasterData/Brands.svelte:16:29 This reference only captures the initial value of `filters`. Did you mean to reference it inside a derived instead?
+[2K
+transforming...10:01:52 AM [vite-plugin-svelte] resources/js/pages/Admin/MasterData/Brands.svelte:16:29 This reference only captures the initial value of `filters`. Did you mean to reference it inside a derived instead?
 https://svelte.dev/e/state_referenced_locally
 14:     } = $props();
 15: 
@@ -2599,20 +2600,20 @@ https://svelte.dev/e/state_referenced_locally
 62: 
 63:         rajaongkir_url:
 64:             settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
-                        ^
-65:         rajaongkir_key:
-66:             settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
+            rajaongkir_shipping_cost
+65:         rajaongkir_kerajaongkir_shipping_cost
+66:             settings.rajaongkir_shipping_cost_key || '390d25e9d86ded71cb771c363778cccf',
 10:01:55 AM [vite-plugin-svelte] resources/js/pages/Admin/Settings/Index.svelte:66:12 This reference only captures the initial value of `settings`. Did you mean to reference it inside a closure instead?
 https://svelte.dev/e/state_referenced_locally
-64:             settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
-65:         rajaongkir_key:
-66:             settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
+64:         rajaongkir_shipping_costajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
+65:         rajaongkir_kerajaongkir_shipping_cost
+66:             settings.rajaongkir_shipping_cost_key || '390d25e9d86ded71cb771c363778cccf',
                         ^
 67:         storefront_cart_button_style:
 68:             settings.storefront_cart_button_style || 'button',
 10:01:55 AM [vite-plugin-svelte] resources/js/pages/Admin/Settings/Index.svelte:68:12 This reference only captures the initial value of `settings`. Did you mean to reference it inside a closure instead?
-https://svelte.dev/e/state_referenced_locally
-66:             settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
+https://svelte.dev/e/statrajaongkir_shipping_costocally
+66:             settings.rajaongkir_shipping_cost_key || '390d25e9d86ded71cb771c363778cccf',
 67:         storefront_cart_button_style:
 68:             settings.storefront_cart_button_style || 'button',
                         ^

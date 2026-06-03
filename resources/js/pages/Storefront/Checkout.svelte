@@ -26,7 +26,7 @@
     );
 
     const storeSettings = $derived((page.props as any).settings || {});
-    
+
     // Store Open Logic
     const isStoreOpen = $derived.by(() => {
         if (storeSettings.holiday_mode) return false;
@@ -34,19 +34,28 @@
         if (!storeSettings.operational_hours) return true;
 
         const now = new Date();
-        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const days = [
+            'sunday',
+            'monday',
+            'tuesday',
+            'wednesday',
+            'thursday',
+            'friday',
+            'saturday',
+        ];
         const currentDay = days[now.getDay()];
         const currentHours = storeSettings.operational_hours[currentDay];
 
         if (!currentHours || !currentHours.active) return false;
 
         const currentTime = now.getHours() * 60 + now.getMinutes();
-        
+
         const openParts = currentHours.open.split(':');
         const openTime = parseInt(openParts[0]) * 60 + parseInt(openParts[1]);
 
         const closeParts = currentHours.close.split(':');
-        const closeTime = parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
+        const closeTime =
+            parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
 
         return currentTime >= openTime && currentTime <= closeTime;
     });
@@ -107,7 +116,9 @@
     );
     $effect(() => {
         if (!selectedAddressId && addresses && addresses.length > 0) {
-            selectedAddressId = addresses.find((a: any) => a.is_primary)?.id ?? addresses[0]?.id;
+            selectedAddressId =
+                addresses.find((a: any) => a.is_primary)?.id ??
+                addresses[0]?.id;
         }
     });
     let showAddressModal = $state(false);
@@ -133,6 +144,33 @@
     const selectedCourierId = $derived(
         couriers.find((c: any) => c.code === selectedCourier)?.id ?? null,
     );
+    let isInternational = $state(false);
+    let internationalCountries = $state([]);
+    let selectedCountryId = $state('');
+    let loadingCountries = $state(false);
+
+    async function fetchInternationalCountries() {
+        if (internationalCountries.length > 0) return;
+        loadingCountries = true;
+        try {
+            const resp = await fetch('/checkout/international-destinations');
+            const data = await resp.json();
+            if (resp.ok && data.destinations) {
+                internationalCountries = data.destinations;
+            }
+        } catch (e) {
+            console.error('Failed to load international countries', e);
+        } finally {
+            loadingCountries = false;
+        }
+    }
+
+    $effect(() => {
+        if (isInternational) {
+            fetchInternationalCountries();
+        }
+    });
+
     let searchCourierQuery = $state('');
     let showCourierDropdown = $state(false);
     function closeCourierDropdown(e: MouseEvent) {
@@ -152,7 +190,8 @@
             selectedCourier = '';
             shippingOptions = [];
             selectedShipping = null;
-            shippingError = 'Tidak ada layanan pengiriman yang tersedia untuk alamat ini.';
+            shippingError =
+                'Tidak ada layanan pengiriman yang tersedia untuk alamat ini.';
             return;
         }
 
@@ -168,7 +207,11 @@
     let initialAutoSelectDone = $state(false);
 
     $effect(() => {
-        if (selectedAddressId && !initialAutoSelectDone && availableCouriers.length > 0) {
+        if (
+            selectedAddressId &&
+            !initialAutoSelectDone &&
+            availableCouriers.length > 0
+        ) {
             initialAutoSelectDone = true;
             autoSelectShipping(0);
         } else if (selectedAddressId && selectedAddressId !== lastAddressId) {
@@ -541,6 +584,10 @@
     }
 
     async function fetchShipping() {
+        if (isInternational && !selectedCountryId) {
+            shippingError = 'Pilih negara tujuan terlebih dahulu.';
+            return;
+        }
         if (!selectedAddress || !selectedCourier) return;
 
         loadingShipping = true;
@@ -562,13 +609,16 @@
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    destination:
-                        selectedAddress.city_id ??
-                        selectedAddress.regency_id ??
-                        '',
+                    destination: isInternational
+                        ? selectedCountryId
+                        : (selectedAddress.city_id ??
+                          selectedAddress.regency_id ??
+                          ''),
                     weight:
                         Math.max(1, Math.ceil(totalWeightGrams / 1000)) * 1000,
                     courier: selectedCourier,
+                    is_international: isInternational,
+                    address_id: selectedAddress?.id ?? null,
                 }),
             });
 
@@ -577,7 +627,11 @@
                 const services = data.results[0]?.costs ?? [];
                 shippingOptions = services;
                 if (shippingOptions.length > 0) {
-                    shippingOptions.sort((a: any, b: any) => (a.cost?.[0]?.value ?? 0) - (b.cost?.[0]?.value ?? 0));
+                    shippingOptions.sort(
+                        (a: any, b: any) =>
+                            (a.cost?.[0]?.value ?? 0) -
+                            (b.cost?.[0]?.value ?? 0),
+                    );
                     selectedShipping = shippingOptions[0];
                 }
             } else {
@@ -700,7 +754,10 @@
 
     function submitCheckout() {
         if (!isStoreOpen) {
-            showToast('Toko sedang tutup. Checkout tidak tersedia saat ini.', 'error');
+            showToast(
+                'Toko sedang tutup. Checkout tidak tersedia saat ini.',
+                'error',
+            );
             return;
         }
         if (!selectedAddressId) {
@@ -1206,6 +1263,52 @@
                                     ongkir.
                                 </p>
                             {:else}
+                                <!-- International Shipping Option -->
+                                <!-- <div class="mb-4 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
+                                    <label class="flex items-center justify-between cursor-pointer">
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-slate-800">Kirim ke Luar Negeri?</span>
+                                            <span class="text-[10px] text-slate-500">Gunakan Komerce RajaOngkir Internasional</span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            bind:checked={isInternational}
+                                            class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                                            onclick={() => {
+                                                selectedShipping = null;
+                                                shippingOptions = [];
+                                                selectedCourier = '';
+                                                selectedCountryId = '';
+                                            }}
+                                        />
+                                    </label>
+                                    
+                                    {#if isInternational}
+                                        <div class="mt-3">
+                                            <p class="text-xs font-semibold text-slate-500 mb-1.5">Pilih Negara Tujuan</p>
+                                            <div class="relative">
+                                                <select
+                                                    bind:value={selectedCountryId}
+                                                    onchange={() => {
+                                                        selectedShipping = null;
+                                                        shippingOptions = [];
+                                                        if (selectedCourier) fetchShipping();
+                                                    }}
+                                                    class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-100 transition-all font-medium text-slate-700"
+                                                >
+                                                    <option value="">-- Pilih Negara --</option>
+                                                    {#each internationalCountries as country}
+                                                        <option value={country.country_id}>{country.country_name}</option>
+                                                    {/each}
+                                                </select>
+                                                {#if loadingCountries}
+                                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">Loading...</span>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    {/if}
+                                </div> -->
+
                                 <!-- Courier selection -->
                                 <div
                                     class="mb-3 relative courier-select-container"
@@ -1838,15 +1941,18 @@
                                     <div
                                         class="w-6 h-6 rounded-lg bg-amber-500 flex items-center justify-center text-white shrink-0"
                                     >
-                                        <i class="ti ti-info-circle text-xs"></i>
+                                        <i class="ti ti-info-circle text-xs"
+                                        ></i>
                                     </div>
                                     <div class="min-w-0">
                                         <p
                                             class="text-[9px] text-amber-800 leading-tight"
                                         >
-                                            Anda menggunakan Poin pada transaksi ini, sehingga <span
+                                            Anda menggunakan Poin pada transaksi
+                                            ini, sehingga <span
                                                 class="font-black text-amber-600"
-                                                >tidak akan mendapatkan Poin tambahan</span
+                                                >tidak akan mendapatkan Poin
+                                                tambahan</span
                                             >.
                                         </p>
                                     </div>
@@ -2086,13 +2192,28 @@
 
                             <!-- Desktop submit button -->
                             {#if !isStoreOpen}
-                                <div class="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left">
-                                    <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                                        <i class="ti ti-clock-pause text-amber-600 text-lg"></i>
+                                <div
+                                    class="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left"
+                                >
+                                    <div
+                                        class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5"
+                                    >
+                                        <i
+                                            class="ti ti-clock-pause text-amber-600 text-lg"
+                                        ></i>
                                     </div>
                                     <div class="min-w-0">
-                                        <h4 class="font-bold text-amber-800 text-[11px] uppercase tracking-tight">Toko Sedang Tutup</h4>
-                                        <p class="text-[9px] text-amber-700 font-semibold mt-1 leading-snug">Mohon maaf, proses pesanan dinonaktifkan sementara.</p>
+                                        <h4
+                                            class="font-bold text-amber-800 text-[11px] uppercase tracking-tight"
+                                        >
+                                            Toko Sedang Tutup
+                                        </h4>
+                                        <p
+                                            class="text-[9px] text-amber-700 font-semibold mt-1 leading-snug"
+                                        >
+                                            Mohon maaf, proses pesanan
+                                            dinonaktifkan sementara.
+                                        </p>
                                     </div>
                                 </div>
                             {/if}
@@ -2101,7 +2222,8 @@
                                 disabled={isSubmitting ||
                                     !selectedAddressId ||
                                     !selectedPaymentMethodId ||
-                                    !selectedShipping || !isStoreOpen}
+                                    !selectedShipping ||
+                                    !isStoreOpen}
                                 class="hidden lg:flex w-full mt-4 items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="background:linear-gradient(to right, {primary}, {primary})"
                             >
@@ -2135,7 +2257,8 @@
                     disabled={isSubmitting ||
                         !selectedAddressId ||
                         !selectedPaymentMethodId ||
-                        !selectedShipping || !isStoreOpen}
+                        !selectedShipping ||
+                        !isStoreOpen}
                     class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background:linear-gradient(to right, {primary}, {primary})"
                 >

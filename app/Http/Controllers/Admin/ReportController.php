@@ -659,9 +659,9 @@ class ReportController extends Controller
         // Threshold: fast = posisi kumulatif mulai < 50%, medium = 50–80%, slow/low = ≥ 80%
         $isProductType = in_array($type, ['product_revenue', 'product_qty']);
         $movingMetrics = [
-            'fast'   => ['count' => 0, 'qty' => 0, 'value' => 0.0],
+            'fast' => ['count' => 0, 'qty' => 0, 'value' => 0.0],
             'medium' => ['count' => 0, 'qty' => 0, 'value' => 0.0],
-            'slow'   => ['count' => 0, 'qty' => 0, 'value' => 0.0],
+            'slow' => ['count' => 0, 'qty' => 0, 'value' => 0.0],
         ];
 
         // Tentukan basis sorting & total untuk kumulatif moving

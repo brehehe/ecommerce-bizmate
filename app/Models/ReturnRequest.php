@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -72,7 +73,8 @@ class ReturnRequest extends Model
     public static function generateNumber(): string
     {
         $prefix = 'RTR-'.now()->format('Ymd').'-';
-        $last = static::where('return_number', 'ilike', $prefix.'%')
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+        $last = static::where('return_number', $operator, $prefix.'%')
             ->orderByDesc('return_number')
             ->value('return_number');
 

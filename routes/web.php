@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\CmsController;
+use App\Http\Controllers\Admin\KomerceShipmentController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -91,6 +92,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout/apply-voucher', [CheckoutController::class, 'applyVoucher'])->name('checkout.apply-voucher');
     Route::post('/checkout/shipping-cost', [CheckoutController::class, 'shippingCost'])->name('checkout.shipping-cost');
     Route::get('/checkout/cities', [CheckoutController::class, 'cities'])->name('checkout.cities');
+    Route::get('/checkout/international-destinations', [CheckoutController::class, 'internationalDestinations'])->name('checkout.international-destinations');
+    Route::get('/checkout/komerce/search-destination', [CheckoutController::class, 'searchKomerceDestination'])->name('checkout.komerce.search-destination');
 
     // Transaction (Customer)
     Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
@@ -101,6 +104,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
     Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
+    Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
 
     // Returns (Customer)
     Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
@@ -202,6 +206,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
     Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
     Route::post('/transactions/{transaction}/tracking', [AdminTransactionController::class, 'updateTracking'])->name('transactions.update-tracking');
+    Route::post('/transactions/{transaction}/komerce/store', [KomerceShipmentController::class, 'storeShipment'])->name('transactions.komerce.store');
+    Route::post('/transactions/{transaction}/komerce/pickup', [KomerceShipmentController::class, 'requestPickup'])->name('transactions.komerce.pickup');
+    Route::get('/transactions/{transaction}/komerce/print', [KomerceShipmentController::class, 'printLabel'])->name('transactions.komerce.print');
+    Route::post('/transactions/{transaction}/komerce/cancel', [KomerceShipmentController::class, 'cancelShipment'])->name('transactions.komerce.cancel');
+    Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
+    Route::get('/transactions/{transaction}/komerce/detail', [KomerceShipmentController::class, 'getOrderDetail'])->name('transactions.komerce.detail');
+
     Route::post('/transactions/bulk-status', [AdminTransactionController::class, 'bulkStatus'])->name('transactions.bulk-status');
     Route::post('/transactions/bulk-tracking', [AdminTransactionController::class, 'bulkTracking'])->name('transactions.bulk-tracking');
     Route::get('/transactions/{transaction}/print-invoice', [AdminTransactionController::class, 'printInvoice'])->name('transactions.print-invoice');

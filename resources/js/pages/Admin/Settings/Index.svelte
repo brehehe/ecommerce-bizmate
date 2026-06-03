@@ -65,8 +65,33 @@
 
         rajaongkir_url:
             settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
-        rajaongkir_key:
-            settings.rajaongkir_key || '390d25e9d86ded71cb771c363778cccf',
+        rajaongkir_shipping_cost:
+            settings.rajaongkir_shipping_cost || '390d25e9d86ded71cb771c363778cccf',
+
+        shipping_delivery_key:
+            settings.shipping_delivery_key || 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S',
+        payment_api_key:
+            settings.payment_api_key || 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S',
+        qrisly_api_key:
+            settings.qrisly_api_key || 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S',
+
+        shipping_delivery_enabled:
+            settings.shipping_delivery_enabled === 'true' ||
+            settings.shipping_delivery_enabled === true ||
+            settings.shipping_delivery_enabled === '1',
+        payment_api_enabled:
+            settings.payment_api_enabled === 'true' ||
+            settings.payment_api_enabled === true ||
+            settings.payment_api_enabled === '1',
+        payment_api_admin_fee: settings.payment_api_admin_fee || 0,
+        qrisly_api_enabled:
+            settings.qrisly_api_enabled === 'true' ||
+            settings.qrisly_api_enabled === true ||
+            settings.qrisly_api_enabled === '1',
+        qrisly_api_admin_fee: settings.qrisly_api_admin_fee || 0,
+        komerce_delivery_url:
+            settings.komerce_delivery_url || 'https://api-sandbox.collaborator.komerce.id/api/v1/',
+
         storefront_cart_button_style:
             settings.storefront_cart_button_style || 'button',
         enable_cod:
@@ -216,7 +241,7 @@
 
     $effect(() => {
         if (!form.holiday_mode) {
-            form.always_open = false;
+            form.always_open = true;
         }
     });
 
@@ -2363,12 +2388,99 @@
                                     required={true}
                                 />
                                 <Input
-                                    id="input-rajaongkir-key"
-                                    bind:value={form.rajaongkir_key}
-                                    label="Rajaongkir API Key"
-                                    placeholder="Masukkan API Key Rajaongkir Anda"
+                                    id="input-rajaongkir-shipping-cost"
+                                    bind:value={form.rajaongkir_shipping_cost}
+                                    label="Raja Ongkir Shipping Cost"
+                                    placeholder="Masukkan Shipping Cost Key"
                                     required={true}
                                 />
+                                <Input
+                                    id="input-komerce-delivery-url"
+                                    bind:value={form.komerce_delivery_url}
+                                    label="Komerce Delivery Base URL"
+                                    placeholder="Contoh: https://api-sandbox.collaborator.komerce.id/api/v1/"
+                                    required={true}
+                                />
+
+                                <div class="h-px bg-slate-100 my-2"></div>
+
+                                <!-- Shipping Delivery Settings -->
+                                <div class="space-y-2">
+                                    <Toggle
+                                        bind:checked={form.shipping_delivery_enabled}
+                                        label="Aktifkan Shipping Delivery API"
+                                        icon="ti-truck"
+                                    />
+                                    {#if form.shipping_delivery_enabled}
+                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                            <Input
+                                                id="input-shipping-delivery-key"
+                                                bind:value={form.shipping_delivery_key}
+                                                label="Shipping Delivery API Key"
+                                                placeholder="Masukkan Shipping Delivery API Key"
+                                                required={true}
+                                            />
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <div class="h-px bg-slate-100 my-2"></div>
+
+                                <!-- Payment API Settings -->
+                                <div class="space-y-2">
+                                    <Toggle
+                                        bind:checked={form.payment_api_enabled}
+                                        label="Aktifkan Payment API"
+                                        icon="ti-credit-card"
+                                    />
+                                    {#if form.payment_api_enabled}
+                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                            <Input
+                                                id="input-payment-api-key"
+                                                bind:value={form.payment_api_key}
+                                                label="Payment API Key"
+                                                placeholder="Masukkan Payment API Key"
+                                                required={true}
+                                            />
+                                            <InputCurrency
+                                                id="input-payment-api-admin-fee"
+                                                bind:value={form.payment_api_admin_fee}
+                                                label="Biaya Admin Payment API"
+                                                placeholder="Contoh: 2500"
+                                                required={true}
+                                            />
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <div class="h-px bg-slate-100 my-2"></div>
+
+                                <!-- QRISLY API Settings -->
+                                <div class="space-y-2">
+                                    <Toggle
+                                        bind:checked={form.qrisly_api_enabled}
+                                        label="Aktifkan QRISLY API"
+                                        icon="ti-qrcode"
+                                    />
+                                    {#if form.qrisly_api_enabled}
+                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                            <Input
+                                                id="input-qrisly-api-key"
+                                                bind:value={form.qrisly_api_key}
+                                                label="QRISLY API Key"
+                                                placeholder="Masukkan QRISLY API Key"
+                                                required={true}
+                                            />
+                                            <InputCurrency
+                                                id="input-qrisly-api-admin-fee"
+                                                bind:value={form.qrisly_api_admin_fee}
+                                                label="Biaya Admin QRISLY API"
+                                                placeholder="Contoh: 1000"
+                                                required={true}
+                                            />
+                                        </div>
+                                    {/if}
+                                </div>
                             </div>
 
                             <div class="h-px bg-slate-100"></div>

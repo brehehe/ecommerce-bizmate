@@ -34,6 +34,7 @@ class OrderStatusChanged extends Mailable implements ShouldQueue
             'menunggu' => 'Menunggu Konfirmasi',
             'diproses' => 'Sedang Diproses',
             'dikemas' => 'Sedang Dikemas',
+            'out_for_pickup' => 'Out for Pickup',
             'dikirim' => 'Sedang Dikirim',
             'selesai' => 'Selesai',
             'batal' => 'Dibatalkan',

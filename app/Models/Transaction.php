@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -40,6 +41,7 @@ class Transaction extends Model
         'cancel_reason',
         'cancelled_at',
         'tracking_number',
+        'booking_code',
         'courier_name',
         'return_status',
         'is_replacement_transaction',
@@ -77,6 +79,7 @@ class Transaction extends Model
             'menunggu' => 'Menunggu Konfirmasi',
             'diproses' => 'Diproses',
             'dikemas' => 'Dikemas',
+            'out_for_pickup' => 'Out for Pickup',
             'dikirim' => 'Dikirim',
             'selesai' => 'Selesai',
             'batal' => 'Batal',
@@ -154,6 +157,7 @@ class Transaction extends Model
                         'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',
                         'diproses' => 'Pesanan sedang diproses.',
                         'dikemas' => 'Pesanan sedang dikemas.',
+                        'out_for_pickup' => 'Kurir sedang dalam perjalanan untuk menjemput paket (Out for Pickup).',
                         'dikirim' => 'Pesanan telah dikirim.',
                         'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
                         'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
@@ -176,6 +180,7 @@ class Transaction extends Model
                                 'menunggu' => 'menunggu konfirmasi pembayaran.',
                                 'diproses' => 'sedang diproses.',
                                 'dikemas' => 'sedang dikemas.',
+                                'out_for_pickup' => 'sedang dalam proses penjemputan oleh kurir (Out for Pickup).',
                                 'dikirim' => 'telah dikirim.',
                                 'selesai' => 'selesai / telah diterima.',
                                 'batal' => 'dibatalkan.',
@@ -202,6 +207,7 @@ class Transaction extends Model
                                 'menunggu' => 'menunggu konfirmasi pembayaran',
                                 'diproses' => 'sedang diproses',
                                 'dikemas' => 'sedang dikemas',
+                                'out_for_pickup' => 'sedang dalam proses penjemputan oleh kurir (Out for Pickup)',
                                 'dikirim' => 'telah dikirim',
                                 'selesai' => 'selesai / telah diterima',
                                 'batal' => 'dibatalkan',
@@ -264,7 +270,8 @@ class Transaction extends Model
     public static function generateNumber(): string
     {
         $prefix = 'TRX-'.now()->format('Ymd').'-';
-        $last = static::where('transaction_number', 'ilike', $prefix.'%')
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+        $last = static::where('transaction_number', $operator, $prefix.'%')
             ->orderByDesc('transaction_number')
             ->value('transaction_number');
 

@@ -313,7 +313,7 @@ test('an email is sent to customer when transaction status changes', function ()
     // Update status to trigger email sending
     $transaction->update(['status' => 'diproses']);
 
-    Mail::assertSent(OrderStatusChanged::class, function ($mail) use ($customer) {
+    Mail::assertQueued(OrderStatusChanged::class, function ($mail) use ($customer) {
         return $mail->hasTo($customer->email) && $mail->transaction->status === 'diproses';
     });
 });
@@ -367,7 +367,7 @@ test('an email is sent to customer when transaction tracking number changes', fu
     // Update tracking number to trigger email sending
     $transaction->update(['tracking_number' => 'RESI123456789']);
 
-    Mail::assertSent(OrderStatusChanged::class, function ($mail) use ($customer) {
+    Mail::assertQueued(OrderStatusChanged::class, function ($mail) use ($customer) {
         return $mail->hasTo($customer->email) && $mail->transaction->tracking_number === 'RESI123456789';
     });
 });

@@ -565,3 +565,106 @@ test('customer earns no coins when they redeem/use coins for checkout', function
     // Since coins were redeemed, coins_earned must be exactly 0!
     expect((int) $transaction->coins_earned)->toBe(0);
 });
+
+test('customer can get domestic shipping cost for gosend and grab', function () {
+    // Set origin regency id
+    Setting::updateOrCreate(['key' => 'regency_id'], ['value' => '3578']);
+    // Set latitude and longitude for store
+    Setting::updateOrCreate(['key' => 'latitude'], ['value' => '-7.3037207705528235']);
+    Setting::updateOrCreate(['key' => 'longitude'], ['value' => '112.71463853127416']);
+
+    // Set coordinates for address (close distance, e.g., in Surabaya)
+    $this->address->update([
+        'latitude' => -7.250445,
+        'longitude' => 112.75083,
+        'regency_id' => 3578,
+    ]);
+
+    // Query shipping cost for GoSend
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'destination' => 3578,
+        'weight' => 1000,
+        'courier' => 'gojek', // also maps to gosend
+    ]);
+
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['results'])->toHaveCount(1);
+    expect($data['results'][0]['code'])->toBe('gosend');
+    expect($data['results'][0]['costs'])->toHaveCount(2); // Instant and Sameday
+
+    // Query shipping cost for Grab
+    $responseGrab = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'destination' => 3578,
+        'weight' => 1000,
+        'courier' => 'grab',
+    ]);
+
+    $responseGrab->assertOk();
+    $dataGrab = $responseGrab->json();
+    expect($dataGrab['results'][0]['code'])->toBe('grab');
+});
+
+test('shipping cost fails if gosend or grab distance is greater than 50km', function () {
+    // Set origin regency id
+    Setting::updateOrCreate(['key' => 'regency_id'], ['value' => '3578']);
+    // Set latitude and longitude for store
+    Setting::updateOrCreate(['key' => 'latitude'], ['value' => '-7.3037207705528235']);
+    Setting::updateOrCreate(['key' => 'longitude'], ['value' => '112.71463853127416']);
+
+    // Set coordinates for address (far distance, e.g. Jakarta coordinates)
+    $this->address->update([
+        'latitude' => -6.2088,
+        'longitude' => 106.8456,
+        'regency_id' => 3173,
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'destination' => 3173,
+        'weight' => 1000,
+        'courier' => 'gojek',
+    ]);
+
+    $response->assertStatus(422);
+    $response->assertJsonPath('error', 'Jarak pengiriman terlalu jauh untuk kurir instant (maksimal 50 km). Jarak saat ini: 659.4 km.');
+});
+
+test('checkout fails when COD is selected with incompatible couriers like GoSend or Lion', function () {
+    // 1. Create a payment method for COD
+    $paymentMethod = PaymentMethod::create([
+        'name' => 'Cash On Delivery (COD)',
+        'type' => 'manual',
+        'is_active' => true,
+        'admin_fee' => 2500,
+    ]);
+
+    // 2. Put a product in the cart
+    CartItem::create([
+        'user_id' => $this->user->id,
+        'product_id' => $this->product->id,
+        'quantity' => 1,
+        'is_checked' => true,
+    ]);
+
+    // 3. Attempt checkout with GoSend and COD
+    $response = $this->actingAs($this->user)->post(route('checkout.store'), [
+        'customer_address_id' => $this->address->id,
+        'payment_method_id' => $paymentMethod->id,
+        'shipping_courier' => 'gosend',
+        'shipping_service' => 'Instant',
+        'shipping_fee' => 15000,
+    ]);
+
+    $response->assertSessionHas('error', 'Metode pembayaran Cash on Delivery (COD) tidak didukung oleh kurir gosend.');
+
+    // 4. Attempt checkout with Lion and COD
+    $response2 = $this->actingAs($this->user)->post(route('checkout.store'), [
+        'customer_address_id' => $this->address->id,
+        'payment_method_id' => $paymentMethod->id,
+        'shipping_courier' => 'lion',
+        'shipping_service' => 'Reguler',
+        'shipping_fee' => 10000,
+    ]);
+
+    $response2->assertSessionHas('error', 'Metode pembayaran Cash on Delivery (COD) tidak didukung oleh kurir lion.');
+});

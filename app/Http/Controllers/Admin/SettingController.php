@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Services\KomerceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -53,6 +54,9 @@ class SettingController extends Controller
                 ['value' => $value]
             );
         }
+
+        // Sync Komerce payment methods to payment_methods table
+        KomerceService::syncPaymentMethods();
 
         return redirect()->back()->with('success', 'Pengaturan berhasil disimpan.');
     }

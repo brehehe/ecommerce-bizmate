@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
+use App\Services\KomerceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -774,7 +775,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = config('database.default') === 'sqlite' ? 'ilike' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
         // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
         if ($query) {
@@ -1254,7 +1255,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = config('database.default') === 'sqlite' ? 'ilike' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
         // Filter by keyword (similar to search method)
         if ($query) {
@@ -1433,7 +1434,7 @@ class StorefrontController extends Controller
             ->where('active', true)
             ->where('category_id', $categoryModel->id);
 
-        $like = config('database.default') === 'sqlite' ? 'ilike' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
         // Filter by keyword (search in name, description, variant SKU, etc.)
         if ($query) {
@@ -1632,6 +1633,9 @@ class StorefrontController extends Controller
      */
     public function transactionDetail(Request $request, Transaction $transaction)
     {
+        // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
+        KomerceService::syncPaymentMethods();
+
         if ($transaction->user_id !== $request->user()->id) {
             abort(403);
         }
@@ -1654,6 +1658,12 @@ class StorefrontController extends Controller
 
         $userReviews = ProductReview::where('user_id', $request->user()->id)
             ->where('transaction_id', $transaction->id)
+            ->where('product_id', $validated['product_id'] ?? null) // keep context safe
+            ->get(); // we'll fetch proper reviews below anyway
+
+        // Let's resolve the user reviews properly
+        $userReviews = ProductReview::where('user_id', $request->user()->id)
+            ->where('transaction_id', $transaction->id)
             ->get()
             ->keyBy(function ($review) {
                 return $review->product_id.'_'.$review->product_variant_id;
@@ -1663,10 +1673,41 @@ class StorefrontController extends Controller
         if ($transaction->status === 'belum_bayar' && $transaction->paymentMethod?->type === 'gateway') {
             $latestPayment = $transaction->payment;
 
-            if ($latestPayment && $latestPayment->gateway_transaction_id) {
-                $isMidtrans = str_contains(strtolower($transaction->paymentMethod->name), 'midtrans');
+            if ($latestPayment) {
+                $pmNameLower = strtolower($transaction->paymentMethod->name);
 
-                if ($isMidtrans) {
+                if (str_contains($pmNameLower, 'qris (komerce)') || str_contains($pmNameLower, 'komerce payment')) {
+                    try {
+                        $refId = $latestPayment->gateway_transaction_id ?: $transaction->transaction_number;
+                        $statusCheck = KomerceService::checkPaymentStatus($refId);
+
+                        if ($statusCheck['success'] && ($statusCheck['status'] ?? '') === 'paid') {
+                            DB::transaction(function () use ($transaction, $latestPayment) {
+                                // Update Transaction Payment
+                                $latestPayment->update([
+                                    'status' => 'confirmed',
+                                    'gateway_status' => 'PAID',
+                                    'confirmed_at' => now(),
+                                ]);
+
+                                // Update Transaction Status
+                                $transaction->update([
+                                    'status' => 'diproses',
+                                ]);
+
+                                Log::info('Komerce Payment Auto-verified on Page Load', [
+                                    'transaction_id' => $transaction->id,
+                                    'status' => 'paid',
+                                ]);
+                            });
+
+                            // Reload relations after update
+                            $transaction->load(['payments', 'payment']);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Komerce Payment Auto-check Exception: '.$e->getMessage());
+                    }
+                } elseif (str_contains($pmNameLower, 'midtrans')) {
                     try {
                         $serverKey = $transaction->paymentMethod->api_key ?: config('app.midtrans.server_key');
                         $baseUrl = $transaction->paymentMethod->settings['url'] ?? config('app.midtrans.snap_url', 'https://app.sandbox.midtrans.com');

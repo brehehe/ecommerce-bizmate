@@ -384,6 +384,7 @@
         { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
         { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
         { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
+        { key: 'out_for_pickup', label: 'Out for Pickup', icon: 'ti-truck-delivery' },
         { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck' },
         { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check' },
     ];
@@ -399,6 +400,7 @@
         menunggu: '#3b82f6',
         diproses: '#8b5cf6',
         dikemas: '#06b6d4',
+        out_for_pickup: '#d97706',
         dikirim: '#f97316',
         selesai: '#22c55e',
         batal: '#ef4444',
@@ -427,12 +429,34 @@
     );
 
     const isGateway = $derived(paymentMethod?.type === 'gateway');
+    const isQris = $derived(
+        paymentMethod?.name?.toLowerCase().includes('qris')
+    );
+    const qrisData = $derived.by(() => {
+        if (!isQris || !latestPayment || !latestPayment.gateway_response) return null;
+        try {
+            const resp = typeof latestPayment.gateway_response === 'string'
+                ? JSON.parse(latestPayment.gateway_response)
+                : latestPayment.gateway_response;
+            return {
+                image: resp?.qris_image ?? '',
+                string: resp?.qris_string ?? '',
+            };
+        } catch (e) {
+            return null;
+        }
+    });
+
     const gatewayName = $derived(
         paymentMethod?.name?.toLowerCase().includes('midtrans')
             ? 'Midtrans'
             : paymentMethod?.name?.toLowerCase().includes('flip')
               ? 'Flip'
-              : 'Xendit',
+              : paymentMethod?.name?.toLowerCase().includes('qris')
+                ? 'QRIS Komerce'
+                : paymentMethod?.name?.toLowerCase().includes('komerce')
+                  ? 'Komerce Payment'
+                  : 'Xendit',
     );
 
     function getInvoiceUrl(payment: any) {
@@ -446,6 +470,7 @@
                 resp?.link_url ??
                 resp?.invoice_url ??
                 resp?.redirect_url ??
+                resp?.checkout_url ??
                 null;
             if (url && !/^https?:\/\//i.test(url)) {
                 url = 'https://' + url;
@@ -475,6 +500,35 @@
     const gatewayError = $derived(
         isGateway && !gatewayInvoiceUrl ? getGatewayError(latestPayment) : null,
     );
+
+    let trackingHistory = $state([]);
+    let loadingTracking = $state(false);
+    let trackingError = $state('');
+
+    async function fetchTrackingHistory() {
+        if (!transaction.tracking_number) return;
+        loadingTracking = true;
+        trackingError = '';
+        try {
+            const resp = await fetch(`/transactions/${transaction.id}/komerce/track`);
+            const data = await resp.json();
+            if (resp.ok && data.success) {
+                trackingHistory = data.history;
+            } else {
+                trackingError = data.error ?? 'Gagal melacak pengiriman.';
+            }
+        } catch (e) {
+            trackingError = 'Gagal memuat status pelacakan.';
+        } finally {
+            loadingTracking = false;
+        }
+    }
+
+    $effect(() => {
+        if (transaction.tracking_number) {
+            fetchTrackingHistory();
+        }
+    });
 
     function handleFileChange(e: Event) {
         const input = e.target as HTMLInputElement;
@@ -1564,46 +1618,73 @@
                                 >
                             </div>
                             <div class="p-4">
-                                <p
-                                    class="text-xs text-slate-500 leading-relaxed mb-3"
-                                >
-                                    Pesanan Anda menggunakan sistem pembayaran
-                                    otomatis terverifikasi. Silakan klik tombol
-                                    di bawah untuk membuka portal pembayaran {gatewayName}.
-                                </p>
-                                <div
-                                    class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100"
-                                >
-                                    <div>
-                                        <p class="text-xs text-slate-500">
-                                            Total Tagihan:
-                                        </p>
-                                        <p
-                                            class="text-base font-black"
-                                            style="color:{primary}"
-                                        >
-                                            {fmt(transaction.grand_total)}
-                                        </p>
-                                    </div>
-                                    {#if gatewayInvoiceUrl}
-                                        <a
-                                            href={gatewayInvoiceUrl}
-                                            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 hover:opacity-90 shadow-sm"
-                                            style="background:{primary}"
-                                        >
-                                            Bayar Sekarang
-                                            <i class="ti ti-arrow-right"></i>
-                                        </a>
-                                    {:else if gatewayError}
-                                        <div
-                                            class="text-xs text-red-500 font-bold max-w-[180px] leading-relaxed text-right"
-                                        >
-                                            <i class="ti ti-alert-circle mr-1"
-                                            ></i>
-                                            {gatewayError}
+                                {#if isQris && qrisData}
+                                    <div class="flex flex-col items-center justify-center py-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                                        <p class="text-xs font-bold text-slate-700 mb-2">Scan QRIS Untuk Bayar</p>
+                                        
+                                        {#if qrisData.image}
+                                            <img
+                                                src={qrisData.image}
+                                                alt="QRIS Code"
+                                                class="w-56 h-56 object-contain bg-white p-2 rounded-xl shadow-sm border border-slate-100"
+                                            />
+                                        {:else}
+                                            <div class="w-56 h-56 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center">
+                                                <i class="ti ti-qrcode text-4xl text-slate-400"></i>
+                                            </div>
+                                        {/if}
+                                        
+                                        <!-- <p class="text-[10px] text-slate-500 mt-2 font-mono text-center max-w-[200px] break-all">
+                                            {qrisData.string || 'Kode QRIS sedang dimuat...'}
+                                        </p> -->
+                                        
+                                        <div class="mt-4 pt-3 border-t border-slate-200/60 w-full px-4 flex justify-between items-center text-xs">
+                                            <span class="text-slate-500">Total Tagihan:</span>
+                                            <span class="font-black text-slate-800" style="color:{primary}">{fmt(transaction.grand_total)}</span>
                                         </div>
-                                    {/if}
-                                </div>
+                                    </div>
+                                {:else}
+                                    <p
+                                        class="text-xs text-slate-500 leading-relaxed mb-3"
+                                    >
+                                        Pesanan Anda menggunakan sistem pembayaran
+                                        otomatis terverifikasi. Silakan klik tombol
+                                        di bawah untuk membuka portal pembayaran {gatewayName}.
+                                    </p>
+                                    <div
+                                        class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100"
+                                    >
+                                        <div>
+                                            <p class="text-xs text-slate-500">
+                                                Total Tagihan:
+                                            </p>
+                                            <p
+                                                class="text-base font-black"
+                                                style="color:{primary}"
+                                            >
+                                                {fmt(transaction.grand_total)}
+                                            </p>
+                                        </div>
+                                        {#if gatewayInvoiceUrl}
+                                            <a
+                                                href={gatewayInvoiceUrl}
+                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 hover:opacity-90 shadow-sm"
+                                                style="background:{primary}"
+                                            >
+                                                Bayar Sekarang
+                                                <i class="ti ti-arrow-right"></i>
+                                            </a>
+                                        {:else if gatewayError}
+                                            <div
+                                                class="text-xs text-red-500 font-bold max-w-[180px] leading-relaxed text-right"
+                                            >
+                                                <i class="ti ti-alert-circle mr-1"
+                                                ></i>
+                                                {gatewayError}
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {/if}
                             </div>
                         </div>
                     {/if}
@@ -1740,6 +1821,70 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Komerce Shipment Tracking Timeline -->
+                    {#if transaction.tracking_number}
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="ti ti-history text-base" style="color:{primary}"></i>
+                                <span class="font-bold text-slate-800 text-sm">Status Pengiriman</span>
+                            </div>
+
+                            {#if loadingTracking}
+                                <div class="space-y-3 py-2">
+                                    {#each [1, 2] as _}
+                                        <div class="flex gap-3 animate-pulse">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-slate-200 shrink-0 mt-1"></div>
+                                            <div class="space-y-1.5 w-full">
+                                                <div class="h-3 bg-slate-200 rounded-md w-1/3"></div>
+                                                <div class="h-3 bg-slate-200 rounded-md w-3/4"></div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {:else if trackingError}
+                                <div class="p-3 bg-slate-50 border border-slate-100 text-slate-500 rounded-xl text-xs flex items-center gap-2">
+                                    <i class="ti ti-info-circle text-base"></i>
+                                    <span>{trackingError}</span>
+                                </div>
+                            {:else if trackingHistory && trackingHistory.length > 0}
+                                <div class="relative pl-4 border-l-2 border-slate-100 space-y-4 py-1">
+                                    {#each trackingHistory as step, idx}
+                                        <div class="relative">
+                                            <!-- Circle bullet -->
+                                            <div
+                                                class="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border-2 bg-white"
+                                                style={idx === 0
+                                                    ? `border-color:${primary}; background-color:${primary}; box-shadow:0 0 8px ${primary}40;`
+                                                    : 'border-color:#cbd5e1;'}
+                                            ></div>
+                                            
+                                            <div>
+                                                <p
+                                                    class="text-[10px] font-bold text-slate-400"
+                                                    style={idx === 0 ? `color:${primary};` : ''}
+                                                >
+                                                    {step.date}
+                                                </p>
+                                                <p
+                                                    class="text-xs mt-0.5 leading-relaxed"
+                                                    class:font-semibold={idx === 0}
+                                                    class:text-slate-800={idx === 0}
+                                                    class:text-slate-600={idx > 0}
+                                                >
+                                                    {step.desc}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {:else}
+                                <div class="p-3 bg-slate-50 border border-slate-100 text-slate-400 rounded-xl text-xs italic text-center">
+                                    Belum ada data perjalanan paket.
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
 
                     <!-- Payment Summary -->
                     <div

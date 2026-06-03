@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\FlipWebhookController;
+use App\Http\Controllers\Api\KomerceWebhookController;
 use App\Http\Controllers\Api\MidtransWebhookController;
 use App\Http\Controllers\Api\XenditWebhookController;
 use Illuminate\Http\Request;
@@ -13,3 +14,4 @@ Route::get('/user', function (Request $request) {
 Route::post('/payment/xendit/callback', [XenditWebhookController::class, 'handleCallback']);
 Route::post('/payment/midtrans/callback', [MidtransWebhookController::class, 'handleCallback']);
 Route::post('/payment/flip/callback', [FlipWebhookController::class, 'handleCallback']);
+Route::match(['post', 'put'], '/payment/komerce/callback', [KomerceWebhookController::class, 'handleCallback'])->name('api.komerce.webhook');

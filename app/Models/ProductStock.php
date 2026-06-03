@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class ProductStock extends Model
 {
@@ -43,10 +44,10 @@ class ProductStock extends Model
 
             // If stock is 0 or less
             if ($productStock->stock <= 0) {
-                // Check if an unread out_of_stock notification already exists to avoid duplicates
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
                 $exists = Notification::where('type', 'out_of_stock')
                     ->where('url', '/admin/store/stocks')
-                    ->where('message', 'ilike', '%'.$productName.'%')
+                    ->where('message', $operator, '%'.$productName.'%')
                     ->where('is_read', false)
                     ->exists();
 
@@ -63,10 +64,10 @@ class ProductStock extends Model
             }
             // If stock is below or equal to min_stock
             elseif ($productStock->stock <= $productStock->min_stock) {
-                // Check if an unread low_stock notification already exists to avoid duplicates
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
                 $exists = Notification::where('type', 'low_stock')
                     ->where('url', '/admin/store/stocks')
-                    ->where('message', 'ilike', '%'.$productName.'%')
+                    ->where('message', $operator, '%'.$productName.'%')
                     ->where('is_read', false)
                     ->exists();
 

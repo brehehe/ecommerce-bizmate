@@ -17,6 +17,7 @@ use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\TransactionPayment;
+use App\Services\KomerceService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -34,6 +35,9 @@ class CheckoutController extends Controller
      */
     public function index(Request $request)
     {
+        // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
+        KomerceService::syncPaymentMethods();
+
         $user = $request->user();
 
         // Only checked cart items
@@ -238,6 +242,13 @@ class CheckoutController extends Controller
             ->findOrFail($request->customer_address_id);
 
         $paymentMethod = PaymentMethod::findOrFail($request->payment_method_id);
+
+        // Validate COD compatibility with the chosen courier (per Komerce 3PL specs)
+        $isCod = str_contains(strtolower($paymentMethod->name), 'cod');
+        $courierLower = strtolower($request->shipping_courier);
+        if ($isCod && in_array($courierLower, ['gosend', 'gojek', 'grab', 'grabexpress', 'lion'])) {
+            return back()->with('error', 'Metode pembayaran Cash on Delivery (COD) tidak didukung oleh kurir '.$request->shipping_courier.'.');
+        }
 
         // Get checked cart items
         $cartItems = CartItem::with([
@@ -578,145 +589,191 @@ class CheckoutController extends Controller
                 'status' => 'pending',
             ];
 
-            // If it's gateway, detect whether it is Xendit or Midtrans
+            // If it's gateway, detect whether it is Komerce, Xendit, Midtrans or Flip
             if ($paymentMethod->type === 'gateway') {
-                $isMidtrans = str_contains(strtolower($paymentMethod->name), 'midtrans');
-
-                if ($isMidtrans) {
+                $methodName = strtolower($paymentMethod->name);
+                if ($methodName === 'qris (komerce)') {
                     try {
-                        $serverKey = $paymentMethod->api_key ?: config('app.midtrans.server_key');
-
-                        $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
-                            ? $paymentMethod->settings['url']
-                            : config('app.midtrans.snap_url', 'https://app.sandbox.midtrans.com');
-
-                        $midtransUrl = rtrim($baseUrl, '/').'/snap/v1/transactions';
-
-                        $payload = [
-                            'transaction_details' => [
-                                'order_id' => $transaction->transaction_number,
-                                'gross_amount' => (int) $grandTotal,
-                            ],
-                            'customer_details' => [
-                                'first_name' => $user->name,
-                                'email' => $user->email,
-                            ],
-                            'callbacks' => [
-                                'finish' => route('transactions.show', $transaction->id),
-                                'unfinish' => route('transactions.show', $transaction->id),
-                                'error' => route('transactions.show', $transaction->id),
-                            ],
-                        ];
-
-                        $response = Http::withBasicAuth($serverKey, '')
-                            ->timeout(15)
-                            ->post($midtransUrl, $payload);
-
-                        if ($response->successful()) {
-                            $responseData = $response->json();
-                            $paymentData['gateway_transaction_id'] = $responseData['token'] ?? null;
+                        $response = KomerceService::generateQris($transaction->transaction_number, $grandTotal);
+                        if ($response['success']) {
+                            $paymentData['gateway_transaction_id'] = $response['reference_id'] ?? $transaction->transaction_number;
                             $paymentData['gateway_status'] = 'PENDING';
-                            $paymentData['gateway_response'] = json_encode($responseData);
+                            $paymentData['gateway_response'] = json_encode([
+                                'qris_string' => $response['qris_string'] ?? '',
+                                'qris_image' => $response['qris_image'] ?? '',
+                                'simulated' => $response['simulated'] ?? false,
+                            ]);
                         } else {
-                            $errorMsg = $response->json('error_messages')[0] ?? 'Gagal menghubungi Midtrans Snap.';
-                            Log::error('Midtrans Snap Creation Failed: '.$errorMsg);
+                            $errorMsg = $response['error'] ?? 'Gagal generate pembayaran QRIS Komerce.';
+                            Log::error('Komerce QRIS Creation Failed: '.$errorMsg);
                             $paymentData['gateway_status'] = 'FAILED_API';
                             $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                         }
                     } catch (\Exception $e) {
-                        Log::error('Midtrans Connection Exception: '.$e->getMessage());
+                        Log::error('Komerce QRIS Exception: '.$e->getMessage());
                         $paymentData['gateway_status'] = 'FAILED_API';
                         $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                     }
-                } elseif (str_contains(strtolower($paymentMethod->name), 'flip')) {
+                } elseif ($methodName === 'komerce payment') {
                     try {
-                        $secretKey = $paymentMethod->api_key ?: config('app.flip.secret_key');
-
-                        $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
-                            ? $paymentMethod->settings['url']
-                            : config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
-
-                        $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/bill';
-
-                        $redirectUrl = env('FLIP_REDIRECT_URL') ?: route('transactions.show', $transaction->id);
-
-                        // If redirectUrl still has a transaction id placeholder, append it if needed
-                        if (str_ends_with($redirectUrl, '/')) {
-                            $redirectUrl .= $transaction->id;
-                        }
-
-                        if (preg_match('/localhost|127\.0\.0\.1|192\.168\./i', $redirectUrl) || str_contains($redirectUrl, ':8000')) {
-                            $redirectUrl = preg_replace('/^http:\/\/(?:localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(?::\d+)?/i', 'https://example.com', $redirectUrl);
-                        }
-
-                        $payload = [
-                            'title' => 'Pembayaran Pesanan #'.$transaction->transaction_number,
-                            'amount' => (int) $grandTotal,
-                            'type' => 'SINGLE',
-                            'redirect_url' => $redirectUrl,
-                            'sender_name' => $user->name,
-                            'sender_email' => $user->email,
-                        ];
-
-                        $response = Http::withBasicAuth($secretKey, '')
-                            ->timeout(15)
-                            ->asForm()
-                            ->post($flipUrl, $payload);
-
-                        if ($response->successful()) {
-                            $responseData = $response->json();
-                            $paymentData['gateway_transaction_id'] = $responseData['link_id'] ?? null;
-                            $paymentData['gateway_status'] = $responseData['status'] ?? 'ACTIVE';
-                            $paymentData['gateway_response'] = json_encode($responseData);
+                        $response = KomerceService::generatePaymentUrl($transaction->transaction_number, $grandTotal);
+                        if ($response['success']) {
+                            $paymentData['gateway_transaction_id'] = $response['reference_id'] ?? $transaction->transaction_number;
+                            $paymentData['gateway_status'] = 'PENDING';
+                            $paymentData['gateway_response'] = json_encode([
+                                'checkout_url' => $response['checkout_url'] ?? '',
+                                'simulated' => $response['simulated'] ?? false,
+                            ]);
                         } else {
-                            $errorMsg = $response->json('message') ?? 'Gagal menghubungi Flip API.';
-                            Log::error('Flip Bill Creation Failed: status='.$response->status().' body='.$response->body());
+                            $errorMsg = $response['error'] ?? 'Gagal generate URL Komerce Payment.';
+                            Log::error('Komerce Payment URL Creation Failed: '.$errorMsg);
                             $paymentData['gateway_status'] = 'FAILED_API';
-                            $paymentData['gateway_response'] = json_encode(['error' => $errorMsg, 'response_body' => $response->body()]);
+                            $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                         }
                     } catch (\Exception $e) {
-                        Log::error('Flip Connection Exception: '.$e->getMessage());
+                        Log::error('Komerce Payment URL Exception: '.$e->getMessage());
                         $paymentData['gateway_status'] = 'FAILED_API';
                         $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                     }
                 } else {
-                    try {
-                        $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
+                    $isMidtrans = str_contains($methodName, 'midtrans');
 
-                        $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
-                            ? $paymentMethod->settings['url']
-                            : config('app.xendit.url', 'https://api.xendit.co');
+                    if ($isMidtrans) {
+                        try {
+                            $serverKey = $paymentMethod->api_key ?: config('app.midtrans.server_key');
 
-                        $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices';
+                            $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                                ? $paymentMethod->settings['url']
+                                : config('app.midtrans.snap_url', 'https://app.sandbox.midtrans.com');
 
-                        $payload = [
-                            'external_id' => $transaction->transaction_number,
-                            'amount' => (float) $grandTotal,
-                            'payer_email' => $user->email,
-                            'description' => 'Pembayaran Pesanan #'.$transaction->transaction_number.' di '.config('app.name'),
-                            'success_redirect_url' => route('transactions.show', $transaction->id),
-                            'failure_redirect_url' => route('transactions.show', $transaction->id),
-                        ];
+                            $midtransUrl = rtrim($baseUrl, '/').'/snap/v1/transactions';
 
-                        $response = Http::withBasicAuth($secretKey, '')
-                            ->timeout(15)
-                            ->post($xenditUrl, $payload);
+                            $payload = [
+                                'transaction_details' => [
+                                    'order_id' => $transaction->transaction_number,
+                                    'gross_amount' => (int) $grandTotal,
+                                ],
+                                'customer_details' => [
+                                    'first_name' => $user->name,
+                                    'email' => $user->email,
+                                ],
+                                'callbacks' => [
+                                    'finish' => route('transactions.show', $transaction->id),
+                                    'unfinish' => route('transactions.show', $transaction->id),
+                                    'error' => route('transactions.show', $transaction->id),
+                                ],
+                            ];
 
-                        if ($response->successful()) {
-                            $responseData = $response->json();
-                            $paymentData['gateway_transaction_id'] = $responseData['id'] ?? null;
-                            $paymentData['gateway_status'] = $responseData['status'] ?? 'PENDING';
-                            $paymentData['gateway_response'] = json_encode($responseData);
-                        } else {
-                            $errorMsg = $response->json('message') ?? 'Terjadi kesalahan saat menghubungkan ke Xendit.';
-                            Log::error('Xendit Invoice Creation Failed: '.$errorMsg);
+                            $response = Http::withBasicAuth($serverKey, '')
+                                ->timeout(15)
+                                ->post($midtransUrl, $payload);
+
+                            if ($response->successful()) {
+                                $responseData = $response->json();
+                                $paymentData['gateway_transaction_id'] = $responseData['token'] ?? null;
+                                $paymentData['gateway_status'] = 'PENDING';
+                                $paymentData['gateway_response'] = json_encode($responseData);
+                            } else {
+                                $errorMsg = $response->json('error_messages')[0] ?? 'Gagal menghubungi Midtrans Snap.';
+                                Log::error('Midtrans Snap Creation Failed: '.$errorMsg);
+                                $paymentData['gateway_status'] = 'FAILED_API';
+                                $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Midtrans Connection Exception: '.$e->getMessage());
                             $paymentData['gateway_status'] = 'FAILED_API';
-                            $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                            $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                         }
-                    } catch (\Exception $e) {
-                        Log::error('Xendit Connection Exception: '.$e->getMessage());
-                        $paymentData['gateway_status'] = 'FAILED_API';
-                        $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                    } elseif (str_contains($methodName, 'flip')) {
+                        try {
+                            $secretKey = $paymentMethod->api_key ?: config('app.flip.secret_key');
+
+                            $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                                ? $paymentMethod->settings['url']
+                                : config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
+
+                            $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/bill';
+
+                            $redirectUrl = env('FLIP_REDIRECT_URL') ?: route('transactions.show', $transaction->id);
+
+                            // If redirectUrl still has a transaction id placeholder, append it if needed
+                            if (str_ends_with($redirectUrl, '/')) {
+                                $redirectUrl .= $transaction->id;
+                            }
+
+                            if (preg_match('/localhost|127\.0\.0\.1|192\.168\./i', $redirectUrl) || str_contains($redirectUrl, ':8000')) {
+                                $redirectUrl = preg_replace('/^http:\/\/(?:localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(?::\d+)?/i', 'https://example.com', $redirectUrl);
+                            }
+
+                            $payload = [
+                                'title' => 'Pembayaran Pesanan #'.$transaction->transaction_number,
+                                'amount' => (int) $grandTotal,
+                                'type' => 'SINGLE',
+                                'redirect_url' => $redirectUrl,
+                                'sender_name' => $user->name,
+                                'sender_email' => $user->email,
+                            ];
+
+                            $response = Http::withBasicAuth($secretKey, '')
+                                ->timeout(15)
+                                ->asForm()
+                                ->post($flipUrl, $payload);
+
+                            if ($response->successful()) {
+                                $responseData = $response->json();
+                                $paymentData['gateway_transaction_id'] = $responseData['link_id'] ?? null;
+                                $paymentData['gateway_status'] = $responseData['status'] ?? 'ACTIVE';
+                                $paymentData['gateway_response'] = json_encode($responseData);
+                            } else {
+                                $errorMsg = $response->json('message') ?? 'Gagal menghubungi Flip API.';
+                                Log::error('Flip Bill Creation Failed: status='.$response->status().' body='.$response->body());
+                                $paymentData['gateway_status'] = 'FAILED_API';
+                                $paymentData['gateway_response'] = json_encode(['error' => $errorMsg, 'response_body' => $response->body()]);
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Flip Connection Exception: '.$e->getMessage());
+                            $paymentData['gateway_status'] = 'FAILED_API';
+                            $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                        }
+                    } else {
+                        try {
+                            $secretKey = $paymentMethod->api_secret ?: config('app.xendit.private_key');
+
+                            $baseUrl = ($paymentMethod->settings && isset($paymentMethod->settings['url']))
+                                ? $paymentMethod->settings['url']
+                                : config('app.xendit.url', 'https://api.xendit.co');
+
+                            $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices';
+
+                            $payload = [
+                                'external_id' => $transaction->transaction_number,
+                                'amount' => (float) $grandTotal,
+                                'payer_email' => $user->email,
+                                'description' => 'Pembayaran Pesanan #'.$transaction->transaction_number.' di '.config('app.name'),
+                                'success_redirect_url' => route('transactions.show', $transaction->id),
+                                'failure_redirect_url' => route('transactions.show', $transaction->id),
+                            ];
+
+                            $response = Http::withBasicAuth($secretKey, '')
+                                ->timeout(15)
+                                ->post($xenditUrl, $payload);
+
+                            if ($response->successful()) {
+                                $responseData = $response->json();
+                                $paymentData['gateway_transaction_id'] = $responseData['id'] ?? null;
+                                $paymentData['gateway_status'] = $responseData['status'] ?? 'PENDING';
+                                $paymentData['gateway_response'] = json_encode($responseData);
+                            } else {
+                                $errorMsg = $response->json('message') ?? 'Terjadi kesalahan saat menghubungkan ke Xendit.';
+                                Log::error('Xendit Invoice Creation Failed: '.$errorMsg);
+                                $paymentData['gateway_status'] = 'FAILED_API';
+                                $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Xendit Connection Exception: '.$e->getMessage());
+                            $paymentData['gateway_status'] = 'FAILED_API';
+                            $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
+                        }
                     }
                 }
             }
@@ -885,90 +942,67 @@ class CheckoutController extends Controller
             'destination' => 'required|integer',
             'weight' => 'required|integer|min:1',
             'courier' => 'required|string',
+            'is_international' => 'nullable|boolean',
+            'address_id' => 'nullable|integer',
         ]);
 
-        $apiKey = Setting::where('key', 'rajaongkir_key')->value('value')
-            ?? config('app.rajaongkir.key');
         $origin = Setting::where('key', 'rajaongkir_origin')->value('value')
             ?? Setting::where('key', 'regency_id')->value('value');
-        $baseUrl = Setting::where('key', 'rajaongkir_url')->value('value')
-            ?? config('app.rajaongkir.url', 'https://rajaongkir.komerce.id/api/v1/');
 
-        if (! $apiKey || ! $origin) {
-            return response()->json(['error' => 'Konfigurasi RajaOngkir atau kota asal belum diatur di pengaturan.'], 422);
+        if (! $origin) {
+            return response()->json(['error' => 'Konfigurasi kota asal belum diatur di pengaturan.'], 422);
         }
 
-        try {
-            $isKomerce = str_contains($baseUrl, 'komerce.id');
-            $endpoint = $isKomerce ? 'calculate/domestic-cost' : 'cost';
-
-            $response = Http::withHeaders(['key' => $apiKey])
-                ->asForm()
-                ->post(rtrim($baseUrl, '/').'/'.$endpoint, [
-                    'origin' => $origin,
-                    'destination' => $request->destination,
-                    'weight' => $request->weight,
-                    'courier' => $request->courier,
-                ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-
-                if ($isKomerce) {
-                    $results = [];
-                    $items = $data['data'] ?? [];
-                    $costs = [];
-
-                    foreach ($items as $item) {
-                        $costs[] = [
-                            'service' => $item['service'],
-                            'description' => $item['description'] ?? $item['service'],
-                            'cost' => [
-                                [
-                                    'value' => (float) ($item['cost'] ?? 0),
-                                    'etd' => $item['etd'] ?? '',
-                                    'note' => '',
-                                ],
-                            ],
-                        ];
-                    }
-
-                    if (! empty($costs)) {
-                        $results = [
-                            [
-                                'code' => $request->courier,
-                                'name' => $items[0]['name'] ?? strtoupper($request->courier),
-                                'costs' => $costs,
-                            ],
-                        ];
-                    }
-                } else {
-                    $results = $data['rajaongkir']['results'] ?? [];
-                }
-
-                return response()->json(['results' => $results]);
-            }
-
-            $data = $response->json();
-            $errorMessage = null;
-
-            if ($isKomerce) {
-                $errorMessage = $data['meta']['message'] ?? null;
-                if ($errorMessage === 'Calculate Domestic Shipping Cost not found') {
-                    $errorMessage = 'Kurir ini belum diaktifkan atau tidak tersedia untuk rute pengiriman ini di Komerce.';
-                } elseif ($errorMessage && str_contains(strtolower($errorMessage), 'the valid courier is')) {
-                    $errorMessage = 'Layanan pengiriman instan (GoSend/GrabExpress) saat ini belum diaktifkan di toko kami. Silakan hubungi admin atau pilih kurir reguler/cargo lainnya.';
-                }
-            } else {
-                $errorMessage = $data['rajaongkir']['status']['description'] ?? null;
-            }
-
-            $errorMessage = $errorMessage ?? 'Gagal mendapatkan data ongkir.';
-
-            return response()->json(['error' => $errorMessage], 422);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Gagal terhubung ke layanan pengiriman.'], 422);
+        if ($request->is_international) {
+            $response = KomerceService::getInternationalCost(
+                $origin,
+                $request->destination,
+                $request->weight,
+                $request->courier
+            );
+        } else {
+            $response = KomerceService::getDomesticCost(
+                $origin,
+                $request->destination,
+                $request->weight,
+                $request->courier,
+                $request->address_id
+            );
         }
+
+        if (isset($response['error'])) {
+            return response()->json(['error' => $response['error']], 422);
+        }
+
+        return response()->json(['results' => $response['results'] ?? []]);
+    }
+
+    /**
+     * Search destination in Komerce Collaborator API.
+     */
+    public function searchKomerceDestination(Request $request)
+    {
+        $request->validate([
+            'keyword' => 'required|string|min:2',
+        ]);
+
+        $response = KomerceService::searchDestination($request->keyword);
+
+        if (isset($response['error'])) {
+            return response()->json(['error' => $response['error']], 422);
+        }
+
+        return response()->json(['data' => $response['data'] ?? []]);
+    }
+
+    /**
+     * Proxy RajaOngkir API to get international country list.
+     */
+    public function internationalDestinations(Request $request)
+    {
+        $destinations = KomerceService::getInternationalDestinations();
+
+        return response()->json(['destinations' => $destinations]);
     }
 
     /**
@@ -976,8 +1010,8 @@ class CheckoutController extends Controller
      */
     public function cities(Request $request)
     {
-        $apiKey = Setting::where('key', 'rajaongkir_key')->value('value')
-            ?? config('app.rajaongkir.key');
+        $apiKey = Setting::where('key', 'rajaongkir_shipping_cost')->value('value')
+            ?? config('app.rajaongkir.shipping_cost');
         $baseUrl = Setting::where('key', 'rajaongkir_url')->value('value')
             ?? config('app.rajaongkir.url', 'https://rajaongkir.komerce.id/api/v1/');
 
@@ -1111,12 +1145,13 @@ class CheckoutController extends Controller
             $maxUsesPerUser = $promotion->settings['max_uses_per_user'] ?? null;
             if ($user && $maxUsesPerUser !== null && $maxUsesPerUser !== '') {
                 $maxUses = (int) $maxUsesPerUser;
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
                 $usedCount = Transaction::where('user_id', $user->id)
-                    ->where(function ($q) use ($promotion) {
+                    ->where(function ($q) use ($promotion, $operator) {
                         $q->where('voucher_code', $promotion->code)
-                            ->orWhere('voucher_code', 'ilike', "%,{$promotion->code}")
-                            ->orWhere('voucher_code', 'ilike', "{$promotion->code},%")
-                            ->orWhere('voucher_code', 'ilike', "%,{$promotion->code},%");
+                            ->orWhere('voucher_code', $operator, "%,{$promotion->code}")
+                            ->orWhere('voucher_code', $operator, "{$promotion->code},%")
+                            ->orWhere('voucher_code', $operator, "%,{$promotion->code},%");
                     })
                     ->count();
 

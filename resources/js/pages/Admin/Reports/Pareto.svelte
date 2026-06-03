@@ -25,8 +25,9 @@
     // Moving filter tab: 'all' | 'fast' | 'medium' | 'slow'
     let movingFilter = $state<'all' | 'fast' | 'medium' | 'slow'>('all');
 
+    // Filter tabel berdasarkan moving_category — berlaku untuk semua tipe
     const filteredItems = $derived(
-        movingFilter === 'all' || !isProductType
+        movingFilter === 'all'
             ? (items as any[])
             : (items as any[]).filter((i: any) => i.moving_category === movingFilter)
     );
@@ -41,11 +42,33 @@
         { value: 'category_revenue', label: 'Kategori — Omset Tertinggi', icon: 'ti-category', color: '#ef4444' },
     ];
 
-    const movingConfig = {
-        fast:   { label: 'Fast Moving',   emoji: '🚀', color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: 'ti-trending-up',   desc: 'Produk dengan perputaran cepat' },
-        medium: { label: 'Medium Moving', emoji: '📦', color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: 'ti-trending-neutral', desc: 'Produk dengan perputaran sedang' },
-        slow:   { label: 'Slow Moving',   emoji: '🐢', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: 'ti-trending-down',  desc: 'Produk dengan perputaran lambat' },
-    } as const;
+    // Label moving disesuaikan per tipe analisis
+    const movingConfigByType: Record<string, Record<'fast'|'medium'|'slow', { label: string; emoji: string; color: string; bg: string; border: string; icon: string; desc: string }>> = {
+        product_revenue: {
+            fast:   { label: 'Fast Moving',   emoji: '🚀', color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: 'ti-trending-up',      desc: 'Produk dengan perputaran cepat (top 50% qty)' },
+            medium: { label: 'Medium Moving', emoji: '📦', color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: 'ti-trending-neutral', desc: 'Produk dengan perputaran sedang (qty 50–80%)' },
+            slow:   { label: 'Slow Moving',   emoji: '🐢', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: 'ti-trending-down',    desc: 'Produk dengan perputaran lambat (qty >80%)' },
+        },
+        product_qty: {
+            fast:   { label: 'Fast Moving',   emoji: '🚀', color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: 'ti-trending-up',      desc: 'Produk dengan perputaran cepat (top 50% qty)' },
+            medium: { label: 'Medium Moving', emoji: '📦', color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: 'ti-trending-neutral', desc: 'Produk dengan perputaran sedang (qty 50–80%)' },
+            slow:   { label: 'Slow Moving',   emoji: '🐢', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: 'ti-trending-down',    desc: 'Produk dengan perputaran lambat (qty >80%)' },
+        },
+        customer_spending: {
+            fast:   { label: 'High Value',   emoji: '💎', color: '#6366f1', bg: '#eef2ff', border: '#a5b4fc', icon: 'ti-crown',            desc: 'Pelanggan bernilai tinggi (top 50% belanja)' },
+            medium: { label: 'Mid Value',    emoji: '⭐', color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: 'ti-star',             desc: 'Pelanggan bernilai menengah (50–80%)' },
+            slow:   { label: 'Low Value',    emoji: '👤', color: '#94a3b8', bg: '#f8fafc', border: '#cbd5e1', icon: 'ti-user',             desc: 'Pelanggan bernilai rendah (>80%)' },
+        },
+        category_revenue: {
+            fast:   { label: 'Unggulan',   emoji: '🏆', color: '#10b981', bg: '#ecfdf5', border: '#6ee7b7', icon: 'ti-trophy',            desc: 'Kategori penyumbang terbesar (top 50% omset)' },
+            medium: { label: 'Menengah',   emoji: '📊', color: '#f59e0b', bg: '#fffbeb', border: '#fcd34d', icon: 'ti-chart-bar',         desc: 'Kategori kontributor menengah (50–80%)' },
+            slow:   { label: 'Lemah',      emoji: '📉', color: '#ef4444', bg: '#fef2f2', border: '#fca5a5', icon: 'ti-chart-bar-off',     desc: 'Kategori kontributor kecil (>80%)' },
+        },
+    };
+
+    const movingConfig = $derived(
+        movingConfigByType[selectedType] ?? movingConfigByType['product_revenue']
+    );
 
     function applyFilter() {
         movingFilter = 'all';
@@ -375,10 +398,10 @@
             </div>
         </div>
 
-        <!-- ═══════════════════════════════════════════════════════════════
-             FAST / MEDIUM / SLOW MOVING — hanya tampil untuk type produk
-             ═══════════════════════════════════════════════════════════════ -->
-        {#if isProductType && (items as any[]).length > 0}
+        <!-- ══════════════════════════════════════════════════════════════════════
+             MOVING / TIER CLASSIFICATION — untuk SEMUA tipe analisis
+             ══════════════════════════════════════════════════════════════════════ -->
+        {#if (items as any[]).length > 0}
             <div class="space-y-4">
                 <!-- Section Header -->
                 <div class="flex items-center gap-3">
@@ -386,12 +409,21 @@
                         <i class="ti ti-activity"></i>
                     </div>
                     <div>
-                        <h3 class="font-outfit font-black text-lg text-slate-800 leading-none">Klasifikasi Perputaran Produk</h3>
-                        <p class="text-xs text-slate-500 font-medium mt-0.5">Berdasarkan distribusi kumulatif qty terjual — Fast ≤50%, Medium 50–80%, Slow >80%</p>
+                        <h3 class="font-outfit font-black text-lg text-slate-800 leading-none">
+                            {#if isProductType}Klasifikasi Perputaran Produk
+                            {:else if selectedType === 'customer_spending'}Klasifikasi Nilai Pelanggan
+                            {:else}Klasifikasi Kontribusi Kategori{/if}
+                        </h3>
+                        <p class="text-xs text-slate-500 font-medium mt-0.5">
+                            {#if isProductType}Berdasarkan kumulatif qty terjual — Fast (0–50%), Medium (50–80%), Slow (>80%)
+                            {:else if selectedType === 'customer_spending'}Berdasarkan kumulatif nilai belanja — High Value (0–50%), Mid Value (50–80%), Low Value (>80%)
+                            {:else}Berdasarkan kumulatif omset — Unggulan (0–50%), Menengah (50–80%), Lemah (>80%){/if}
+                        </p>
                     </div>
                 </div>
 
                 <!-- Moving Cards -->
+                <!-- Moving Cards: 3 kartu interaktif -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {#each (['fast', 'medium', 'slow'] as const) as cat}
                         {@const cfg = movingConfig[cat]}
@@ -420,10 +452,14 @@
                             <div class="grid grid-cols-3 gap-2 mt-2">
                                 <div class="bg-white/70 rounded-xl p-2 text-center">
                                     <p class="font-outfit font-black text-xl text-slate-800">{data.count}</p>
-                                    <p class="text-[9px] text-slate-400 font-bold uppercase">Produk</p>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase">
+                                        {isProductType ? 'Produk' : selectedType === 'customer_spending' ? 'Pelanggan' : 'Kategori'}
+                                    </p>
                                 </div>
                                 <div class="bg-white/70 rounded-xl p-2 text-center">
-                                    <p class="font-outfit font-black text-xl text-slate-800">{formatNumber(data.qty)}</p>
+                                    <p class="font-outfit font-black text-xl text-slate-800">
+                                        {isProductType ? formatNumber(data.qty) : '-'}
+                                    </p>
                                     <p class="text-[9px] text-slate-400 font-bold uppercase">Total Qty</p>
                                 </div>
                                 <div class="bg-white/70 rounded-xl p-2 text-center">
@@ -471,6 +507,10 @@
                 <p class="text-xs text-slate-500 font-medium">
                     {#if isProductType}
                         Warna batang: 🚀 Fast Moving · 📦 Medium Moving · 🐢 Slow Moving. Garis = % kumulatif.
+                    {:else if selectedType === 'customer_spending'}
+                        Warna batang: 💎 High Value · ⭐ Mid Value · 👤 Low Value. Garis = % kumulatif.
+                    {:else if selectedType === 'category_revenue'}
+                        Warna batang: 🏆 Unggulan · 📊 Menengah · 📉 Lemah. Garis = % kumulatif.
                     {:else}
                         Batang berwarna = Vital Few (berkontribusi ≤80% kumulatif). Garis = % kumulatif.
                     {/if}
@@ -486,7 +526,7 @@
                     <canvas bind:this={paretoCanvas}></canvas>
                 {/if}
             </div>
-            {#if isProductType && (items as any[]).length > 0}
+            {#if (items as any[]).length > 0}
                 <div class="mt-4 flex flex-wrap gap-3 justify-center">
                     {#each (['fast', 'medium', 'slow'] as const) as cat}
                         {@const cfg = movingConfig[cat]}
@@ -518,6 +558,14 @@
                         <p class="text-sm text-slate-600 font-medium mt-2 leading-relaxed">
                             ⚠️ Terdapat <strong class="text-red-600">{movingMetrics.slow.count} produk Slow Moving</strong> yang perlu perhatian — pertimbangkan promosi, bundling, atau clearance untuk meningkatkan perputarannya.
                         </p>
+                    {:else if selectedType === 'customer_spending' && movingMetrics.slow.count > 0}
+                        <p class="text-sm text-slate-600 font-medium mt-2 leading-relaxed">
+                            💡 Terdapat <strong class="text-slate-700">{movingMetrics.slow.count} pelanggan Low Value</strong>. Pertimbangkan program loyalitas atau penawaran khusus untuk meningkatkan spending mereka.
+                        </p>
+                    {:else if selectedType === 'category_revenue' && movingMetrics.slow.count > 0}
+                        <p class="text-sm text-slate-600 font-medium mt-2 leading-relaxed">
+                            📊 Terdapat <strong class="text-slate-700">{movingMetrics.slow.count} kategori Lemah</strong>. Evaluasi strategi merchandising dan promosi pada kategori-kategori tersebut.
+                        </p>
                     {/if}
                 </div>
             </div>
@@ -541,7 +589,7 @@
                         <span class="w-3 h-3 rounded-full inline-block bg-slate-300"></span>
                         Trivial Many
                     </span>
-                    {#if isProductType}
+                    {#if (items as any[]).length > 0}
                         <span class="w-px h-4 bg-slate-200"></span>
                         {#each (['fast', 'medium', 'slow'] as const) as cat}
                             {@const cfg = movingConfig[cat]}
@@ -554,8 +602,8 @@
                 </div>
             </div>
 
-            <!-- Moving Tab Filter (produk saja) -->
-            {#if isProductType && (items as any[]).length > 0}
+            <!-- Moving Tab Filter — tampil untuk semua tipe -->
+            {#if (items as any[]).length > 0}
                 <div class="px-6 pt-4 flex items-center gap-2 flex-wrap">
                     <button
                         onclick={() => movingFilter = 'all'}
@@ -596,8 +644,8 @@
                             <th class="py-4 px-5 text-right">Kontribusi</th>
                             <th class="py-4 px-5 text-right">Kumulatif</th>
                             <th class="py-4 px-5 text-center">Pareto</th>
-                            {#if isProductType}
-                                <th class="py-4 px-5 text-center">Moving</th>
+                            {#if (items as any[]).length > 0}
+                                <th class="py-4 px-5 text-center">Tier</th>
                             {/if}
                         </tr>
                     </thead>
@@ -661,7 +709,7 @@
                                             </span>
                                         {/if}
                                     </td>
-                                    {#if isProductType}
+                                    {#if (items as any[]).length > 0}
                                         <td class="py-3 px-5 text-center">
                                             {#if movCfg}
                                                 <span
@@ -669,7 +717,7 @@
                                                     style="background-color: {movCfg.bg}; color: {movCfg.color}; border: 1px solid {movCfg.border};"
                                                 >
                                                     <i class="ti {movCfg.icon} text-xs"></i>
-                                                    {movCfg.label.replace(' Moving', '')}
+                                                    {movCfg.label}
                                                 </span>
                                             {/if}
                                         </td>

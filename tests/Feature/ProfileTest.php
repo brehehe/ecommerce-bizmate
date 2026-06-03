@@ -35,6 +35,7 @@ test('customer can update their name and email', function () {
     $response = $this->actingAs($customer)->put('/profile', [
         'name' => 'New Customer Name',
         'email' => 'new_customer@example.com',
+        'current_password' => 'password',
     ]);
 
     $response->assertRedirect();
@@ -51,9 +52,7 @@ test('customer can update their password', function () {
     ]);
     $customer->assignRole('Customer');
 
-    $response = $this->actingAs($customer)->put('/profile', [
-        'name' => $customer->name,
-        'email' => $customer->email,
+    $response = $this->actingAs($customer)->put('/profile/password', [
         'current_password' => 'oldpassword123',
         'password' => 'newpassword123',
         'password_confirmation' => 'newpassword123',
@@ -74,15 +73,15 @@ test('customer profile validation is enforced', function () {
     $response = $this->actingAs($customer1)->from('/profile')->put('/profile', [
         'name' => 'User One',
         'email' => 'user2@example.com',
+        'current_password' => 'password',
     ]);
 
     $response->assertRedirect('/profile');
     $response->assertSessionHasErrors(['email']);
 
     // Too short password
-    $response = $this->actingAs($customer1)->from('/profile')->put('/profile', [
-        'name' => 'User One',
-        'email' => 'user1@example.com',
+    $response = $this->actingAs($customer1)->from('/profile')->put('/profile/password', [
+        'current_password' => 'password',
         'password' => 'short',
         'password_confirmation' => 'short',
     ]);
@@ -91,9 +90,8 @@ test('customer profile validation is enforced', function () {
     $response->assertSessionHasErrors(['password']);
 
     // Password confirmation mismatch
-    $response = $this->actingAs($customer1)->from('/profile')->put('/profile', [
-        'name' => 'User One',
-        'email' => 'user1@example.com',
+    $response = $this->actingAs($customer1)->from('/profile')->put('/profile/password', [
+        'current_password' => 'password',
         'password' => 'newpassword123',
         'password_confirmation' => 'different123',
     ]);
@@ -125,6 +123,7 @@ test('admin can update their profile', function () {
     $response = $this->actingAs($admin)->put('/admin/profile', [
         'name' => 'New Admin Name',
         'email' => 'new_admin@example.com',
+        'current_password' => 'password',
     ]);
 
     $response->assertRedirect();

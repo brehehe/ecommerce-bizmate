@@ -78,6 +78,13 @@ class HandleInertiaRequests extends Middleware
         $refundTermsTransfer = '';
         $refundTermsPoints = '';
 
+        $shippingDeliveryEnabled = false;
+        $paymentApiEnabled = false;
+        $paymentApiAdminFee = 0;
+        $qrislyApiEnabled = false;
+        $qrislyApiAdminFee = 0;
+        $komerceDeliveryUrl = 'https://api-sandbox.collaborator.komerce.id/api/v1/';
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -117,6 +124,13 @@ class HandleInertiaRequests extends Middleware
                 $refundMinAmountPoints = (float) (Setting::where('key', 'refund_min_amount_points')->value('value') ?? 0);
                 $refundTermsTransfer = Setting::where('key', 'refund_terms_transfer')->value('value') ?? '';
                 $refundTermsPoints = Setting::where('key', 'refund_terms_points')->value('value') ?? '';
+
+                $shippingDeliveryEnabled = Setting::where('key', 'shipping_delivery_enabled')->value('value') === '1';
+                $paymentApiEnabled = Setting::where('key', 'payment_api_enabled')->value('value') === '1';
+                $paymentApiAdminFee = (float) (Setting::where('key', 'payment_api_admin_fee')->value('value') ?? 0);
+                $qrislyApiEnabled = Setting::where('key', 'qrisly_api_enabled')->value('value') === '1';
+                $qrislyApiAdminFee = (float) (Setting::where('key', 'qrisly_api_admin_fee')->value('value') ?? 0);
+                $komerceDeliveryUrl = Setting::where('key', 'komerce_delivery_url')->value('value') ?? 'https://api-sandbox.collaborator.komerce.id/api/v1/';
 
                 $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
                     'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
@@ -184,6 +198,13 @@ class HandleInertiaRequests extends Middleware
                 'refund_min_amount_points' => $refundMinAmountPoints,
                 'refund_terms_transfer' => $refundTermsTransfer,
                 'refund_terms_points' => $refundTermsPoints,
+
+                'shipping_delivery_enabled' => $shippingDeliveryEnabled,
+                'payment_api_enabled' => $paymentApiEnabled,
+                'payment_api_admin_fee' => $paymentApiAdminFee,
+                'qrisly_api_enabled' => $qrislyApiEnabled,
+                'qrisly_api_admin_fee' => $qrislyApiAdminFee,
+                'komerce_delivery_url' => $komerceDeliveryUrl,
             ],
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)

@@ -125,7 +125,11 @@ return [
 
     'rajaongkir' => [
         'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),
-        'key' => env('RAJAONGKIR_KEY', '390d25e9d86ded71cb771c363778cccf'),
+        'shipping_cost' => env('RAJAONGKIR_SHIPPING_COST_KEY', 'zvvoSZT25a2e20929ec5ff826xI0rWY1'),
+        'shipping_delivery_key' => env('SHIPPING_DELIVERY_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
+        'payment_api_key' => env('PAYMENT_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
+        'qrisly_api_key' => env('QRISLY_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
+        'delivery_url' => env('KOMERCE_DELIVERY_URL', 'https://api-sandbox.collaborator.komerce.id/api/v1/'),
     ],
 
     'xendit' => [
