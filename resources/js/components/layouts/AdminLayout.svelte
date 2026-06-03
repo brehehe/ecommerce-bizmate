@@ -8,6 +8,8 @@
 
     const page = usePage();
 
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+
     let isSidebarOpen = $state(false);
     let isNotifOpen = $state(false);
 
@@ -368,7 +370,7 @@
                         >Admin</span
                     >
                     <span class="font-black text-slate-800 tracking-tight"
-                        >Bizmate Console</span
+                        >{storeName} Console</span
                     >
                 </div>
             </div>

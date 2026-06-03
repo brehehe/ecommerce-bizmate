@@ -3,10 +3,27 @@
     import { slide } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
-    let { token = '', email = '', storeName = '', storeLogo = '' } = $props();
+    let {
+        token = '',
+        email = '',
+        storeName: initialStoreName = '',
+    } = $props();
 
-    const primaryColor = $derived((page.props as any).theme?.primary_color || '#0c4cb4');
-    const secondaryColor = $derived((page.props as any).theme?.secondary_color || '#fa7315');
+    const primaryColor = $derived(
+        (page.props as any).theme?.primary_color || '#0c4cb4',
+    );
+    const secondaryColor = $derived(
+        (page.props as any).theme?.secondary_color || '#fa7315',
+    );
+
+    const storeName = $derived(
+        (page.props as any).settings?.store_name ||
+            initialStoreName ||
+            'Bizmate',
+    );
+    const storeLogo = $derived(
+        (page.props as any).settings?.store_logo || null,
+    );
 
     const form = useForm({
         token: token,
@@ -25,49 +42,70 @@
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
                 showToast(firstError as string, 'error', 'top');
-            }
+            },
         });
     };
 </script>
 
 <svelte:head>
-    <title>Setel Ulang Kata Sandi - {storeName || 'Bizmate'}</title>
+    <title>Setel Ulang Kata Sandi - {storeName}</title>
 </svelte:head>
 
 <div
     class="grid grid-cols-1 lg:grid-cols-2 min-h-dvh w-full font-sans bg-white selection:bg-slate-900 selection:text-white overflow-x-hidden"
 >
     <!-- Left Side: Image & Info (Hidden on Mobile/Tablet) -->
-    <div class="hidden lg:flex relative bg-slate-900 overflow-hidden items-center justify-center p-12">
+    <div
+        class="hidden lg:flex relative bg-slate-900 overflow-hidden items-center justify-center p-12"
+    >
         <div class="absolute inset-0 z-0">
             <img
                 src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1000&auto=format&fit=crop"
                 alt="E-commerce abstract"
                 class="w-full h-full object-cover opacity-60"
             />
-            <div class="absolute inset-0 bg-slate-900/65 mix-blend-multiply"></div>
+            <div
+                class="absolute inset-0 bg-slate-900/65 mix-blend-multiply"
+            ></div>
             <div
                 class="absolute inset-0 mix-blend-overlay opacity-80"
                 style="background: linear-gradient(to bottom right, {primaryColor}, {secondaryColor});"
             ></div>
         </div>
 
-        <div class="relative z-10 px-8 flex flex-col justify-center max-w-lg text-white">
-            <div class="w-16 h-16 rounded-3xl shadow-2xl flex items-center justify-center text-white text-3xl mb-8 backdrop-blur-md bg-white/20 border border-white/30 transition-transform hover:scale-105">
-                <i class="ti ti-shield-lock"></i>
-            </div>
+        <div
+            class="relative z-10 px-8 flex flex-col justify-center max-w-lg text-white"
+        >
+            {#if storeLogo}
+                <img
+                    src={storeLogo}
+                    alt="Store Icon"
+                    class="w-16 h-16 object-contain mb-8 rounded-3xl shadow-2xl transition-transform hover:scale-105 bg-white/10 backdrop-blur-md border border-white/20 p-2"
+                />
+            {:else}
+                <div
+                    class="w-16 h-16 rounded-3xl shadow-2xl flex items-center justify-center text-white text-3xl mb-8 backdrop-blur-md bg-white/20 border border-white/30 transition-transform hover:scale-105"
+                >
+                    <i class="ti ti-shield-lock"></i>
+                </div>
+            {/if}
 
-            <h1 class="text-4xl font-outfit font-black mb-6 leading-tight tracking-tight">
+            <h1
+                class="text-4xl font-outfit font-black mb-6 leading-tight tracking-tight"
+            >
                 Keamanan adalah prioritas kami.
             </h1>
             <p class="text-base text-slate-200 font-medium leading-relaxed">
-                Silakan buat kata sandi baru yang kuat dan unik untuk melindungi akun belanja Anda.
+                Silakan buat kata sandi baru yang kuat dan unik untuk melindungi
+                akun belanja Anda.
             </p>
         </div>
     </div>
 
     <!-- Right Side: Form -->
-    <div class="flex flex-col justify-center py-10 px-4 sm:px-12 md:px-16 lg:px-20 bg-white relative overflow-hidden min-h-dvh">
+    <div
+        class="flex flex-col justify-center py-10 px-4 sm:px-12 md:px-16 lg:px-20 bg-white relative overflow-hidden min-h-dvh"
+    >
         <!-- Hiasan Bulat Dekoratif -->
         <div
             class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full opacity-5 blur-3xl pointer-events-none"
@@ -79,7 +117,37 @@
         ></div>
 
         <div class="max-w-md w-full mx-auto relative z-10 my-auto">
-            <h2 class="text-3xl sm:text-4xl font-outfit font-black text-slate-900 tracking-tight mb-2">
+            <!-- Logo (Hanya muncul di Mobile) -->
+            <div class="flex lg:hidden items-center gap-3 mb-8">
+                {#if storeLogo}
+                    <img
+                        src={storeLogo}
+                        alt="Store Icon"
+                        class="w-12 h-12 object-contain"
+                    />
+                {:else}
+                    <div
+                        class="w-12 h-12 rounded-2xl shadow-md flex items-center justify-center text-white text-2xl"
+                        style="background: linear-gradient(to bottom right, {primaryColor}, {secondaryColor});"
+                    >
+                        <i class="ti ti-sofa"></i>
+                    </div>
+                {/if}
+                <div class="flex flex-col">
+                    <span
+                        class="font-outfit font-black text-2xl text-slate-800 tracking-tight leading-none"
+                        >{storeName}</span
+                    >
+                    <span
+                        class="font-sans font-bold text-[10px] text-slate-400 tracking-widest mt-1 uppercase"
+                        >Admin Console</span
+                    >
+                </div>
+            </div>
+
+            <h2
+                class="text-3xl sm:text-4xl font-outfit font-black text-slate-900 tracking-tight mb-2"
+            >
                 Atur Ulang Kata Sandi
             </h2>
             <p class="text-sm text-slate-500 font-medium mb-8">
@@ -98,7 +166,9 @@
                         transition:slide
                         class="p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-3"
                     >
-                        <i class="ti ti-alert-circle text-rose-500 text-xl mt-0.5"></i>
+                        <i
+                            class="ti ti-alert-circle text-rose-500 text-xl mt-0.5"
+                        ></i>
                         <p class="text-sm font-bold text-rose-600">
                             {form.errors.email}
                         </p>
@@ -110,7 +180,9 @@
                         transition:slide
                         class="p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-3"
                     >
-                        <i class="ti ti-alert-circle text-rose-500 text-xl mt-0.5"></i>
+                        <i
+                            class="ti ti-alert-circle text-rose-500 text-xl mt-0.5"
+                        ></i>
                         <p class="text-sm font-bold text-rose-600">
                             {form.errors.password}
                         </p>
@@ -126,8 +198,12 @@
                         Alamat Email
                     </label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="ti ti-mail text-slate-400 text-lg transition-colors group-focus-within:text-slate-600"></i>
+                        <div
+                            class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+                        >
+                            <i
+                                class="ti ti-mail text-slate-400 text-lg transition-colors group-focus-within:text-slate-600"
+                            ></i>
                         </div>
                         <input
                             id="email"
@@ -150,8 +226,12 @@
                         Kata Sandi Baru
                     </label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="ti ti-lock text-slate-400 text-lg transition-colors group-focus-within:text-slate-600"></i>
+                        <div
+                            class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+                        >
+                            <i
+                                class="ti ti-lock text-slate-400 text-lg transition-colors group-focus-within:text-slate-600"
+                            ></i>
                         </div>
                         <input
                             id="password"
@@ -165,10 +245,16 @@
                         <button
                             type="button"
                             class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                            onclick={() => showPassword = !showPassword}
-                            aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                            onclick={() => (showPassword = !showPassword)}
+                            aria-label={showPassword
+                                ? 'Sembunyikan kata sandi'
+                                : 'Tampilkan kata sandi'}
                         >
-                            <i class={showPassword ? "ti ti-eye-off text-lg" : "ti ti-eye text-lg"}></i>
+                            <i
+                                class={showPassword
+                                    ? 'ti ti-eye-off text-lg'
+                                    : 'ti ti-eye text-lg'}
+                            ></i>
                         </button>
                     </div>
                 </div>
@@ -182,8 +268,12 @@
                         Konfirmasi Kata Sandi Baru
                     </label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="ti ti-lock text-slate-400 text-lg transition-colors group-focus-within:text-slate-600"></i>
+                        <div
+                            class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+                        >
+                            <i
+                                class="ti ti-lock text-slate-400 text-lg transition-colors group-focus-within:text-slate-600"
+                            ></i>
                         </div>
                         <input
                             id="password_confirmation"
@@ -205,9 +295,12 @@
                         style="background-color: {primaryColor}; --tw-ring-color: {primaryColor}50;"
                     >
                         {#if form.processing}
-                            <i class="ti ti-loader animate-spin mr-2 text-xl"></i> Memproses...
+                            <i class="ti ti-loader animate-spin mr-2 text-xl"
+                            ></i> Memproses...
                         {:else}
-                            Setel Ulang Kata Sandi <i class="ti ti-circle-check ml-2 text-lg"></i>
+                            Setel Ulang Kata Sandi <i
+                                class="ti ti-circle-check ml-2 text-lg"
+                            ></i>
                         {/if}
                     </button>
                 </div>

@@ -161,7 +161,7 @@
                     <p
                         class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
                     >
-                        Kelola Stok, Harga, dan Variasi Produk Furniture Anda
+                        Kelola Stok, Harga, dan Variasi Produk Anda
                     </p>
                 </div>
                 <div class="flex items-center gap-2.5 w-full sm:w-auto">

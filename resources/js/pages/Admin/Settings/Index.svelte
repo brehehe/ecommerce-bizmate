@@ -7,7 +7,7 @@
         page.props.theme?.secondary_color || '#fa7315',
     );
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { slide } from 'svelte/transition';
+    import { slide, fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
     import Input from '@/components/ui/Input.svelte';
@@ -104,16 +104,18 @@
         operational_hours: Array.isArray(settings.operational_hours)
             ? settings.operational_hours
             : settings.operational_hours
-              ? (typeof settings.operational_hours === 'string' ? JSON.parse(settings.operational_hours) : settings.operational_hours)
+              ? typeof settings.operational_hours === 'string'
+                  ? JSON.parse(settings.operational_hours)
+                  : settings.operational_hours
               : {
-                  monday: { active: true, open: '09:00', close: '17:00' },
-                  tuesday: { active: true, open: '09:00', close: '17:00' },
-                  wednesday: { active: true, open: '09:00', close: '17:00' },
-                  thursday: { active: true, open: '09:00', close: '17:00' },
-                  friday: { active: true, open: '09:00', close: '17:00' },
-                  saturday: { active: true, open: '09:00', close: '15:00' },
-                  sunday: { active: false, open: '09:00', close: '12:00' }
-              },
+                    monday: { active: true, open: '09:00', close: '17:00' },
+                    tuesday: { active: true, open: '09:00', close: '17:00' },
+                    wednesday: { active: true, open: '09:00', close: '17:00' },
+                    thursday: { active: true, open: '09:00', close: '17:00' },
+                    friday: { active: true, open: '09:00', close: '17:00' },
+                    saturday: { active: true, open: '09:00', close: '15:00' },
+                    sunday: { active: false, open: '09:00', close: '12:00' },
+                },
 
         refund_points_enabled:
             settings.refund_points_enabled === 'true' ||
@@ -133,26 +135,64 @@
         thursday: 'Kamis',
         friday: 'Jumat',
         saturday: 'Sabtu',
-        sunday: 'Minggu'
+        sunday: 'Minggu',
     };
 
     const themePresets = [
-        { id: 'royal_blue', name: 'Royal Blue', sub: 'ROYAL BLUE', primary: '#0c4cb4', secondary: '#fa7315' },
-        { id: 'emerald', name: 'Emerald', sub: 'EMERALD', primary: '#059669', secondary: '#10b981' },
-        { id: 'sunset_orange', name: 'Sunset Orange', sub: 'SUNSET ORANGE', primary: '#ea580c', secondary: '#f97316' },
-        { id: 'velvet_purple', name: 'Velvet Purple', sub: 'VELVET PURPLE', primary: '#7c3aed', secondary: '#a855f7' },
-        { id: 'ocean_teal', name: 'Ocean Teal', sub: 'OCEAN TEAL', primary: '#0f766e', secondary: '#06b6d4' },
+        {
+            id: 'royal_blue',
+            name: 'Royal Blue',
+            sub: 'ROYAL BLUE',
+            primary: '#0c4cb4',
+            secondary: '#fa7315',
+        },
+        {
+            id: 'emerald',
+            name: 'Emerald',
+            sub: 'EMERALD',
+            primary: '#059669',
+            secondary: '#10b981',
+        },
+        {
+            id: 'sunset_orange',
+            name: 'Sunset Orange',
+            sub: 'SUNSET ORANGE',
+            primary: '#ea580c',
+            secondary: '#f97316',
+        },
+        {
+            id: 'velvet_purple',
+            name: 'Velvet Purple',
+            sub: 'VELVET PURPLE',
+            primary: '#7c3aed',
+            secondary: '#a855f7',
+        },
+        {
+            id: 'ocean_teal',
+            name: 'Ocean Teal',
+            sub: 'OCEAN TEAL',
+            primary: '#0f766e',
+            secondary: '#06b6d4',
+        },
     ];
 
     let forcedCustom = $state(false);
 
     let currentPreset = $derived(
-        forcedCustom ? 'custom' : (themePresets.find(p => p.primary.toLowerCase() === form.primary_color.toLowerCase() && p.secondary.toLowerCase() === form.secondary_color.toLowerCase())?.id || 'custom')
+        forcedCustom
+            ? 'custom'
+            : themePresets.find(
+                  (p) =>
+                      p.primary.toLowerCase() ===
+                          form.primary_color.toLowerCase() &&
+                      p.secondary.toLowerCase() ===
+                          form.secondary_color.toLowerCase(),
+              )?.id || 'custom',
     );
 
     function setPreset(id: string) {
         if (id === 'custom') return;
-        const p = themePresets.find(x => x.id === id);
+        const p = themePresets.find((x) => x.id === id);
         if (p) {
             form.primary_color = p.primary;
             form.secondary_color = p.secondary;
@@ -175,15 +215,38 @@
     ];
 
     $effect(() => {
+        if (!form.holiday_mode) {
+            form.always_open = false;
+        }
+    });
+
+    $effect(() => {
         if (form.store_font) {
-            document.documentElement.style.setProperty('--dynamic-font-sans', `'${form.store_font}', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'`, 'important');
-            document.documentElement.style.setProperty('--dynamic-font-outfit', `'${form.store_font}', sans-serif`, 'important');
-            
-            // Note: Google Fonts tag needs to be loaded if it's a google font, 
-            // but for preview purposes if it's not cached it might fallback, 
+            document.documentElement.style.setProperty(
+                '--dynamic-font-sans',
+                `'${form.store_font}', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'`,
+                'important',
+            );
+            document.documentElement.style.setProperty(
+                '--dynamic-font-outfit',
+                `'${form.store_font}', sans-serif`,
+                'important',
+            );
+
+            // Note: Google Fonts tag needs to be loaded if it's a google font,
+            // but for preview purposes if it's not cached it might fallback,
             // but typically we can inject a link tag if not present.
-            if (!['Arial', 'Verdana', 'Helvetica', 'Times New Roman', 'Georgia'].includes(form.store_font)) {
-                const linkId = 'preview-font-' + form.store_font.replace(/\s+/g, '-');
+            if (
+                ![
+                    'Arial',
+                    'Verdana',
+                    'Helvetica',
+                    'Times New Roman',
+                    'Georgia',
+                ].includes(form.store_font)
+            ) {
+                const linkId =
+                    'preview-font-' + form.store_font.replace(/\s+/g, '-');
                 if (!document.getElementById(linkId)) {
                     const link = document.createElement('link');
                     link.id = linkId;
@@ -195,9 +258,227 @@
         }
     });
 
-
     let imagePreview = $state(null);
     let iconPreview = $state(null);
+
+    // Image Editor Modal States
+    let isEditorOpen = $state(false);
+    let editorTarget = $state<'logo' | 'icon'>('logo');
+    let editorImageSrc = $state<string | null>(null);
+    let editorFilename = $state('');
+    let editorFileType = $state('image/png');
+    let editorScale = $state(1.0);
+    let editorRotation = $state(0);
+    let editorRemoveBg = $state(false);
+    let editorTolerance = $state(30);
+    let editorCanvas = $state<HTMLCanvasElement | null>(null);
+    let editorLoadedImage = $state<HTMLImageElement | null>(null);
+
+    // Custom Width & Height states
+    let editorWidth = $state(512);
+    let editorHeight = $state(512);
+    let lockAspectRatio = $state(true);
+    let originalAspectRatio = $state(1);
+
+    function openEditor(file: File, target: 'logo' | 'icon') {
+        editorTarget = target;
+        editorFilename = file.name;
+        editorFileType = file.type || 'image/png';
+        
+        // Reset controls
+        editorScale = 1.0;
+        editorRotation = 0;
+        editorRemoveBg = false;
+        editorTolerance = 30;
+        editorLoadedImage = null;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            editorImageSrc = event.target?.result as string;
+            
+            const img = new Image();
+            img.src = editorImageSrc;
+            img.onload = () => {
+                editorLoadedImage = img;
+                if (target === 'icon') {
+                    const size = Math.min(img.naturalWidth, img.naturalHeight, 128);
+                    editorWidth = size;
+                    editorHeight = size;
+                    originalAspectRatio = 1.0;
+                } else {
+                    editorWidth = img.naturalWidth;
+                    editorHeight = img.naturalHeight;
+                    originalAspectRatio = img.naturalWidth / img.naturalHeight;
+                }
+                lockAspectRatio = true;
+                isEditorOpen = true;
+            };
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function handleWidthInput(e: Event) {
+        const val = parseInt((e.target as HTMLInputElement).value);
+        if (isNaN(val) || val < 16) return;
+        editorWidth = val;
+        if (lockAspectRatio) {
+            editorHeight = Math.round(editorWidth / originalAspectRatio);
+        }
+    }
+
+    function handleHeightInput(e: Event) {
+        const val = parseInt((e.target as HTMLInputElement).value);
+        if (isNaN(val) || val < 16) return;
+        editorHeight = val;
+        if (lockAspectRatio) {
+            editorWidth = Math.round(editorHeight * originalAspectRatio);
+        }
+    }
+
+    function swapDimensions() {
+        const temp = editorWidth;
+        editorWidth = editorHeight;
+        editorHeight = temp;
+        originalAspectRatio = editorWidth / editorHeight;
+    }
+
+    function setPresetDimensions(w: number, h: number) {
+        editorWidth = w;
+        editorHeight = h;
+        originalAspectRatio = w / h;
+    }
+
+    function fitImage() {
+        if (!editorLoadedImage) return;
+        const wRatio = editorWidth / editorLoadedImage.naturalWidth;
+        const hRatio = editorHeight / editorLoadedImage.naturalHeight;
+        editorScale = +Math.min(wRatio, hRatio).toFixed(2);
+    }
+
+    function fillImage() {
+        if (!editorLoadedImage) return;
+        const wRatio = editorWidth / editorLoadedImage.naturalWidth;
+        const hRatio = editorHeight / editorLoadedImage.naturalHeight;
+        editorScale = +Math.max(wRatio, hRatio).toFixed(2);
+    }
+
+    function drawEditorImage(
+        img: HTMLImageElement,
+        scale: number,
+        rotation: number,
+        removeBg: boolean,
+        tolerance: number,
+        canvasWidth: number,
+        canvasHeight: number
+    ) {
+        if (!editorCanvas) return;
+        const ctx = editorCanvas.getContext('2d');
+        if (!ctx) return;
+
+        editorCanvas.width = canvasWidth;
+        editorCanvas.height = canvasHeight;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+        // Save context state
+        ctx.save();
+
+        // Translate to center to rotate and scale
+        ctx.translate(canvasWidth / 2, canvasHeight / 2);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.scale(scale, scale);
+
+        // Draw image centered
+        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+
+        // Restore context
+        ctx.restore();
+
+        // Background removal (make white/near-white transparent)
+        if (removeBg) {
+            const imgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+            const data = imgData.data;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                if (r >= 255 - tolerance && g >= 255 - tolerance && b >= 255 - tolerance) {
+                    data[i + 3] = 0; // Set alpha to 0 (transparent)
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+    }
+
+    $effect(() => {
+        if (isEditorOpen && editorLoadedImage && editorCanvas) {
+            drawEditorImage(
+                editorLoadedImage,
+                editorScale,
+                editorRotation,
+                editorRemoveBg,
+                editorTolerance,
+                editorWidth,
+                editorHeight
+            );
+        }
+    });
+
+    function applyEdits() {
+        if (!editorCanvas) return;
+        
+        editorCanvas.toBlob((blob) => {
+            if (blob) {
+                const editedFile = new File([blob], editorFilename.replace(/\.[^/.]+$/, "") + ".png", {
+                    type: 'image/png',
+                    lastModified: Date.now()
+                });
+
+                if (editorTarget === 'logo') {
+                    form.store_logo = editedFile;
+                    imagePreview = URL.createObjectURL(editedFile);
+                } else {
+                    form.store_icon = editedFile;
+                    iconPreview = URL.createObjectURL(editedFile);
+                }
+                
+                showToast(
+                    `Berhasil menerapkan perubahan pada ${editorTarget === 'logo' ? 'Logo' : 'Icon'} Toko.`,
+                    'success'
+                );
+                isEditorOpen = false;
+            }
+        }, 'image/png');
+    }
+
+    async function editCurrentImage(target: 'logo' | 'icon') {
+        let imageUrl: string | null = null;
+        let defaultFilename = 'logo.png';
+        
+        if (target === 'logo') {
+            imageUrl = imagePreview || settings.store_logo;
+            defaultFilename = 'store_logo.png';
+        } else {
+            imageUrl = iconPreview || settings.store_icon;
+            defaultFilename = 'store_icon.png';
+        }
+        
+        if (!imageUrl) return;
+        
+        try {
+            showToast('Memuat gambar untuk diedit...', 'info');
+            const response = await fetch(imageUrl);
+            if (!response.ok) throw new Error('Gagal mengunduh gambar');
+            const blob = await response.blob();
+            const file = new File([blob], defaultFilename, { type: blob.type || 'image/png' });
+            openEditor(file, target);
+        } catch (error) {
+            console.error(error);
+            showToast('Gagal memuat gambar untuk diedit.', 'error');
+        }
+    }
 
     let provinces = $state([]);
     let regencies = $state([]);
@@ -365,8 +646,8 @@
                 e.target.value = ''; // Reset file input
                 return;
             }
-            form.store_logo = file;
-            imagePreview = URL.createObjectURL(file);
+            openEditor(file, 'logo');
+            e.target.value = '';
         }
     }
 
@@ -381,8 +662,8 @@
                 e.target.value = '';
                 return;
             }
-            form.store_icon = file;
-            iconPreview = URL.createObjectURL(file);
+            openEditor(file, 'icon');
+            e.target.value = '';
         }
     }
 
@@ -637,8 +918,9 @@
                         <div class="mt-8 border-t border-slate-100 pt-6">
                             <p
                                 class="block text-xs font-bold text-slate-600 mb-2"
-                                >Titik Peta (Pin Lokasi)</p
                             >
+                                Titik Peta (Pin Lokasi)
+                            </p>
 
                             <div class="relative mb-4">
                                 <div class="flex gap-2">
@@ -1121,7 +1403,9 @@
                                 <p
                                     class="text-xs text-slate-400 font-medium mt-1"
                                 >
-                                    Atur pengembalian dana (transfer bank & koin), syarat ketentuan, minimal refund, dan estimasi waktu proses.
+                                    Atur pengembalian dana (transfer bank &
+                                    koin), syarat ketentuan, minimal refund, dan
+                                    estimasi waktu proses.
                                 </p>
                             </div>
                         </div>
@@ -1129,13 +1413,19 @@
                         <div class="space-y-6">
                             <!-- Section: Bank Transfer -->
                             <div class="space-y-4">
-                                <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                <h4
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                >
                                     Refund via Transfer Bank
                                 </h4>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div
+                                    class="grid grid-cols-1 sm:grid-cols-2 gap-6"
+                                >
                                     <InputCurrency
                                         id="input-refund-min-transfer"
-                                        bind:value={form.refund_min_amount_transfer}
+                                        bind:value={
+                                            form.refund_min_amount_transfer
+                                        }
                                         label="Minimal Refund Transfer Bank"
                                         placeholder="0"
                                         required={true}
@@ -1150,7 +1440,9 @@
                                         <input
                                             id="input-refund-days"
                                             type="text"
-                                            bind:value={form.refund_transfer_days}
+                                            bind:value={
+                                                form.refund_transfer_days
+                                            }
                                             placeholder="Contoh: 3-5"
                                             class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition font-sans"
                                             required
@@ -1172,24 +1464,44 @@
                             <div class="space-y-4">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">Aktifkan Refund ke Koin Toko</span>
-                                        <p class="text-[10px] text-slate-400 mt-0.5">Memungkinkan pelanggan memilih refund ke saldo koin toko (instan setelah disetujui).</p>
+                                        <span
+                                            class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                            >Aktifkan Refund ke Koin Toko</span
+                                        >
+                                        <p
+                                            class="text-[10px] text-slate-400 mt-0.5"
+                                        >
+                                            Memungkinkan pelanggan memilih
+                                            refund ke saldo koin toko (instan
+                                            setelah disetujui).
+                                        </p>
                                     </div>
-                                    <Toggle bind:checked={form.refund_points_enabled} />
+                                    <Toggle
+                                        bind:checked={
+                                            form.refund_points_enabled
+                                        }
+                                    />
                                 </div>
 
                                 {#if form.refund_points_enabled}
-                                    <div class="space-y-4 pt-2" transition:slide>
+                                    <div
+                                        class="space-y-4 pt-2"
+                                        transition:slide
+                                    >
                                         <InputCurrency
                                             id="input-refund-min-points"
-                                            bind:value={form.refund_min_amount_points}
+                                            bind:value={
+                                                form.refund_min_amount_points
+                                            }
                                             label="Minimal Refund via Koin Toko"
                                             placeholder="0"
                                             required={true}
                                         />
                                         <Textarea
                                             id="input-refund-terms-points"
-                                            bind:value={form.refund_terms_points}
+                                            bind:value={
+                                                form.refund_terms_points
+                                            }
                                             label="Syarat & Ketentuan Refund via Koin Toko"
                                             placeholder="Tuliskan syarat & ketentuan refund via Koin Toko untuk dibaca oleh pelanggan..."
                                             rows={3}
@@ -1199,7 +1511,6 @@
                             </div>
                         </div>
                     </div>
-
 
                     <div
                         class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
@@ -1221,20 +1532,32 @@
                                 <p
                                     class="text-xs text-slate-400 font-medium mt-1"
                                 >
-                                    Konfigurasi hari kerja, jam operasional, dan Mode Libur.
+                                    Konfigurasi hari kerja, jam operasional, dan
+                                    Mode Libur.
                                 </p>
                             </div>
                         </div>
 
                         <div class="space-y-4">
                             <!-- HOLIDAY MODE -->
-                            <div class="bg-amber-50/50 border border-amber-100/50 rounded-2xl p-4 flex items-center justify-between gap-4">
+                            <div
+                                class="bg-amber-50/50 border border-amber-100/50 rounded-2xl p-4 flex items-center justify-between gap-4"
+                            >
                                 <div>
-                                    <h4 class="font-bold text-amber-700 text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                                        <i class="ti ti-ship text-amber-600 text-base"></i> MODE LIBUR TOKO (HOLIDAY MODE)
+                                    <h4
+                                        class="font-bold text-amber-700 text-xs sm:text-sm uppercase tracking-wider flex items-center gap-1.5 mb-1"
+                                    >
+                                        <i
+                                            class="ti ti-ship text-amber-600 text-base"
+                                        ></i> MODE LIBUR TOKO (HOLIDAY MODE)
                                     </h4>
-                                    <p class="text-xs text-amber-600/80 font-semibold leading-relaxed max-w-sm">
-                                        Aktifkan untuk menutup toko sementara. Seluruh halaman e-commerce akan menampilkan banner libur dan proses checkout dinonaktifkan sepenuhnya.
+                                    <p
+                                        class="text-xs text-amber-600/80 font-semibold leading-relaxed max-w-sm"
+                                    >
+                                        Aktifkan untuk menutup toko sementara.
+                                        Seluruh halaman e-commerce akan
+                                        menampilkan banner libur dan proses
+                                        checkout dinonaktifkan sepenuhnya.
                                     </p>
                                 </div>
                                 <div class="shrink-0 scale-125 origin-right">
@@ -1246,42 +1569,120 @@
 
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">Toko Buka Terus (24 Jam)</span>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Abaikan jadwal mingguan dan buka toko 24 jam penuh setiap harinya.</p>
+                                    <span
+                                        class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                        >Toko Buka Terus (24 Jam)</span
+                                    >
+                                    <p
+                                        class="text-[10px] text-slate-400 mt-0.5"
+                                    >
+                                        Abaikan jadwal mingguan dan buka toko 24
+                                        jam penuh setiap harinya.
+                                    </p>
                                 </div>
-                                <Toggle bind:checked={form.always_open} />
+                                <Toggle bind:checked={form.always_open} disabled={!form.holiday_mode} />
                             </div>
 
                             <!-- WEEKLY SCHEDULE -->
-                            {#if !form.always_open}
+                            {#if form.holiday_mode && !form.always_open}
                                 <div transition:slide class="space-y-4 pt-2">
-                                    <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                    <h4
+                                        class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                    >
                                         JADWAL OPERASIONAL MINGGUAN
                                     </h4>
-                                    
-                                    <div class="border border-slate-100 rounded-2xl overflow-hidden">
-                                        <div class="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-3 border-b border-slate-100">
-                                            <div class="col-span-4 sm:col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">HARI</div>
-                                            <div class="col-span-3 sm:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">STATUS</div>
-                                            <div class="col-span-5 sm:col-span-7 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">JAM BUKA - TUTUP</div>
+
+                                    <div
+                                        class="border border-slate-100 rounded-2xl overflow-hidden"
+                                    >
+                                        <div
+                                            class="grid grid-cols-12 gap-2 bg-slate-50 px-4 py-3 border-b border-slate-100"
+                                        >
+                                            <div
+                                                class="col-span-4 sm:col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                            >
+                                                HARI
+                                            </div>
+                                            <div
+                                                class="col-span-3 sm:col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center"
+                                            >
+                                                STATUS
+                                            </div>
+                                            <div
+                                                class="col-span-5 sm:col-span-7 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right"
+                                            >
+                                                JAM BUKA - TUTUP
+                                            </div>
                                         </div>
 
                                         <div class="divide-y divide-slate-100">
                                             {#each Object.keys(dayLabels) as day}
-                                                <div class="grid grid-cols-12 gap-2 px-4 py-4 items-center transition-colors {form.operational_hours[day].active ? 'bg-white' : 'bg-slate-50/50'}">
-                                                    <div class="col-span-4 sm:col-span-3 font-bold text-sm text-slate-700">
+                                                <div
+                                                    class="grid grid-cols-12 gap-2 px-4 py-4 items-center transition-colors {form
+                                                        .operational_hours[day]
+                                                        .active
+                                                        ? 'bg-white'
+                                                        : 'bg-slate-50/50'}"
+                                                >
+                                                    <div
+                                                        class="col-span-4 sm:col-span-3 font-bold text-sm text-slate-700"
+                                                    >
                                                         {dayLabels[day]}
                                                     </div>
-                                                    <div class="col-span-3 sm:col-span-2 flex justify-center">
-                                                        <Toggle bind:checked={form.operational_hours[day].active} />
+                                                    <div
+                                                        class="col-span-3 sm:col-span-2 flex justify-center"
+                                                    >
+                                                        <Toggle
+                                                            bind:checked={
+                                                                form
+                                                                    .operational_hours[
+                                                                    day
+                                                                ].active
+                                                            }
+                                                        />
                                                     </div>
-                                                    <div class="col-span-5 sm:col-span-7 flex justify-end items-center gap-2">
-                                                        <div class="relative w-24">
-                                                            <input type="time" bind:value={form.operational_hours[day].open} disabled={!form.operational_hours[day].active} class="w-full text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center focus:ring-1 focus:ring-slate-300 outline-none disabled:opacity-50 disabled:bg-slate-50" />
+                                                    <div
+                                                        class="col-span-5 sm:col-span-7 flex justify-end items-center gap-2"
+                                                    >
+                                                        <div
+                                                            class="relative w-24"
+                                                        >
+                                                            <input
+                                                                type="time"
+                                                                bind:value={
+                                                                    form
+                                                                        .operational_hours[
+                                                                        day
+                                                                    ].open
+                                                                }
+                                                                disabled={!form
+                                                                    .operational_hours[
+                                                                    day
+                                                                ].active}
+                                                                class="w-full text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center focus:ring-1 focus:ring-slate-300 outline-none disabled:opacity-50 disabled:bg-slate-50"
+                                                            />
                                                         </div>
-                                                        <span class="text-slate-300 font-bold">-</span>
-                                                        <div class="relative w-24">
-                                                            <input type="time" bind:value={form.operational_hours[day].close} disabled={!form.operational_hours[day].active} class="w-full text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center focus:ring-1 focus:ring-slate-300 outline-none disabled:opacity-50 disabled:bg-slate-50" />
+                                                        <span
+                                                            class="text-slate-300 font-bold"
+                                                            >-</span
+                                                        >
+                                                        <div
+                                                            class="relative w-24"
+                                                        >
+                                                            <input
+                                                                type="time"
+                                                                bind:value={
+                                                                    form
+                                                                        .operational_hours[
+                                                                        day
+                                                                    ].close
+                                                                }
+                                                                disabled={!form
+                                                                    .operational_hours[
+                                                                    day
+                                                                ].active}
+                                                                class="w-full text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-center focus:ring-1 focus:ring-slate-300 outline-none disabled:opacity-50 disabled:bg-slate-50"
+                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1359,6 +1760,30 @@
                                 >
                             {/if}
                         </div>
+
+                        {#if imagePreview || settings.store_logo}
+                            <div class="flex justify-center -mt-2 mb-2">
+                                <button
+                                    type="button"
+                                    onclick={() => editCurrentImage('logo')}
+                                    class="px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                                >
+                                    <i class="ti ti-crop text-sm"></i>
+                                    Edit Gambar Saat Ini
+                                </button>
+                            </div>
+                        {/if}
+
+                        <div class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                            <i class="ti ti-info-circle text-slate-400 text-base mt-0.5"></i>
+                            <div>
+                                <span class="text-[10px] font-black text-slate-700 uppercase tracking-tight block">Rekomendasi Dimensi Logo</span>
+                                <p class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed">
+                                    Mendukung format PNG/JPG dengan ukuran maksimal 2MB.<br>
+                                    Resolusi Minimum: <strong class="text-slate-600">512 x 512 px</strong> (Persegi) atau <strong class="text-slate-600">1024 x 576 px</strong> (Lanskap 16:9).
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div
@@ -1425,6 +1850,30 @@
                                 >
                             {/if}
                         </div>
+
+                        {#if iconPreview || settings.store_icon}
+                            <div class="flex justify-center -mt-2 mb-2">
+                                <button
+                                    type="button"
+                                    onclick={() => editCurrentImage('icon')}
+                                    class="px-3 py-1.5 border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                                >
+                                    <i class="ti ti-crop text-xs"></i>
+                                    Edit Gambar Saat Ini
+                                </button>
+                            </div>
+                        {/if}
+
+                        <div class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                            <i class="ti ti-info-circle text-slate-400 text-base mt-0.5"></i>
+                            <div>
+                                <span class="text-[10px] font-black text-slate-700 uppercase tracking-tight block">Rekomendasi Dimensi Icon</span>
+                                <p class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed">
+                                    Disarankan menggunakan format PNG transparan.<br>
+                                    Rasio: <strong class="text-slate-600">1:1 (Persegi)</strong>. Resolusi Minimum: <strong class="text-slate-600">128 x 128 px</strong>.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div
@@ -1454,7 +1903,9 @@
                         </div>
 
                         <div class="space-y-4">
-                            <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight mb-2 block">
+                            <h4
+                                class="text-xs font-black text-slate-700 uppercase tracking-tight mb-2 block"
+                            >
                                 PILIH PRESET WARNA
                             </h4>
 
@@ -1464,23 +1915,49 @@
                                         type="button"
                                         onclick={() => setPreset(preset.id)}
                                         class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left
-                                        {currentPreset === preset.id ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
-                                        style={currentPreset === preset.id ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${preset.primary}33;` : ''}
+                                        {currentPreset === preset.id
+                                            ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
+                                            : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                        style={currentPreset === preset.id
+                                            ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${preset.primary}33;`
+                                            : ''}
                                     >
                                         <div class="flex items-center gap-4">
                                             <div class="flex -space-x-2">
-                                                <div class="w-6 h-6 rounded-full ring-2 ring-white z-10" style="background-color: {preset.primary};"></div>
-                                                <div class="w-6 h-6 rounded-full ring-2 ring-white" style="background-color: {preset.secondary};"></div>
+                                                <div
+                                                    class="w-6 h-6 rounded-full ring-2 ring-white z-10"
+                                                    style="background-color: {preset.primary};"
+                                                ></div>
+                                                <div
+                                                    class="w-6 h-6 rounded-full ring-2 ring-white"
+                                                    style="background-color: {preset.secondary};"
+                                                ></div>
                                             </div>
                                             <div>
-                                                <p class="font-outfit font-bold text-slate-800 text-sm leading-tight">{preset.name}</p>
-                                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{preset.sub}</p>
+                                                <p
+                                                    class="font-outfit font-bold text-slate-800 text-sm leading-tight"
+                                                >
+                                                    {preset.name}
+                                                </p>
+                                                <p
+                                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5"
+                                                >
+                                                    {preset.sub}
+                                                </p>
                                             </div>
                                         </div>
-                                        <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset === preset.id ? 'text-white' : 'border-2 border-slate-200'}"
-                                            style={currentPreset === preset.id ? `background-color: ${preset.primary};` : ''}>
+                                        <div
+                                            class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset ===
+                                            preset.id
+                                                ? 'text-white'
+                                                : 'border-2 border-slate-200'}"
+                                            style={currentPreset === preset.id
+                                                ? `background-color: ${preset.primary};`
+                                                : ''}
+                                        >
                                             {#if currentPreset === preset.id}
-                                                <i class="ti ti-check text-xs"></i>
+                                                <i class="ti ti-check text-xs"
+                                                ></i>
                                             {/if}
                                         </div>
                                     </button>
@@ -1489,33 +1966,61 @@
                                 <button
                                     type="button"
                                     class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left mt-1
-                                    {currentPreset === 'custom' ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
-                                    style={currentPreset === 'custom' ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;` : ''}
+                                    {currentPreset === 'custom'
+                                        ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
+                                        : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                    style={currentPreset === 'custom'
+                                        ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;`
+                                        : ''}
                                     onclick={() => {
                                         forcedCustom = true;
                                     }}
                                 >
                                     <div class="flex items-center gap-4">
                                         <div class="flex -space-x-2">
-                                            <div class="w-6 h-6 rounded-full ring-2 ring-white z-10" style="background-color: {form.primary_color};"></div>
-                                            <div class="w-6 h-6 rounded-full ring-2 ring-white" style="background-color: {form.secondary_color};"></div>
+                                            <div
+                                                class="w-6 h-6 rounded-full ring-2 ring-white z-10"
+                                                style="background-color: {form.primary_color};"
+                                            ></div>
+                                            <div
+                                                class="w-6 h-6 rounded-full ring-2 ring-white"
+                                                style="background-color: {form.secondary_color};"
+                                            ></div>
                                         </div>
                                         <div>
-                                            <p class="font-outfit font-bold text-slate-800 text-sm leading-tight">Kustom Warna Sendiri</p>
-                                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">CUSTOM BRAND</p>
+                                            <p
+                                                class="font-outfit font-bold text-slate-800 text-sm leading-tight"
+                                            >
+                                                Kustom Warna Sendiri
+                                            </p>
+                                            <p
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5"
+                                            >
+                                                CUSTOM BRAND
+                                            </p>
                                         </div>
                                     </div>
-                                    <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset === 'custom' ? 'text-white' : 'border-2 border-slate-200'}"
-                                        style={currentPreset === 'custom' ? `background-color: ${form.primary_color};` : ''}>
+                                    <div
+                                        class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset ===
+                                        'custom'
+                                            ? 'text-white'
+                                            : 'border-2 border-slate-200'}"
+                                        style={currentPreset === 'custom'
+                                            ? `background-color: ${form.primary_color};`
+                                            : ''}
+                                    >
                                         {#if currentPreset === 'custom'}
                                             <i class="ti ti-check text-xs"></i>
                                         {/if}
                                     </div>
                                 </button>
                             </div>
-                            
+
                             {#if currentPreset === 'custom'}
-                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 mt-4" transition:slide>
+                                <div
+                                    class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 mt-4"
+                                    transition:slide
+                                >
                                     <ColorPicker
                                         id="primary_color"
                                         label="Primary Color"
@@ -1530,26 +2035,47 @@
                                     />
                                 </div>
                             {/if}
-                            
+
                             <div class="mt-6 border-t border-slate-100 pt-5">
-                                <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight mb-3 block">
+                                <h4
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight mb-3 block"
+                                >
                                     PILIH FONT WEBSITE
                                 </h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                >
                                     {#each fontOptions as font}
                                         <button
                                             type="button"
-                                            onclick={() => { form.store_font = font.id; }}
+                                            onclick={() => {
+                                                form.store_font = font.id;
+                                            }}
                                             class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer text-left
-                                            {form.store_font === font.id ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20' : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                            {form.store_font === font.id
+                                                ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
+                                                : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
                                         >
-                                            <span class="font-bold text-sm text-slate-800" style="font-family: '{font.id}', sans-serif;">
+                                            <span
+                                                class="font-bold text-sm text-slate-800"
+                                                style="font-family: '{font.id}', sans-serif;"
+                                            >
                                                 {font.name}
                                             </span>
-                                            <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {form.store_font === font.id ? 'text-white' : 'border-2 border-slate-200'}"
-                                                style={form.store_font === font.id ? `background-color: ${form.primary_color || '#0f766e'};` : ''}>
+                                            <div
+                                                class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {form.store_font ===
+                                                font.id
+                                                    ? 'text-white'
+                                                    : 'border-2 border-slate-200'}"
+                                                style={form.store_font ===
+                                                font.id
+                                                    ? `background-color: ${form.primary_color || '#0f766e'};`
+                                                    : ''}
+                                            >
                                                 {#if form.store_font === font.id}
-                                                    <i class="ti ti-check text-xs"></i>
+                                                    <i
+                                                        class="ti ti-check text-xs"
+                                                    ></i>
                                                 {/if}
                                             </div>
                                         </button>
@@ -1601,8 +2127,9 @@
                                     <div transition:slide>
                                         <p
                                             class="block text-xs font-bold text-slate-600 mb-2 mt-2"
-                                            >Nominal Pajak (%)</p
                                         >
+                                            Nominal Pajak (%)
+                                        </p>
                                         <div class="relative">
                                             <input
                                                 type="number"
@@ -1841,4 +2368,237 @@
             </div>
         </form>
     </main>
+
+    {#if isEditorOpen}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" transition:fade>
+            <!-- Backdrop -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick={() => isEditorOpen = false}></div>
+            
+            <!-- Modal Content -->
+            <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all scale-100" transition:slide>
+                <!-- Header -->
+                <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-outfit font-black text-slate-800 text-lg">
+                            Edit {editorTarget === 'logo' ? 'Logo' : 'Icon'} Toko
+                        </h3>
+                        <p class="text-xs text-slate-400 font-medium">
+                            Sesuaikan ukuran, rotasi, dan transparansi gambar sebelum diunggah
+                        </p>
+                    </div>
+                    <button type="button" class="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors" onclick={() => isEditorOpen = false}>
+                        <i class="ti ti-x text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Canvas Preview Area (Left) -->
+                    <div class="flex flex-col items-center justify-center bg-slate-50 rounded-2xl p-6 border border-slate-100 relative min-h-[300px]">
+                        <div class="checkerboard w-full h-full max-w-[320px] max-h-[320px] aspect-square rounded-xl shadow-inner border border-slate-200 overflow-hidden flex items-center justify-center relative">
+                            <canvas bind:this={editorCanvas} class="max-w-full max-h-full object-contain"></canvas>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-3 flex items-center gap-1">
+                            <i class="ti ti-info-circle"></i> Kotak kotak-kotak menandakan area transparan (tanpa background)
+                        </p>
+                    </div>
+
+                    <!-- Controls Area (Right) -->
+                    <div class="flex flex-col justify-between space-y-6">
+                        <div class="space-y-5">
+                            <!-- Custom Width & Height Inputs -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-700 block">Dimensi Output (Piksel)</label>
+                                <div class="flex items-center gap-3">
+                                    <!-- Width Input -->
+                                    <div class="flex-1 relative">
+                                        <input
+                                            type="number"
+                                            min="16"
+                                            max="4096"
+                                            value={editorWidth}
+                                            oninput={handleWidthInput}
+                                            class="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:outline-none focus:border-brand-teal transition bg-slate-50 focus:bg-white"
+                                        />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">W (px)</span>
+                                    </div>
+
+                                    <!-- Lock Aspect Ratio -->
+                                    <button
+                                        type="button"
+                                        onclick={() => lockAspectRatio = !lockAspectRatio}
+                                        class="p-2.5 rounded-xl border transition flex items-center justify-center {lockAspectRatio ? 'border-brand-teal bg-brand-teal/5 text-brand-teal' : 'border-slate-200 hover:border-slate-300 text-slate-400 bg-white'}"
+                                        title={lockAspectRatio ? 'Kunci Rasio Aktif' : 'Kunci Rasio Nonaktif'}
+                                    >
+                                        <i class={lockAspectRatio ? 'ti ti-lock text-base' : 'ti ti-lock-open text-base'}></i>
+                                    </button>
+
+                                    <!-- Height Input -->
+                                    <div class="flex-1 relative">
+                                        <input
+                                            type="number"
+                                            min="16"
+                                            max="4096"
+                                            value={editorHeight}
+                                            oninput={handleHeightInput}
+                                            class="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:outline-none focus:border-brand-teal transition bg-slate-50 focus:bg-white"
+                                        />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">H (px)</span>
+                                    </div>
+
+                                    <!-- Swap Button -->
+                                    <button
+                                        type="button"
+                                        onclick={swapDimensions}
+                                        class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-500 bg-white hover:bg-slate-50 transition flex items-center justify-center"
+                                        title="Tukar Lebar & Tinggi"
+                                    >
+                                        <i class="ti ti-arrows-left-right text-base"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Preset sizes -->
+                                <div class="flex flex-wrap gap-1.5 mt-1">
+                                    <button
+                                        type="button"
+                                        onclick={() => setPresetDimensions(512, 512)}
+                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                    >
+                                        512x512
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => setPresetDimensions(1024, 576)}
+                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                    >
+                                        1024x576 (16:9)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => setPresetDimensions(128, 128)}
+                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                    >
+                                        128x128
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => {
+                                            if (editorLoadedImage) {
+                                                setPresetDimensions(editorLoadedImage.naturalWidth, editorLoadedImage.naturalHeight);
+                                            }
+                                        }}
+                                        class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
+                                    >
+                                        Asli
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Resize / Scale Slider -->
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <label class="text-xs font-bold text-slate-700">Skala / Zoom (Ukuran)</label>
+                                    <span class="text-xs font-bold text-slate-500">{Math.round(editorScale * 100)}%</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition" onclick={() => editorScale = Math.max(0.2, +(editorScale - 0.1).toFixed(1))}>
+                                        <i class="ti ti-minus"></i>
+                                    </button>
+                                    <input type="range" min="0.2" max="3" step="0.1" bind:value={editorScale} class="flex-grow accent-brand-teal h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer" />
+                                    <button type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition" onclick={() => editorScale = Math.min(3, +(editorScale + 0.1).toFixed(1))}>
+                                        <i class="ti ti-plus"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Fit / Fill Helper Buttons -->
+                                <div class="flex gap-2 pt-1">
+                                    <button
+                                        type="button"
+                                        onclick={fitImage}
+                                        class="flex-1 py-1.5 px-3 text-[10px] font-bold rounded-xl border border-slate-100 hover:border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 transition text-center"
+                                    >
+                                        Pas ke Canvas (Fit)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={fillImage}
+                                        class="flex-1 py-1.5 px-3 text-[10px] font-bold rounded-xl border border-slate-100 hover:border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 transition text-center"
+                                    >
+                                        Penuhi Canvas (Fill)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => editorScale = 1.0}
+                                        class="py-1.5 px-3 text-[10px] font-bold rounded-xl border border-slate-100 hover:border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 transition text-center"
+                                    >
+                                        100%
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Rotation Controls -->
+                            <div class="space-y-2">
+                                <label class="text-xs font-bold text-slate-700 block">Putar Gambar (Rotasi)</label>
+                                <div class="grid grid-cols-4 gap-2">
+                                    {#each [0, 90, 180, 270] as deg}
+                                        <button type="button" class="py-2 px-3 text-xs font-bold rounded-xl border transition-all text-center {editorRotation === deg ? 'border-brand-teal bg-brand-teal/5 text-brand-teal' : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'}" onclick={() => editorRotation = deg}>
+                                            {deg}°
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+
+                            <!-- Background Removal Controls -->
+                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-700 block">Hapus Background Putih</span>
+                                        <p class="text-[10px] text-slate-400 mt-0.5 font-medium">Membuat latar belakang putih/terang menjadi transparan</p>
+                                    </div>
+                                    <Toggle bind:checked={editorRemoveBg} />
+                                </div>
+
+                                {#if editorRemoveBg}
+                                    <div class="space-y-2 pt-2" transition:slide>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] font-bold text-slate-600">Sensitivitas Warna</span>
+                                            <span class="text-[10px] font-bold text-slate-500">{editorTolerance}</span>
+                                        </div>
+                                        <input type="range" min="5" max="150" step="5" bind:value={editorTolerance} class="w-full accent-brand-teal h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
+                                        <p class="text-[9px] text-amber-600 font-bold leading-normal">
+                                            *Naikkan jika background putih tidak terhapus sempurna. Turunkan jika bagian logo ikut terhapus.
+                                        </p>
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+
+                        <!-- Footer Buttons -->
+                        <div class="flex items-center gap-3 pt-4 border-t border-slate-100">
+                            <button type="button" class="flex-1 py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition text-center uppercase tracking-wider" onclick={() => isEditorOpen = false}>
+                                Batal
+                            </button>
+                            <button type="button" class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0" style="background-color: {primaryColor}; shadow-color: {primaryColor}33" onclick={applyEdits}>
+                                Terapkan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
 </AdminLayout>
+
+<style>
+    .checkerboard {
+        background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+                          linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+                          linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+                          linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        background-color: #ffffff;
+    }
+</style>

@@ -315,7 +315,7 @@
                 <p
                     class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
                 >
-                    Organisasikan Kategori & Taksonomi Produk Furniture Anda
+                    Organisasikan Kategori & Taksonomi Produk Anda
                 </p>
             </div>
         </div>

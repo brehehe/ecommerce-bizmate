@@ -16,6 +16,8 @@
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
 
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+
     // svelte-ignore state_referenced_locally
     let messages = $state<any[]>(initialMessages);
     let replyInput = $state('');
@@ -223,7 +225,7 @@
 </script>
 
 <svelte:head>
-    <title>Chat dengan {chat.user.name} - bizmate</title>
+    <title>Chat dengan {chat.user.name} - {storeName}</title>
 </svelte:head>
 
 <AdminLayout>

@@ -1,7 +1,10 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { useForm, Link } from '@inertiajs/svelte';
+    import { useForm, Link, usePage } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
+
+    const page = usePage();
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
     import Input from '@/components/ui/Input.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
     import Select from '@/components/ui/Select.svelte';
@@ -1449,7 +1452,7 @@
                                     Semua Produk Toko
                                 </h4>
                                 <p class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
-                                    Kupon ini otomatis berlaku untuk seluruh daftar katalog furniture di bizmate.
+                                    Kupon ini otomatis berlaku untuk seluruh daftar katalog di {storeName.toLowerCase()}.
                                 </p>
                             </div>
                         </div>
@@ -1473,7 +1476,7 @@
                                     Produk Pilihan Spesifik
                                 </h4>
                                 <p class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
-                                    Tentukan dan pilih secara manual produk furniture apa saja yang layak menggunakan promo ini.
+                                    Tentukan dan pilih secara manual produk apa saja yang layak menggunakan promo ini.
                                 </p>
                             </div>
                         </div>
@@ -1708,7 +1711,7 @@
                         Pilih Produk Target
                     </h3>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                        PILIH PRODUK FURNITURE YANG AKAN DIKENAKAN PROMOSI
+                        PILIH PRODUK YANG AKAN DIKENAKAN PROMOSI
                     </p>
                 </div>
 

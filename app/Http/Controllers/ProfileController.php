@@ -8,6 +8,7 @@ use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,30 +38,64 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'current_password' => 'nullable|required_with:password|current_password',
-            'password' => 'nullable|string|min:8|confirmed',
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'phone_number' => 'nullable|string|max:20',
+            'gender' => 'nullable|in:Laki-laki,Perempuan',
+            'birth_date' => 'nullable|date',
+            'avatar' => 'nullable|image|max:2048', // max 2MB
+            'current_password' => 'required|current_password',
         ], [
             'name.required' => 'Nama wajib diisi.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
-            'current_password.required_with' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
+            'avatar.image' => 'File harus berupa gambar.',
+            'avatar.max' => 'Ukuran gambar maksimal 2MB.',
+            'current_password.required' => 'Kata sandi saat ini wajib diisi untuk menyimpan perubahan.',
             'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
-            'password.min' => 'Kata sandi minimal harus 8 karakter.',
-            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $path;
+        }
 
         $user->name = $request->input('name');
         $user->email = $request->input('email');
-
-        if ($request->filled('password')) {
-            $user->password = Hash::make($request->input('password'));
-        }
+        $user->phone_number = $request->input('phone_number');
+        $user->gender = $request->input('gender');
+        $user->birth_date = $request->input('birth_date');
 
         $user->save();
 
         return redirect()->back()->with('success', 'Profil Anda berhasil diperbarui!');
+    }
+
+    /**
+     * Update the customer's password.
+     */
+    public function updateCustomerPassword(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'current_password' => 'required|current_password',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'current_password.required' => 'Kata sandi saat ini wajib diisi.',
+            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
+            'password.required' => 'Kata sandi baru wajib diisi.',
+            'password.min' => 'Kata sandi minimal harus 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+        ]);
+
+        $user->password = Hash::make($request->input('password'));
+        $user->save();
+
+        return redirect()->back()->with('success', 'Kata sandi berhasil diperbarui!');
     }
 
     /**
@@ -82,7 +117,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'current_password' => 'nullable|required_with:password|current_password',
             'password' => 'nullable|string|min:8|confirmed',
         ], [
@@ -250,9 +285,9 @@ class ProfileController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'ilike', '%' . $search . '%')
+                $q->where('description', 'ilike', '%'.$search.'%')
                     ->orWhereHas('transaction', function ($t) use ($search) {
-                        $t->where('transaction_number', 'ilike', '%' . $search . '%');
+                        $t->where('transaction_number', 'ilike', '%'.$search.'%');
                     });
             });
         }

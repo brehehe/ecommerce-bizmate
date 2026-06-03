@@ -226,7 +226,7 @@ class TransactionController extends Controller
             }
         });
 
-        return back()->with('success', count($ids) . ' transaksi berhasil diperbarui.');
+        return back()->with('success', count($ids).' transaksi berhasil diperbarui.');
     }
 
     /**
@@ -257,7 +257,7 @@ class TransactionController extends Controller
             }
         });
 
-        return back()->with('success', 'Nomor resi untuk ' . count($request->tracking_data) . ' transaksi berhasil disimpan.');
+        return back()->with('success', 'Nomor resi untuk '.count($request->tracking_data).' transaksi berhasil disimpan.');
     }
 
     /**
@@ -368,7 +368,7 @@ class TransactionController extends Controller
                     'quantity' => $item->quantity,
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
-                    'notes' => 'Pembatalan transaksi - ' . $transaction->transaction_number,
+                    'notes' => 'Pembatalan transaksi - '.$transaction->transaction_number,
                     'created_by' => $adminUser->id,
                 ]);
             }

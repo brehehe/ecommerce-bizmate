@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\ReturnRequest;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -15,7 +16,7 @@ class ReturnSubmitted extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public function __construct(
-        public readonly \App\Models\ReturnRequest $returnRequest,
+        public readonly ReturnRequest $returnRequest,
         public readonly string $storeName,
         public readonly ?string $storeLogo = null,
     ) {}

@@ -64,6 +64,8 @@ class HandleInertiaRequests extends Middleware
         $coinMaxRedeemPerTxn = 50000;
         $coinMaxRedeemPercentage = 100;
         $coinTermsConditions = '';
+        $storeLogo = null;
+        $storeIcon = null;
 
         $holidayMode = false;
         $alwaysOpen = true;
@@ -84,6 +86,7 @@ class HandleInertiaRequests extends Middleware
                 $taxPercentage = Setting::where('key', 'tax_percentage')->value('value') ?? 0;
                 $storeName = Setting::where('key', 'store_name')->value('value') ?? $storeName;
                 $storeLogo = Setting::where('key', 'store_logo')->value('value');
+                $storeIcon = Setting::where('key', 'store_icon')->value('value');
                 $setupTourCompleted = Setting::where('key', 'setup_tour_completed')->value('value') === '1';
                 $cartButtonStyle = Setting::where('key', 'storefront_cart_button_style')->value('value') ?? 'button';
 
@@ -156,6 +159,7 @@ class HandleInertiaRequests extends Middleware
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,
                 'store_logo' => $storeLogo,
+                'store_icon' => $storeIcon,
                 'setup_tour_completed' => $setupTourCompleted,
                 'storefront_cart_button_style' => $cartButtonStyle,
 

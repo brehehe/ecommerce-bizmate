@@ -10,6 +10,8 @@
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
 
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+
     let searchQuery = $state('');
     let pollInterval: any = null;
 
@@ -41,7 +43,7 @@
 </script>
 
 <svelte:head>
-    <title>Pusat Chat Admin - bizmate</title>
+    <title>Pusat Chat Admin - {storeName}</title>
 </svelte:head>
 
 <AdminLayout>

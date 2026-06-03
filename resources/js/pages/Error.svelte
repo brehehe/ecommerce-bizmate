@@ -174,7 +174,7 @@
 
     <!-- Elegant Footer branding -->
     <div class="absolute bottom-6 left-6 right-6 text-center text-[10px] font-black text-slate-400 tracking-widest uppercase">
-        &copy; {new Date().getFullYear()} {page.props.storeName || 'Bizmate Premium Store'} &bull; Semua Hak Dilindungi
+        &copy; {new Date().getFullYear()} {(page.props as any).settings?.store_name || (page.props as any).storeName || 'Bizmate Premium Store'} &bull; Semua Hak Dilindungi
     </div>
 </div>
 

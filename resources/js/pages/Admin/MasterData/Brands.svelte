@@ -177,7 +177,7 @@
                         Master Brand Produk
                     </h3>
                     <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                        Atur Daftar Merek (Brand) Katalog Furniture Toko
+                        Atur Daftar Merek (Brand) Katalog Toko
                     </p>
                 </div>
                 <button

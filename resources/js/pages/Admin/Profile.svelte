@@ -10,6 +10,9 @@
     );
     const user = $derived(page.props.auth?.user);
 
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+    const fallbackEmail = $derived('admin@' + storeName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.id');
+
     const form = useForm({
         // svelte-ignore state_referenced_locally
         name: user?.name || '',
@@ -189,7 +192,7 @@
                             {user?.name || 'Administrator'}
                         </h2>
                         <p class="text-xs text-slate-500 font-medium">
-                            {user?.email || 'admin@bizmate.id'}
+                            {user?.email || fallbackEmail}
                         </p>
                     </div>
 

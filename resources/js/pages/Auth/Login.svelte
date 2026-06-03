@@ -9,6 +9,10 @@
         (page.props as any).theme?.secondary_color || '#fa7315',
     );
 
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+    const storeIcon = $derived((page.props as any).settings?.store_icon || null);
+    const storeLogo = $derived((page.props as any).settings?.store_logo || null);
+
     const form = useForm({
         email: '',
         password: '',
@@ -38,7 +42,7 @@
 </script>
 
 <svelte:head>
-    <title>Login - Bizmate</title>
+    <title>Login - {storeName}</title>
 </svelte:head>
 
 <div
@@ -68,11 +72,19 @@
         <div
             class="relative z-10 px-8 flex flex-col justify-center max-w-lg text-white"
         >
-            <div
-                class="w-16 h-16 rounded-3xl shadow-2xl flex items-center justify-center text-white text-3xl mb-8 backdrop-blur-md bg-white/20 border border-white/30 transition-transform hover:scale-105"
-            >
-                <i class="ti ti-sofa"></i>
-            </div>
+            {#if storeLogo}
+                <img
+                    src={storeLogo}
+                    alt="Store Icon"
+                    class="w-16 h-16 object-contain mb-8 rounded-3xl shadow-2xl transition-transform hover:scale-105 bg-white/10 backdrop-blur-md border border-white/20 p-2"
+                />
+            {:else}
+                <div
+                    class="w-16 h-16 rounded-3xl shadow-2xl flex items-center justify-center text-white text-3xl mb-8 backdrop-blur-md bg-white/20 border border-white/30 transition-transform hover:scale-105"
+                >
+                    <i class="ti ti-sofa"></i>
+                </div>
+            {/if}
 
             <h1
                 class="text-4xl font-outfit font-black mb-6 leading-tight tracking-tight"
@@ -80,7 +92,7 @@
                 Kelola bisnis Anda dengan lebih mudah.
             </h1>
             <p class="text-base text-slate-200 font-medium leading-relaxed mb-10">
-                Bizmate memberikan Anda kendali penuh atas toko online,
+                {storeName} memberikan Anda kendali penuh atas toko online,
                 manajemen inventaris, laporan keuangan, dan pelanggan—semuanya
                 dalam satu dashboard elegan yang terpusat.
             </p>
@@ -143,16 +155,20 @@
 
             <!-- Logo (Hanya muncul di Mobile) -->
             <div class="flex lg:hidden items-center gap-3 mb-10">
-                <div
-                    class="w-12 h-12 rounded-2xl shadow-md flex items-center justify-center text-white text-2xl"
-                    style="background: linear-gradient(to bottom right, {primaryColor}, {secondaryColor});"
-                >
-                    <i class="ti ti-sofa"></i>
-                </div>
+                {#if storeIcon}
+                    <img src={storeIcon} alt="Store Icon" class="w-12 h-12 object-contain" />
+                {:else}
+                    <div
+                        class="w-12 h-12 rounded-2xl shadow-md flex items-center justify-center text-white text-2xl"
+                        style="background: linear-gradient(to bottom right, {primaryColor}, {secondaryColor});"
+                    >
+                        <i class="ti ti-sofa"></i>
+                    </div>
+                {/if}
                 <div class="flex flex-col">
                     <span
                         class="font-outfit font-black text-2xl text-slate-800 tracking-tight leading-none"
-                        >bizmate</span
+                        >{storeName}</span
                     >
                     <span
                         class="font-sans font-bold text-[10px] text-slate-400 tracking-widest mt-1 uppercase"
@@ -213,7 +229,7 @@
                             required
                             class="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition-all bg-slate-50 focus:bg-white hover:border-slate-300"
                             style="--tw-ring-color: {primaryColor}30; focus-border-color: {primaryColor};"
-                            placeholder="admin@bizmate.com"
+                            placeholder="admin@email.com"
                         />
                     </div>
                 </div>

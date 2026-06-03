@@ -814,12 +814,12 @@ class CategoryAndProductSeeder extends Seeder
 
             // 2. Create Products for each Category
             foreach ($catData['products'] as $prodData) {
-                $sku = 'SKU-' . strtoupper(Str::random(3)) . '-' . rand(1000, 9999);
+                $sku = 'SKU-'.strtoupper(Str::random(3)).'-'.rand(1000, 9999);
                 $brandModel = $brandModels[$prodData['brand']] ?? null;
 
                 $product = Product::create([
                     'name' => $prodData['name'],
-                    'slug' => Str::slug($prodData['name']) . '-' . Str::random(5),
+                    'slug' => Str::slug($prodData['name']).'-'.Str::random(5),
                     'sku' => $sku,
                     'category_id' => $category->id,
                     'brand_id' => $brandModel?->id,
@@ -894,14 +894,14 @@ class CategoryAndProductSeeder extends Seeder
                                 'image' => $optData['image'] ?? null,
                             ]);
 
-                            $optionMap[$vData['name'] . ':' . $optData['name']] = $option;
+                            $optionMap[$vData['name'].':'.$optData['name']] = $option;
                         }
                     }
 
                     // 8. Seed Variants combinations if defined
                     if (isset($prodData['variants']) && is_array($prodData['variants'])) {
                         foreach ($prodData['variants'] as $variantData) {
-                            $variantSku = $product->sku . '-' . strtoupper(implode('-', array_map(function ($c) {
+                            $variantSku = $product->sku.'-'.strtoupper(implode('-', array_map(function ($c) {
                                 return substr(Str::slug($c), 0, 3);
                             }, $variantData['combination'])));
 
@@ -910,7 +910,7 @@ class CategoryAndProductSeeder extends Seeder
 
                             foreach ($variantData['combination'] as $combOptName) {
                                 foreach ($optionMap as $key => $optionModel) {
-                                    if (str_ends_with($key, ':' . $combOptName)) {
+                                    if (str_ends_with($key, ':'.$combOptName)) {
                                         $attachedOptionIds[] = $optionModel->id;
                                         if ($optionModel->image && ! $variantImage) {
                                             $variantImage = $optionModel->image;

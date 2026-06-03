@@ -1,6 +1,6 @@
 <script>
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { useForm, Link, page } from '@inertiajs/svelte';
+    import { useForm, Link, page, router } from '@inertiajs/svelte';
     import {
         update as adminProductsUpdate,
         index as adminProductsIndex,
@@ -87,6 +87,105 @@
             ? product.images.map((img) => formatImagePath(img.path))
             : [],
     );
+
+    // Quick Add Category/Brand Modals
+    let showQuickAddCategoryModal = $state(false);
+    let quickCategoryName = $state('');
+    let quickCategorySlug = $state('');
+    let quickCategoryParentId = $state('');
+    let isSubmittingCategory = $state(false);
+
+    let showQuickAddBrandModal = $state(false);
+    let quickBrandName = $state('');
+    let isSubmittingBrand = $state(false);
+
+    $effect(() => {
+        if (showQuickAddCategoryModal) {
+            quickCategorySlug = quickCategoryName
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+    });
+
+    function closeQuickAddCategory() {
+        showQuickAddCategoryModal = false;
+        quickCategoryName = '';
+        quickCategorySlug = '';
+        quickCategoryParentId = '';
+    }
+
+    function closeQuickAddBrand() {
+        showQuickAddBrandModal = false;
+        quickBrandName = '';
+    }
+
+    function handleQuickAddCategory(e) {
+        e.preventDefault();
+        if (isSubmittingCategory) return;
+        isSubmittingCategory = true;
+
+        router.post('/admin/categories', {
+            name: quickCategoryName,
+            slug: quickCategorySlug,
+            media_type: 'icon',
+            icon: 'ti-tag',
+            parent_id: quickCategoryParentId || null
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: (pageRes) => {
+                isSubmittingCategory = false;
+                const updatedCategories = pageRes.props.categories || [];
+                const newCat = updatedCategories.find(c => c.name.toLowerCase() === quickCategoryName.toLowerCase() || c.slug === quickCategorySlug);
+                if (newCat) {
+                    if (!form.category_ids.includes(newCat.id)) {
+                        form.category_ids = [...form.category_ids, newCat.id];
+                    }
+                }
+                closeQuickAddCategory();
+            },
+            onError: (errs) => {
+                isSubmittingCategory = false;
+                const firstError = Object.values(errs)[0];
+                if (firstError) {
+                    alert(firstError);
+                }
+            }
+        });
+    }
+
+    function handleQuickAddBrand(e) {
+        e.preventDefault();
+        if (isSubmittingBrand) return;
+        isSubmittingBrand = true;
+
+        router.post('/admin/master-data/brands', {
+            name: quickBrandName,
+            is_active: true
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: (pageRes) => {
+                isSubmittingBrand = false;
+                const updatedBrands = pageRes.props.brands || [];
+                const newBrand = updatedBrands.find(b => b.name.toLowerCase() === quickBrandName.toLowerCase());
+                if (newBrand) {
+                    if (!form.brand_ids.includes(newBrand.id)) {
+                        form.brand_ids = [...form.brand_ids, newBrand.id];
+                    }
+                }
+                closeQuickAddBrand();
+            },
+            onError: (errs) => {
+                isSubmittingBrand = false;
+                const firstError = Object.values(errs)[0];
+                if (firstError) {
+                    alert(firstError);
+                }
+            }
+        });
+    }
     let enableVariants = $state(
         !!(p.variations && p.variations.length > 0),
     );
@@ -2735,19 +2834,49 @@
                         />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <SelectSearchMultiple
-                            bind:value={form.category_ids}
-                            options={categoryOptions}
-                            label="Kategori Produk"
-                            required={true}
-                            error={form.errors.category_ids}
-                        />
-                        <SelectSearchMultiple
-                            bind:value={form.brand_ids}
-                            options={brandOptions}
-                            label="Merek (Brand)"
-                            error={form.errors.brand_ids}
-                        />
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-slate-600 block">
+                                    Kategori Produk <span class="text-rose-500">*</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    onclick={() => showQuickAddCategoryModal = true}
+                                    class="text-xs text-brand-blueRoyal hover:text-brand-blueRoyal/85 font-black flex items-center gap-1 transition cursor-pointer"
+                                >
+                                    <i class="ti ti-plus"></i> Tambah Kategori
+                                </button>
+                            </div>
+                            <SelectSearchMultiple
+                                bind:value={form.category_ids}
+                                options={categoryOptions}
+                                label=""
+                                placeholder="Pilih Kategori Produk"
+                                error={form.errors.category_ids}
+                            />
+                        </div>
+
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-slate-600 block">
+                                    Merek (Brand)
+                                </label>
+                                <button
+                                    type="button"
+                                    onclick={() => showQuickAddBrandModal = true}
+                                    class="text-xs text-brand-blueRoyal hover:text-brand-blueRoyal/85 font-black flex items-center gap-1 transition cursor-pointer"
+                                >
+                                    <i class="ti ti-plus"></i> Tambah Merek
+                                </button>
+                            </div>
+                            <SelectSearchMultiple
+                                bind:value={form.brand_ids}
+                                options={brandOptions}
+                                label=""
+                                placeholder="Pilih Merek (Brand)"
+                                error={form.errors.brand_ids}
+                            />
+                        </div>
                     </div>
                     <div class="space-y-4">
                         <Input
@@ -4878,6 +5007,108 @@
                         </button>
                     {/if}
                 </div>
+            </div>
+        </div>
+    {/if}
+
+    {#if showQuickAddCategoryModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true">
+            <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl max-w-md w-full animate-in zoom-in-95 duration-200">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-outfit font-black text-slate-800 text-lg">Tambah Kategori Baru</h3>
+                    <button type="button" aria-label="Tutup" onclick={closeQuickAddCategory} class="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                        <i class="ti ti-x text-sm"></i>
+                    </button>
+                </div>
+                
+                <!-- Form -->
+                <form onsubmit={handleQuickAddCategory} class="space-y-4">
+                    <Input
+                        bind:value={quickCategoryName}
+                        id="quick_category_name"
+                        label="Nama Kategori"
+                        placeholder="Cth: Sepatu Pria"
+                        required={true}
+                    />
+                    
+                    <Input
+                        bind:value={quickCategorySlug}
+                        id="quick_category_slug"
+                        label="Slug Kategori"
+                        placeholder="cth: sepatu-pria"
+                        required={true}
+                    />
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-600 block" for="quick_category_parent">
+                            Kategori Induk
+                        </label>
+                        <select
+                            bind:value={quickCategoryParentId}
+                            id="quick_category_parent"
+                            class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm transition bg-white focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal/20"
+                        >
+                            <option value="">Tidak Ada (Kategori Utama)</option>
+                            {#each categoryOptions as opt}
+                                <option value={opt.id}>{opt.name}</option>
+                            {/each}
+                        </select>
+                    </div>
+                    
+                    <!-- Footer Buttons -->
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button type="button" onclick={closeQuickAddCategory} class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition">
+                            Batal
+                        </button>
+                        <button type="submit" disabled={isSubmittingCategory} class="px-4 py-2 bg-brand-blueRoyal hover:bg-brand-blueRoyal/95 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                            {#if isSubmittingCategory}
+                                <i class="ti ti-loader animate-spin text-sm"></i> Menyimpan...
+                            {:else}
+                                Simpan Kategori
+                            {/if}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {/if}
+
+    {#if showQuickAddBrandModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true">
+            <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl max-w-md w-full animate-in zoom-in-95 duration-200">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-outfit font-black text-slate-800 text-lg">Tambah Merek Baru</h3>
+                    <button type="button" aria-label="Tutup" onclick={closeQuickAddBrand} class="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                        <i class="ti ti-x text-sm"></i>
+                    </button>
+                </div>
+                
+                <!-- Form -->
+                <form onsubmit={handleQuickAddBrand} class="space-y-4">
+                    <Input
+                        bind:value={quickBrandName}
+                        id="quick_brand_name"
+                        label="Nama Merek"
+                        placeholder="Cth: Nike"
+                        required={true}
+                    />
+                    
+                    <!-- Footer Buttons -->
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                        <button type="button" onclick={closeQuickAddBrand} class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition">
+                            Batal
+                        </button>
+                        <button type="submit" disabled={isSubmittingBrand} class="px-4 py-2 bg-brand-blueRoyal hover:bg-brand-blueRoyal/95 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                            {#if isSubmittingBrand}
+                                <i class="ti ti-loader animate-spin text-sm"></i> Menyimpan...
+                            {:else}
+                                Simpan Merek
+                            {/if}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     {/if}

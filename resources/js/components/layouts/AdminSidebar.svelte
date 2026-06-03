@@ -34,6 +34,10 @@
         page.props.theme?.secondary_color || '#fa7315',
     );
 
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+    const storeIcon = $derived((page.props as any).settings?.store_icon || null);
+    const fallbackEmail = $derived('superadmin@' + storeName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.id');
+
     $effect(() => {
         if (isTourActive) {
             isCatalogOpen = true;
@@ -70,16 +74,20 @@
         class="h-20 flex flex-col justify-center px-6 border-b border-slate-100 shrink-0"
     >
         <div class="flex items-center gap-3">
-            <div
-                class="w-10 h-10 rounded-xl shadow-md flex items-center justify-center text-white text-xl"
-                style="background: linear-gradient(to bottom right, {primaryColor}, {secondaryColor});"
-            >
-                <i class="ti ti-sofa"></i>
-            </div>
+            {#if storeIcon}
+                <img src={storeIcon} alt="Store Icon" class="w-10 h-10 object-contain" />
+            {:else}
+                <div
+                    class="w-10 h-10 rounded-xl shadow-md flex items-center justify-center text-white text-xl"
+                    style="background: linear-gradient(to bottom right, {primaryColor}, {secondaryColor});"
+                >
+                    <i class="ti ti-sofa"></i>
+                </div>
+            {/if}
             <div class="flex flex-col">
                 <span
                     class="font-outfit font-black text-xl text-slate-800 tracking-tight leading-none"
-                    >bizmate</span
+                    >{storeName}</span
                 >
                 <span
                     class="font-sans font-bold text-[10px] text-slate-400 tracking-widest mt-1"
@@ -1005,7 +1013,7 @@
                     {user ? user.name : 'Admin Utama'}
                 </p>
                 <p class="text-[10px] text-slate-500 truncate mt-0.5">
-                    {user ? user.email : 'superadmin@bizmate.id'}
+                    {user ? user.email : fallbackEmail}
                 </p>
             </div>
             <i

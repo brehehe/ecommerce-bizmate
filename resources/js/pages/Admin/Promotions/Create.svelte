@@ -1,7 +1,12 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { useForm, Link } from '@inertiajs/svelte';
+    import { useForm, Link, usePage } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
+
+    const page = usePage();
+    const storeName = $derived(
+        (page.props as any).settings?.store_name || 'Bizmate',
+    );
     import Input from '@/components/ui/Input.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
     import Select from '@/components/ui/Select.svelte';
@@ -53,23 +58,33 @@
     function addBuyItem() {
         form.settings.bundle.buy_items = [
             ...form.settings.bundle.buy_items,
-            { product_id: '', product_variant_id: '', qty: 1 }
+            { product_id: '', product_variant_id: '', qty: 1 },
         ];
     }
 
     function removeBuyItem(index: number) {
-        form.settings.bundle.buy_items = form.settings.bundle.buy_items.filter((_, i) => i !== index);
+        form.settings.bundle.buy_items = form.settings.bundle.buy_items.filter(
+            (_, i) => i !== index,
+        );
     }
 
     function addGetItem() {
         form.settings.bundle.get_items = [
             ...form.settings.bundle.get_items,
-            { product_id: '', product_variant_id: '', qty: 1, discount_type: 'free', discount_value: 0 }
+            {
+                product_id: '',
+                product_variant_id: '',
+                qty: 1,
+                discount_type: 'free',
+                discount_value: 0,
+            },
         ];
     }
 
     function removeGetItem(index: number) {
-        form.settings.bundle.get_items = form.settings.bundle.get_items.filter((_, i) => i !== index);
+        form.settings.bundle.get_items = form.settings.bundle.get_items.filter(
+            (_, i) => i !== index,
+        );
     }
 
     const form = useForm({
@@ -91,12 +106,16 @@
             min_qty: 1,
             can_stack_with_promos: true,
             bundle: {
-                buy_items: [
-                    { product_id: '', product_variant_id: '', qty: 1 }
-                ],
+                buy_items: [{ product_id: '', product_variant_id: '', qty: 1 }],
                 get_items: [
-                    { product_id: '', product_variant_id: '', qty: 1, discount_type: 'free', discount_value: 0 }
-                ]
+                    {
+                        product_id: '',
+                        product_variant_id: '',
+                        qty: 1,
+                        discount_type: 'free',
+                        discount_value: 0,
+                    },
+                ],
             },
         },
         items: [] as Array<{
@@ -161,17 +180,20 @@
 
     let filteredSelectableItems = $derived.by(() => {
         const query = modalSearch.toLowerCase().trim();
-        return selectableItems.filter(
-            (item) => {
-                const matchSearch = !query || item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query);
-                const matchCategory = modalCategoryFilter === 'all' || item.category_name === modalCategoryFilter;
-                return matchSearch && matchCategory;
-            }
-        );
+        return selectableItems.filter((item) => {
+            const matchSearch =
+                !query ||
+                item.name.toLowerCase().includes(query) ||
+                item.sku.toLowerCase().includes(query);
+            const matchCategory =
+                modalCategoryFilter === 'all' ||
+                item.category_name === modalCategoryFilter;
+            return matchSearch && matchCategory;
+        });
     });
 
     let uniqueCategories = $derived.by(() => {
-        const categories = selectableItems.map(item => item.category_name);
+        const categories = selectableItems.map((item) => item.category_name);
         return [...new Set(categories)];
     });
 
@@ -283,9 +305,6 @@
         showToast('Pengaturan massal berhasil diterapkan.', 'success');
     }
 
-
-
-
     $effect(() => {
         // Reset code if not voucher or promo_toko type
         if (
@@ -319,8 +338,6 @@
             }
         }
     });
-
-
 
     function addProductToTargets() {
         if (!selectedProductId) return;
@@ -417,32 +434,36 @@
         let totalGetNormal = 0;
         let totalDiscount = 0;
 
-        form.settings.bundle.buy_items.forEach(item => {
+        form.settings.bundle.buy_items.forEach((item) => {
             if (!item.product_id) return;
-            const prod = products.find(p => p.id == item.product_id);
+            const prod = products.find((p) => p.id == item.product_id);
             if (!prod) return;
-            
+
             let price = prod.price;
             if (item.product_variant_id && prod.variants) {
-                const vari = prod.variants.find(v => v.id == item.product_variant_id);
+                const vari = prod.variants.find(
+                    (v) => v.id == item.product_variant_id,
+                );
                 if (vari) price = vari.price;
             }
-            
+
             const qty = Number(item.qty) || 0;
             totalBuyNormal += price * qty;
         });
 
-        form.settings.bundle.get_items.forEach(item => {
+        form.settings.bundle.get_items.forEach((item) => {
             if (!item.product_id) return;
-            const prod = products.find(p => p.id == item.product_id);
+            const prod = products.find((p) => p.id == item.product_id);
             if (!prod) return;
-            
+
             let price = prod.price;
             if (item.product_variant_id && prod.variants) {
-                const vari = prod.variants.find(v => v.id == item.product_variant_id);
+                const vari = prod.variants.find(
+                    (v) => v.id == item.product_variant_id,
+                );
                 if (vari) price = vari.price;
             }
-            
+
             const qty = Number(item.qty) || 0;
             const normalVal = price * qty;
             totalGetNormal += normalVal;
@@ -466,7 +487,7 @@
             totalGetNormal,
             totalNormal,
             totalDiscount,
-            totalToPay
+            totalToPay,
         };
     });
 
@@ -474,8 +495,6 @@
         if (targetScope === 'all') {
             form.items = [];
         }
-
-
 
         form.post(adminPromotionsStore.url(), {
             onSuccess: () => {
@@ -517,28 +536,48 @@
 
         // 1. Min Purchase
         if (form.min_purchase && Number(form.min_purchase) > 0) {
-            rules.push(`Minimal pembelian Rp ${Number(form.min_purchase).toLocaleString('id-ID')}.`);
+            rules.push(
+                `Minimal pembelian Rp ${Number(form.min_purchase).toLocaleString('id-ID')}.`,
+            );
         }
 
         // 2. Promotion Type specific conditions
-        if (form.type === 'promo_produk' && form.settings.min_qty && Number(form.settings.min_qty) > 0) {
-            rules.push(`Minimal pembelian ${form.settings.min_qty} qty untuk mendapatkan potongan.`);
+        if (
+            form.type === 'promo_produk' &&
+            form.settings.min_qty &&
+            Number(form.settings.min_qty) > 0
+        ) {
+            rules.push(
+                `Minimal pembelian ${form.settings.min_qty} qty untuk mendapatkan potongan.`,
+            );
         }
 
         if (form.type === 'voucher_gratis_ongkir') {
             if (form.discount_value && Number(form.discount_value) > 0) {
-                rules.push(`Maksimal potongan ongkir sebesar Rp ${Number(form.discount_value).toLocaleString('id-ID')}.`);
+                rules.push(
+                    `Maksimal potongan ongkir sebesar Rp ${Number(form.discount_value).toLocaleString('id-ID')}.`,
+                );
             } else {
                 rules.push(`Potongan ongkir gratis 100%.`);
             }
-        } else if (form.type !== 'bundling_gift' && form.discount_value && Number(form.discount_value) > 0) {
+        } else if (
+            form.type !== 'bundling_gift' &&
+            form.discount_value &&
+            Number(form.discount_value) > 0
+        ) {
             if (form.discount_type === 'percentage') {
-                rules.push(`Mendapatkan diskon sebesar ${form.discount_value}%.`);
+                rules.push(
+                    `Mendapatkan diskon sebesar ${form.discount_value}%.`,
+                );
                 if (form.max_discount && Number(form.max_discount) > 0) {
-                    rules.push(`Maksimal potongan diskon sebesar Rp ${Number(form.max_discount).toLocaleString('id-ID')}.`);
+                    rules.push(
+                        `Maksimal potongan diskon sebesar Rp ${Number(form.max_discount).toLocaleString('id-ID')}.`,
+                    );
                 }
             } else {
-                rules.push(`Mendapatkan potongan diskon sebesar Rp ${Number(form.discount_value).toLocaleString('id-ID')}.`);
+                rules.push(
+                    `Mendapatkan potongan diskon sebesar Rp ${Number(form.discount_value).toLocaleString('id-ID')}.`,
+                );
             }
         }
 
@@ -552,7 +591,9 @@
                     if (prod) {
                         let name = prod.name;
                         if (item.product_variant_id && prod.variants) {
-                            const vari = prod.variants.find((v) => v.id == item.product_variant_id);
+                            const vari = prod.variants.find(
+                                (v) => v.id == item.product_variant_id,
+                            );
                             if (vari) name += ` (${vari.name})`;
                         }
                         buyDescriptions.push(`${item.qty}x ${name}`);
@@ -568,7 +609,9 @@
                     if (prod) {
                         let name = prod.name;
                         if (item.product_variant_id && prod.variants) {
-                            const vari = prod.variants.find((v) => v.id == item.product_variant_id);
+                            const vari = prod.variants.find(
+                                (v) => v.id == item.product_variant_id,
+                            );
                             if (vari) name += ` (${vari.name})`;
                         }
                         let discText = '';
@@ -579,41 +622,68 @@
                         } else if (item.discount_type === 'fixed') {
                             discText = `Potongan Rp ${Number(item.discount_value).toLocaleString('id-ID')}`;
                         }
-                        getDescriptions.push(`${item.qty}x ${name} (${discText})`);
+                        getDescriptions.push(
+                            `${item.qty}x ${name} (${discText})`,
+                        );
                     }
                 }
             });
 
             if (buyDescriptions.length > 0 && getDescriptions.length > 0) {
                 rules.push(`Wajib membeli: ${buyDescriptions.join(', ')}.`);
-                rules.push(`Dapatkan bonus/hadiah: ${getDescriptions.join(', ')}.`);
+                rules.push(
+                    `Dapatkan bonus/hadiah: ${getDescriptions.join(', ')}.`,
+                );
             }
-        } else if (targetScope === 'specific' && form.items && form.items.length > 0) {
+        } else if (
+            targetScope === 'specific' &&
+            form.items &&
+            form.items.length > 0
+        ) {
             const itemNames = form.items.map((item) => {
                 let name = item.product_name;
-                if (item.variant_name && item.variant_name !== 'Tanpa Varian' && item.variant_name !== 'Semua Varian') {
+                if (
+                    item.variant_name &&
+                    item.variant_name !== 'Tanpa Varian' &&
+                    item.variant_name !== 'Semua Varian'
+                ) {
                     name += ` (${item.variant_name})`;
                 }
                 return name;
             });
-            
+
             if (itemNames.length <= 3) {
-                rules.push(`Hanya berlaku untuk produk: ${itemNames.join(', ')}.`);
+                rules.push(
+                    `Hanya berlaku untuk produk: ${itemNames.join(', ')}.`,
+                );
             } else {
-                rules.push(`Hanya berlaku untuk produk terpilih: ${itemNames.slice(0, 3).join(', ')}, dan ${itemNames.length - 3} produk lainnya.`);
+                rules.push(
+                    `Hanya berlaku untuk produk terpilih: ${itemNames.slice(0, 3).join(', ')}, dan ${itemNames.length - 3} produk lainnya.`,
+                );
             }
-        } else if (form.type !== 'voucher_belanja' && form.type !== 'voucher_gratis_ongkir' && form.type !== 'promo_toko') {
+        } else if (
+            form.type !== 'voucher_belanja' &&
+            form.type !== 'voucher_gratis_ongkir' &&
+            form.type !== 'promo_toko'
+        ) {
             rules.push(`Berlaku untuk semua produk di toko.`);
         }
 
         // 4. Stackability
         if (form.settings.can_stack_with_promos === false) {
-            rules.push(`Promo tidak dapat digabungkan dengan promo/voucher lainnya.`);
+            rules.push(
+                `Promo tidak dapat digabungkan dengan promo/voucher lainnya.`,
+            );
         }
 
         // 5. Max Uses Per User
-        if (form.settings.max_uses_per_user && Number(form.settings.max_uses_per_user) > 0) {
-            rules.push(`Maksimal penggunaan ${form.settings.max_uses_per_user}x per akun.`);
+        if (
+            form.settings.max_uses_per_user &&
+            Number(form.settings.max_uses_per_user) > 0
+        ) {
+            rules.push(
+                `Maksimal penggunaan ${form.settings.max_uses_per_user}x per akun.`,
+            );
         }
 
         // 6. Quota
@@ -622,7 +692,9 @@
         }
 
         // 7. General rule
-        rules.push(`Syarat & ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.`);
+        rules.push(
+            `Syarat & ketentuan dapat berubah sewaktu-waktu tanpa pemberitahuan.`,
+        );
 
         return rules.map((r, i) => `${i + 1}. ${r}`).join('\n');
     }
@@ -636,7 +708,12 @@
             discount_value: form.discount_value,
             targetScope,
             itemsCount: form.items.length,
-            itemsList: JSON.stringify(form.items.map(item => ({ id: item.product_id, vId: item.product_variant_id }))),
+            itemsList: JSON.stringify(
+                form.items.map((item) => ({
+                    id: item.product_id,
+                    vId: item.product_variant_id,
+                })),
+            ),
             can_stack: form.settings.can_stack_with_promos,
             max_uses: form.settings.max_uses_per_user,
             quota: form.quota,
@@ -721,8 +798,12 @@
                                 <Input
                                     id="promo-code"
                                     bind:value={form.code}
-                                    label={form.type === 'promo_toko' ? 'Kode Voucher (Opsional)' : 'Kode Voucher'}
-                                    placeholder={form.type === 'promo_toko' ? 'Contoh: TOKOPROMO (Kosongkan jika otomatis)' : 'Contoh: GAJIANMAI10'}
+                                    label={form.type === 'promo_toko'
+                                        ? 'Kode Voucher (Opsional)'
+                                        : 'Kode Voucher'}
+                                    placeholder={form.type === 'promo_toko'
+                                        ? 'Contoh: TOKOPROMO (Kosongkan jika otomatis)'
+                                        : 'Contoh: GAJIANMAI10'}
                                     required={form.type !== 'promo_toko'}
                                     error={form.errors.code}
                                 />
@@ -740,7 +821,8 @@
                                     label="Jenis Diskon"
                                     options={discountTypeOptions}
                                     bind:value={form.discount_type}
-                                    required={form.type !== 'flash_sale' && targetScope !== 'specific'}
+                                    required={form.type !== 'flash_sale' &&
+                                        targetScope !== 'specific'}
                                 />
                             </div>
 
@@ -754,7 +836,8 @@
                                         placeholder="Contoh: 10"
                                         min="0"
                                         max="100"
-                                        required={form.type !== 'flash_sale' && targetScope !== 'specific'}
+                                        required={form.type !== 'flash_sale' &&
+                                            targetScope !== 'specific'}
                                         error={form.errors.discount_value}
                                     />
                                 </div>
@@ -765,7 +848,8 @@
                                         bind:value={form.discount_value}
                                         label="Nominal Diskon Rupiah (Rp)"
                                         placeholder="Contoh: 50.000"
-                                        required={form.type !== 'flash_sale' && targetScope !== 'specific'}
+                                        required={form.type !== 'flash_sale' &&
+                                            targetScope !== 'specific'}
                                         error={form.errors.discount_value}
                                     />
                                 </div>
@@ -781,8 +865,9 @@
                             <div>
                                 <p
                                     class="text-xs font-bold text-slate-600 block mb-2"
-                                    >Nilai Potongan Ongkir</p
                                 >
+                                    Nilai Potongan Ongkir
+                                </p>
                                 <div
                                     class="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-500"
                                 >
@@ -821,7 +906,9 @@
                             </div>
                             <div class="flex items-center pt-6">
                                 <p class="text-xs text-slate-500 font-medium">
-                                    Diskon hanya akan berlaku jika pembeli menambahkan minimal jumlah produk ini di keranjang belanja.
+                                    Diskon hanya akan berlaku jika pembeli
+                                    menambahkan minimal jumlah produk ini di
+                                    keranjang belanja.
                                 </p>
                             </div>
                         </div>
@@ -875,14 +962,18 @@
                                     label="Batas per User"
                                     placeholder="Contoh: 1 (Opsional)"
                                     min="0"
-                                    error={form.errors['settings.max_uses_per_user']}
+                                    error={form.errors[
+                                        'settings.max_uses_per_user'
+                                    ]}
                                 />
                             </div>
                         </div>
 
                         <div class="pt-4 border-t border-slate-100 mt-4">
                             <Toggle
-                                bind:checked={form.settings.can_stack_with_promos}
+                                bind:checked={
+                                    form.settings.can_stack_with_promos
+                                }
                                 label="Izinkan Penggabungan Promo"
                                 description="Jika dinonaktifkan, potongan voucher ini hanya dihitung dari barang berharga normal (tanpa promo)."
                                 icon="ti-layers-intersect"
@@ -893,7 +984,10 @@
                     <!-- Terms & Conditions (S&K) -->
                     <div class="pt-4 border-t border-slate-100 mt-4 space-y-2">
                         <div class="flex justify-between items-center">
-                            <label for="promo-terms" class="text-xs font-bold text-slate-600 block">
+                            <label
+                                for="promo-terms"
+                                class="text-xs font-bold text-slate-600 block"
+                            >
                                 Syarat & Ketentuan (S&K)
                             </label>
                             <button
@@ -907,8 +1001,11 @@
                                 {#if isTermsManuallyEdited}
                                     <i class="ti ti-wand text-xs"></i> Buat Otomatis
                                 {:else}
-                                    <span class="text-emerald-600 flex items-center gap-1 font-bold">
-                                        <i class="ti ti-circle-check text-xs"></i> Mengikuti Input (Otomatis)
+                                    <span
+                                        class="text-emerald-600 flex items-center gap-1 font-bold"
+                                    >
+                                        <i class="ti ti-circle-check text-xs"
+                                        ></i> Mengikuti Input (Otomatis)
                                     </span>
                                 {/if}
                             </button>
@@ -916,7 +1013,7 @@
                         <Textarea
                             id="promo-terms"
                             bind:value={form.settings.terms}
-                            oninput={() => isTermsManuallyEdited = true}
+                            oninput={() => (isTermsManuallyEdited = true)}
                             autoHeight={true}
                             placeholder="Contoh: &#10;1. Berlaku untuk semua metode pembayaran. &#10;2. Berlaku untuk 1x transaksi per akun."
                             rows={4}
@@ -925,22 +1022,26 @@
                     </div>
                 </div>
 
-
-
                 <!-- Bundling & Gift Settings Section -->
                 {#if form.type === 'bundling_gift'}
                     <div
                         class="bg-white rounded-3xl border border-slate-200 shadow-card p-6 sm:p-8 space-y-6"
                     >
-                        <div class="pb-3 border-b border-slate-100 flex items-center justify-between">
+                        <div
+                            class="pb-3 border-b border-slate-100 flex items-center justify-between"
+                        >
                             <div>
                                 <h3
                                     class="font-outfit font-black text-lg text-slate-800"
                                 >
                                     Pengaturan Promo Bundling & Gift
                                 </h3>
-                                <p class="text-xs text-slate-500 font-medium mt-1">
-                                    Atur kondisi: Pembelian produk-produk tertentu akan mendapatkan bonus/diskon produk hadiah.
+                                <p
+                                    class="text-xs text-slate-500 font-medium mt-1"
+                                >
+                                    Atur kondisi: Pembelian produk-produk
+                                    tertentu akan mendapatkan bonus/diskon
+                                    produk hadiah.
                                 </p>
                             </div>
                         </div>
@@ -958,7 +1059,8 @@
                                     onclick={addBuyItem}
                                     class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition duration-200 font-outfit"
                                 >
-                                    <i class="ti ti-plus text-[10px]"></i> Tambah Syarat Produk
+                                    <i class="ti ti-plus text-[10px]"></i> Tambah
+                                    Syarat Produk
                                 </button>
                             </div>
 
@@ -977,7 +1079,8 @@
                                                 bind:value={buyItem.product_id}
                                                 placeholder="Pilih produk..."
                                                 onchange={() => {
-                                                    buyItem.product_variant_id = '';
+                                                    buyItem.product_variant_id =
+                                                        '';
                                                 }}
                                             />
                                         </div>
@@ -992,9 +1095,16 @@
                                                 required={true}
                                             />
                                         </div>
-                                        <div class="md:col-span-4 flex items-end gap-2">
+                                        <div
+                                            class="md:col-span-4 flex items-end gap-2"
+                                        >
                                             {#if buyItem.product_id}
-                                                {@const selectedProd = products.find(p => p.id == buyItem.product_id)}
+                                                {@const selectedProd =
+                                                    products.find(
+                                                        (p) =>
+                                                            p.id ==
+                                                            buyItem.product_id,
+                                                    )}
                                                 {#if selectedProd && selectedProd.variants && selectedProd.variants.length > 0}
                                                     <div class="flex-grow">
                                                         <Select
@@ -1004,12 +1114,16 @@
                                                                     id: '',
                                                                     name: 'Semua Varian',
                                                                 },
-                                                                ...selectedProd.variants.map((v) => ({
-                                                                    id: v.id,
-                                                                    name: v.name,
-                                                                })),
+                                                                ...selectedProd.variants.map(
+                                                                    (v) => ({
+                                                                        id: v.id,
+                                                                        name: v.name,
+                                                                    }),
+                                                                ),
                                                             ]}
-                                                            bind:value={buyItem.product_variant_id}
+                                                            bind:value={
+                                                                buyItem.product_variant_id
+                                                            }
                                                             placeholder="Pilih varian..."
                                                         />
                                                     </div>
@@ -1019,10 +1133,13 @@
                                                 <button
                                                     type="button"
                                                     aria-label="Remove"
-                                                    onclick={() => removeBuyItem(i)}
+                                                    onclick={() =>
+                                                        removeBuyItem(i)}
                                                     class="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition duration-200 mb-1"
                                                 >
-                                                    <i class="ti ti-trash text-base"></i>
+                                                    <i
+                                                        class="ti ti-trash text-base"
+                                                    ></i>
                                                 </button>
                                             {/if}
                                         </div>
@@ -1044,7 +1161,8 @@
                                     onclick={addGetItem}
                                     class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition duration-200 font-outfit"
                                 >
-                                    <i class="ti ti-plus text-[10px]"></i> Tambah Hadiah / Bonus
+                                    <i class="ti ti-plus text-[10px]"></i> Tambah
+                                    Hadiah / Bonus
                                 </button>
                             </div>
 
@@ -1053,18 +1171,25 @@
                                     <div
                                         class="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/60 relative"
                                     >
-                                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                        <div
+                                            class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end"
+                                        >
                                             <div class="md:col-span-5">
                                                 <SelectSearch
                                                     label="Produk Hadiah / Bonus"
-                                                    options={products.map((p) => ({
-                                                        id: p.id,
-                                                        name: p.name,
-                                                    }))}
-                                                    bind:value={getItem.product_id}
+                                                    options={products.map(
+                                                        (p) => ({
+                                                            id: p.id,
+                                                            name: p.name,
+                                                        }),
+                                                    )}
+                                                    bind:value={
+                                                        getItem.product_id
+                                                    }
                                                     placeholder="Pilih produk..."
                                                     onchange={() => {
-                                                        getItem.product_variant_id = '';
+                                                        getItem.product_variant_id =
+                                                            '';
                                                     }}
                                                 />
                                             </div>
@@ -1079,9 +1204,16 @@
                                                     required={true}
                                                 />
                                             </div>
-                                            <div class="md:col-span-4 flex items-end gap-2">
+                                            <div
+                                                class="md:col-span-4 flex items-end gap-2"
+                                            >
                                                 {#if getItem.product_id}
-                                                    {@const selectedProd = products.find(p => p.id == getItem.product_id)}
+                                                    {@const selectedProd =
+                                                        products.find(
+                                                            (p) =>
+                                                                p.id ==
+                                                                getItem.product_id,
+                                                        )}
                                                     {#if selectedProd && selectedProd.variants && selectedProd.variants.length > 0}
                                                         <div class="flex-grow">
                                                             <Select
@@ -1091,12 +1223,18 @@
                                                                         id: '',
                                                                         name: 'Semua Varian',
                                                                     },
-                                                                    ...selectedProd.variants.map((v) => ({
-                                                                        id: v.id,
-                                                                        name: v.name,
-                                                                    })),
+                                                                    ...selectedProd.variants.map(
+                                                                        (
+                                                                            v,
+                                                                        ) => ({
+                                                                            id: v.id,
+                                                                            name: v.name,
+                                                                        }),
+                                                                    ),
                                                                 ]}
-                                                                bind:value={getItem.product_variant_id}
+                                                                bind:value={
+                                                                    getItem.product_variant_id
+                                                                }
                                                                 placeholder="Pilih varian..."
                                                             />
                                                         </div>
@@ -1106,10 +1244,13 @@
                                                     <button
                                                         type="button"
                                                         aria-label="Remove"
-                                                        onclick={() => removeGetItem(i)}
+                                                        onclick={() =>
+                                                            removeGetItem(i)}
                                                         class="p-2.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-xl transition duration-200 mb-1"
                                                     >
-                                                        <i class="ti ti-trash text-base"></i>
+                                                        <i
+                                                            class="ti ti-trash text-base"
+                                                        ></i>
                                                     </button>
                                                 {/if}
                                             </div>
@@ -1123,7 +1264,9 @@
                                                 <Select
                                                     label="Jenis Diskon Hadiah"
                                                     options={bundleGiftDiscountOptions}
-                                                    bind:value={getItem.discount_type}
+                                                    bind:value={
+                                                        getItem.discount_type
+                                                    }
                                                     required={true}
                                                 />
                                             </div>
@@ -1132,7 +1275,9 @@
                                                 <div>
                                                     <Input
                                                         id={`get-discount-percentage-${i}`}
-                                                        bind:value={getItem.discount_value}
+                                                        bind:value={
+                                                            getItem.discount_value
+                                                        }
                                                         type="number"
                                                         label="Diskon Persentase Hadiah (%)"
                                                         placeholder="Contoh: 50"
@@ -1145,11 +1290,15 @@
                                                 <div>
                                                     <InputCurrency
                                                         id={`get-discount-fixed-${i}`}
-                                                        bind:value={getItem.discount_value}
+                                                        bind:value={
+                                                            getItem.discount_value
+                                                        }
                                                         label="Nominal Diskon Hadiah (Rp)"
                                                         placeholder="Contoh: 10.000"
-                                                        readonly={getItem.discount_type === 'free'}
-                                                        required={getItem.discount_type !== 'free'}
+                                                        readonly={getItem.discount_type ===
+                                                            'free'}
+                                                        required={getItem.discount_type !==
+                                                            'free'}
                                                     />
                                                 </div>
                                             {/if}
@@ -1160,28 +1309,63 @@
                         </div>
 
                         <!-- Summary Section -->
-                        {#if form.settings.bundle.buy_items.some(item => item.product_id) || form.settings.bundle.get_items.some(item => item.product_id)}
-                            <div class="mt-6 pt-5 border-t border-slate-150 bg-slate-50/50 -mx-6 -mb-6 p-6 rounded-b-3xl">
-                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <i class="ti ti-calculator text-brand-blueRoyal text-base"></i> Ringkasan Simulasi Bundling
+                        {#if form.settings.bundle.buy_items.some((item) => item.product_id) || form.settings.bundle.get_items.some((item) => item.product_id)}
+                            <div
+                                class="mt-6 pt-5 border-t border-slate-150 bg-slate-50/50 -mx-6 -mb-6 p-6 rounded-b-3xl"
+                            >
+                                <h4
+                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2"
+                                >
+                                    <i
+                                        class="ti ti-calculator text-brand-blueRoyal text-base"
+                                    ></i> Ringkasan Simulasi Bundling
                                 </h4>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div class="bg-white p-4 rounded-2xl border border-slate-150 shadow-sm flex flex-col justify-between">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Harga Normal (BUY + GET)</span>
-                                        <span class="font-outfit font-bold text-base text-slate-700">
-                                            Rp {bundleSummary.totalNormal.toLocaleString('id-ID')}
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-3 gap-6"
+                                >
+                                    <div
+                                        class="bg-white p-4 rounded-2xl border border-slate-150 shadow-sm flex flex-col justify-between"
+                                    >
+                                        <span
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1"
+                                            >Total Harga Normal (BUY + GET)</span
+                                        >
+                                        <span
+                                            class="font-outfit font-bold text-base text-slate-700"
+                                        >
+                                            Rp {bundleSummary.totalNormal.toLocaleString(
+                                                'id-ID',
+                                            )}
                                         </span>
                                     </div>
-                                    <div class="bg-white p-4 rounded-2xl border border-slate-150 shadow-sm flex flex-col justify-between">
-                                        <span class="text-[10px] font-bold text-orange-500 uppercase tracking-wider block mb-1">Potongan Bundling (Minus)</span>
-                                        <span class="font-outfit font-bold text-base text-orange-600">
-                                            - Rp {bundleSummary.totalDiscount.toLocaleString('id-ID')}
+                                    <div
+                                        class="bg-white p-4 rounded-2xl border border-slate-150 shadow-sm flex flex-col justify-between"
+                                    >
+                                        <span
+                                            class="text-[10px] font-bold text-orange-500 uppercase tracking-wider block mb-1"
+                                            >Potongan Bundling (Minus)</span
+                                        >
+                                        <span
+                                            class="font-outfit font-bold text-base text-orange-600"
+                                        >
+                                            - Rp {bundleSummary.totalDiscount.toLocaleString(
+                                                'id-ID',
+                                            )}
                                         </span>
                                     </div>
-                                    <div class="bg-white p-4 rounded-2xl border border-brand-blueRoyal/20 bg-blue-50/20 shadow-sm flex flex-col justify-between">
-                                        <span class="text-[10px] font-bold text-brand-blueRoyal uppercase tracking-wider block mb-1">Total Yang Dibayar Pembeli</span>
-                                        <span class="font-outfit font-black text-lg text-brand-blueRoyal">
-                                            Rp {bundleSummary.totalToPay.toLocaleString('id-ID')}
+                                    <div
+                                        class="bg-white p-4 rounded-2xl border border-brand-blueRoyal/20 bg-blue-50/20 shadow-sm flex flex-col justify-between"
+                                    >
+                                        <span
+                                            class="text-[10px] font-bold text-brand-blueRoyal uppercase tracking-wider block mb-1"
+                                            >Total Yang Dibayar Pembeli</span
+                                        >
+                                        <span
+                                            class="font-outfit font-black text-lg text-brand-blueRoyal"
+                                        >
+                                            Rp {bundleSummary.totalToPay.toLocaleString(
+                                                'id-ID',
+                                            )}
                                         </span>
                                     </div>
                                 </div>
@@ -1234,17 +1418,27 @@
                                 />
                             {/if}
 
-                            <div class="bg-blue-50/50 border border-brand-blueRoyal/10 p-3.5 rounded-2xl text-[11px] text-slate-650 space-y-1">
-                                <span class="font-bold text-brand-blueRoyal block uppercase tracking-wider text-[9px]">Sistem Otomatisasi Waktu</span>
-                                <div class="flex justify-between items-center text-[10px]">
-                                    <span class="font-medium text-slate-500">Akan Berakhir Pada:</span>
-                                    <span class="font-outfit font-black text-brand-blueRoyal">
+                            <div
+                                class="bg-blue-50/50 border border-brand-blueRoyal/10 p-3.5 rounded-2xl text-[11px] text-slate-650 space-y-1"
+                            >
+                                <span
+                                    class="font-bold text-brand-blueRoyal block uppercase tracking-wider text-[9px]"
+                                    >Sistem Otomatisasi Waktu</span
+                                >
+                                <div
+                                    class="flex justify-between items-center text-[10px]"
+                                >
+                                    <span class="font-medium text-slate-500"
+                                        >Akan Berakhir Pada:</span
+                                    >
+                                    <span
+                                        class="font-outfit font-black text-brand-blueRoyal"
+                                    >
                                         {formatFriendlyDatetime(form.end_time)}
                                     </span>
                                 </div>
                             </div>
                         </div>
-
                     {:else}
                         <div>
                             <Input
@@ -1307,13 +1501,21 @@
 
             <!-- Product Targets Section (Spanning full layout below side-by-side columns!) -->
             {#if form.type !== 'bundling_gift' && form.type !== 'voucher_gratis_ongkir' && form.type !== 'promo_toko' && form.type !== 'voucher_belanja'}
-                <div class="lg:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-card p-6 sm:p-8 space-y-6 w-full">
+                <div
+                    class="lg:col-span-3 bg-white rounded-3xl border border-slate-200 shadow-card p-6 sm:p-8 space-y-6 w-full"
+                >
                     <!-- Section Header -->
-                    <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
-                        <span class="w-6 h-6 rounded-full bg-blue-50 text-brand-blueRoyal font-black text-xs flex items-center justify-center">
+                    <div
+                        class="flex items-center gap-3 pb-3 border-b border-slate-100"
+                    >
+                        <span
+                            class="w-6 h-6 rounded-full bg-blue-50 text-brand-blueRoyal font-black text-xs flex items-center justify-center"
+                        >
                             4
                         </span>
-                        <h3 class="font-outfit font-black text-xs text-brand-blueRoyal tracking-wider uppercase">
+                        <h3
+                            class="font-outfit font-black text-xs text-brand-blueRoyal tracking-wider uppercase"
+                        >
                             Target & Jangkauan Produk
                         </h3>
                     </div>
@@ -1324,22 +1526,37 @@
                         <!-- svelte-ignore a11y_click_events_have_key_events -->
                         <!-- svelte-ignore a11y_no_static_element_interactions -->
                         <div
-                            onclick={() => targetScope = 'all'}
-                            class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition duration-200 {targetScope === 'all' ? 'border-brand-blueRoyal bg-white shadow-sm' : 'border-slate-200 bg-white hover:border-slate-350'}"
+                            onclick={() => (targetScope = 'all')}
+                            class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition duration-200 {targetScope ===
+                            'all'
+                                ? 'border-brand-blueRoyal bg-white shadow-sm'
+                                : 'border-slate-200 bg-white hover:border-slate-350'}"
                         >
                             <div class="mt-0.5">
-                                <div class="w-4 h-4 rounded-full border flex items-center justify-center {targetScope === 'all' ? 'border-brand-blueRoyal' : 'border-slate-350'}">
+                                <div
+                                    class="w-4 h-4 rounded-full border flex items-center justify-center {targetScope ===
+                                    'all'
+                                        ? 'border-brand-blueRoyal'
+                                        : 'border-slate-350'}"
+                                >
                                     {#if targetScope === 'all'}
-                                        <div class="w-2.5 h-2.5 rounded-full bg-brand-blueRoyal"></div>
+                                        <div
+                                            class="w-2.5 h-2.5 rounded-full bg-brand-blueRoyal"
+                                        ></div>
                                     {/if}
                                 </div>
                             </div>
                             <div>
-                                <h4 class="font-outfit font-bold text-xs text-slate-800 uppercase tracking-wider">
+                                <h4
+                                    class="font-outfit font-bold text-xs text-slate-800 uppercase tracking-wider"
+                                >
                                     Semua Produk Toko
                                 </h4>
-                                <p class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
-                                    Kupon ini otomatis berlaku untuk seluruh daftar katalog furniture di bizmate.
+                                <p
+                                    class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed"
+                                >
+                                    Kupon ini otomatis berlaku untuk seluruh
+                                    daftar katalog di {storeName.toLowerCase()}.
                                 </p>
                             </div>
                         </div>
@@ -1348,22 +1565,37 @@
                         <!-- svelte-ignore a11y_click_events_have_key_events -->
                         <!-- svelte-ignore a11y_no_static_element_interactions -->
                         <div
-                            onclick={() => targetScope = 'specific'}
-                            class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition duration-200 {targetScope === 'specific' ? 'border-brand-blueRoyal bg-white shadow-sm' : 'border-slate-200 bg-white hover:border-slate-350'}"
+                            onclick={() => (targetScope = 'specific')}
+                            class="flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition duration-200 {targetScope ===
+                            'specific'
+                                ? 'border-brand-blueRoyal bg-white shadow-sm'
+                                : 'border-slate-200 bg-white hover:border-slate-350'}"
                         >
                             <div class="mt-0.5">
-                                <div class="w-4 h-4 rounded-full border flex items-center justify-center {targetScope === 'specific' ? 'border-brand-blueRoyal' : 'border-slate-350'}">
+                                <div
+                                    class="w-4 h-4 rounded-full border flex items-center justify-center {targetScope ===
+                                    'specific'
+                                        ? 'border-brand-blueRoyal'
+                                        : 'border-slate-350'}"
+                                >
                                     {#if targetScope === 'specific'}
-                                        <div class="w-2.5 h-2.5 rounded-full bg-brand-blueRoyal"></div>
+                                        <div
+                                            class="w-2.5 h-2.5 rounded-full bg-brand-blueRoyal"
+                                        ></div>
                                     {/if}
                                 </div>
                             </div>
                             <div>
-                                <h4 class="font-outfit font-bold text-xs text-slate-800 uppercase tracking-wider">
+                                <h4
+                                    class="font-outfit font-bold text-xs text-slate-800 uppercase tracking-wider"
+                                >
                                     Produk Pilihan Spesifik
                                 </h4>
-                                <p class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
-                                    Tentukan dan pilih secara manual produk furniture apa saja yang layak menggunakan promo ini.
+                                <p
+                                    class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed"
+                                >
+                                    Tentukan dan pilih secara manual produk apa
+                                    saja yang layak menggunakan promo ini.
                                 </p>
                             </div>
                         </div>
@@ -1372,13 +1604,21 @@
                     <!-- Specific Products Settings -->
                     {#if targetScope === 'specific'}
                         <div class="space-y-4 pt-4 border-t border-slate-100">
-                            <div class="flex items-center justify-between gap-4">
+                            <div
+                                class="flex items-center justify-between gap-4"
+                            >
                                 <div>
-                                    <h4 class="font-outfit font-bold text-xs text-slate-800 uppercase tracking-wider">
+                                    <h4
+                                        class="font-outfit font-bold text-xs text-slate-800 uppercase tracking-wider"
+                                    >
                                         Daftar Target Produk Terpilih
                                     </h4>
-                                    <p class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
-                                        Tentukan nilai potongan harga secara individu atau gunakan panel ubah massal di bawah.
+                                    <p
+                                        class="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed"
+                                    >
+                                        Tentukan nilai potongan harga secara
+                                        individu atau gunakan panel ubah massal
+                                        di bawah.
                                     </p>
                                 </div>
                                 <button
@@ -1386,17 +1626,24 @@
                                     onclick={openSelectionModal}
                                     class="flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-brand-blueRoyal text-[10px] font-black rounded-xl uppercase tracking-wider transition duration-200 font-outfit"
                                 >
-                                    <i class="ti ti-plus text-xs"></i> Pilih & Atur Produk
+                                    <i class="ti ti-plus text-xs"></i> Pilih & Atur
+                                    Produk
                                 </button>
                             </div>
 
                             <!-- Empty State -->
                             {#if form.items.length === 0}
-                                <div class="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 flex flex-col items-center justify-center">
-                                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                                <div
+                                    class="text-center py-12 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 flex flex-col items-center justify-center"
+                                >
+                                    <div
+                                        class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3"
+                                    >
                                         <i class="ti ti-package text-xl"></i>
                                     </div>
-                                    <p class="text-xs text-slate-500 font-medium">
+                                    <p
+                                        class="text-xs text-slate-500 font-medium"
+                                    >
                                         Belum ada produk target yang dipilih.
                                     </p>
                                     <button
@@ -1409,27 +1656,49 @@
                                 </div>
                             {:else}
                                 <!-- Bulk Action Card -->
-                                <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-                                    <div class="flex items-center gap-2 pb-2.5 border-b border-slate-105">
-                                        <i class="ti ti-settings text-orange-500 text-sm"></i>
-                                        <h4 class="font-outfit font-black text-[10px] text-slate-800 tracking-wider uppercase">
+                                <div
+                                    class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm"
+                                >
+                                    <div
+                                        class="flex items-center gap-2 pb-2.5 border-b border-slate-105"
+                                    >
+                                        <i
+                                            class="ti ti-settings text-orange-500 text-sm"
+                                        ></i>
+                                        <h4
+                                            class="font-outfit font-black text-[10px] text-slate-800 tracking-wider uppercase"
+                                        >
                                             Ubah Massal Potongan Produk
                                         </h4>
                                     </div>
                                     <div class="flex flex-wrap gap-3 items-end">
                                         <div class="w-full sm:w-48">
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Tipe Potongan</p>
+                                            <p
+                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5"
+                                            >
+                                                Tipe Potongan
+                                            </p>
                                             <select
                                                 bind:value={bulkDiscountType}
                                                 class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal text-xs font-semibold text-slate-700 h-10"
                                             >
-                                                <option value="percentage">Diskon Persen (%)</option>
-                                                <option value="fixed">Potongan Tetap (Rp)</option>
-                                                <option value="custom">Harga Promo Kustom (Rp)</option>
+                                                <option value="percentage"
+                                                    >Diskon Persen (%)</option
+                                                >
+                                                <option value="fixed"
+                                                    >Potongan Tetap (Rp)</option
+                                                >
+                                                <option value="custom"
+                                                    >Harga Promo Kustom (Rp)</option
+                                                >
                                             </select>
                                         </div>
                                         <div class="w-full sm:w-44">
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nilai Potongan</p>
+                                            <p
+                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5"
+                                            >
+                                                Nilai Potongan
+                                            </p>
                                             <input
                                                 type="number"
                                                 bind:value={bulkDiscountValue}
@@ -1438,7 +1707,11 @@
                                             />
                                         </div>
                                         <div class="w-full sm:w-44">
-                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Stok Promo (Ops.)</p>
+                                            <p
+                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5"
+                                            >
+                                                Stok Promo (Ops.)
+                                            </p>
                                             <input
                                                 type="number"
                                                 bind:value={bulkPromoStock}
@@ -1457,103 +1730,234 @@
                                 </div>
 
                                 <!-- Selected Products Table -->
-                                <div class="overflow-x-auto border border-slate-200 rounded-2xl w-full">
-                                    <table class="w-full text-left border-collapse text-[11px]">
+                                <div
+                                    class="overflow-x-auto border border-slate-200 rounded-2xl w-full"
+                                >
+                                    <table
+                                        class="w-full text-left border-collapse text-[11px]"
+                                    >
                                         <thead>
-                                            <tr class="bg-slate-50 border-b border-slate-200">
-                                                <th class="px-4 py-3.5 font-bold text-slate-500">PRODUK</th>
-                                                <th class="px-4 py-3.5 font-bold text-slate-500">HARGA DASAR</th>
-                                                <th class="px-4 py-3.5 font-bold text-slate-500 w-[20%]">TIPE POTONGAN</th>
-                                                <th class="px-4 py-3.5 font-bold text-slate-500 w-[18%]">NILAI POTONGAN</th>
-                                                <th class="px-4 py-3.5 font-bold text-slate-500 w-[15%]">STOK PROMO</th>
-                                                <th class="px-4 py-3.5 font-bold text-slate-500">HARGA AKHIR PROMO</th>
-                                                <th class="px-4 py-3.5 font-bold text-slate-500 text-center w-[5%]">HAPUS</th>
+                                            <tr
+                                                class="bg-slate-50 border-b border-slate-200"
+                                            >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500"
+                                                    >PRODUK</th
+                                                >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500"
+                                                    >HARGA DASAR</th
+                                                >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500 w-[20%]"
+                                                    >TIPE POTONGAN</th
+                                                >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500 w-[18%]"
+                                                    >NILAI POTONGAN</th
+                                                >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500 w-[15%]"
+                                                    >STOK PROMO</th
+                                                >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500"
+                                                    >HARGA AKHIR PROMO</th
+                                                >
+                                                <th
+                                                    class="px-4 py-3.5 font-bold text-slate-500 text-center w-[5%]"
+                                                    >HAPUS</th
+                                                >
                                             </tr>
                                         </thead>
-                                        <tbody class="divide-y divide-slate-150 bg-white">
+                                        <tbody
+                                            class="divide-y divide-slate-150 bg-white"
+                                        >
                                             {#each form.items as item, index}
-                                                <tr class="hover:bg-slate-50/50">
+                                                <tr
+                                                    class="hover:bg-slate-50/50"
+                                                >
                                                     <td class="px-4 py-3">
-                                                        <div class="flex items-center">
+                                                        <div
+                                                            class="flex items-center"
+                                                        >
                                                             <img
-                                                                src={selectableItems.find(p => p.product_id == item.product_id && p.product_variant_id == item.product_variant_id)?.image || '/assets/images/placeholder.jpg'}
+                                                                src={selectableItems.find(
+                                                                    (p) =>
+                                                                        p.product_id ==
+                                                                            item.product_id &&
+                                                                        p.product_variant_id ==
+                                                                            item.product_variant_id,
+                                                                )?.image ||
+                                                                    '/assets/images/placeholder.jpg'}
                                                                 alt={item.product_name}
                                                                 class="w-10 h-10 object-cover rounded-lg border border-slate-100 mr-3"
                                                             />
                                                             <div>
-                                                                <p class="font-bold text-slate-700">
+                                                                <p
+                                                                    class="font-bold text-slate-700"
+                                                                >
                                                                     {item.product_name}
                                                                     {#if item.variant_name && item.variant_name !== 'Semua Varian' && item.variant_name !== 'Tanpa Varian'}
-                                                                        <span class="text-slate-500 font-normal"> - {item.variant_name}</span>
+                                                                        <span
+                                                                            class="text-slate-500 font-normal"
+                                                                        >
+                                                                            - {item.variant_name}</span
+                                                                        >
                                                                     {/if}
                                                                 </p>
-                                                                <span class="text-[9px] text-slate-400 font-semibold uppercase">
-                                                                    {selectableItems.find(p => p.product_id == item.product_id && p.product_variant_id == item.product_variant_id)?.sku || ''}
+                                                                <span
+                                                                    class="text-[9px] text-slate-400 font-semibold uppercase"
+                                                                >
+                                                                    {selectableItems.find(
+                                                                        (p) =>
+                                                                            p.product_id ==
+                                                                                item.product_id &&
+                                                                            p.product_variant_id ==
+                                                                                item.product_variant_id,
+                                                                    )?.sku ||
+                                                                        ''}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td class="px-4 py-3 font-semibold text-slate-600">
-                                                        Rp {item.base_price.toLocaleString('id-ID')}
+                                                    <td
+                                                        class="px-4 py-3 font-semibold text-slate-600"
+                                                    >
+                                                        Rp {item.base_price.toLocaleString(
+                                                            'id-ID',
+                                                        )}
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <select
-                                                            bind:value={item.discount_type}
+                                                            bind:value={
+                                                                item.discount_type
+                                                            }
                                                             class="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none text-xs font-semibold text-slate-700 focus:border-brand-blueRoyal h-8"
                                                         >
-                                                            <option value="percentage">% Persentase</option>
-                                                            <option value="fixed">Rp Rupiah</option>
-                                                            <option value="custom">Harga Kustom</option>
+                                                            <option
+                                                                value="percentage"
+                                                                >% Persentase</option
+                                                            >
+                                                            <option
+                                                                value="fixed"
+                                                                >Rp Rupiah</option
+                                                            >
+                                                            <option
+                                                                value="custom"
+                                                                >Harga Kustom</option
+                                                            >
                                                         </select>
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         {#if item.discount_type === 'custom'}
                                                             <input
                                                                 type="text"
-                                                                oninput={(e: any) => {
-                                                                    const val = e.target.value.replace(/\D/g, '');
-                                                                    item.promo_price = val ? parseInt(val, 10) : '';
+                                                                oninput={(
+                                                                    e: any,
+                                                                ) => {
+                                                                    const val =
+                                                                        e.target.value.replace(
+                                                                            /\D/g,
+                                                                            '',
+                                                                        );
+                                                                    item.promo_price =
+                                                                        val
+                                                                            ? parseInt(
+                                                                                  val,
+                                                                                  10,
+                                                                              )
+                                                                            : '';
                                                                 }}
-                                                                value={item.promo_price !== '' ? item.promo_price : ''}
+                                                                value={item.promo_price !==
+                                                                ''
+                                                                    ? item.promo_price
+                                                                    : ''}
                                                                 class="w-full min-w-[100px] px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-bold text-emerald-650 h-8 focus:ring-1 focus:ring-emerald-500/20 focus:border-emerald-500"
                                                                 placeholder="Harga Promo..."
                                                             />
                                                         {:else}
                                                             <input
                                                                 type="text"
-                                                                oninput={(e: any) => {
-                                                                    const val = e.target.value.replace(/\D/g, '');
-                                                                    item.discount_value = val ? parseInt(val, 10) : '';
+                                                                oninput={(
+                                                                    e: any,
+                                                                ) => {
+                                                                    const val =
+                                                                        e.target.value.replace(
+                                                                            /\D/g,
+                                                                            '',
+                                                                        );
+                                                                    item.discount_value =
+                                                                        val
+                                                                            ? parseInt(
+                                                                                  val,
+                                                                                  10,
+                                                                              )
+                                                                            : '';
                                                                 }}
-                                                                value={item.discount_value !== '' ? item.discount_value : ''}
+                                                                value={item.discount_value !==
+                                                                ''
+                                                                    ? item.discount_value
+                                                                    : ''}
                                                                 class="w-full min-w-[90px] px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 h-8 focus:ring-1 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal"
-                                                                placeholder={item.discount_type === 'percentage' ? '10%' : 'Rp 10.000'}
+                                                                placeholder={item.discount_type ===
+                                                                'percentage'
+                                                                    ? '10%'
+                                                                    : 'Rp 10.000'}
                                                             />
                                                         {/if}
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <input
                                                             type="text"
-                                                            oninput={(e: any) => {
-                                                                const val = e.target.value.replace(/\D/g, '');
-                                                                item.promo_stock = val ? parseInt(val, 10) : '';
+                                                            oninput={(
+                                                                e: any,
+                                                            ) => {
+                                                                const val =
+                                                                    e.target.value.replace(
+                                                                        /\D/g,
+                                                                        '',
+                                                                    );
+                                                                item.promo_stock =
+                                                                    val
+                                                                        ? parseInt(
+                                                                              val,
+                                                                              10,
+                                                                          )
+                                                                        : '';
                                                             }}
-                                                            value={item.promo_stock !== '' ? item.promo_stock : ''}
+                                                            value={item.promo_stock !==
+                                                            ''
+                                                                ? item.promo_stock
+                                                                : ''}
                                                             placeholder="Tak terbatas"
                                                             class="w-full min-w-[105px] px-2.5 py-1 border border-slate-200 rounded-lg text-xs font-semibold text-slate-650 h-8 focus:ring-1 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal"
                                                         />
                                                     </td>
-                                                    <td class="px-4 py-3 font-bold text-brand-blueRoyal">
-                                                        Rp {calculateFinalPrice(item).toLocaleString('id-ID')}
+                                                    <td
+                                                        class="px-4 py-3 font-bold text-brand-blueRoyal"
+                                                    >
+                                                        Rp {calculateFinalPrice(
+                                                            item,
+                                                        ).toLocaleString(
+                                                            'id-ID',
+                                                        )}
                                                     </td>
-                                                    <td class="px-4 py-3 text-center">
+                                                    <td
+                                                        class="px-4 py-3 text-center"
+                                                    >
                                                         <button
                                                             type="button"
                                                             aria-label="Remove item"
-                                                            onclick={() => removeTargetItem(index)}
+                                                            onclick={() =>
+                                                                removeTargetItem(
+                                                                    index,
+                                                                )}
                                                             class="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded-lg transition"
                                                         >
-                                                            <i class="ti ti-trash text-base"></i>
+                                                            <i
+                                                                class="ti ti-trash text-base"
+                                                            ></i>
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -1571,19 +1975,26 @@
 
     <!-- Product Selection Modal -->
     {#if showModal}
-        <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+        <div
+            class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4"
+        >
             <!-- Backdrop -->
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onclick={() => showModal = false}></div>
+            <div
+                class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+                onclick={() => (showModal = false)}
+            ></div>
 
             <!-- Modal content -->
-            <div class="relative bg-white rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden z-10 border border-slate-100">
+            <div
+                class="relative bg-white rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden z-10 border border-slate-100"
+            >
                 <!-- Close button -->
                 <button
                     type="button"
                     aria-label="Close modal"
-                    onclick={() => showModal = false}
+                    onclick={() => (showModal = false)}
                     class="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 text-slate-500 transition"
                 >
                     <i class="ti ti-x text-lg"></i>
@@ -1594,17 +2005,25 @@
                     <h3 class="font-outfit font-black text-xl text-slate-800">
                         Pilih Produk Target
                     </h3>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">
-                        PILIH PRODUK FURNITURE YANG AKAN DIKENAKAN PROMOSI
+                    <p
+                        class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1"
+                    >
+                        PILIH PRODUK YANG AKAN DIKENAKAN PROMOSI
                     </p>
                 </div>
 
                 <!-- Body -->
-                <div class="p-6 overflow-y-auto flex-grow flex flex-col min-h-0 space-y-4">
+                <div
+                    class="p-6 overflow-y-auto flex-grow flex flex-col min-h-0 space-y-4"
+                >
                     <!-- Search & Selected Counter -->
-                    <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                    <div
+                        class="flex flex-col sm:flex-row gap-4 items-center justify-between"
+                    >
                         <div class="relative w-full sm:w-80">
-                            <i class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <i
+                                class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                            ></i>
                             <input
                                 type="text"
                                 bind:value={modalSearch}
@@ -1623,8 +2042,12 @@
                                 {/each}
                             </select>
                         </div>
-                        <div class="flex items-center gap-2 self-end sm:self-center">
-                            <span class="bg-blue-50 text-brand-blueRoyal text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg uppercase">
+                        <div
+                            class="flex items-center gap-2 self-end sm:self-center"
+                        >
+                            <span
+                                class="bg-blue-50 text-brand-blueRoyal text-[10px] font-black tracking-wider px-3 py-1.5 rounded-lg uppercase"
+                            >
                                 {tempSelectedIds.length} Terpilih
                             </span>
                         </div>
@@ -1638,11 +2061,17 @@
                     {/if}
 
                     <!-- Scrollable Table -->
-                    <div class="overflow-x-auto border border-slate-200 rounded-2xl flex-grow">
+                    <div
+                        class="overflow-x-auto border border-slate-200 rounded-2xl flex-grow"
+                    >
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
-                                <tr class="bg-slate-50 border-b border-slate-200">
-                                    <th class="px-4 py-3 font-bold text-slate-500 w-[5%] text-center">
+                                <tr
+                                    class="bg-slate-50 border-b border-slate-200"
+                                >
+                                    <th
+                                        class="px-4 py-3 font-bold text-slate-500 w-[5%] text-center"
+                                    >
                                         <input
                                             type="checkbox"
                                             checked={isAllVisibleSelected}
@@ -1650,10 +2079,22 @@
                                             class="w-4 h-4 rounded border-slate-350 text-brand-blueRoyal focus:ring-brand-blueRoyal/20"
                                         />
                                     </th>
-                                    <th class="px-4 py-3 font-bold text-slate-500">PRODUK</th>
-                                    <th class="px-4 py-3 font-bold text-slate-500">KATEGORI</th>
-                                    <th class="px-4 py-3 font-bold text-slate-500">HARGA</th>
-                                    <th class="px-4 py-3 font-bold text-slate-500">STOK</th>
+                                    <th
+                                        class="px-4 py-3 font-bold text-slate-500"
+                                        >PRODUK</th
+                                    >
+                                    <th
+                                        class="px-4 py-3 font-bold text-slate-500"
+                                        >KATEGORI</th
+                                    >
+                                    <th
+                                        class="px-4 py-3 font-bold text-slate-500"
+                                        >HARGA</th
+                                    >
+                                    <th
+                                        class="px-4 py-3 font-bold text-slate-500"
+                                        >STOK</th
+                                    >
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-150 bg-white">
@@ -1664,49 +2105,81 @@
                                     >
                                         <!-- svelte-ignore a11y_click_events_have_key_events -->
                                         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                                        <td class="px-4 py-3 text-center" onclick={(e) => e.stopPropagation()}>
+                                        <td
+                                            class="px-4 py-3 text-center"
+                                            onclick={(e) => e.stopPropagation()}
+                                        >
                                             <input
                                                 type="checkbox"
-                                                checked={tempSelectedIds.includes(item.id)}
-                                                onchange={() => toggleSelection(item.id)}
+                                                checked={tempSelectedIds.includes(
+                                                    item.id,
+                                                )}
+                                                onchange={() =>
+                                                    toggleSelection(item.id)}
                                                 class="w-4 h-4 rounded border-slate-350 text-brand-blueRoyal focus:ring-brand-blueRoyal/20"
                                             />
                                         </td>
                                         <td class="px-4 py-3">
                                             <div class="flex items-center">
                                                 <img
-                                                    src={item.image || '/assets/images/placeholder.jpg'}
+                                                    src={item.image ||
+                                                        '/assets/images/placeholder.jpg'}
                                                     alt={item.name}
                                                     class="w-10 h-10 object-cover rounded-lg border border-slate-100 mr-3"
                                                 />
                                                 <div>
-                                                    <p class="font-bold text-slate-700">{item.name}</p>
-                                                    <span class="text-[10px] text-slate-400 font-semibold uppercase">{item.sku}</span>
+                                                    <p
+                                                        class="font-bold text-slate-700"
+                                                    >
+                                                        {item.name}
+                                                    </p>
+                                                    <span
+                                                        class="text-[10px] text-slate-400 font-semibold uppercase"
+                                                        >{item.sku}</span
+                                                    >
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="px-4 py-3">
-                                            <span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                                            <span
+                                                class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider"
+                                            >
                                                 {item.category_name}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3 font-semibold text-slate-750">
-                                            Rp {item.price.toLocaleString('id-ID')}
+                                        <td
+                                            class="px-4 py-3 font-semibold text-slate-750"
+                                        >
+                                            Rp {item.price.toLocaleString(
+                                                'id-ID',
+                                            )}
                                         </td>
                                         <td class="px-4 py-3">
                                             {#if item.stock === 0}
-                                                <span class="text-red-500 font-bold">0</span>
+                                                <span
+                                                    class="text-red-500 font-bold"
+                                                    >0</span
+                                                >
                                             {:else if item.stock === 9999}
-                                                <span class="text-slate-500 font-semibold">Tak Terbatas</span>
+                                                <span
+                                                    class="text-slate-500 font-semibold"
+                                                    >Tak Terbatas</span
+                                                >
                                             {:else}
-                                                <span class="text-slate-600 font-semibold">{item.stock}</span>
+                                                <span
+                                                    class="text-slate-600 font-semibold"
+                                                    >{item.stock}</span
+                                                >
                                             {/if}
                                         </td>
                                     </tr>
                                 {/each}
                                 {#if filteredSelectableItems.length === 0}
                                     <tr>
-                                        <td colspan="5" class="text-center py-8 text-slate-400">
+                                        <td
+                                            colspan="5"
+                                            class="text-center py-8 text-slate-400"
+                                        >
                                             Produk tidak ditemukan.
                                         </td>
                                     </tr>
@@ -1717,10 +2190,12 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="p-6 border-t border-slate-150 flex justify-end gap-3 bg-slate-50">
+                <div
+                    class="p-6 border-t border-slate-150 flex justify-end gap-3 bg-slate-50"
+                >
                     <button
                         type="button"
-                        onclick={() => showModal = false}
+                        onclick={() => (showModal = false)}
                         class="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 text-slate-650 text-xs font-bold rounded-xl transition duration-200"
                     >
                         BATAL

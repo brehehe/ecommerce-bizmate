@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use App\Mail\ReturnStatusChanged;
+use App\Mail\ReturnSubmitted;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ReturnRequest extends Model
 {
@@ -67,14 +71,14 @@ class ReturnRequest extends Model
      */
     public static function generateNumber(): string
     {
-        $prefix = 'RTR-' . now()->format('Ymd') . '-';
-        $last = static::where('return_number', 'ilike', $prefix . '%')
+        $prefix = 'RTR-'.now()->format('Ymd').'-';
+        $last = static::where('return_number', 'ilike', $prefix.'%')
             ->orderByDesc('return_number')
             ->value('return_number');
 
         $seq = $last ? (int) substr($last, -5) + 1 : 1;
 
-        return $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
 
     public function transaction(): BelongsTo
@@ -116,30 +120,30 @@ class ReturnRequest extends Model
     {
         static::created(function (ReturnRequest $return) {
             try {
-                $storeName = \App\Models\Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-                $storeLogo = \App\Models\Setting::where('key', 'store_logo')->value('value');
+                $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                $storeLogo = Setting::where('key', 'store_logo')->value('value');
                 $return->loadMissing('user');
                 if ($return->user && $return->user->email) {
-                    \Illuminate\Support\Facades\Mail::to($return->user->email)
-                        ->queue(new \App\Mail\ReturnSubmitted($return, $storeName, $storeLogo));
+                    Mail::to($return->user->email)
+                        ->queue(new ReturnSubmitted($return, $storeName, $storeLogo));
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Return submitted email failed: ' . $e->getMessage());
+                Log::error('Return submitted email failed: '.$e->getMessage());
             }
         });
 
         static::updated(function (ReturnRequest $return) {
             if ($return->isDirty('status')) {
                 try {
-                    $storeName = \App\Models\Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-                    $storeLogo = \App\Models\Setting::where('key', 'store_logo')->value('value');
+                    $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                    $storeLogo = Setting::where('key', 'store_logo')->value('value');
                     $return->loadMissing('user');
                     if ($return->user && $return->user->email) {
-                        \Illuminate\Support\Facades\Mail::to($return->user->email)
-                            ->queue(new \App\Mail\ReturnStatusChanged($return, $storeName, $storeLogo));
+                        Mail::to($return->user->email)
+                            ->queue(new ReturnStatusChanged($return, $storeName, $storeLogo));
                     }
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error('Return status change email failed: ' . $e->getMessage());
+                    Log::error('Return status change email failed: '.$e->getMessage());
                 }
             }
         });
