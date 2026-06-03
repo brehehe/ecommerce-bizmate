@@ -246,6 +246,45 @@
                     </span>
                 </a>
             </div>
+            <!-- Refund Pesanan -->
+            <div class="relative">
+                {#if isActive('/admin/refunds')}
+                    <div
+                        class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
+                        style="background-color: {secondaryColor};"
+                    ></div>
+                {/if}
+                <a
+                    href="/admin/refunds"
+                    use:inertia
+                    class="flex items-center gap-3 px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
+                        '/admin/refunds',
+                    )
+                        ? 'bg-slate-50 font-bold'
+                        : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                    style={isActive('/admin/refunds')
+                        ? `color: ${primaryColor};`
+                        : ''}
+                >
+                    <i
+                        class="ti ti-receipt-refund text-xl group-hover:scale-110 transition"
+                        style={isActive('/admin/refunds')
+                            ? `color: ${primaryColor};`
+                            : ''}
+                    ></i>
+                    <span class="flex-grow flex items-center justify-between">
+                        <span>Refund Pesanan</span>
+                        {#if (adminNotifications?.refundCounts?.menunggu_konfirmasi || 0) > 0}
+                            <span
+                                class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0 font-sans"
+                                style="background-color: {secondaryColor};"
+                            >
+                                {adminNotifications.refundCounts.menunggu_konfirmasi}
+                            </span>
+                        {/if}
+                    </span>
+                </a>
+            </div>
             <div class="relative">
                 {#if isActive('/admin/stock-movements')}
                     <div

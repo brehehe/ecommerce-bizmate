@@ -6,17 +6,20 @@ use App\Http\Controllers\Admin\CmsController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
+use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReturnController as AdminReturnController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAddressController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +36,12 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [LoginController::class, 'authenticate']);
     Route::post('/register', [StorefrontController::class, 'register'])->name('register');
 });
+
+// Forgot & Reset Password
+Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/reset-password/{token}', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
@@ -94,6 +103,11 @@ Route::middleware('auth')->group(function () {
 
     // Returns (Customer)
     Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
+
+    // Refunds (Customer)
+    Route::get('/refunds', [RefundController::class, 'index'])->name('refunds.index');
+    Route::get('/refunds/{refundRequest}', [RefundController::class, 'show'])->name('refunds.show');
+    Route::post('/transactions/{transaction}/refund-request', [RefundController::class, 'store'])->name('refunds.store');
     Route::post('/transactions/{transaction}/return', [ReturnController::class, 'store'])->name('returns.store');
     Route::post('/returns/{returnRequest}/tracking', [ReturnController::class, 'updateTracking'])->name('returns.tracking');
 
@@ -196,6 +210,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // Returns (Admin)
     Route::get('/returns', [AdminReturnController::class, 'index'])->name('returns.index');
+
+    // Refunds (Admin)
+    Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
+    Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
+    Route::post('/refunds/{refund}/approve', [AdminRefundController::class, 'approve'])->name('refunds.approve');
+    Route::post('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->name('refunds.reject');
+    Route::post('/refunds/{refund}/complete', [AdminRefundController::class, 'completeRefund'])->name('refunds.complete');
     Route::get('/returns/{return}', [AdminReturnController::class, 'show'])->name('returns.show');
     Route::post('/returns/{return}/approve', [AdminReturnController::class, 'approve'])->name('returns.approve');
     Route::post('/returns/{return}/reject', [AdminReturnController::class, 'reject'])->name('returns.reject');

@@ -1,11 +1,12 @@
 <script lang="ts">
-    import { useForm, page } from '@inertiajs/svelte';
+    import { useForm, page, Link } from '@inertiajs/svelte';
     import { slide } from 'svelte/transition';
+    import { showToast } from '@/utils/toast';
 
     // Fallback colors if settings aren't loaded yet globally
-    const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
+    const primaryColor = $derived((page.props as any).theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(
-        page.props.theme?.secondary_color || '#fa7315',
+        (page.props as any).theme?.secondary_color || '#fa7315',
     );
 
     const form = useForm({
@@ -15,6 +16,21 @@
     });
 
     let showPassword = $state(false);
+
+    const shownFlashIds = new Set();
+    $effect(() => {
+        const flash = (page.props as any).flash;
+        if (!flash || !flash.id || shownFlashIds.has(flash.id)) return;
+
+        if (flash.success) {
+            showToast(flash.success, 'success', 'top');
+            shownFlashIds.add(flash.id);
+        }
+        if (flash.error) {
+            showToast(flash.error, 'error', 'top');
+            shownFlashIds.add(flash.id);
+        }
+    });
 
     const submit = () => {
         form.post('/login');
@@ -26,12 +42,11 @@
 </svelte:head>
 
 <div
-    class="min-h-[100dvh] w-full flex font-sans selection:text-white bg-white"
-    style="selection:bg-color: {primaryColor};"
+    class="grid grid-cols-1 lg:grid-cols-2 min-h-dvh w-full font-sans bg-white selection:bg-slate-900 selection:text-white overflow-x-hidden"
 >
     <!-- Bagian Kiri: Gambar & Informasi (Disembunyikan di Mobile) -->
     <div
-        class="hidden lg:flex lg:w-1/2 relative bg-slate-900 overflow-hidden items-center justify-center"
+        class="hidden lg:flex relative bg-slate-900 overflow-hidden items-center justify-center p-12"
     >
         <!-- Background Image & Overlay Gradasi -->
         <div class="absolute inset-0 z-0">
@@ -51,7 +66,7 @@
 
         <!-- Konten Informasi -->
         <div
-            class="relative z-10 px-12 lg:px-24 flex flex-col justify-center max-w-2xl text-white"
+            class="relative z-10 px-8 flex flex-col justify-center max-w-lg text-white"
         >
             <div
                 class="w-16 h-16 rounded-3xl shadow-2xl flex items-center justify-center text-white text-3xl mb-8 backdrop-blur-md bg-white/20 border border-white/30 transition-transform hover:scale-105"
@@ -60,11 +75,11 @@
             </div>
 
             <h1
-                class="text-4xl lg:text-5xl font-outfit font-black mb-6 leading-tight tracking-tight"
+                class="text-4xl font-outfit font-black mb-6 leading-tight tracking-tight"
             >
                 Kelola bisnis Anda dengan lebih mudah.
             </h1>
-            <p class="text-lg text-slate-200 font-medium leading-relaxed mb-10">
+            <p class="text-base text-slate-200 font-medium leading-relaxed mb-10">
                 Bizmate memberikan Anda kendali penuh atas toko online,
                 manajemen inventaris, laporan keuangan, dan pelanggan—semuanya
                 dalam satu dashboard elegan yang terpusat.
@@ -102,7 +117,7 @@
 
     <!-- Bagian Kanan: Form Login -->
     <div
-        class="w-full lg:w-1/2 flex flex-col justify-center py-8 px-6 sm:px-12 md:px-16 lg:px-24 bg-white relative"
+        class="flex flex-col justify-center py-10 px-4 sm:px-12 md:px-16 lg:px-20 bg-white relative overflow-hidden min-h-dvh"
     >
         <!-- Hiasan Bulat Dekoratif -->
         <div
@@ -114,7 +129,18 @@
             style="background-color: {secondaryColor};"
         ></div>
 
-        <div class="max-w-md w-full mx-auto relative z-10">
+        <div class="max-w-md w-full mx-auto relative z-10 my-auto">
+            <!-- Back to Home Link -->
+            <div class="mb-6">
+                <Link
+                    href="/"
+                    class="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-800 transition"
+                >
+                    <i class="ti ti-arrow-left text-lg"></i>
+                    Kembali ke Beranda
+                </Link>
+            </div>
+
             <!-- Logo (Hanya muncul di Mobile) -->
             <div class="flex lg:hidden items-center gap-3 mb-10">
                 <div
@@ -245,13 +271,13 @@
                     </div>
 
                     <div class="text-sm">
-                        <a
-                            href="#forgot"
+                        <Link
+                            href="/forgot-password"
                             class="font-bold hover:underline transition-opacity hover:opacity-80"
                             style="color: {primaryColor};"
                         >
                             Lupa kata sandi?
-                        </a>
+                        </Link>
                     </div>
                 </div>
 
@@ -259,7 +285,7 @@
                     <button
                         type="submit"
                         disabled={form.processing}
-                        class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-900/10 text-sm font-bold text-white transition-all hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-4 disabled:opacity-70 disabled:hover:translate-y-0 font-outfit uppercase tracking-wider"
+                        class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-900/10 text-sm font-bold text-white transition-all hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-4 disabled:opacity-70 disabled:hover:translate-y-0 font-outfit uppercase tracking-wider active:scale-[0.98]"
                         style="background-color: {primaryColor}; --tw-ring-color: {primaryColor}50;"
                     >
                         {#if form.processing}
@@ -273,22 +299,6 @@
                     </button>
                 </div>
             </form>
-
-            <div
-                class="mt-12 text-center text-sm font-medium text-slate-500 bg-slate-50 py-4 rounded-2xl border border-slate-100"
-            >
-                <p>Kredensial Uji Coba</p>
-                <div class="mt-2 flex justify-center gap-3">
-                    <span
-                        class="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-700 shadow-sm border border-slate-200"
-                        >admin@bizmate.com</span
-                    >
-                    <span
-                        class="px-3 py-1.5 bg-white rounded-lg text-xs font-bold text-slate-700 shadow-sm border border-slate-200"
-                        >password</span
-                    >
-                </div>
-            </div>
         </div>
     </div>
 </div>

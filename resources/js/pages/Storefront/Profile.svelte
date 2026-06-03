@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { useForm, page, Link } from '@inertiajs/svelte';
+    import { useForm, page, Link, router } from '@inertiajs/svelte';
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { showToast } from '@/utils/toast';
 
@@ -19,12 +19,35 @@
         form.put('/profile', {
             preserveScroll: true,
             onSuccess: () => {
-                showToast('Profil Anda berhasil diperbarui!', 'success', 'top');
                 form.reset('current_password', 'password', 'password_confirmation');
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
                 showToast(firstError as string, 'error', 'top');
+            }
+        });
+    }
+
+    let sendingReset = $state(false);
+
+    function sendResetLink() {
+        const email = (page.props.auth as any)?.user?.email;
+        if (!email) return;
+
+        sendingReset = true;
+        router.post('/forgot-password', {
+            email: email,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Handled globally by StorefrontLayout flash
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                showToast(firstError as string, 'error', 'top');
+            },
+            onFinish: () => {
+                sendingReset = false;
             }
         });
     }
@@ -129,7 +152,18 @@
                         Ubah Kata Sandi (Opsional)
                     </span>
                     <div>
-                        <label for="mob-current-password" class="block text-xs font-bold text-slate-600 mb-1.5">Kata Sandi Lama</label>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="mob-current-password" class="block text-xs font-bold text-slate-600">Kata Sandi Lama</label>
+                            <button
+                                type="button"
+                                onclick={sendResetLink}
+                                disabled={sendingReset}
+                                class="text-[10px] font-black uppercase tracking-wider hover:underline"
+                                style="color: {secondary};"
+                            >
+                                {sendingReset ? 'Mengirim...' : 'Lupa Kata Sandi?'}
+                            </button>
+                        </div>
                         <input
                             id="mob-current-password"
                             type="password"
@@ -243,7 +277,18 @@
                     </span>
 
                     <div>
-                        <label for="current_password" class="block text-xs font-bold text-slate-600 mb-1.5">Kata Sandi Lama</label>
+                        <div class="flex justify-between items-center mb-1.5 sm:w-1/2">
+                            <label for="current_password" class="block text-xs font-bold text-slate-600">Kata Sandi Lama</label>
+                            <button
+                                type="button"
+                                onclick={sendResetLink}
+                                disabled={sendingReset}
+                                class="text-xs font-bold hover:underline"
+                                style="color: {secondary};"
+                            >
+                                {sendingReset ? 'Mengirim...' : 'Lupa Kata Sandi?'}
+                            </button>
+                        </div>
                         <input
                             id="current_password"
                             type="password"

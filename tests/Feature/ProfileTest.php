@@ -54,6 +54,7 @@ test('customer can update their password', function () {
     $response = $this->actingAs($customer)->put('/profile', [
         'name' => $customer->name,
         'email' => $customer->email,
+        'current_password' => 'oldpassword123',
         'password' => 'newpassword123',
         'password_confirmation' => 'newpassword123',
     ]);

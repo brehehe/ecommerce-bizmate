@@ -30,6 +30,34 @@
     let showCancelModal = $state(false);
     let cancelReason = $state('');
     let cancellingOrder = $state(false);
+    let refundMethod = $state('transfer');
+    let bankName = $state('');
+    let accountNumber = $state('');
+    let accountName = $state('');
+
+    $effect(() => {
+        if (userBankAccounts && userBankAccounts.length > 0) {
+            const primaryAcc = userBankAccounts.find((acc: any) => acc.is_primary) || userBankAccounts[0];
+            if (primaryAcc) {
+                bankName = primaryAcc.bank_name || '';
+                accountNumber = primaryAcc.account_number || '';
+                accountName = primaryAcc.account_name || '';
+            }
+        }
+    });
+
+    const activeRefundRequest = $derived(
+        transaction.active_refund_request ?? transaction.refund_requests?.[0] ?? null
+    );
+
+    const canCancelDirectly = $derived(transaction.status === 'belum_bayar');
+    const canRequestCancel = $derived(
+        ['menunggu', 'diproses'].includes(transaction.status) && !activeRefundRequest
+    );
+    const canCancel = $derived(canCancelDirectly || canRequestCancel);
+    const canChangePayment = $derived(transaction.status === 'belum_bayar');
+    const canCompleteOrder = $derived(transaction.status === 'dikirim');
+    const isCompleted = $derived(transaction.status === 'selesai');
 
     // Change payment method modal
     let showChangePaymentModal = $state(false);
@@ -53,13 +81,6 @@
     let reviewFiles: File[] = $state([]);
     let reviewPreviews: { url: string; type: string }[] = $state([]);
     let submittingReview = $state(false);
-
-    const canCancel = $derived(
-        ['belum_bayar', 'menunggu'].includes(transaction.status),
-    );
-    const canChangePayment = $derived(transaction.status === 'belum_bayar');
-    const canCompleteOrder = $derived(transaction.status === 'dikirim');
-    const isCompleted = $derived(transaction.status === 'selesai');
 
     // Return/Retur system
     let showReturnModal = $state(false);
@@ -99,6 +120,34 @@
         selesai: { bg: '#dcfce7', text: '#166534' },
     };
 
+    const refundStatusColors: Record<string, { bg: string; text: string }> = {
+        menunggu_konfirmasi: { bg: '#fef3c7', text: '#92400e' },
+        disetujui: { bg: '#dbeafe', text: '#1e40af' },
+        ditolak: { bg: '#fee2e2', text: '#991b1b' },
+        selesai: { bg: '#dcfce7', text: '#166534' },
+    };
+
+    const refundStatusLabels: Record<string, string> = {
+        menunggu_konfirmasi: 'Menunggu Review',
+        disetujui: 'Disetujui',
+        ditolak: 'Ditolak',
+        selesai: 'Selesai',
+    };
+
+    const isUnderMinLimit = $derived(
+        !canCancelDirectly && (
+            (refundMethod === 'transfer' && Number(transaction.grand_total) < Number((page.props as any).refund_min_amount_transfer ?? 0)) ||
+            (refundMethod === 'poin' && Number(transaction.grand_total) < Number((page.props as any).refund_min_amount_points ?? 0))
+        )
+    );
+
+    const isSubmitCancelDisabled = $derived(
+        cancellingOrder || 
+        !cancelReason.trim() || 
+        isUnderMinLimit || 
+        (!canCancelDirectly && refundMethod === 'transfer' && (!bankName.trim() || !accountNumber.trim() || !accountName.trim()))
+    );
+
     // Check if mobile action bar should show
     const hasMobileAction = $derived(
         canCancel || canChangePayment || canCompleteOrder || canRetur,
@@ -115,21 +164,57 @@
             return;
         }
         cancellingOrder = true;
-        router.post(
-            `/transactions/${transaction.id}/cancel`,
-            { cancel_reason: cancelReason },
-            {
-                onSuccess: () => {
-                    showCancelModal = false;
+
+        if (canCancelDirectly) {
+            router.post(
+                `/transactions/${transaction.id}/cancel`,
+                { cancel_reason: cancelReason },
+                {
+                    onSuccess: () => {
+                        showCancelModal = false;
+                    },
+                    onError: () => {
+                        showToast('Gagal membatalkan pesanan.', 'error');
+                    },
+                    onFinish: () => {
+                        cancellingOrder = false;
+                    },
                 },
-                onError: () => {
-                    showToast('Gagal membatalkan pesanan.', 'error');
-                },
-                onFinish: () => {
+            );
+        } else {
+            const payload: any = {
+                reason: cancelReason,
+                refund_method: refundMethod,
+            };
+
+            if (refundMethod === 'transfer') {
+                if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
+                    showToast('Data rekening bank harus diisi lengkap.', 'error');
                     cancellingOrder = false;
+                    return;
+                }
+                payload.bank_name = bankName;
+                payload.account_number = accountNumber;
+                payload.account_name = accountName;
+            }
+
+            router.post(
+                `/transactions/${transaction.id}/refund-request`,
+                payload,
+                {
+                    onSuccess: () => {
+                        showCancelModal = false;
+                    },
+                    onError: (errors) => {
+                        const errMsg = Object.values(errors)[0] || 'Gagal mengajukan pembatalan.';
+                        showToast(errMsg, 'error');
+                    },
+                    onFinish: () => {
+                        cancellingOrder = false;
+                    },
                 },
-            },
-        );
+            );
+        }
     }
 
     function openChangePaymentModal() {
@@ -631,6 +716,62 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left/Main Column -->
                 <div class="lg:col-span-2 space-y-4">
+                    <!-- Refund Status Banner -->
+                    {#if activeRefundRequest}
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+                            <div class="h-1 w-full"></div>
+                            <div class="p-5">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold w-fit"
+                                          style="background-color: {refundStatusColors[activeRefundRequest.status]?.bg || '#f1f5f9'}; color: {refundStatusColors[activeRefundRequest.status]?.text || '#64748b'};">
+                                        <i class="ti ti-info-circle text-xs"></i>
+                                        Pengajuan Pembatalan: {refundStatusLabels[activeRefundRequest.status] ?? activeRefundRequest.status}
+                                    </span>
+                                    <span class="text-xs text-slate-400 self-start sm:self-auto font-medium">{fmtDate(activeRefundRequest.created_at)}</span>
+                                </div>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                                         style="background-color: {primary}15; color: {primary};">
+                                        <i class="ti ti-receipt-refund text-xl"></i>
+                                    </div>
+                                    <div class="flex-grow min-w-0">
+                                        <p class="font-bold text-slate-800 text-sm">Pengajuan Pembatalan & Refund</p>
+                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                                            Anda telah mengajukan pembatalan untuk pesanan ini dengan alasan: <strong>"{activeRefundRequest.reason}"</strong>.
+                                        </p>
+                                        <div class="mt-3 bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs text-slate-600 space-y-2">
+                                            <div class="grid grid-cols-[100px_1fr] gap-2">
+                                                <span class="text-slate-400 font-medium">Metode Refund</span>
+                                                <span class="text-slate-700 font-semibold">: {activeRefundRequest.refund_method === 'poin' ? 'Poin Toko (Koin)' : 'Transfer Bank'}</span>
+                                            </div>
+                                            <div class="grid grid-cols-[100px_1fr] gap-2">
+                                                <span class="text-slate-400 font-medium">Nominal Refund</span>
+                                                <span class="text-slate-700 font-bold" style="color: {primary}">: {fmt(activeRefundRequest.refund_amount)}</span>
+                                            </div>
+                                            {#if activeRefundRequest.refund_method === 'transfer'}
+                                                <div class="grid grid-cols-[100px_1fr] gap-2">
+                                                    <span class="text-slate-400 font-medium">Rekening</span>
+                                                    <span class="text-slate-750 font-semibold">: {activeRefundRequest.bank_name} - {activeRefundRequest.account_number} <br class="sm:hidden" /><span class="hidden sm:inline"> </span>a.n {activeRefundRequest.account_name}</span>
+                                                </div>
+                                            {/if}
+                                            {#if activeRefundRequest.notes_admin}
+                                                <div class="pt-2 border-t border-slate-200 mt-2 grid grid-cols-[100px_1fr] gap-2 text-slate-700">
+                                                    <span class="text-slate-400 font-medium">Catatan Admin</span>
+                                                    <span class="font-semibold">: {activeRefundRequest.notes_admin}</span>
+                                                </div>
+                                            {/if}
+                                        </div>
+                                        <div class="mt-4 flex gap-2">
+                                            <Link href={`/refunds/${activeRefundRequest.id}`} class="text-xs font-bold transition flex items-center gap-1 hover:underline" style="color: {primary};">
+                                                Detail Refund Saya <i class="ti ti-chevron-right text-xs"></i>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
+
                     <!-- Status Banner -->
                     {#if transaction.status === 'batal'}
                         <div
@@ -1913,7 +2054,7 @@
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div
             role="presentation"
-            class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center"
+            class="fixed inset-0 z-[9999] flex items-end lg:items-center justify-center p-0 lg:p-4"
             onclick={() => (showCancelModal = false)}
         >
             <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
@@ -1921,45 +2062,240 @@
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div
                 role="presentation"
-                class="relative z-10 bg-white w-full lg:max-w-md rounded-t-3xl lg:rounded-2xl p-5"
+                class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
             >
-                <div
-                    class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4"
-                >
-                    <i class="ti ti-alert-triangle text-2xl text-red-500"></i>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i class="ti ti-alert-triangle text-2xl text-red-500"></i>
+                        <h3 class="font-bold text-slate-800 text-lg">
+                            {canCancelDirectly ? 'Batalkan Pesanan' : 'Ajukan Pembatalan & Refund'}
+                        </h3>
+                    </div>
+                    <button aria-label="Tutup" onclick={() => (showCancelModal = false)} class="p-1 hover:bg-slate-100 rounded-full transition text-slate-400">
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
                 </div>
-                <h3 class="font-bold text-slate-800 text-center text-lg mb-1">
-                    Batalkan Pesanan?
-                </h3>
-                <p
-                    class="text-xs text-slate-500 text-center mb-5 leading-relaxed"
-                >
-                    Pesanan yang dibatalkan tidak dapat dikembalikan. Mohon
-                    berikan alasan pembatalan.
+
+                <p class="text-xs text-slate-500 mb-5 leading-relaxed">
+                    {canCancelDirectly 
+                        ? 'Pesanan yang dibatalkan tidak dapat dikembalikan. Silakan masukkan alasan pembatalan Anda.' 
+                        : 'Pesanan Anda sudah dibayar/diproses. Anda dapat mengajukan pembatalan dan dana akan direfund setelah disetujui admin.'}
                 </p>
 
-                <div class="mb-4">
-                    <label
-                        class="block text-xs font-bold text-slate-700 mb-1.5"
-                        for="cancel-reason"
-                    >
-                        Alasan Pembatalan <span class="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        id="cancel-reason"
-                        bind:value={cancelReason}
-                        rows="3"
-                        placeholder="Contoh: Ingin mengganti produk, salah pilih item, dll."
-                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 transition"
-                        style="--tw-ring-color:{primary}20;"
-                    ></textarea>
-                    <p class="text-[10px] text-slate-400 mt-1 text-right">
-                        {cancelReason.length}/500
-                    </p>
+                <div class="space-y-4">
+                    <!-- Alasan Pembatalan -->
+                    <div class="mb-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5" for="cancel-reason">
+                            Alasan Pembatalan <span class="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            id="cancel-reason"
+                            bind:value={cancelReason}
+                            rows="3"
+                            placeholder="Contoh: Ingin mengganti produk, salah pilih item, dll."
+                            class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 resize-none focus:outline-none focus:ring-2 transition"
+                            style="--tw-ring-color:{primary}20;"
+                            maxlength="500"
+                        ></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1 text-right">
+                            {cancelReason.length}/500
+                        </p>
+                    </div>
+
+                    <!-- Refund Methods Selection (If paid/processed) -->
+                    {#if !canCancelDirectly}
+                        <div>
+                            <span class="block text-xs font-bold text-slate-700 mb-2">
+                                Metode Refund <span class="text-red-500">*</span>
+                            </span>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onclick={() => (refundMethod = 'transfer')}
+                                    class="flex items-center gap-3 p-3.5 rounded-xl border-2 transition text-left cursor-pointer"
+                                    style={refundMethod === 'transfer'
+                                        ? `border-color:${primary}; background-color:${primary}08;`
+                                        : 'border-color:#e2e8f0;'}
+                                >
+                                    <div
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                        style={refundMethod === 'transfer'
+                                            ? `background-color:${primary}; color:white;`
+                                            : 'background-color:#f1f5f9; color:#94a3b8;'}
+                                    >
+                                        <i class="ti ti-building-bank text-sm"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold text-slate-800 truncate">
+                                            Transfer Bank
+                                        </p>
+                                        <p class="text-[9px] text-slate-400 truncate">
+                                            Proses {(page.props as any).refund_transfer_days ?? '3-5'} hari kerja
+                                        </p>
+                                    </div>
+                                    {#if refundMethod === 'transfer'}
+                                        <i class="ti ti-circle-check text-base shrink-0" style="color:{primary}"></i>
+                                    {/if}
+                                </button>
+
+                                {#if (page.props as any).refund_points_enabled}
+                                    <button
+                                        type="button"
+                                        onclick={() => (refundMethod = 'poin')}
+                                        class="flex items-center gap-3 p-3.5 rounded-xl border-2 transition text-left cursor-pointer"
+                                        style={refundMethod === 'poin'
+                                            ? `border-color:${primary}; background-color:${primary}08;`
+                                            : 'border-color:#e2e8f0;'}
+                                    >
+                                        <div
+                                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                            style={refundMethod === 'poin'
+                                                ? `background-color:${primary}; color:white;`
+                                                : 'background-color:#f1f5f9; color:#94a3b8;'}
+                                        >
+                                            <i class="ti ti-coins text-sm"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-bold text-slate-800 truncate">
+                                                Koin Toko (Poin)
+                                            </p>
+                                            <p class="text-[9px] text-slate-400 truncate">
+                                                Refund langsung masuk (instan)
+                                            </p>
+                                        </div>
+                                        {#if refundMethod === 'poin'}
+                                            <i class="ti ti-circle-check text-base shrink-0" style="color:{primary}"></i>
+                                        {/if}
+                                    </button>
+                                {/if}
+                            </div>
+                        </div>
+
+                        <!-- Bank Details (If transfer chosen) -->
+                        {#if refundMethod === 'transfer'}
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                <h4 class="text-xs font-bold text-slate-800">Detail Rekening Bank Penerima</h4>
+
+                                {#if userBankAccounts && userBankAccounts.length > 0}
+                                    <div class="space-y-1">
+                                        <label class="block text-[10px] font-bold text-slate-600" for="saved-bank-account">
+                                            Pilih Rekening Tersimpan
+                                        </label>
+                                        <select
+                                            id="saved-bank-account"
+                                            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white text-slate-800 focus:outline-none focus:ring-1 transition"
+                                            onchange={(e) => {
+                                                const val = e.currentTarget.value;
+                                                if (val) {
+                                                    const acc = userBankAccounts.find(a => String(a.id) === val);
+                                                    if (acc) {
+                                                        bankName = acc.bank_name || '';
+                                                        accountNumber = acc.account_number || '';
+                                                        accountName = acc.account_name || '';
+                                                    }
+                                                } else {
+                                                    bankName = '';
+                                                    accountNumber = '';
+                                                    accountName = '';
+                                                }
+                                            }}
+                                        >
+                                            <option value="">-- Masukkan Rekening Baru --</option>
+                                            {#each userBankAccounts as acc}
+                                                <option value={acc.id}>
+                                                    {acc.bank_name} - {acc.account_number} ({acc.account_name})
+                                                </option>
+                                            {/each}
+                                        </select>
+                                    </div>
+                                {/if}
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="space-y-1">
+                                        <label class="block text-[10px] font-bold text-slate-600" for="bank-name">
+                                            Nama Bank <span class="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            id="bank-name"
+                                            type="text"
+                                            bind:value={bankName}
+                                            placeholder="Contoh: BCA"
+                                            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white text-slate-800 focus:outline-none focus:ring-1 transition"
+                                        />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="block text-[10px] font-bold text-slate-600" for="account-number">
+                                            No. Rekening <span class="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            id="account-number"
+                                            type="text"
+                                            bind:value={accountNumber}
+                                            placeholder="Contoh: 12345678"
+                                            class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white text-slate-800 focus:outline-none focus:ring-1 transition"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-[10px] font-bold text-slate-600" for="account-name">
+                                        Nama Pemilik Rekening <span class="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="account-name"
+                                        type="text"
+                                        bind:value={accountName}
+                                        placeholder="Sesuai nama di rekening"
+                                        class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white text-slate-800 focus:outline-none focus:ring-1 transition"
+                                    />
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Terms & Conditions (S&K) and Limits -->
+                        <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-100/50 space-y-2">
+                            <div class="flex items-center gap-1.5 text-amber-700 text-xs font-bold">
+                                <i class="ti ti-info-circle text-sm"></i>
+                                <span>Syarat & Ketentuan Refund</span>
+                            </div>
+                            
+                            <div class="text-[10px] text-slate-600 leading-relaxed whitespace-pre-line">
+                                {#if refundMethod === 'transfer'}
+                                    {(page.props as any).refund_terms_transfer || 'Tidak ada S&K khusus untuk refund transfer bank.'}
+                                {:else}
+                                    {(page.props as any).refund_terms_points || 'Tidak ada S&K khusus untuk refund koin toko.'}
+                                {/if}
+                            </div>
+
+                            <div class="h-px bg-amber-100 my-2"></div>
+
+                            <div class="flex justify-between items-center text-[10px] font-semibold">
+                                <span class="text-slate-500">Nominal Pesanan:</span>
+                                <span class="text-slate-800 font-bold">{fmt(transaction.grand_total)}</span>
+                            </div>
+
+                            <div class="flex justify-between items-center text-[10px] font-semibold">
+                                <span class="text-slate-500">Minimal Batas Refund:</span>
+                                <span class="text-slate-800 font-bold">
+                                    {#if refundMethod === 'transfer'}
+                                        {fmt((page.props as any).refund_min_amount_transfer ?? 0)}
+                                    {:else}
+                                        {fmt((page.props as any).refund_min_amount_points ?? 0)}
+                                    {/if}
+                                </span>
+                            </div>
+
+                            {#if isUnderMinLimit}
+                                <div class="bg-red-50 text-red-600 p-2 rounded-xl text-[10px] font-bold mt-2 flex items-center gap-1.5">
+                                    <i class="ti ti-circle-x text-sm"></i>
+                                    <span>Nominal pesanan kurang dari minimal batas refund ({fmt(refundMethod === 'transfer' ? ((page.props as any).refund_min_amount_transfer ?? 0) : ((page.props as any).refund_min_amount_points ?? 0))}).</span>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
                 </div>
 
-                <div class="flex gap-3">
+                <div class="flex gap-3 mt-6 border-t border-slate-100 pt-4">
                     <button
                         onclick={() => (showCancelModal = false)}
                         class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition"
@@ -1968,10 +2304,15 @@
                     </button>
                     <button
                         onclick={submitCancel}
-                        disabled={cancellingOrder || !cancelReason.trim()}
-                        class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 bg-red-500 hover:bg-red-600 active:scale-95"
+                        disabled={isSubmitCancelDisabled}
+                        class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 bg-red-500 hover:bg-red-600 active:scale-95 flex items-center justify-center gap-1.5"
                     >
-                        {cancellingOrder ? 'Membatalkan...' : 'Ya, Batalkan'}
+                        {#if cancellingOrder}
+                            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>Memproses...</span>
+                        {:else}
+                            <span>Ya, Batalkan</span>
+                        {/if}
                     </button>
                 </div>
             </div>

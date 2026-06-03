@@ -966,6 +966,15 @@
                                                 class="ti ti-arrow-back-up text-base"
                                             ></i> Retur Saya
                                         </Link>
+                                        <Link
+                                            href="/refunds"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                        >
+                                            <i
+                                                class="ti ti-receipt-refund text-base"
+                                            ></i> Refund Saya
+                                        </Link>
                                         <button
                                             onclick={() => {
                                                 profileDropOpen = false;
@@ -1199,6 +1208,13 @@
                     class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                 >
                     <i class="ti ti-arrow-back-up text-lg"></i> Retur Saya
+                </Link>
+                <Link
+                    href="/refunds"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-receipt-refund text-lg"></i> Refund Saya
                 </Link>
 
                 <button
@@ -1558,11 +1574,12 @@
                             </div>
 
                             <div class="flex items-center justify-end">
-                                <a
-                                    href="#forgot"
+                                <Link
+                                    href="/forgot-password"
+                                    onclick={() => authModalOpen = false}
                                     class="text-xs font-bold hover:underline"
                                     style="color: {primary};"
-                                    >Lupa kata sandi?</a
+                                    >Lupa kata sandi?</Link
                                 >
                             </div>
 

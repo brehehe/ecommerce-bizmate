@@ -114,6 +114,16 @@
                   saturday: { active: true, open: '09:00', close: '15:00' },
                   sunday: { active: false, open: '09:00', close: '12:00' }
               },
+
+        refund_points_enabled:
+            settings.refund_points_enabled === 'true' ||
+            settings.refund_points_enabled === true ||
+            settings.refund_points_enabled === '1',
+        refund_min_amount_transfer: settings.refund_min_amount_transfer || 0,
+        refund_transfer_days: settings.refund_transfer_days || '3-5',
+        refund_terms_transfer: settings.refund_terms_transfer || '',
+        refund_min_amount_points: settings.refund_min_amount_points || 0,
+        refund_terms_points: settings.refund_terms_points || '',
     });
 
     const dayLabels = {
@@ -1087,6 +1097,106 @@
                                     />
                                 </div>
                             {/if}
+                        </div>
+                    </div>
+
+                    <!-- REFUND & CANCELLATION SYSTEM -->
+                    <div
+                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 sm:p-8 space-y-6"
+                    >
+                        <div
+                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
+                        >
+                            <div
+                                class="p-2.5 bg-red-50 text-red-500 rounded-xl"
+                            >
+                                <i class="ti ti-receipt-refund text-lg"></i>
+                            </div>
+                            <div>
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                >
+                                    Refund & Pengajuan Pembatalan
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-400 font-medium mt-1"
+                                >
+                                    Atur pengembalian dana (transfer bank & koin), syarat ketentuan, minimal refund, dan estimasi waktu proses.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Section: Bank Transfer -->
+                            <div class="space-y-4">
+                                <h4 class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                    Refund via Transfer Bank
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <InputCurrency
+                                        id="input-refund-min-transfer"
+                                        bind:value={form.refund_min_amount_transfer}
+                                        label="Minimal Refund Transfer Bank"
+                                        placeholder="0"
+                                        required={true}
+                                    />
+                                    <div class="space-y-1.5 font-sans">
+                                        <label
+                                            for="input-refund-days"
+                                            class="block text-xs font-bold text-slate-600"
+                                        >
+                                            Estimasi Hari Kerja Transfer (Hari)
+                                        </label>
+                                        <input
+                                            id="input-refund-days"
+                                            type="text"
+                                            bind:value={form.refund_transfer_days}
+                                            placeholder="Contoh: 3-5"
+                                            class="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition font-sans"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <Textarea
+                                    id="input-refund-terms-transfer"
+                                    bind:value={form.refund_terms_transfer}
+                                    label="Syarat & Ketentuan Refund Transfer Bank"
+                                    placeholder="Tuliskan syarat & ketentuan refund via Transfer Bank untuk dibaca oleh pelanggan..."
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div class="h-px bg-slate-100 my-2"></div>
+
+                            <!-- Section: Loyalty Points (Coins) -->
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">Aktifkan Refund ke Koin Toko</span>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">Memungkinkan pelanggan memilih refund ke saldo koin toko (instan setelah disetujui).</p>
+                                    </div>
+                                    <Toggle bind:checked={form.refund_points_enabled} />
+                                </div>
+
+                                {#if form.refund_points_enabled}
+                                    <div class="space-y-4 pt-2" transition:slide>
+                                        <InputCurrency
+                                            id="input-refund-min-points"
+                                            bind:value={form.refund_min_amount_points}
+                                            label="Minimal Refund via Koin Toko"
+                                            placeholder="0"
+                                            required={true}
+                                        />
+                                        <Textarea
+                                            id="input-refund-terms-points"
+                                            bind:value={form.refund_terms_points}
+                                            label="Syarat & Ketentuan Refund via Koin Toko"
+                                            placeholder="Tuliskan syarat & ketentuan refund via Koin Toko untuk dibaca oleh pelanggan..."
+                                            rows={3}
+                                        />
+                                    </div>
+                                {/if}
+                            </div>
                         </div>
                     </div>
 

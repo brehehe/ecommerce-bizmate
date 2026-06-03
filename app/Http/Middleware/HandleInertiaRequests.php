@@ -6,9 +6,10 @@ use App\Models\CartItem;
 use App\Models\ChatMessage;
 use App\Models\Notification;
 use App\Models\ProductStock;
+use App\Models\RefundRequest;
+use App\Models\ReturnRequest;
 use App\Models\Setting;
 use App\Models\Transaction;
-use App\Models\ReturnRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
@@ -68,6 +69,13 @@ class HandleInertiaRequests extends Middleware
         $alwaysOpen = true;
         $operationalHours = [];
 
+        $refundPointsEnabled = false;
+        $refundTransferDays = '3-5';
+        $refundMinAmountTransfer = 0;
+        $refundMinAmountPoints = 0;
+        $refundTermsTransfer = '';
+        $refundTermsPoints = '';
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -99,6 +107,14 @@ class HandleInertiaRequests extends Middleware
                 $holidayMode = Setting::where('key', 'holiday_mode')->value('value') === '1';
                 $alwaysOpen = Setting::where('key', 'always_open')->value('value') !== '0'; // default true if not set
                 $opsHoursVal = Setting::where('key', 'operational_hours')->value('value');
+
+                $refundPointsEnabled = Setting::where('key', 'refund_points_enabled')->value('value') === '1';
+                $refundTransferDays = Setting::where('key', 'refund_transfer_days')->value('value') ?? '3-5';
+                $refundMinAmountTransfer = (float) (Setting::where('key', 'refund_min_amount_transfer')->value('value') ?? 0);
+                $refundMinAmountPoints = (float) (Setting::where('key', 'refund_min_amount_points')->value('value') ?? 0);
+                $refundTermsTransfer = Setting::where('key', 'refund_terms_transfer')->value('value') ?? '';
+                $refundTermsPoints = Setting::where('key', 'refund_terms_points')->value('value') ?? '';
+
                 $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
                     'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
                     'tuesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
@@ -106,7 +122,7 @@ class HandleInertiaRequests extends Middleware
                     'thursday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
                     'friday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
                     'saturday' => ['active' => true, 'open' => '09:00', 'close' => '15:00'],
-                    'sunday' => ['active' => false, 'open' => '09:00', 'close' => '12:00']
+                    'sunday' => ['active' => false, 'open' => '09:00', 'close' => '12:00'],
                 ];
                 if (! is_array($operationalHours)) {
                     $operationalHours = [];
@@ -157,6 +173,13 @@ class HandleInertiaRequests extends Middleware
                 'holiday_mode' => $holidayMode,
                 'always_open' => $alwaysOpen,
                 'operational_hours' => $operationalHours,
+
+                'refund_points_enabled' => $refundPointsEnabled,
+                'refund_transfer_days' => $refundTransferDays,
+                'refund_min_amount_transfer' => $refundMinAmountTransfer,
+                'refund_min_amount_points' => $refundMinAmountPoints,
+                'refund_terms_transfer' => $refundTermsTransfer,
+                'refund_terms_points' => $refundTermsPoints,
             ],
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)
@@ -198,6 +221,9 @@ class HandleInertiaRequests extends Middleware
                 ],
                 'returnCounts' => [
                     'menunggu_review' => ReturnRequest::where('status', 'menunggu_review')->count(),
+                ],
+                'refundCounts' => [
+                    'menunggu_konfirmasi' => RefundRequest::where('status', 'menunggu_konfirmasi')->count(),
                 ],
                 'notifications' => Notification::whereNull('user_id')
                     ->orderBy('created_at', 'desc')
