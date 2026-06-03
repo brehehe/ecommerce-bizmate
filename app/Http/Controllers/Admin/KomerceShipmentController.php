@@ -56,8 +56,8 @@ class KomerceShipmentController extends Controller
      */
     public function requestPickup(Transaction $transaction, Request $request)
     {
-        if (! in_array($transaction->status, ['diproses', 'dikemas'])) {
-            return back()->with('error', 'Pesanan tidak eligible untuk pickup (status harus Diproses atau Dikemas).');
+        if (! in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
+            return back()->with('error', 'Pesanan tidak eligible untuk pickup (status harus Diproses, Dikemas, atau Out for Pickup).');
         }
 
         if (! $transaction->booking_code) {

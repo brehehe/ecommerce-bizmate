@@ -98,7 +98,7 @@ test('it prevents requesting pickup if transaction status is not eligible', func
         'vehicle_type' => 'motorcycle',
     ]);
 
-    $response->assertSessionHas('error', 'Pesanan tidak eligible untuk pickup (status harus Diproses atau Dikemas).');
+    $response->assertSessionHas('error', 'Pesanan tidak eligible untuk pickup (status harus Diproses, Dikemas, atau Out for Pickup).');
     $this->transaction->refresh();
     expect($this->transaction->status)->toBe('belum_bayar');
 });
