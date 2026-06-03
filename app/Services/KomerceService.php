@@ -890,7 +890,8 @@ class KomerceService
             'additional_cost' => 0,
             'grand_total' => $calculatedGrandTotal,
             'cod_value' => $isCod ? $calculatedGrandTotal : 0,
-            'insurance_value' => round($insuranceValue, 2),
+            'is_insurance' => $insuranceValue > 0 ? 1 : 0,
+            'insurance_value' => (int) round($insuranceValue),
             'order_details' => $orderDetails,
         ];
 
