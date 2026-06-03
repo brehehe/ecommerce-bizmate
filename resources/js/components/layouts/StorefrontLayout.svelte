@@ -886,10 +886,14 @@
                                     (profileDropOpen = !profileDropOpen)}
                                 class="flex items-center gap-2 text-white hover:bg-white/20 px-3 py-2 rounded-xl transition"
                             >
-                                <div
-                                    class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-black text-xs border border-white/40"
-                                >
-                                    {getInitials(auth.name)}
+                                <div class="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-black text-xs border border-white/40 shrink-0">
+                                    {#if auth.avatar}
+                                        <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
+                                    {:else}
+                                        <div class="w-full h-full bg-white/20 flex items-center justify-center">
+                                            {getInitials(auth.name)}
+                                        </div>
+                                    {/if}
                                 </div>
                                 <div class="text-left">
                                     <p
@@ -1136,9 +1140,15 @@
                                 profileDropOpen = !profileDropOpen;
                                 isNotifOpen = false;
                             }}
-                            class="w-8 h-8 rounded-full bg-white/20 border border-white/40 flex items-center justify-center font-black text-xs text-white"
+                            class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0"
                         >
-                            {getInitials(auth.name)}
+                            {#if auth.avatar}
+                                <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
+                            {:else}
+                                <div class="w-full h-full bg-white/20 flex items-center justify-center">
+                                    {getInitials(auth.name)}
+                                </div>
+                            {/if}
                         </button>
                     {:else}
                         <button
@@ -1160,11 +1170,12 @@
             class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl"
         >
             <div class="p-4 border-b border-slate-100 flex items-center gap-3">
-                <div
-                    class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-white"
-                    style="background-color: {primary};"
-                >
-                    {getInitials(auth.name)}
+                <div class="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center font-black text-sm text-white shrink-0" style="background-color: {primary};">
+                    {#if auth.avatar}
+                        <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
+                    {:else}
+                        {getInitials(auth.name)}
+                    {/if}
                 </div>
                 <div>
                     <p class="text-sm font-bold text-slate-800">

@@ -691,6 +691,35 @@
                                 <span>Stok & Inventaris</span>
                             </a>
                         </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/reports/pareto')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/pareto"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/pareto',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/pareto')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-chart-bar text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/pareto')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Analisis Pareto</span>
+                            </a>
+                        </div>
                     </div>
                 {/if}
             </div>
@@ -996,15 +1025,23 @@
             class="w-full flex items-center gap-3 px-2 py-2 cursor-pointer hover:bg-slate-50 rounded-xl transition text-left"
         >
             <div
-                class="w-10 h-10 rounded-full border-2 p-0.5 flex items-center justify-center shrink-0"
+                class="w-10 h-10 rounded-full border-2 p-0.5 flex items-center justify-center shrink-0 overflow-hidden"
                 style="border-color: {secondaryColor};"
             >
-                <div
-                    class="w-full h-full text-white font-bold text-[11px] rounded-full flex items-center justify-center uppercase"
-                    style="background-color: {primaryColor};"
-                >
-                    {user ? user.name.substring(0, 2) : 'AU'}
-                </div>
+                {#if user?.avatar}
+                    <img
+                        src="/storage/{user.avatar}"
+                        alt={user.name}
+                        class="w-full h-full rounded-full object-cover"
+                    />
+                {:else}
+                    <div
+                        class="w-full h-full text-white font-bold text-[11px] rounded-full flex items-center justify-center uppercase"
+                        style="background-color: {primaryColor};"
+                    >
+                        {user ? user.name.substring(0, 2) : 'AU'}
+                    </div>
+                {/if}
             </div>
             <div class="flex-grow min-w-0">
                 <p

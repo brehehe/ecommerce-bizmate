@@ -280,11 +280,19 @@
     let lockAspectRatio = $state(true);
     let originalAspectRatio = $state(1);
 
+    // Crop states
+    let isCropMode = $state(false);
+    let cropPreviewEl = $state<HTMLDivElement | null>(null);
+    let cropBox = $state({ x: 0, y: 0, w: 0, h: 0 });
+    let cropDragging = $state(false);
+    let cropStart = $state({ x: 0, y: 0 });
+    let editorInlineFileInput = $state<HTMLInputElement | null>(null);
+
     function openEditor(file: File, target: 'logo' | 'icon') {
         editorTarget = target;
         editorFilename = file.name;
         editorFileType = file.type || 'image/png';
-        
+
         // Reset controls
         editorScale = 1.0;
         editorRotation = 0;
@@ -295,13 +303,17 @@
         const reader = new FileReader();
         reader.onload = (event) => {
             editorImageSrc = event.target?.result as string;
-            
+
             const img = new Image();
             img.src = editorImageSrc;
             img.onload = () => {
                 editorLoadedImage = img;
                 if (target === 'icon') {
-                    const size = Math.min(img.naturalWidth, img.naturalHeight, 128);
+                    const size = Math.min(
+                        img.naturalWidth,
+                        img.naturalHeight,
+                        128,
+                    );
                     editorWidth = size;
                     editorHeight = size;
                     originalAspectRatio = 1.0;
@@ -315,6 +327,99 @@
             };
         };
         reader.readAsDataURL(file);
+    }
+
+    function openEditorInline(e: Event) {
+        const input = e.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            // Keep the modal open and just swap the image
+            openEditor(input.files[0], editorTarget);
+            input.value = '';
+        }
+    }
+
+    // Crop helpers
+    function startCropMode() {
+        isCropMode = true;
+        cropBox = { x: 0, y: 0, w: 0, h: 0 };
+    }
+
+    function cancelCrop() {
+        isCropMode = false;
+        cropBox = { x: 0, y: 0, w: 0, h: 0 };
+    }
+
+    function getCropEventPos(e: MouseEvent | TouchEvent, el: HTMLDivElement) {
+        const rect = el.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+        return {
+            x: Math.max(0, Math.min(clientX - rect.left, rect.width)),
+            y: Math.max(0, Math.min(clientY - rect.top, rect.height)),
+        };
+    }
+
+    function onCropPointerDown(e: MouseEvent | TouchEvent) {
+        if (!isCropMode || !cropPreviewEl) { return; }
+        const pos = getCropEventPos(e, cropPreviewEl);
+        cropStart = pos;
+        cropBox = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        cropDragging = true;
+    }
+
+    function onCropPointerMove(e: MouseEvent | TouchEvent) {
+        if (!cropDragging || !cropPreviewEl) { return; }
+        const pos = getCropEventPos(e, cropPreviewEl);
+        cropBox = {
+            x: Math.min(pos.x, cropStart.x),
+            y: Math.min(pos.y, cropStart.y),
+            w: Math.abs(pos.x - cropStart.x),
+            h: Math.abs(pos.y - cropStart.y),
+        };
+    }
+
+    function onCropPointerUp() {
+        cropDragging = false;
+    }
+
+    function applyCrop() {
+        if (!editorCanvas || !cropPreviewEl || cropBox.w < 4 || cropBox.h < 4) {
+            showToast('Area crop terlalu kecil.', 'error');
+            return;
+        }
+        // Compute scale factor from preview div to actual canvas dimensions
+        const previewRect = cropPreviewEl.getBoundingClientRect();
+        const scaleX = editorCanvas.width / previewRect.width;
+        const scaleY = editorCanvas.height / previewRect.height;
+
+        const cx = Math.round(cropBox.x * scaleX);
+        const cy = Math.round(cropBox.y * scaleY);
+        const cw = Math.round(cropBox.w * scaleX);
+        const ch = Math.round(cropBox.h * scaleY);
+
+        const ctx = editorCanvas.getContext('2d');
+        if (!ctx) { return; }
+
+        const imgData = ctx.getImageData(cx, cy, cw, ch);
+        editorCanvas.width = cw;
+        editorCanvas.height = ch;
+        ctx.putImageData(imgData, 0, 0);
+
+        // Update output dimensions to match crop
+        editorWidth = cw;
+        editorHeight = ch;
+        originalAspectRatio = cw / ch;
+
+        // Convert cropped canvas to a new image to reload into editor
+        editorCanvas.toBlob((blob) => {
+            if (!blob) { return; }
+            const croppedFile = new File([blob], editorFilename, { type: 'image/png' });
+            openEditor(croppedFile, editorTarget);
+        }, 'image/png');
+
+        isCropMode = false;
+        cropBox = { x: 0, y: 0, w: 0, h: 0 };
+        showToast('Crop berhasil diterapkan!', 'success');
     }
 
     function handleWidthInput(e: Event) {
@@ -369,7 +474,7 @@
         removeBg: boolean,
         tolerance: number,
         canvasWidth: number,
-        canvasHeight: number
+        canvasHeight: number,
     ) {
         if (!editorCanvas) return;
         const ctx = editorCanvas.getContext('2d');
@@ -404,7 +509,11 @@
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
-                if (r >= 255 - tolerance && g >= 255 - tolerance && b >= 255 - tolerance) {
+                if (
+                    r >= 255 - tolerance &&
+                    g >= 255 - tolerance &&
+                    b >= 255 - tolerance
+                ) {
                     data[i + 3] = 0; // Set alpha to 0 (transparent)
                 }
             }
@@ -421,20 +530,24 @@
                 editorRemoveBg,
                 editorTolerance,
                 editorWidth,
-                editorHeight
+                editorHeight,
             );
         }
     });
 
     function applyEdits() {
         if (!editorCanvas) return;
-        
+
         editorCanvas.toBlob((blob) => {
             if (blob) {
-                const editedFile = new File([blob], editorFilename.replace(/\.[^/.]+$/, "") + ".png", {
-                    type: 'image/png',
-                    lastModified: Date.now()
-                });
+                const editedFile = new File(
+                    [blob],
+                    editorFilename.replace(/\.[^/.]+$/, '') + '.png',
+                    {
+                        type: 'image/png',
+                        lastModified: Date.now(),
+                    },
+                );
 
                 if (editorTarget === 'logo') {
                     form.store_logo = editedFile;
@@ -443,10 +556,10 @@
                     form.store_icon = editedFile;
                     iconPreview = URL.createObjectURL(editedFile);
                 }
-                
+
                 showToast(
                     `Berhasil menerapkan perubahan pada ${editorTarget === 'logo' ? 'Logo' : 'Icon'} Toko.`,
-                    'success'
+                    'success',
                 );
                 isEditorOpen = false;
             }
@@ -456,7 +569,7 @@
     async function editCurrentImage(target: 'logo' | 'icon') {
         let imageUrl: string | null = null;
         let defaultFilename = 'logo.png';
-        
+
         if (target === 'logo') {
             imageUrl = imagePreview || settings.store_logo;
             defaultFilename = 'store_logo.png';
@@ -464,15 +577,17 @@
             imageUrl = iconPreview || settings.store_icon;
             defaultFilename = 'store_icon.png';
         }
-        
+
         if (!imageUrl) return;
-        
+
         try {
-            showToast('Memuat gambar untuk diedit...', 'info');
+            showToast('Memuat gambar untuk diedit...', 'success');
             const response = await fetch(imageUrl);
             if (!response.ok) throw new Error('Gagal mengunduh gambar');
             const blob = await response.blob();
-            const file = new File([blob], defaultFilename, { type: blob.type || 'image/png' });
+            const file = new File([blob], defaultFilename, {
+                type: blob.type || 'image/png',
+            });
             openEditor(file, target);
         } catch (error) {
             console.error(error);
@@ -1580,7 +1695,10 @@
                                         jam penuh setiap harinya.
                                     </p>
                                 </div>
-                                <Toggle bind:checked={form.always_open} disabled={!form.holiday_mode} />
+                                <Toggle
+                                    bind:checked={form.always_open}
+                                    disabled={!form.holiday_mode}
+                                />
                             </div>
 
                             <!-- WEEKLY SCHEDULE -->
@@ -1774,13 +1892,30 @@
                             </div>
                         {/if}
 
-                        <div class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                            <i class="ti ti-info-circle text-slate-400 text-base mt-0.5"></i>
+                        <div
+                            class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100"
+                        >
+                            <i
+                                class="ti ti-info-circle text-slate-400 text-base mt-0.5"
+                            ></i>
                             <div>
-                                <span class="text-[10px] font-black text-slate-700 uppercase tracking-tight block">Rekomendasi Dimensi Logo</span>
-                                <p class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed">
-                                    Mendukung format PNG/JPG dengan ukuran maksimal 2MB.<br>
-                                    Resolusi Minimum: <strong class="text-slate-600">512 x 512 px</strong> (Persegi) atau <strong class="text-slate-600">1024 x 576 px</strong> (Lanskap 16:9).
+                                <span
+                                    class="text-[10px] font-black text-slate-700 uppercase tracking-tight block"
+                                    >Rekomendasi Dimensi Logo</span
+                                >
+                                <p
+                                    class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed"
+                                >
+                                    Mendukung format PNG/JPG dengan ukuran
+                                    maksimal 2MB.<br />
+                                    Resolusi Minimum:
+                                    <strong class="text-slate-600"
+                                        >512 x 512 px</strong
+                                    >
+                                    (Persegi) atau
+                                    <strong class="text-slate-600"
+                                        >1024 x 576 px</strong
+                                    > (Lanskap 16:9).
                                 </p>
                             </div>
                         </div>
@@ -1864,13 +1999,29 @@
                             </div>
                         {/if}
 
-                        <div class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                            <i class="ti ti-info-circle text-slate-400 text-base mt-0.5"></i>
+                        <div
+                            class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100"
+                        >
+                            <i
+                                class="ti ti-info-circle text-slate-400 text-base mt-0.5"
+                            ></i>
                             <div>
-                                <span class="text-[10px] font-black text-slate-700 uppercase tracking-tight block">Rekomendasi Dimensi Icon</span>
-                                <p class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed">
-                                    Disarankan menggunakan format PNG transparan.<br>
-                                    Rasio: <strong class="text-slate-600">1:1 (Persegi)</strong>. Resolusi Minimum: <strong class="text-slate-600">128 x 128 px</strong>.
+                                <span
+                                    class="text-[10px] font-black text-slate-700 uppercase tracking-tight block"
+                                    >Rekomendasi Dimensi Icon</span
+                                >
+                                <p
+                                    class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed"
+                                >
+                                    Disarankan menggunakan format PNG
+                                    transparan.<br />
+                                    Rasio:
+                                    <strong class="text-slate-600"
+                                        >1:1 (Persegi)</strong
+                                    >. Resolusi Minimum:
+                                    <strong class="text-slate-600"
+                                        >128 x 128 px</strong
+                                    >.
                                 </p>
                             </div>
                         </div>
@@ -2370,39 +2521,125 @@
     </main>
 
     {#if isEditorOpen}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4" transition:fade>
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            transition:fade
+        >
             <!-- Backdrop -->
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick={() => isEditorOpen = false}></div>
-            
+            <div
+                class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                onclick={() => (isEditorOpen = false)}
+            ></div>
+
             <!-- Modal Content -->
-            <div class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all scale-100" transition:slide>
+            <div
+                class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all scale-100"
+                transition:slide
+            >
                 <!-- Header -->
-                <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+                <div
+                    class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
+                >
                     <div>
-                        <h3 class="font-outfit font-black text-slate-800 text-lg">
+                        <h3
+                            class="font-outfit font-black text-slate-800 text-lg"
+                        >
                             Edit {editorTarget === 'logo' ? 'Logo' : 'Icon'} Toko
                         </h3>
                         <p class="text-xs text-slate-400 font-medium">
-                            Sesuaikan ukuran, rotasi, dan transparansi gambar sebelum diunggah
+                            Sesuaikan ukuran, rotasi, crop, dan transparansi gambar
+                            sebelum diunggah
                         </p>
                     </div>
-                    <button type="button" class="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors" onclick={() => isEditorOpen = false}>
-                        <i class="ti ti-x text-xl"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <!-- Change image inline -->
+                        <button
+                            type="button"
+                            onclick={() => editorInlineFileInput?.click()}
+                            class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold transition"
+                            title="Ganti gambar"
+                        >
+                            <i class="ti ti-photo-edit text-base"></i>
+                            <span class="hidden sm:inline">Ganti Gambar</span>
+                        </button>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            bind:this={editorInlineFileInput}
+                            onchange={openEditorInline}
+                            class="hidden"
+                        />
+                        <button
+                            type="button"
+                            class="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
+                            onclick={() => (isEditorOpen = false)}
+                        >
+                            <i class="ti ti-x text-xl"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Body -->
-                <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div
+                    class="p-6 overflow-y-auto flex-grow grid grid-cols-1 md:grid-cols-2 gap-8"
+                >
                     <!-- Canvas Preview Area (Left) -->
-                    <div class="flex flex-col items-center justify-center bg-slate-50 rounded-2xl p-6 border border-slate-100 relative min-h-[300px]">
-                        <div class="checkerboard w-full h-full max-w-[320px] max-h-[320px] aspect-square rounded-xl shadow-inner border border-slate-200 overflow-hidden flex items-center justify-center relative">
-                            <canvas bind:this={editorCanvas} class="max-w-full max-h-full object-contain"></canvas>
+                    <div
+                        class="flex flex-col items-center justify-center bg-slate-50 rounded-2xl p-6 border border-slate-100 relative min-h-[300px]"
+                    >
+                        <!-- Crop mode indicator -->
+                        {#if isCropMode}
+                            <div class="w-full mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+                                <i class="ti ti-crop text-amber-600 text-sm"></i>
+                                <p class="text-[10px] font-bold text-amber-700 flex-grow">Seret di atas gambar untuk memilih area crop</p>
+                                <button type="button" onclick={cancelCrop} class="text-[10px] font-black text-amber-600 hover:text-amber-800 uppercase tracking-wider">Batal</button>
+                            </div>
+                        {/if}
+
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <div
+                            bind:this={cropPreviewEl}
+                            class="checkerboard w-full h-full max-w-[320px] max-h-[320px] aspect-square rounded-xl shadow-inner border {isCropMode ? 'border-amber-400 cursor-crosshair' : 'border-slate-200 cursor-default'} overflow-hidden flex items-center justify-center relative select-none"
+                            onmousedown={isCropMode ? onCropPointerDown : undefined}
+                            onmousemove={isCropMode ? onCropPointerMove : undefined}
+                            onmouseup={isCropMode ? onCropPointerUp : undefined}
+                            onmouseleave={isCropMode ? onCropPointerUp : undefined}
+                        >
+                            <canvas
+                                bind:this={editorCanvas}
+                                class="max-w-full max-h-full object-contain pointer-events-none"
+                            ></canvas>
+
+                            <!-- Crop selection overlay -->
+                            {#if isCropMode && cropBox.w > 2 && cropBox.h > 2}
+                                <div
+                                    class="absolute border-2 border-amber-400 bg-amber-400/10 pointer-events-none"
+                                    style="left:{cropBox.x}px; top:{cropBox.y}px; width:{cropBox.w}px; height:{cropBox.h}px;"
+                                >
+                                    <!-- Corner handles -->
+                                    <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                    <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                    <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                    <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                </div>
+                            {/if}
                         </div>
-                        <p class="text-[10px] text-slate-400 font-semibold mt-3 flex items-center gap-1">
-                            <i class="ti ti-info-circle"></i> Kotak kotak-kotak menandakan area transparan (tanpa background)
-                        </p>
+
+                        <!-- Crop dimension info -->
+                        {#if isCropMode && cropBox.w > 2 && cropBox.h > 2}
+                            <p class="text-[10px] text-amber-600 font-bold mt-2">
+                                {Math.round(cropBox.w)} × {Math.round(cropBox.h)} px (preview)
+                            </p>
+                        {:else}
+                            <p
+                                class="text-[10px] text-slate-400 font-semibold mt-3 flex items-center gap-1"
+                            >
+                                <i class="ti ti-info-circle"></i> Kotak kotak-kotak menandakan
+                                area transparan (tanpa background)
+                            </p>
+                        {/if}
                     </div>
 
                     <!-- Controls Area (Right) -->
@@ -2410,7 +2647,10 @@
                         <div class="space-y-5">
                             <!-- Custom Width & Height Inputs -->
                             <div class="space-y-2">
-                                <label class="text-xs font-bold text-slate-700 block">Dimensi Output (Piksel)</label>
+                                <label
+                                    class="text-xs font-bold text-slate-700 block"
+                                    >Dimensi Output (Piksel)</label
+                                >
                                 <div class="flex items-center gap-3">
                                     <!-- Width Input -->
                                     <div class="flex-1 relative">
@@ -2422,17 +2662,30 @@
                                             oninput={handleWidthInput}
                                             class="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:outline-none focus:border-brand-teal transition bg-slate-50 focus:bg-white"
                                         />
-                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">W (px)</span>
+                                        <span
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400"
+                                            >W (px)</span
+                                        >
                                     </div>
 
                                     <!-- Lock Aspect Ratio -->
                                     <button
                                         type="button"
-                                        onclick={() => lockAspectRatio = !lockAspectRatio}
-                                        class="p-2.5 rounded-xl border transition flex items-center justify-center {lockAspectRatio ? 'border-brand-teal bg-brand-teal/5 text-brand-teal' : 'border-slate-200 hover:border-slate-300 text-slate-400 bg-white'}"
-                                        title={lockAspectRatio ? 'Kunci Rasio Aktif' : 'Kunci Rasio Nonaktif'}
+                                        onclick={() =>
+                                            (lockAspectRatio =
+                                                !lockAspectRatio)}
+                                        class="p-2.5 rounded-xl border transition flex items-center justify-center {lockAspectRatio
+                                            ? 'border-brand-teal bg-brand-teal/5 text-brand-teal'
+                                            : 'border-slate-200 hover:border-slate-300 text-slate-400 bg-white'}"
+                                        title={lockAspectRatio
+                                            ? 'Kunci Rasio Aktif'
+                                            : 'Kunci Rasio Nonaktif'}
                                     >
-                                        <i class={lockAspectRatio ? 'ti ti-lock text-base' : 'ti ti-lock-open text-base'}></i>
+                                        <i
+                                            class={lockAspectRatio
+                                                ? 'ti ti-lock text-base'
+                                                : 'ti ti-lock-open text-base'}
+                                        ></i>
                                     </button>
 
                                     <!-- Height Input -->
@@ -2445,7 +2698,10 @@
                                             oninput={handleHeightInput}
                                             class="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:outline-none focus:border-brand-teal transition bg-slate-50 focus:bg-white"
                                         />
-                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">H (px)</span>
+                                        <span
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400"
+                                            >H (px)</span
+                                        >
                                     </div>
 
                                     <!-- Swap Button -->
@@ -2455,7 +2711,9 @@
                                         class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-500 bg-white hover:bg-slate-50 transition flex items-center justify-center"
                                         title="Tukar Lebar & Tinggi"
                                     >
-                                        <i class="ti ti-arrows-left-right text-base"></i>
+                                        <i
+                                            class="ti ti-arrows-left-right text-base"
+                                        ></i>
                                     </button>
                                 </div>
 
@@ -2463,21 +2721,24 @@
                                 <div class="flex flex-wrap gap-1.5 mt-1">
                                     <button
                                         type="button"
-                                        onclick={() => setPresetDimensions(512, 512)}
+                                        onclick={() =>
+                                            setPresetDimensions(512, 512)}
                                         class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
                                     >
                                         512x512
                                     </button>
                                     <button
                                         type="button"
-                                        onclick={() => setPresetDimensions(1024, 576)}
+                                        onclick={() =>
+                                            setPresetDimensions(1024, 576)}
                                         class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
                                     >
                                         1024x576 (16:9)
                                     </button>
                                     <button
                                         type="button"
-                                        onclick={() => setPresetDimensions(128, 128)}
+                                        onclick={() =>
+                                            setPresetDimensions(128, 128)}
                                         class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
                                     >
                                         128x128
@@ -2486,7 +2747,10 @@
                                         type="button"
                                         onclick={() => {
                                             if (editorLoadedImage) {
-                                                setPresetDimensions(editorLoadedImage.naturalWidth, editorLoadedImage.naturalHeight);
+                                                setPresetDimensions(
+                                                    editorLoadedImage.naturalWidth,
+                                                    editorLoadedImage.naturalHeight,
+                                                );
                                             }
                                         }}
                                         class="px-2 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition"
@@ -2499,15 +2763,44 @@
                             <!-- Resize / Scale Slider -->
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
-                                    <label class="text-xs font-bold text-slate-700">Skala / Zoom (Ukuran)</label>
-                                    <span class="text-xs font-bold text-slate-500">{Math.round(editorScale * 100)}%</span>
+                                    <label
+                                        class="text-xs font-bold text-slate-700"
+                                        >Skala / Zoom (Ukuran)</label
+                                    >
+                                    <span
+                                        class="text-xs font-bold text-slate-500"
+                                        >{Math.round(editorScale * 100)}%</span
+                                    >
                                 </div>
                                 <div class="flex items-center gap-3">
-                                    <button type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition" onclick={() => editorScale = Math.max(0.2, +(editorScale - 0.1).toFixed(1))}>
+                                    <button
+                                        type="button"
+                                        class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition"
+                                        onclick={() =>
+                                            (editorScale = Math.max(
+                                                0.2,
+                                                +(editorScale - 0.1).toFixed(1),
+                                            ))}
+                                    >
                                         <i class="ti ti-minus"></i>
                                     </button>
-                                    <input type="range" min="0.2" max="3" step="0.1" bind:value={editorScale} class="flex-grow accent-brand-teal h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer" />
-                                    <button type="button" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition" onclick={() => editorScale = Math.min(3, +(editorScale + 0.1).toFixed(1))}>
+                                    <input
+                                        type="range"
+                                        min="0.2"
+                                        max="3"
+                                        step="0.1"
+                                        bind:value={editorScale}
+                                        class="flex-grow accent-brand-teal h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition"
+                                        onclick={() =>
+                                            (editorScale = Math.min(
+                                                3,
+                                                +(editorScale + 0.1).toFixed(1),
+                                            ))}
+                                    >
                                         <i class="ti ti-plus"></i>
                                     </button>
                                 </div>
@@ -2530,7 +2823,7 @@
                                     </button>
                                     <button
                                         type="button"
-                                        onclick={() => editorScale = 1.0}
+                                        onclick={() => (editorScale = 1.0)}
                                         class="py-1.5 px-3 text-[10px] font-bold rounded-xl border border-slate-100 hover:border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 transition text-center"
                                     >
                                         100%
@@ -2540,10 +2833,21 @@
 
                             <!-- Rotation Controls -->
                             <div class="space-y-2">
-                                <label class="text-xs font-bold text-slate-700 block">Putar Gambar (Rotasi)</label>
+                                <label
+                                    class="text-xs font-bold text-slate-700 block"
+                                    >Putar Gambar (Rotasi)</label
+                                >
                                 <div class="grid grid-cols-4 gap-2">
                                     {#each [0, 90, 180, 270] as deg}
-                                        <button type="button" class="py-2 px-3 text-xs font-bold rounded-xl border transition-all text-center {editorRotation === deg ? 'border-brand-teal bg-brand-teal/5 text-brand-teal' : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'}" onclick={() => editorRotation = deg}>
+                                        <button
+                                            type="button"
+                                            class="py-2 px-3 text-xs font-bold rounded-xl border transition-all text-center {editorRotation ===
+                                            deg
+                                                ? 'border-brand-teal bg-brand-teal/5 text-brand-teal'
+                                                : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'}"
+                                            onclick={() =>
+                                                (editorRotation = deg)}
+                                        >
                                             {deg}°
                                         </button>
                                     {/each}
@@ -2551,24 +2855,56 @@
                             </div>
 
                             <!-- Background Removal Controls -->
-                            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                            <div
+                                class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3"
+                            >
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <span class="text-xs font-bold text-slate-700 block">Hapus Background Putih</span>
-                                        <p class="text-[10px] text-slate-400 mt-0.5 font-medium">Membuat latar belakang putih/terang menjadi transparan</p>
+                                        <span
+                                            class="text-xs font-bold text-slate-700 block"
+                                            >Hapus Background Putih</span
+                                        >
+                                        <p
+                                            class="text-[10px] text-slate-400 mt-0.5 font-medium"
+                                        >
+                                            Membuat latar belakang putih/terang
+                                            menjadi transparan
+                                        </p>
                                     </div>
                                     <Toggle bind:checked={editorRemoveBg} />
                                 </div>
 
                                 {#if editorRemoveBg}
-                                    <div class="space-y-2 pt-2" transition:slide>
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-[10px] font-bold text-slate-600">Sensitivitas Warna</span>
-                                            <span class="text-[10px] font-bold text-slate-500">{editorTolerance}</span>
+                                    <div
+                                        class="space-y-2 pt-2"
+                                        transition:slide
+                                    >
+                                        <div
+                                            class="flex justify-between items-center"
+                                        >
+                                            <span
+                                                class="text-[10px] font-bold text-slate-600"
+                                                >Sensitivitas Warna</span
+                                            >
+                                            <span
+                                                class="text-[10px] font-bold text-slate-500"
+                                                >{editorTolerance}</span
+                                            >
                                         </div>
-                                        <input type="range" min="5" max="150" step="5" bind:value={editorTolerance} class="w-full accent-brand-teal h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer" />
-                                        <p class="text-[9px] text-amber-600 font-bold leading-normal">
-                                            *Naikkan jika background putih tidak terhapus sempurna. Turunkan jika bagian logo ikut terhapus.
+                                        <input
+                                            type="range"
+                                            min="5"
+                                            max="150"
+                                            step="5"
+                                            bind:value={editorTolerance}
+                                            class="w-full accent-brand-teal h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <p
+                                            class="text-[9px] text-amber-600 font-bold leading-normal"
+                                        >
+                                            *Naikkan jika background putih tidak
+                                            terhapus sempurna. Turunkan jika
+                                            bagian logo ikut terhapus.
                                         </p>
                                     </div>
                                 {/if}
@@ -2576,13 +2912,49 @@
                         </div>
 
                         <!-- Footer Buttons -->
-                        <div class="flex items-center gap-3 pt-4 border-t border-slate-100">
-                            <button type="button" class="flex-1 py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition text-center uppercase tracking-wider" onclick={() => isEditorOpen = false}>
+                        <div
+                            class="flex items-center gap-3 pt-4 border-t border-slate-100"
+                        >
+                            <button
+                                type="button"
+                                class="py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition text-center uppercase tracking-wider"
+                                onclick={() => (isEditorOpen = false)}
+                            >
                                 Batal
                             </button>
-                            <button type="button" class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0" style="background-color: {primaryColor}; shadow-color: {primaryColor}33" onclick={applyEdits}>
-                                Terapkan
-                            </button>
+
+                            {#if isCropMode}
+                                <!-- Crop apply button -->
+                                <button
+                                    type="button"
+                                    class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600"
+                                    onclick={applyCrop}
+                                    disabled={cropBox.w < 4 || cropBox.h < 4}
+                                >
+                                    <i class="ti ti-crop"></i>
+                                    Terapkan Crop
+                                </button>
+                            {:else}
+                                <!-- Crop mode toggle -->
+                                <button
+                                    type="button"
+                                    class="py-3 px-4 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition text-center uppercase tracking-wider flex items-center gap-2"
+                                    onclick={startCropMode}
+                                    title="Mode Crop"
+                                >
+                                    <i class="ti ti-crop text-sm"></i>
+                                    <span class="hidden sm:inline">Crop</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                                    style="background-color: {primaryColor}; shadow-color: {primaryColor}33"
+                                    onclick={applyEdits}
+                                >
+                                    Terapkan
+                                </button>
+                            {/if}
                         </div>
                     </div>
                 </div>
@@ -2593,12 +2965,17 @@
 
 <style>
     .checkerboard {
-        background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
-                          linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
-                          linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
-                          linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+        background-image:
+            linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+            linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+            linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
         background-size: 20px 20px;
-        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        background-position:
+            0 0,
+            0 10px,
+            10px -10px,
+            -10px 0px;
         background-color: #ffffff;
     }
 </style>

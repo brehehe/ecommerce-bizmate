@@ -128,6 +128,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Profile
     Route::get('/profile', [ProfileController::class, 'showAdminProfile'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'updateAdminProfile'])->name('profile.update');
+    Route::put('/profile/password', [ProfileController::class, 'updateAdminPassword'])->name('profile.password.update');
 
     // CMS Banners
     Route::get('/cms/banners', [CmsController::class, 'banners'])->name('cms.banners');
@@ -235,6 +236,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
         Route::get('/stocks', [ReportController::class, 'stocks'])->name('stocks');
+        Route::get('/pareto', [ReportController::class, 'pareto'])->name('pareto');
     });
 });
 

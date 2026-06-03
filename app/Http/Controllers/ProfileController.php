@@ -109,7 +109,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Update the admin's profile.
+     * Update the admin's profile information and avatar.
      */
     public function updateAdminProfile(Request $request): RedirectResponse
     {
@@ -118,29 +118,62 @@ class ProfileController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'current_password' => 'nullable|required_with:password|current_password',
-            'password' => 'nullable|string|min:8|confirmed',
+            'phone_number' => 'nullable|string|max:20',
+            'gender' => 'nullable|in:Laki-laki,Perempuan',
+            'birth_date' => 'nullable|date',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'current_password' => 'required|current_password',
         ], [
             'name.required' => 'Nama wajib diisi.',
             'email.required' => 'Email wajib diisi.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
-            'current_password.required_with' => 'Kata sandi saat ini wajib diisi untuk mengubah kata sandi.',
-            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
-            'password.min' => 'Kata sandi minimal harus 8 karakter.',
-            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+            'current_password.required' => 'Kata sandi wajib diisi untuk memperbarui profil.',
+            'current_password.current_password' => 'Kata sandi yang Anda masukkan tidak cocok.',
+            'avatar.image' => 'File harus berupa gambar.',
+            'avatar.max' => 'Ukuran gambar maksimal 2MB.',
         ]);
 
         $user->name = $request->input('name');
         $user->email = $request->input('email');
+        $user->phone_number = $request->input('phone_number');
+        $user->gender = $request->input('gender');
+        $user->birth_date = $request->input('birth_date');
 
-        if ($request->filled('password')) {
-            $user->password = Hash::make($request->input('password'));
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $path;
         }
 
         $user->save();
 
         return redirect()->back()->with('success', 'Profil admin berhasil diperbarui!');
+    }
+
+    /**
+     * Update the admin's password.
+     */
+    public function updateAdminPassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'current_password' => 'required|current_password',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'current_password.required' => 'Kata sandi saat ini wajib diisi.',
+            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
+            'password.required' => 'Kata sandi baru wajib diisi.',
+            'password.min' => 'Kata sandi minimal harus 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($request->input('password')),
+        ]);
+
+        return redirect()->back()->with('success', 'Kata sandi admin berhasil diperbarui!');
     }
 
     /**

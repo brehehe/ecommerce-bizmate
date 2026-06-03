@@ -1,0 +1,484 @@
+<script lang="ts">
+    import { page, router } from '@inertiajs/svelte';
+    import AdminLayout from '@/components/layouts/AdminLayout.svelte';
+    import Chart from 'chart.js/auto';
+
+    const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
+    const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
+
+    let {
+        items = [],
+        chartData = { labels: [], values: [], cumulativePercentages: [] },
+        metrics = { total_items: 0, total_value: 0, vital_few_count: 0, vital_few_value: 0, trivial_many_count: 0, trivial_many_value: 0, vital_few_pct: 0 },
+        filters = { date_from: '', date_to: '', type: 'product_revenue' },
+    } = $props();
+
+    // svelte-ignore state_referenced_locally
+    let dateFrom = $state(filters.date_from);
+    // svelte-ignore state_referenced_locally
+    let dateTo = $state(filters.date_to);
+    // svelte-ignore state_referenced_locally
+    let selectedType = $state(filters.type);
+
+    let paretoCanvas: HTMLCanvasElement | undefined = $state();
+    let paretoChart: Chart | null = null;
+
+    const typeOptions = [
+        { value: 'product_revenue', label: 'Produk — Omset Tertinggi', icon: 'ti-cash', color: '#6366f1' },
+        { value: 'product_qty', label: 'Produk — Terlaris (Qty)', icon: 'ti-package', color: '#10b981' },
+        { value: 'customer_spending', label: 'Pelanggan — Pembeli Terbesar', icon: 'ti-user-dollar', color: '#f59e0b' },
+        { value: 'category_revenue', label: 'Kategori — Omset Tertinggi', icon: 'ti-category', color: '#ef4444' },
+    ];
+
+    function applyFilter() {
+        router.get('/admin/reports/pareto', {
+            date_from: dateFrom,
+            date_to: dateTo,
+            type: selectedType,
+        }, { preserveState: true });
+    }
+
+    function formatRupiah(value: number) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value);
+    }
+
+    function formatNumber(value: number) {
+        return new Intl.NumberFormat('id-ID').format(value);
+    }
+
+    function getValueLabel(value: number) {
+        if (selectedType === 'product_qty') {
+            return formatNumber(value) + ' pcs';
+        }
+        return formatRupiah(value);
+    }
+
+    function getColumnHeader() {
+        if (selectedType === 'product_qty') { return 'Kuantitas Terjual'; }
+        if (selectedType === 'customer_spending') { return 'Total Belanja'; }
+        return 'Omset';
+    }
+
+    function getSubLabelHeader() {
+        if (selectedType === 'product_revenue' || selectedType === 'product_qty') { return 'Kategori'; }
+        if (selectedType === 'customer_spending') { return 'Email'; }
+        return '';
+    }
+
+    function exportToCSV() {
+        const typeLabel = typeOptions.find(t => t.value === selectedType)?.label ?? selectedType;
+        const headers = ['Rank', 'Nama', getSubLabelHeader() || 'Info', 'Qty', getColumnHeader(), 'Kontribusi (%)', 'Kumulatif (%)', 'Kategori Pareto'];
+        const csvRows = [headers.join(',')];
+
+        (items as any[]).forEach((item: any) => {
+            const row = [
+                item.rank,
+                `"${(item.label ?? '').replace(/"/g, '""')}"`,
+                `"${(item.category_name ?? '').replace(/"/g, '""')}"`,
+                item.qty_sold,
+                Math.round(item.value),
+                item.percentage,
+                item.cumulative_percentage,
+                item.is_vital_few ? 'Vital Few (80%)' : 'Trivial Many (20%)',
+            ];
+            csvRows.push(row.join(','));
+        });
+
+        const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.join('\n');
+        const link = document.createElement('a');
+        link.setAttribute('href', encodeURI(csvContent));
+        link.setAttribute('download', `laporan_pareto_${selectedType}_${dateFrom}_sd_${dateTo}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function buildChart() {
+        if (!paretoCanvas) { return; }
+        if (paretoChart) { paretoChart.destroy(); }
+
+        const ctx = paretoCanvas.getContext('2d');
+        if (!ctx) { return; }
+
+        // Spread into plain arrays to avoid Svelte 5 $state conflict with Chart.js
+        const labels = [...(chartData.labels as string[])];
+        const values = [...(chartData.values as number[])];
+        const cumulative = [...(chartData.cumulativePercentages as number[])];
+
+        paretoChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: getColumnHeader(),
+                        data: values,
+                        backgroundColor: labels.map((_, i) => {
+                            const pct = cumulative[i] ?? 100;
+                            return pct <= 80 ? primaryColor + 'cc' : '#cbd5e1';
+                        }),
+                        borderRadius: 6,
+                        order: 2,
+                        yAxisID: 'y',
+                    },
+                    {
+                        type: 'line',
+                        label: 'Kumulatif (%)',
+                        data: cumulative,
+                        borderColor: secondaryColor,
+                        backgroundColor: secondaryColor + '20',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: secondaryColor,
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        tension: 0.3,
+                        fill: false,
+                        order: 1,
+                        yAxisID: 'y2',
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                if (context.dataset.type === 'line') {
+                                    return `Kumulatif: ${context.parsed.y.toFixed(1)}%`;
+                                }
+                                return `${getColumnHeader()}: ${getValueLabel(context.parsed.y)}`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 9 }, maxRotation: 35 },
+                    },
+                    y: {
+                        position: 'left',
+                        grid: { color: '#f1f5f9' },
+                        ticks: {
+                            font: { size: 9 },
+                            callback: (v) => {
+                                if (selectedType === 'product_qty') { return formatNumber(Number(v)); }
+                                const n = Number(v);
+                                if (n >= 1_000_000) { return 'Rp' + (n / 1_000_000).toFixed(0) + 'jt'; }
+                                if (n >= 1_000) { return 'Rp' + (n / 1_000).toFixed(0) + 'rb'; }
+                                return 'Rp' + n;
+                            },
+                        },
+                    },
+                    y2: {
+                        position: 'right',
+                        min: 0,
+                        max: 100,
+                        grid: { drawOnChartArea: false },
+                        ticks: { font: { size: 9 }, callback: (v) => v + '%' },
+                    },
+                },
+            },
+        });
+    }
+
+    // $effect reruns whenever chartData or paretoCanvas changes.
+    // This is required because Inertia preserveState does NOT remount the component,
+    // so onMount would never fire again when the user switches tabs.
+    $effect(() => {
+        // Access chartData properties to subscribe to reactivity
+        const _labels = chartData.labels;
+        const _values = chartData.values;
+        const _cum = chartData.cumulativePercentages;
+        const canvas = paretoCanvas;
+
+        if (!canvas) { return; }
+
+        buildChart();
+
+        return () => {
+            if (paretoChart) {
+                paretoChart.destroy();
+                paretoChart = null;
+            }
+        };
+    });
+</script>
+
+<svelte:head>
+    <title>Analisis Pareto</title>
+</svelte:head>
+
+<AdminLayout>
+    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6">
+
+        <!-- Page Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="font-outfit font-black text-2xl sm:text-3xl text-slate-800 tracking-tight">
+                    Analisis Pareto (80/20)
+                </h1>
+                <p class="text-sm text-slate-500 font-medium mt-1">
+                    Temukan faktor kecil yang berkontribusi besar terhadap performa bisnis Anda.
+                </p>
+            </div>
+            <button
+                onclick={exportToCSV}
+                class="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0"
+            >
+                <i class="ti ti-download text-base"></i>
+                <span>Ekspor CSV</span>
+            </button>
+        </div>
+
+        <!-- Type Selector -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {#each typeOptions as opt}
+                <button
+                    onclick={() => { selectedType = opt.value; applyFilter(); }}
+                    class="flex items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-200 text-left {selectedType === opt.value ? 'shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'}"
+                    style={selectedType === opt.value ? `border-color: ${opt.color}; background: ${opt.color}12;` : ''}
+                >
+                    <span
+                        class="w-9 h-9 rounded-xl flex items-center justify-center text-white text-base shrink-0"
+                        style="background-color: {opt.color};"
+                    >
+                        <i class="ti {opt.icon}"></i>
+                    </span>
+                    <span
+                        class="text-xs font-bold leading-tight"
+                        style={selectedType === opt.value ? `color: ${opt.color};` : 'color: #475569;'}
+                    >
+                        {opt.label}
+                    </span>
+                </button>
+            {/each}
+        </div>
+
+        <!-- Filter Card -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row items-end gap-4">
+                <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label for="date_from" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal Mulai</label>
+                        <input
+                            type="date"
+                            id="date_from"
+                            bind:value={dateFrom}
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition"
+                        />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label for="date_to" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tanggal Selesai</label>
+                        <input
+                            type="date"
+                            id="date_to"
+                            bind:value={dateTo}
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition"
+                        />
+                    </div>
+                </div>
+                <button
+                    onclick={applyFilter}
+                    class="w-full sm:w-auto px-6 py-3 bg-brand-blueRoyal hover:bg-blue-800 text-white font-bold rounded-2xl text-xs transition duration-200 shadow-lg shadow-brand-blueRoyal/20 uppercase tracking-wider font-outfit"
+                >
+                    Terapkan Filter
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-indigo-600 bg-indigo-50 mb-3">
+                    <i class="ti ti-list-numbers"></i>
+                </span>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Total Item</p>
+                <h3 class="font-outfit font-black text-2xl text-slate-800 mt-1">{metrics.total_items}</h3>
+            </div>
+
+            <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-emerald-600 bg-emerald-50 mb-3">
+                    <i class="ti ti-chart-pie"></i>
+                </span>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Total Nilai</p>
+                <h3 class="font-outfit font-black text-xl text-slate-800 mt-1">
+                    {selectedType === 'product_qty' ? formatNumber(metrics.total_value) + ' pcs' : formatRupiah(metrics.total_value)}
+                </h3>
+            </div>
+
+            <!-- Vital Few Card -->
+            <div class="bg-white rounded-3xl p-5 border-2 shadow-sm" style="border-color: {primaryColor}30; background: {primaryColor}06;">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-white" style="background-color: {primaryColor};">
+                        <i class="ti ti-star"></i>
+                    </span>
+                    <span class="text-[10px] font-black uppercase tracking-widest" style="color: {primaryColor};">Vital Few (80%)</span>
+                </div>
+                <h3 class="font-outfit font-black text-2xl text-slate-800">{metrics.vital_few_count} item</h3>
+                <p class="text-xs text-slate-500 font-semibold mt-0.5">
+                    hanya {metrics.vital_few_pct}% dari semua item
+                </p>
+            </div>
+
+            <!-- Trivial Many Card -->
+            <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm">
+                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-slate-400 bg-slate-50 mb-3">
+                    <i class="ti ti-dots"></i>
+                </span>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Trivial Many (20%)</p>
+                <h3 class="font-outfit font-black text-2xl text-slate-800 mt-1">{metrics.trivial_many_count} item</h3>
+                <p class="text-xs text-slate-400 font-semibold mt-0.5">sisa {100 - metrics.vital_few_pct}% item</p>
+            </div>
+        </div>
+
+        <!-- Pareto Chart -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+            <div class="mb-4">
+                <h3 class="font-outfit font-black text-lg text-slate-800">Diagram Pareto</h3>
+                <p class="text-xs text-slate-500 font-medium">
+                    Batang berwarna = Vital Few (berkontribusi ≤80% kumulatif). Garis = % kumulatif.
+                </p>
+            </div>
+            <div class="h-80 w-full">
+                {#if (items as any[]).length === 0}
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400">
+                        <i class="ti ti-chart-bar-off text-4xl mb-2 text-slate-300"></i>
+                        <span class="font-bold text-sm">Tidak ada data untuk periode ini.</span>
+                    </div>
+                {:else}
+                    <canvas bind:this={paretoCanvas}></canvas>
+                {/if}
+            </div>
+        </div>
+
+        <!-- 80/20 Insight Box -->
+        {#if (items as any[]).length > 0}
+        <div class="rounded-3xl p-6 border-2" style="border-color: {primaryColor}30; background: linear-gradient(135deg, {primaryColor}08, {secondaryColor}08);">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-2xl shrink-0" style="background: linear-gradient(135deg, {primaryColor}, {secondaryColor});">
+                    <i class="ti ti-bulb"></i>
+                </div>
+                <div>
+                    <h4 class="font-outfit font-black text-lg text-slate-800">Insight Pareto 80/20</h4>
+                    <p class="text-sm text-slate-600 font-medium mt-1 leading-relaxed">
+                        Hanya <strong class="text-slate-800">{metrics.vital_few_count} item</strong> ({metrics.vital_few_pct}%) berkontribusi pada
+                        <strong class="text-slate-800">≥80%</strong> dari total nilai. Fokuskan sumber daya Anda pada item-item tersebut
+                        untuk hasil yang optimal. Sisa <strong class="text-slate-800">{metrics.trivial_many_count} item</strong> ({100 - metrics.vital_few_pct}%)
+                        hanya berkontribusi pada sisanya.
+                    </p>
+                </div>
+            </div>
+        </div>
+        {/if}
+
+        <!-- Detail Table -->
+        <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h3 class="font-outfit font-black text-lg text-slate-800">Tabel Detail</h3>
+                    <p class="text-xs text-slate-500 font-medium">Lengkap dengan persentase kontribusi dan kumulatif.</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs font-bold">
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full inline-block" style="background-color: {primaryColor};"></span>
+                        Vital Few
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full inline-block bg-slate-300"></span>
+                        Trivial Many
+                    </span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                        <tr class="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-100">
+                            <th class="py-4 px-5 w-12">#</th>
+                            <th class="py-4 px-5">Nama</th>
+                            {#if getSubLabelHeader()}
+                                <th class="py-4 px-5">{getSubLabelHeader()}</th>
+                            {/if}
+                            <th class="py-4 px-5 text-right">
+                                {selectedType === 'customer_spending' ? 'Total Pesanan' : 'Qty Terjual'}
+                            </th>
+                            <th class="py-4 px-5 text-right">{getColumnHeader()}</th>
+                            <th class="py-4 px-5 text-right">Kontribusi</th>
+                            <th class="py-4 px-5 text-right">Kumulatif</th>
+                            <th class="py-4 px-5 text-center">Pareto</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                        {#if (items as any[]).length === 0}
+                            <tr>
+                                <td colspan="8" class="py-12 text-center text-slate-400 font-bold font-outfit">
+                                    <i class="ti ti-chart-bar-off text-3xl block mb-2 text-slate-300"></i>
+                                    Tidak ada data pada periode ini.
+                                </td>
+                            </tr>
+                        {:else}
+                            {#each items as item}
+                                <tr class="hover:bg-slate-50/50 transition {(item as any).is_vital_few ? '' : 'opacity-60'}">
+                                    <td class="py-3 px-5">
+                                        <span class="w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center"
+                                            style={(item as any).is_vital_few ? `background: ${primaryColor}15; color: ${primaryColor};` : 'background: #f1f5f9; color: #94a3b8;'}>
+                                            {(item as any).rank}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-5 font-bold text-slate-800 max-w-[240px]">
+                                        <span class="truncate block" title={(item as any).label}>{(item as any).label}</span>
+                                    </td>
+                                    {#if getSubLabelHeader()}
+                                        <td class="py-3 px-5 text-slate-500 text-xs max-w-[160px]">
+                                            <span class="truncate block" title={(item as any).category_name}>{(item as any).category_name ?? '-'}</span>
+                                        </td>
+                                    {/if}
+                                    <td class="py-3 px-5 text-right text-slate-600 font-semibold">
+                                        {formatNumber((item as any).qty_sold)}
+                                        {#if selectedType !== 'customer_spending'}<span class="text-xs text-slate-400"> pcs</span>{/if}
+                                        {#if selectedType === 'customer_spending'}<span class="text-xs text-slate-400"> pesanan</span>{/if}
+                                    </td>
+                                    <td class="py-3 px-5 text-right font-bold text-slate-800">
+                                        {getValueLabel((item as any).value)}
+                                    </td>
+                                    <td class="py-3 px-5 text-right">
+                                        <span class="font-semibold text-slate-700">{(item as any).percentage}%</span>
+                                        <div class="w-full bg-slate-100 rounded-full h-1 mt-1 max-w-[80px] ml-auto">
+                                            <div
+                                                class="h-1 rounded-full transition-all"
+                                                style="width: {(item as any).percentage}%; background-color: {(item as any).is_vital_few ? primaryColor : '#94a3b8'};"
+                                            ></div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-5 text-right">
+                                        <span class="font-bold {(item as any).cumulative_percentage <= 80 ? 'text-emerald-600' : 'text-slate-400'}">
+                                            {(item as any).cumulative_percentage}%
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-5 text-center">
+                                        {#if (item as any).is_vital_few}
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-white" style="background-color: {primaryColor};">
+                                                <i class="ti ti-star text-xs"></i> Vital
+                                            </span>
+                                        {:else}
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-400">
+                                                Trivial
+                                            </span>
+                                        {/if}
+                                    </td>
+                                </tr>
+                            {/each}
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+</AdminLayout>

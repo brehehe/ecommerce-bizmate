@@ -550,4 +550,138 @@ class ReportController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Laporan Pareto (Pareto Analysis Report)
+     * Mendukung 4 jenis analisis: produk (revenue), produk (qty), pelanggan, kategori.
+     */
+    public function pareto(Request $request): Response
+    {
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
+        $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
+        $type = $request->input('type', 'product_revenue'); // default
+
+        $rawItems = collect();
+
+        if ($type === 'product_revenue') {
+            // Pareto: Produk berdasarkan Omset
+            $rawItems = DB::table('transaction_items')
+                ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
+                ->leftJoin('products', 'transaction_items.product_id', '=', 'products.id')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->whereIn('transactions.status', $paidStatuses)
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+                ->selectRaw('
+                    transaction_items.product_name as label,
+                    COALESCE(categories.name, \'Tanpa Kategori\') as category_name,
+                    SUM(transaction_items.quantity) as qty_sold,
+                    SUM(transaction_items.subtotal) as value
+                ')
+                ->groupBy('transaction_items.product_name', 'categories.name')
+                ->orderBy('value', 'desc')
+                ->get();
+        } elseif ($type === 'product_qty') {
+            // Pareto: Produk berdasarkan Kuantitas Terjual
+            $rawItems = DB::table('transaction_items')
+                ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
+                ->leftJoin('products', 'transaction_items.product_id', '=', 'products.id')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->whereIn('transactions.status', $paidStatuses)
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+                ->selectRaw('
+                    transaction_items.product_name as label,
+                    COALESCE(categories.name, \'Tanpa Kategori\') as category_name,
+                    SUM(transaction_items.quantity) as qty_sold,
+                    SUM(transaction_items.subtotal) as revenue,
+                    SUM(transaction_items.quantity) as value
+                ')
+                ->groupBy('transaction_items.product_name', 'categories.name')
+                ->orderBy('value', 'desc')
+                ->get();
+        } elseif ($type === 'customer_spending') {
+            // Pareto: Pelanggan berdasarkan Total Belanja
+            $rawItems = DB::table('transactions')
+                ->join('users', 'transactions.user_id', '=', 'users.id')
+                ->whereIn('transactions.status', $paidStatuses)
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+                ->selectRaw('
+                    users.name as label,
+                    users.email as category_name,
+                    COUNT(transactions.id) as qty_sold,
+                    SUM(transactions.grand_total) as value
+                ')
+                ->groupBy('users.id', 'users.name', 'users.email')
+                ->orderBy('value', 'desc')
+                ->get();
+        } elseif ($type === 'category_revenue') {
+            // Pareto: Kategori berdasarkan Omset
+            $rawItems = DB::table('transaction_items')
+                ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
+                ->leftJoin('products', 'transaction_items.product_id', '=', 'products.id')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->whereIn('transactions.status', $paidStatuses)
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+                ->selectRaw('
+                    COALESCE(categories.name, \'Tanpa Kategori\') as label,
+                    NULL as category_name,
+                    SUM(transaction_items.quantity) as qty_sold,
+                    SUM(transaction_items.subtotal) as value
+                ')
+                ->groupBy('categories.name')
+                ->orderBy('value', 'desc')
+                ->get();
+        }
+
+        // Hitung kumulatif & persentase
+        $total = $rawItems->sum('value');
+        $cumulativeValue = 0;
+        $items = $rawItems->values()->map(function ($item, $index) use ($total, &$cumulativeValue) {
+            $cumulativeValue += $item->value;
+            $percentage = $total > 0 ? ($item->value / $total) * 100 : 0;
+            $cumulativePercentage = $total > 0 ? ($cumulativeValue / $total) * 100 : 0;
+
+            return [
+                'rank' => $index + 1,
+                'label' => $item->label,
+                'category_name' => $item->category_name ?? null,
+                'qty_sold' => (int) ($item->qty_sold ?? 0),
+                'value' => (float) $item->value,
+                'percentage' => round($percentage, 2),
+                'cumulative_percentage' => round($cumulativePercentage, 2),
+                'is_vital_few' => $cumulativePercentage <= 80, // 80/20 rule
+            ];
+        });
+
+        // Hitung metrik ringkasan
+        $vitalFewCount = $items->filter(fn ($i) => $i['is_vital_few'])->count();
+        $vitalFewValue = $items->filter(fn ($i) => $i['is_vital_few'])->sum('value');
+        $trivialManyCount = $items->count() - $vitalFewCount;
+        $trivialManyValue = $total - $vitalFewValue;
+
+        // Chart data (top 20 saja untuk keterbacaan)
+        $chartItems = $items->take(20);
+
+        return Inertia::render('Admin/Reports/Pareto', [
+            'items' => $items->values(),
+            'chartData' => [
+                'labels' => $chartItems->pluck('label')->toArray(),
+                'values' => $chartItems->pluck('value')->toArray(),
+                'cumulativePercentages' => $chartItems->pluck('cumulative_percentage')->toArray(),
+            ],
+            'metrics' => [
+                'total_items' => $items->count(),
+                'total_value' => (float) $total,
+                'vital_few_count' => $vitalFewCount,
+                'vital_few_value' => (float) $vitalFewValue,
+                'trivial_many_count' => $trivialManyCount,
+                'trivial_many_value' => (float) $trivialManyValue,
+                'vital_few_pct' => $items->count() > 0 ? round(($vitalFewCount / $items->count()) * 100, 1) : 0,
+            ],
+            'filters' => [
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'type' => $type,
+            ],
+        ]);
+    }
 }
