@@ -824,6 +824,45 @@ class KomerceService
         })->toArray();
 
         $itemSubtotalSum = collect($orderDetails)->sum('subtotal');
+        $totalWeightGrams = 0;
+        foreach ($orderDetails as $detail) {
+            $totalWeightGrams += $detail['product_weight'] * $detail['qty'];
+        }
+
+        // Fetch the exact shipping cost from Komerce calculation endpoint to ensure it matches perfectly
+        if (! app()->environment('testing')) {
+            try {
+                $calcRes = self::getDomesticCost(
+                    $originRegencyId,
+                    $address->regency_id,
+                    $totalWeightGrams,
+                    strtolower($courierNorm),
+                    $address->id
+                );
+
+                if (isset($calcRes['results'][0]['costs'])) {
+                    foreach ($calcRes['results'][0]['costs'] as $c) {
+                        if (strtoupper($c['service']) === strtoupper($serviceNorm)) {
+                            $shippingCost = (int) ($c['cost'][0]['value'] ?? $shippingCost);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to pre-calculate shipping cost in storeShipment: '.$e->getMessage());
+            }
+        }
+
+        if ($shippingCost !== (int) $transaction->shipping_fee) {
+            $oldFee = (int) $transaction->shipping_fee;
+            $diff = $shippingCost - $oldFee;
+            $transaction->update([
+                'shipping_fee' => $shippingCost,
+                'grand_total' => (float) $transaction->grand_total + $diff,
+            ]);
+        }
+
+        $shippingCashback = (int) round($shippingCost * $discountPercent);
         $calculatedGrandTotal = $itemSubtotalSum + $shippingCost + (int) $transaction->admin_fee;
 
         $cleanShipperPhone = preg_replace('/^\+/', '', trim($storePhone));
