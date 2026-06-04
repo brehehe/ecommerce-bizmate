@@ -461,6 +461,7 @@ test('KomerceService::registerWebhook calls PUT to webhook endpoint', function (
 });
 
 test('Komerce APIs propagate actual errors and disable staging fallbacks in production', function () {
+    Log::spy();
     // 1. Force production environment and set non-sandbox delivery URL
     app()->detectEnvironment(fn () => 'production');
     Setting::updateOrCreate(['key' => 'shipping_delivery_key'], ['value' => 'mock_key']);
@@ -492,4 +493,84 @@ test('Komerce APIs propagate actual errors and disable staging fallbacks in prod
     $resHistory = KomerceService::getShipmentHistory('RES-TEST-123', 'jne');
     expect($resHistory['success'])->toBeFalse();
     expect($resHistory['error'])->toBe('AWB not found');
+});
+
+test('KomerceService::storeShipment calculates discount correctly when transaction has discounts', function () {
+    Setting::updateOrCreate(['key' => 'shipping_delivery_key'], ['value' => 'mock_key']);
+    Setting::updateOrCreate(['key' => 'store_name'], ['value' => 'My Store']);
+    Setting::updateOrCreate(['key' => 'store_phone'], ['value' => '081234567890']);
+    Setting::updateOrCreate(['key' => 'store_address'], ['value' => 'Jl. Merdeka No. 5']);
+    Setting::updateOrCreate(['key' => 'store_email'], ['value' => 'store@example.com']);
+    Setting::updateOrCreate(['key' => 'latitude'], ['value' => '-7.274631']);
+    Setting::updateOrCreate(['key' => 'longitude'], ['value' => '109.207174']);
+
+    $category = Category::create([
+        'name' => 'Category A',
+        'slug' => 'cat-a',
+        'icon' => 'ti-home',
+    ]);
+
+    $product = Product::create([
+        'name' => 'Tenda Dome',
+        'slug' => 'tenda-dome',
+        'sku' => 'TENDA-1',
+        'category_id' => $category->id,
+        'summary' => 'Summary',
+        'description' => 'Description',
+        'weight' => 2000,
+        'length' => 15,
+        'width' => 12,
+        'height' => 10,
+        'active' => true,
+    ]);
+
+    $this->transaction->items()->create([
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'product_sku' => $product->sku,
+        'harga_akhir' => 405000,
+        'harga_jual' => 405000,
+        'quantity' => 1,
+        'subtotal' => 405000,
+    ]);
+
+    // Gross total = subtotal (405000) + shipping_fee (10500) + admin_fee (5000) + application_fee (10000) = 430500
+    // Insurance = (405000 * 0.002) + 5000 = 5810
+    // So Komerce Gross = 430500 + 5810 = 436310
+    // We set grand_total = 430500 (since store did not collect insurance)
+    // So discount should absorb the insurance value: 436310 - 430500 = 5810
+    $this->transaction->update([
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'JNEFlat',
+        'shipping_fee' => 10500,
+        'admin_fee' => 5000,
+        'application_fee' => 10000,
+        'grand_total' => 430500,
+    ]);
+
+    Http::fake([
+        'https://api-sandbox.collaborator.komerce.id/order/api/v1/orders/store*' => function (Request $request) {
+            $data = $request->data();
+            expect($data['additional_cost'])->toBe(15000); // maps to application_fee + admin_fee
+            expect($data['service_fee'])->toBe(0);
+            expect($data['is_insurance'])->toBe(1);
+            expect($data['insurance_value'])->toBe(5799);
+            expect($data['discount'])->toBe(0); // 0 because item price was adjusted
+            expect($data['order_details'][0]['product_price'])->toBe(399201);
+            expect($data['order_details'][0]['subtotal'])->toBe(399201);
+            expect($data['grand_total'])->toBe(430500);
+            expect($data['shipping_cost'])->toBe(10500);
+
+            return Http::response([
+                'success' => true,
+                'data' => [
+                    'booking_code' => 'BOOK-OK-123',
+                    'airway_bill' => 'RES-OK-123',
+                ],
+            ], 200);
+        },
+    ]);
+
+    $response = KomerceService::storeShipment($this->transaction);
+    expect($response['success'])->toBeTrue();
 });

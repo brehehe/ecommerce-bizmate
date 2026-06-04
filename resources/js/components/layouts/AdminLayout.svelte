@@ -1,12 +1,37 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { usePage, Link } from '@inertiajs/svelte';
+    import { showToast } from '@/utils/toast';
     import AdminSidebar from './AdminSidebar.svelte';
     import OfflineDetector from '@/components/OfflineDetector.svelte';
 
     let { children } = $props();
 
     const page = usePage();
+    const shownFlashIds = new Set();
+
+    $effect(() => {
+        const flash = (page.props as any).flash;
+        if (!flash || !flash.id || shownFlashIds.has(flash.id)) return;
+
+        let showed = false;
+        if (flash.success) {
+            showToast(flash.success, 'success');
+            showed = true;
+        }
+        if (flash.error) {
+            showToast(flash.error, 'error');
+            showed = true;
+        }
+        if (flash.warning) {
+            showToast(flash.warning, 'error');
+            showed = true;
+        }
+
+        if (showed) {
+            shownFlashIds.add(flash.id);
+        }
+    });
 
     const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
 

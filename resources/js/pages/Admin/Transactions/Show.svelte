@@ -209,7 +209,7 @@
     let showPickupModal = $state(false);
     let vehicleType = $state('motorcycle');
     let bookingLoading = $state(false);
-    let trackingTimeline = $state([]);
+    let trackingTimeline = $state<any[]>([]);
     let trackingLoading = $state(false);
     let trackingErr = $state('');
 
@@ -241,9 +241,6 @@
     function storeKomerceShipment() {
         bookingLoading = true;
         router.post(`/admin/transactions/${transaction.id}/komerce/store`, {}, {
-            onSuccess: () => {
-                showToast('Booking pengiriman Komerce berhasil!', 'success');
-            },
             onError: (err) => {
                 const first = Object.values(err)[0] as string;
                 showToast(first ?? 'Gagal booking pengiriman.', 'error');
@@ -257,9 +254,6 @@
     function cancelKomerceShipment() {
         bookingLoading = true;
         router.post(`/admin/transactions/${transaction.id}/komerce/cancel`, {}, {
-            onSuccess: () => {
-                showToast('Booking pengiriman berhasil dibatalkan.', 'success');
-            },
             onError: (err) => {
                 const first = Object.values(err)[0] as string;
                 showToast(first ?? 'Gagal membatalkan booking.', 'error');
@@ -281,7 +275,6 @@
             vehicle_type: vehicleType,
         }, {
             onSuccess: () => {
-                showToast('Request pickup berhasil diajukan!', 'success');
                 showPickupModal = false;
             },
             onError: (err) => {

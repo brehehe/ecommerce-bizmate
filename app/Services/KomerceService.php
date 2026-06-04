@@ -7,6 +7,7 @@ use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Setting;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -706,7 +707,7 @@ class KomerceService
             ?? self::getSetting('regency_id');
         $storeName = self::getSetting('store_name') ?? config('app.name');
         $storePhone = self::getSetting('store_phone') ?? '081234567890';
-        $storeAddress = self::getSetting('store_address') ?? 'Alamat Toko';
+        $storeAddress = self::getSetting('address') ?? self::getSetting('store_address') ?? 'Alamat Toko';
         $storeEmail = self::getSetting('store_email') ?? 'store@example.com';
         $storeLat = self::getSetting('latitude') ?? '-7.274631';
         $storeLng = self::getSetting('longitude') ?? '109.207174';
@@ -879,42 +880,107 @@ class KomerceService
         $cleanShipperPhone = preg_replace('/^\+/', '', trim($storePhone));
         $cleanReceiverPhone = preg_replace('/^\+/', '', trim($address->phone_number));
 
-        // Calculate insurance_value dynamically
-        $totalProductPrice = (float) $itemSubtotalSum;
+        $additionalCost = (int) ($transaction->application_fee ?? 0) + (int) ($transaction->admin_fee ?? 0);
+        $insurance = 0;
         $insuranceValue = 0.0;
 
-        if ($totalProductPrice >= 300000) {
-            $courierKey = strtolower($courierNorm);
-            if ($courierKey === 'jne') {
-                $insuranceValue = ($totalProductPrice * 0.002) + 5000;
-            } elseif ($courierKey === 'sicepat') {
-                if ($calculatedGrandTotal > 500000) {
-                    $insuranceValue = $calculatedGrandTotal * 0.003;
-                }
-            } elseif ($courierKey === 'idexpress') {
-                $insuranceValue = $totalProductPrice * 0.002;
-            } elseif ($courierKey === 'sap') {
-                $insuranceValue = ($totalProductPrice * 0.003) + 2000;
-            } elseif ($courierKey === 'ninja') {
-                if ($totalProductPrice <= 1000000) {
-                    $insuranceValue = 2500;
-                } else {
-                    $insuranceValue = $totalProductPrice * 0.0025;
-                }
-            } elseif ($courierKey === 'jnt' || $courierKey === 'j&t') {
-                $insuranceValue = $totalProductPrice * 0.002;
-            } elseif ($courierKey === 'lion') {
-                $insuranceValue = $totalProductPrice * 0.003;
-            } elseif ($courierKey === 'gosend') {
-                if ($totalProductPrice <= 1000000) {
-                    $insuranceValue = 1000;
-                } elseif ($totalProductPrice <= 10000000) {
-                    $insuranceValue = 2000;
-                } else {
-                    $insuranceValue = 5000;
+        // Run the price and insurance calculation iteratively to resolve the circular dependency
+        // where insurance_value depends on product_price, and product_price depends on discount (which includes insurance).
+        $maxIterations = 3;
+        for ($iter = 0; $iter < $maxIterations; $iter++) {
+            $totalProductPrice = (float) $itemSubtotalSum;
+            $insuranceValue = 0.0;
+            if ($totalProductPrice >= 300000) {
+                $courierKey = strtolower($courierNorm);
+                if ($courierKey === 'jne') {
+                    $insuranceValue = ($totalProductPrice * 0.002) + 5000;
+                } elseif ($courierKey === 'sicepat') {
+                    $tempGross = $totalProductPrice + $shippingCost + (int) $transaction->admin_fee + $additionalCost;
+                    if ($tempGross > 500000) {
+                        $insuranceValue = $tempGross * 0.003;
+                    }
+                } elseif ($courierKey === 'idexpress') {
+                    $insuranceValue = $totalProductPrice * 0.002;
+                } elseif ($courierKey === 'sap') {
+                    $insuranceValue = ($totalProductPrice * 0.003) + 2000;
+                } elseif ($courierKey === 'ninja') {
+                    if ($totalProductPrice <= 1000000) {
+                        $insuranceValue = 2500;
+                    } else {
+                        $insuranceValue = $totalProductPrice * 0.0025;
+                    }
+                } elseif ($courierKey === 'jnt' || $courierKey === 'j&t') {
+                    $insuranceValue = $totalProductPrice * 0.002;
+                } elseif ($courierKey === 'lion') {
+                    $insuranceValue = $totalProductPrice * 0.003;
+                } elseif ($courierKey === 'gosend') {
+                    if ($totalProductPrice <= 1000000) {
+                        $insuranceValue = 1000;
+                    } elseif ($totalProductPrice <= 10000000) {
+                        $insuranceValue = 2000;
+                    } else {
+                        $insuranceValue = 5000;
+                    }
                 }
             }
+
+            $insurance = $insuranceValue > 0 ? (int) ceil($insuranceValue) : 0;
+            $grossTotal = $itemSubtotalSum + $shippingCost + $additionalCost + $insurance;
+            $totalDiscount = (int) ($grossTotal - (float) $transaction->grand_total);
+
+            if ($totalDiscount !== 0 && ! empty($orderDetails)) {
+                if ($iter === $maxIterations - 1) {
+                    $additionalCost = max(0, $additionalCost - $totalDiscount);
+                    break;
+                }
+
+                $remainingDiscount = $totalDiscount;
+                $itemCount = count($orderDetails);
+
+                for ($i = 0; $i < $itemCount; $i++) {
+                    $qty = $orderDetails[$i]['qty'];
+                    if ($qty <= 0) {
+                        $qty = 1;
+                    }
+
+                    if ($i === $itemCount - 1) {
+                        $itemDiscount = $remainingDiscount;
+                    } else {
+                        $itemShare = $orderDetails[$i]['subtotal'] / $itemSubtotalSum;
+                        $itemDiscount = (int) round($totalDiscount * $itemShare);
+                        $itemDiscount = min($itemDiscount, $remainingDiscount);
+                    }
+
+                    $remainingDiscount -= $itemDiscount;
+
+                    $newSubtotal = max(0, $orderDetails[$i]['subtotal'] - $itemDiscount);
+                    $newUnitPrice = (int) round($newSubtotal / $qty);
+
+                    $orderDetails[$i]['product_price'] = $newUnitPrice;
+                    $orderDetails[$i]['subtotal'] = $newUnitPrice * $qty;
+                }
+
+                $itemSubtotalSum = collect($orderDetails)->sum('subtotal');
+            } else {
+                break;
+            }
         }
+
+        // Final fail-safe validation to ensure calculated total matches grand_total exactly
+        $grossTotal = $itemSubtotalSum + $shippingCost + $additionalCost + $insurance;
+        $diff = (int) ($grossTotal - (float) $transaction->grand_total);
+        if ($diff !== 0) {
+            $additionalCost = max(0, $additionalCost - $diff);
+        }
+
+        Log::info([
+            'subtotal' => collect($orderDetails)->sum('subtotal'),
+            'shipping_cost' => $shippingCost,
+            'service_fee' => 0,
+            'additional_cost' => $additionalCost,
+            'insurance_value' => ceil($insuranceValue),
+            'grand_total' => $transaction->grand_total,
+        ]);
 
         // Construct Postman-compliant Komerce API payload
         $payload = [
@@ -936,12 +1002,16 @@ class KomerceService
             'payment_method' => $isCod ? 'COD' : 'BANK TRANSFER',
             'shipping_cost' => $shippingCost,
             'shipping_cashback' => $shippingCashback,
-            'service_fee' => (int) $transaction->admin_fee,
-            'additional_cost' => 0,
-            'grand_total' => $calculatedGrandTotal,
-            'cod_value' => $isCod ? $calculatedGrandTotal : 0,
+            'service_fee' => 0,
+            'additional_cost' => $additionalCost,
+            'discount' => 0, // Set discount to 0 since the prices have been adjusted directly to balance the grand_total
+            // 'grand_total' => (int) $transaction->grand_total,
+            'grand_total' => collect($orderDetails)->sum('subtotal')
+    + $shippingCost
+    + $additionalCost,
+            'cod_value' => $isCod ? (int) $transaction->grand_total : 0,
             'is_insurance' => $insuranceValue > 0 ? 1 : 0,
-            'insurance_value' => (int) round($insuranceValue),
+            'insurance_value' => (int) ceil($insuranceValue),
             'order_details' => $orderDetails,
         ];
 
@@ -949,15 +1019,21 @@ class KomerceService
             $payload['commodity_code'] = 'ELG150';
         }
 
-        $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
+        $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
+
+        Log::info('Komerce Delivery store payload: '.json_encode($payload));
 
         try {
             $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
                 ->post(self::getKomerceUrl('store'), $payload);
 
             if ($response->successful()) {
+                Log::info('Komerce Delivery store success response: '.$response->body());
+
                 return ['success' => true, 'data' => $response->json('data') ?? $response->json()];
             }
+
+            Log::warning('Komerce Delivery store failed. Status: '.$response->status().' Body: '.$response->body().' Payload: '.json_encode($payload));
 
             if ($isSandbox) {
                 // Fallback for staging testing: simulate order booking if staging credentials fail or return mock response
@@ -982,7 +1058,7 @@ class KomerceService
                 'error' => $response->json('meta.message') ?? 'Gagal membuat pesanan pengiriman di Komerce.',
             ];
         } catch (\Exception $e) {
-            Log::error('KomerceService Store Shipment Error: '.$e->getMessage());
+            Log::error('KomerceService Store Shipment Error: '.$e->getMessage().' Payload: '.json_encode($payload));
 
             if ($isSandbox) {
                 return [
@@ -1008,139 +1084,127 @@ class KomerceService
      */
     public static function requestPickup(array $payload): array
     {
-        $apiKey = self::getSetting('shipping_delivery_key', 'app.rajaongkir.shipping_delivery_key');
-        $baseUrl = self::getKomerceDeliveryUrl();
+        $apiKey = self::getSetting(
+            'shipping_delivery_key',
+            'app.rajaongkir.shipping_delivery_key'
+        );
 
         if (! $apiKey) {
-            return ['error' => 'API Key Shipping Delivery belum diatur.'];
+            return [
+                'success' => false,
+                'error' => 'API Key Shipping Delivery belum diatur.',
+            ];
         }
-
-        // Parse pickup_time which is "YYYY-MM-DD HH:MM:SS" (or similar) into pickup_date and pickup_time
-        $pickupTimeStr = $payload['pickup_time'] ?? now()->addDay()->format('Y-m-d H:i:s');
-        $timestamp = strtotime($pickupTimeStr);
-        $pickupDate = date('Y-m-d', $timestamp);
-        $pickupTime = date('H:i', $timestamp);
-
-        // Map vehicle type to Komerce expected value ("Motor", "Mobil", or "Truk")
-        $vehicleType = strtolower($payload['vehicle_type'] ?? 'motorcycle');
-        if (str_contains($vehicleType, 'truck') || str_contains($vehicleType, 'truk')) {
-            $pickupVehicle = 'Truk';
-        } elseif (str_contains($vehicleType, 'car') || str_contains($vehicleType, 'mobil')) {
-            $pickupVehicle = 'Mobil';
-        } else {
-            $pickupVehicle = 'Motor';
-        }
-
-        $apiPayload = [
-            'pickup_date' => $pickupDate,
-            'pickup_time' => $pickupTime,
-            'pickup_vehicle' => $pickupVehicle,
-            'orders' => [
-                [
-                    'order_no' => $payload['booking_code'] ?? '',
-                ],
-            ],
-        ];
-
-        $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
 
         try {
-            $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
-                ->post(self::getKomerceUrl('Pickup'), $apiPayload);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $firstOrder = $data['data'][0] ?? null;
-                if ($firstOrder && isset($firstOrder['status']) && $firstOrder['status'] === 'failed') {
-                    if ($isSandbox) {
-                        Log::warning('Komerce Delivery Pickup failed status inside data: '.$response->body().'. Simulating success for sandbox/staging.');
+            $pickupTime = ! empty($payload['pickup_time'])
+                ? Carbon::parse($payload['pickup_time'])
+                : now()->addDay()->setHour(14)->setMinute(0);
 
-                        return [
-                            'success' => true,
-                            'simulated' => true,
-                            'message' => 'Request pickup berhasil diproses (Simulasi Staging).',
-                            'data' => [
-                                'meta' => [
-                                    'message' => 'Success Request Pickup',
-                                    'code' => 201,
-                                    'status' => 'success',
-                                ],
-                                'data' => [
-                                    [
-                                        'status' => 'success',
-                                        'order_no' => $firstOrder['order_no'] ?? '',
-                                        'awb' => 'KOMERKOM'.($firstOrder['order_no'] ?? ''),
-                                    ],
-                                ],
-                            ],
-                        ];
-                    }
+            $vehicleType = strtolower(
+                $payload['vehicle_type'] ?? 'motorcycle'
+            );
 
-                    return [
-                        'success' => false,
-                        'error' => $firstOrder['message'] ?? 'Gagal request pickup (Status failed dari kurir).',
-                        'data' => $data,
-                    ];
-                }
+            $pickupVehicle = match (true) {
+                str_contains($vehicleType, 'truck'),
+                str_contains($vehicleType, 'truk') => 'Truk',
 
-                return ['success' => true, 'data' => $data];
-            }
+                str_contains($vehicleType, 'car'),
+                str_contains($vehicleType, 'mobil') => 'Mobil',
 
-            if ($isSandbox) {
-                // Fallback for staging
-                Log::warning('Komerce Delivery Pickup failed: '.$response->body());
+                default => 'Motor',
+            };
+
+            $apiPayload = [
+                'pickup_date' => $pickupTime->format('Y-m-d'),
+                'pickup_time' => $pickupTime->format('H:i'),
+                'pickup_vehicle' => $pickupVehicle,
+                'orders' => [
+                    [
+                        'order_no' => $payload['booking_code'] ?? '',
+                    ],
+                ],
+            ];
+
+            Log::info('Pickup URL', [
+                'url' => self::getKomerceUrl('Pickup'),
+            ]);
+
+            Log::info('Pickup Payload', $apiPayload);
+
+            $response = Http::withHeaders(
+                self::getCollaboratorHeaders($apiKey)
+            )->post(
+                self::getKomerceUrl('Pickup'),
+                $apiPayload
+            );
+
+            Log::info('Pickup Response Status', [
+                'status' => $response->status(),
+            ]);
+
+            Log::info('Pickup Response Body', [
+                'body' => $response->body(),
+            ]);
+
+            $data = $response->json();
+
+            if (! $response->successful()) {
 
                 return [
-                    'success' => true,
-                    'simulated' => true,
-                    'message' => 'Request pickup berhasil diproses (Simulasi Staging).',
-                    'data' => [
-                        'meta' => [
-                            'message' => 'Success Request Pickup',
-                            'code' => 201,
-                            'status' => 'success',
-                        ],
-                        'data' => [
-                            [
-                                'status' => 'success',
-                                'order_no' => $payload['booking_code'] ?? '',
-                                'awb' => 'KOMERKOM'.($payload['booking_code'] ?? ''),
-                            ],
-                        ],
-                    ],
+                    'success' => false,
+                    'error' => $data['meta']['message']
+                        ?? 'Gagal request pickup ke Komerce.',
+                    'data' => $data,
+                ];
+            }
+
+            $firstOrder = $data['data'][0] ?? null;
+
+            if (! $firstOrder) {
+
+                return [
+                    'success' => false,
+                    'error' => 'Response pickup tidak memiliki data order.',
+                    'data' => $data,
+                ];
+            }
+
+            if (($firstOrder['status'] ?? '') !== 'success') {
+
+                return [
+                    'success' => false,
+                    'error' => 'Pickup gagal diproses oleh Komerce.',
+                    'data' => $data,
+                ];
+            }
+
+            if (empty($firstOrder['awb'])) {
+
+                return [
+                    'success' => false,
+                    'error' => 'Pickup berhasil tetapi AWB belum tersedia.',
+                    'data' => $data,
                 ];
             }
 
             return [
-                'success' => false,
-                'error' => $response->json('meta.message') ?? 'Gagal request pickup ke Komerce.',
+                'success' => true,
+                'data' => $data,
             ];
-        } catch (\Exception $e) {
-            Log::error('KomerceService Request Pickup Error: '.$e->getMessage());
 
-            if ($isSandbox) {
-                return [
-                    'success' => true,
-                    'simulated' => true,
-                    'message' => 'Request pickup berhasil diproses (Simulasi Staging).',
-                    'data' => [
-                        'meta' => [
-                            'message' => 'Success Request Pickup',
-                            'code' => 201,
-                            'status' => 'success',
-                        ],
-                        'data' => [
-                            [
-                                'status' => 'success',
-                                'order_no' => $payload['booking_code'] ?? '',
-                                'awb' => 'KOMERKOM'.($payload['booking_code'] ?? ''),
-                            ],
-                        ],
-                    ],
-                ];
-            }
+        } catch (\Throwable $e) {
 
-            return ['error' => 'Gagal request pickup ke Komerce.'];
+            Log::error('Komerce Pickup Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
         }
     }
 
@@ -1186,7 +1250,7 @@ class KomerceService
                 }
             }
 
-            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
+            $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
             if ($isSandbox) {
                 // Fallback for staging: return a fallback view or direct download url
                 $transaction = Transaction::where('booking_code', $bookingCode)->first();
@@ -1230,7 +1294,7 @@ class KomerceService
                 return ['success' => true, 'message' => 'Pengiriman berhasil dibatalkan.'];
             }
 
-            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
+            $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
             if ($isSandbox) {
                 return [
                     'success' => true,
@@ -1276,7 +1340,7 @@ class KomerceService
 
             Log::warning("Komerce getShipmentHistory failed for waybill {$airwayBill}: ".$response->body());
 
-            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
+            $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
             if ($isSandbox) {
                 // Fallback simulated tracking for testing (progresses dynamically based on transaction status)
                 $transaction = Transaction::where('tracking_number', $airwayBill)->first();
@@ -1335,7 +1399,7 @@ class KomerceService
                 ];
             }
 
-            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
+            $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
             if ($isSandbox) {
                 // Return dynamic simulated details matching transaction database
                 $transaction = Transaction::where('booking_code', $bookingCode)->first();
@@ -1370,7 +1434,7 @@ class KomerceService
                             'shipper_name' => self::getSetting('store_name') ?? 'My Store',
                             'shipper_phone' => self::getSetting('store_phone') ?? '081234567890',
                             'shipper_destination_id' => (int) (self::getSetting('shipper_destination_id') ?? 3578),
-                            'shipper_address' => self::getSetting('store_address') ?? 'Jl. Merdeka No. 5',
+                            'shipper_address' => self::getSetting('address') ?? self::getSetting('store_address') ?? 'Jl. Merdeka No. 5',
                             'receiver_name' => $address ? $address->receiver_name : 'Customer',
                             'receiver_phone' => $address ? $address->phone_number : '08123456789',
                             'receiver_destination_id' => $address ? (int) self::resolveKomerceDestinationId($address->province_name ?? '', $address->regency_name ?? '', $address->district_name ?? '', $address->postal_code) : 3578,
@@ -1431,7 +1495,7 @@ class KomerceService
                 return ['success' => true, 'message' => 'Webhook berhasil didaftarkan.'];
             }
 
-            $isSandbox = ! app()->environment('production') && (app()->environment('local', 'testing', 'staging') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox'));
+            $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
             if ($isSandbox) {
                 return [
                     'success' => true,
