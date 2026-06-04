@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/lib/browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -225,6 +225,11 @@
             height: 70px;
             display: block;
         }
+        #mini-qrcode img {
+            width: 70px;
+            height: 70px;
+            display: block;
+        }
         .packing-list-section {
             padding-top: 4px;
             font-size: 10px;
@@ -399,7 +404,7 @@
                 <div class="meta-row" style="font-size: 9.5px; word-break: break-all;">No. Pesanan: <strong>{{ $transaction->transaction_number }}</strong></div>
             </div>
             <div class="meta-barcode-container">
-                <canvas id="mini-qrcode"></canvas>
+                <div id="mini-qrcode"></div>
             </div>
         </div>
 
@@ -442,12 +447,13 @@
         });
 
         // Generate mini QR code for order number
-        QRCode.toCanvas(document.getElementById('mini-qrcode'), "{{ $transaction->tracking_number }}", {
+        new QRCode(document.getElementById("mini-qrcode"), {
+            text: "{{ $transaction->transaction_number }}",
             width: 70,
-            margin: 0,
-            errorCorrectionLevel: 'H'
-        }, function (error) {
-            if (error) console.error(error);
+            height: 70,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
         });
 
         window.onload = function() {
