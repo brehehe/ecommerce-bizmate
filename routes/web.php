@@ -108,6 +108,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
     Route::post('/transactions/{transaction}/extend-auto-complete', [StorefrontController::class, 'extendAutoComplete'])->name('transactions.extend-auto-complete');
     Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
+    Route::post('/reviews/{review}/report', [StorefrontController::class, 'reportReview'])->name('reviews.report');
     Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
 
     // Returns (Customer)
@@ -256,6 +257,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
         Route::get('/stocks', [ReportController::class, 'stocks'])->name('stocks');
         Route::get('/pareto', [ReportController::class, 'pareto'])->name('pareto');
         Route::get('/couriers', [ReportController::class, 'couriers'])->name('couriers');
+        Route::get('/reviews', [ReportController::class, 'reviews'])->name('reviews');
     });
 });
 

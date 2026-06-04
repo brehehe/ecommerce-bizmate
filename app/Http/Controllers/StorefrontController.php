@@ -2034,6 +2034,7 @@ class StorefrontController extends Controller
             'product_variant_id' => 'nullable|exists:product_variants,id',
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:1000',
+            'is_anonymous' => 'nullable|boolean',
             'files' => 'nullable|array',
             'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,mp4,mov,avi,webp|max:20480',
         ]);
@@ -2065,9 +2066,32 @@ class StorefrontController extends Controller
             'rating' => $validated['rating'],
             'comment' => $validated['comment'] ?? null,
             'media' => ! empty($mediaPaths) ? $mediaPaths : null,
+            'is_anonymous' => (bool) ($validated['is_anonymous'] ?? false),
         ]);
 
         return redirect()->back()->with('success', 'Terima kasih atas ulasan Anda!');
+    }
+
+    /**
+     * Report a product review.
+     */
+    public function reportReview(Request $request, ProductReview $review): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if ($review->is_reported) {
+            return redirect()->back()->with('error', 'Ulasan ini sudah pernah dilaporkan.');
+        }
+
+        $review->update([
+            'is_reported' => true,
+            'report_reason' => $validated['reason'],
+            'reported_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Ulasan berhasil dilaporkan. Tim kami akan meninjaunya.');
     }
 
     /**

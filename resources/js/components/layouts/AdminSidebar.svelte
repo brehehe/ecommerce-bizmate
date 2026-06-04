@@ -754,6 +754,35 @@
                                 <span>Kurir & Logistik</span>
                             </a>
                         </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/reports/reviews')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/reports/reviews"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/reports/reviews',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/reports/reviews')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-star text-lg group-hover:scale-110 transition"
+                                    style={isActive('/admin/reports/reviews')
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Ulasan Produk</span>
+                            </a>
+                        </div>
                     </div>
                 {/if}
             </div>

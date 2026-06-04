@@ -19,11 +19,18 @@ class ProductReview extends Model
         'rating',
         'comment',
         'media',
+        'is_anonymous',
+        'is_reported',
+        'report_reason',
+        'reported_at',
     ];
 
     protected $casts = [
         'rating' => 'integer',
         'media' => 'array',
+        'is_anonymous' => 'boolean',
+        'is_reported' => 'boolean',
+        'reported_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

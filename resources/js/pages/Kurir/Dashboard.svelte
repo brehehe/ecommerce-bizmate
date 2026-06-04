@@ -24,8 +24,13 @@
     });
 
     // Search state
-    let searchInput = $state((filters as any).search ?? '');
-    let activeTab = $state((filters as any).tab ?? 'my_tasks');
+    let searchInput = $state('');
+    let activeTab = $state('my_tasks');
+
+    $effect(() => {
+        searchInput = (filters as any).search ?? '';
+        activeTab = (filters as any).tab ?? 'my_tasks';
+    });
 
     function applyFilters() {
         const params: Record<string, string> = {};
@@ -419,11 +424,13 @@
 <!-- Scanner Modal -->
 {#if showScanModal}
     <!-- Backdrop -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
         onclick={(e) => { if (e.target === e.currentTarget) closeScanModal(); }}
         role="dialog"
         aria-label="Scan QR Code"
+        tabindex="-1"
     >
         <div class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
             <!-- Modal Header -->
@@ -436,6 +443,7 @@
                     id="btn-close-scanner"
                     onclick={closeScanModal}
                     class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition text-slate-500"
+                    aria-label="Tutup"
                 >
                     <i class="ti ti-x text-lg"></i>
                 </button>

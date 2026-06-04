@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Courier;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
@@ -919,6 +920,76 @@ class ReportController extends Controller
             'filters' => [
                 'date_from' => $dateFrom->format('Y-m-d'),
                 'date_to' => $dateTo->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    /**
+     * Review reports: listed reviews with anonymous/reported flags.
+     */
+    public function reviews(Request $request): Response
+    {
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
+
+        $search = $request->input('search');
+        $ratingFilter = $request->input('rating');
+        $reportedOnly = $request->boolean('reported_only');
+        $anonymousOnly = $request->boolean('anonymous_only');
+
+        $query = ProductReview::with(['user', 'product', 'productVariant.options'])
+            ->withTrashed()
+            ->whereBetween('product_reviews.created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('product', fn ($p) => $p->where('name', 'like', "%{$search}%"))
+                    ->orWhere('comment', 'like', "%{$search}%");
+            });
+        }
+
+        if ($ratingFilter) {
+            $query->where('rating', (int) $ratingFilter);
+        }
+
+        if ($reportedOnly) {
+            $query->where('is_reported', true);
+        }
+
+        if ($anonymousOnly) {
+            $query->where('is_anonymous', true);
+        }
+
+        $reviews = $query->latest('product_reviews.created_at')->paginate(20)->withQueryString();
+
+        /** @var array<int,int> $ratingDistribution */
+        $ratingDistribution = ProductReview::selectRaw('rating, count(*) as total')
+            ->whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])
+            ->groupBy('rating')
+            ->pluck('total', 'rating')
+            ->toArray();
+
+        $totalReviews = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->count();
+        $reportedCount = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->where('is_reported', true)->count();
+        $anonymousCount = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->where('is_anonymous', true)->count();
+        $avgRating = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->avg('rating');
+
+        return Inertia::render('Admin/Reports/Reviews', [
+            'reviews' => $reviews,
+            'summary' => [
+                'total' => $totalReviews,
+                'reported' => $reportedCount,
+                'anonymous' => $anonymousCount,
+                'avg_rating' => round((float) $avgRating, 2),
+            ],
+            'ratingDistribution' => $ratingDistribution,
+            'filters' => [
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'search' => $search,
+                'rating' => $ratingFilter,
+                'reported_only' => $reportedOnly,
+                'anonymous_only' => $anonymousOnly,
             ],
         ]);
     }

@@ -2856,6 +2856,7 @@
                             type="button"
                             class="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors"
                             onclick={() => (isEditorOpen = false)}
+                            aria-label="Tutup"
                         >
                             <i class="ti ti-x text-xl"></i>
                         </button>
@@ -2931,10 +2932,7 @@
                         <div class="space-y-5">
                             <!-- Custom Width & Height Inputs -->
                             <div class="space-y-2">
-                                <label
-                                    class="text-xs font-bold text-slate-700 block"
-                                    >Dimensi Output (Piksel)</label
-                                >
+                                <span class="text-xs font-bold text-slate-700 block">Dimensi Output (Piksel)</span>
                                 <div class="flex items-center gap-3">
                                     <!-- Width Input -->
                                     <div class="flex-1 relative">
@@ -3074,10 +3072,7 @@
                             <!-- Resize / Scale Slider -->
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
-                                    <label
-                                        class="text-xs font-bold text-slate-700"
-                                        >Skala / Zoom (Ukuran)</label
-                                    >
+                                    <span class="text-xs font-bold text-slate-700">Skala / Zoom (Ukuran)</span>
                                     <span
                                         class="text-xs font-bold text-slate-500"
                                         >{Math.round(editorScale * 100)}%</span
@@ -3092,6 +3087,7 @@
                                                 0.2,
                                                 +(editorScale - 0.1).toFixed(1),
                                             ))}
+                                        aria-label="Kurangi skala"
                                     >
                                         <i class="ti ti-minus"></i>
                                     </button>
@@ -3111,6 +3107,7 @@
                                                 3,
                                                 +(editorScale + 0.1).toFixed(1),
                                             ))}
+                                        aria-label="Tambah skala"
                                     >
                                         <i class="ti ti-plus"></i>
                                     </button>
@@ -3144,10 +3141,7 @@
 
                             <!-- Rotation Controls -->
                             <div class="space-y-2">
-                                <label
-                                    class="text-xs font-bold text-slate-700 block"
-                                    >Putar Gambar (Rotasi)</label
-                                >
+                                <span class="text-xs font-bold text-slate-700 block">Putar Gambar (Rotasi)</span>
                                 <div class="grid grid-cols-4 gap-2">
                                     {#each [0, 90, 180, 270] as deg}
                                         <button

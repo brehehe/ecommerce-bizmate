@@ -1315,6 +1315,7 @@
                 <button
                     onclick={closeScanModal}
                     class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0"
+                    aria-label="Tutup"
                 >
                     <i class="ti ti-x text-sm text-slate-500"></i>
                 </button>

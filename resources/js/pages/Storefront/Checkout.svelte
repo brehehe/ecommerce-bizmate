@@ -3,6 +3,7 @@
     import { page, router, Link } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
     import { fade } from 'svelte/transition';
+    import { untrack } from 'svelte';
 
     let {
         cartItems = [],
@@ -216,7 +217,7 @@
         }
     }
 
-    let lastAddressId = $state(selectedAddressId);
+    let lastAddressId = $state(untrack(() => selectedAddressId));
     let initialAutoSelectDone = $state(false);
 
     $effect(() => {

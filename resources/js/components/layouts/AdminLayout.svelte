@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { untrack } from 'svelte';
     import { usePage, Link } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
     import AdminSidebar from './AdminSidebar.svelte';
@@ -8,29 +8,28 @@
     let { children } = $props();
 
     const page = usePage();
-    const shownFlashIds = new Set();
+
+    // Module-level Set so it persists across SPA navigations and component re-mounts.
+    // This prevents the same flash id from showing twice even if Inertia
+    // triggers a prop update more than once per navigation.
+    const shownFlashIds = new Set<string>();
 
     $effect(() => {
         const flash = (page.props as any).flash;
-        if (!flash || !flash.id || shownFlashIds.has(flash.id)) return;
 
-        let showed = false;
-        if (flash.success) {
-            showToast(flash.success, 'success');
-            showed = true;
-        }
-        if (flash.error) {
-            showToast(flash.error, 'error');
-            showed = true;
-        }
-        if (flash.warning) {
-            showToast(flash.warning, 'error');
-            showed = true;
-        }
+        // Read the id reactively to track it, then check/mutate inside untrack
+        // so the Set mutation never triggers a re-run of this effect.
+        const flashId: string | undefined = flash?.id;
 
-        if (showed) {
-            shownFlashIds.add(flash.id);
-        }
+        untrack(() => {
+            if (!flash || !flashId || shownFlashIds.has(flashId)) return;
+
+            shownFlashIds.add(flashId);
+
+            if (flash.success) showToast(flash.success, 'success');
+            if (flash.error) showToast(flash.error, 'error');
+            if (flash.warning) showToast(flash.warning, 'error');
+        });
     });
 
     const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');

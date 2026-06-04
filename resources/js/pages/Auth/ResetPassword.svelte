@@ -2,6 +2,7 @@
     import { useForm, page } from '@inertiajs/svelte';
     import { slide } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
+    import { untrack } from 'svelte';
 
     let {
         token = '',
@@ -26,8 +27,8 @@
     );
 
     const form = useForm({
-        token: token,
-        email: email,
+        token: untrack(() => token),
+        email: untrack(() => email),
         password: '',
         password_confirmation: '',
     });

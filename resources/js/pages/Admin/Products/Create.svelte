@@ -2975,9 +2975,9 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
-                                <label class="text-xs font-bold text-slate-600 block">
+                                <span class="text-xs font-bold text-slate-600 block">
                                     Kategori Produk <span class="text-rose-500">*</span>
-                                </label>
+                                </span>
                                 <button
                                     type="button"
                                     onclick={() => showQuickAddCategoryModal = true}
@@ -2997,9 +2997,9 @@
 
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
-                                <label class="text-xs font-bold text-slate-600 block">
+                                <span class="text-xs font-bold text-slate-600 block">
                                     Merek (Brand)
-                                </label>
+                                </span>
                                 <button
                                     type="button"
                                     onclick={() => showQuickAddBrandModal = true}

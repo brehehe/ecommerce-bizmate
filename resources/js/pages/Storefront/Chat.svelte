@@ -688,8 +688,12 @@
 
     <!-- Image Preview Modal -->
     {#if chatPreviewUrl}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4" onclick={() => chatPreviewUrl = null}>
             <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div class="relative z-10 max-w-5xl w-full flex flex-col items-center justify-center" onclick={(e) => e.stopPropagation()}>
                 <button
                     onclick={() => chatPreviewUrl = null}

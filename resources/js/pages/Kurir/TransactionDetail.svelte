@@ -539,10 +539,12 @@
 <!-- Confirm Action Modal -->
 {#if showConfirmModal && pendingAction}
     {@const action = actionConfig[pendingAction]}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
         onclick={(e) => { if (e.target === e.currentTarget) showConfirmModal = false; }}
         role="dialog"
+        tabindex="-1"
     >
         <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
             <div class="p-6 text-center">
@@ -554,7 +556,7 @@
 
                 {#if pendingAction === 'arrived'}
                     <div class="mb-6 text-left">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Foto Bukti Pengiriman (Bisa Lebih dari 1)</label>
+                        <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Foto Bukti Pengiriman (Bisa Lebih dari 1)</span>
                         
                         {#if deliveryPhotoPreviews.length > 0}
                             <div class="grid grid-cols-2 gap-2 mb-3">
@@ -565,6 +567,7 @@
                                             type="button"
                                             onclick={() => removePhoto(idx)}
                                             class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition active:scale-90"
+                                            aria-label="Hapus foto"
                                         >
                                             <i class="ti ti-x text-xs"></i>
                                         </button>
@@ -628,11 +631,13 @@
 <!-- Full Screen Gallery Preview Modal -->
 {#if showPreviewModal && previewItems.length > 0}
     <!-- Full-screen Backdrop -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col justify-between p-4 sm:p-6 select-none"
         onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
         role="dialog"
         aria-label="File Preview"
+        tabindex="-1"
     >
         <!-- Top bar -->
         <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">

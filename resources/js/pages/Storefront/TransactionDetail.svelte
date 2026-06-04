@@ -149,6 +149,7 @@
     let reviewFiles: File[] = $state([]);
     let reviewPreviews: { url: string; type: string }[] = $state([]);
     let submittingReview = $state(false);
+    let reviewIsAnonymous = $state(false);
     
     // Countdown and Auto-complete Extension
     let countdownText = $state('');
@@ -404,6 +405,7 @@
         reviewComment = '';
         reviewFiles = [];
         reviewPreviews = [];
+        reviewIsAnonymous = false;
         showReviewModal = true;
     }
 
@@ -451,6 +453,7 @@
         if (reviewComment.trim()) {
             form.append('comment', reviewComment.trim());
         }
+        form.append('is_anonymous', reviewIsAnonymous ? '1' : '0');
         for (const file of reviewFiles) {
             form.append('files[]', file);
         }
@@ -1511,13 +1514,11 @@
                                                 Bukti Foto / Video
                                             </p>
                                             <div class="flex flex-wrap gap-2">
-                                                {#each activeReturn.media as media}
-                                                    <a
-                                                        href={formatImagePath(
-                                                            media.file_path,
-                                                        )}
-                                                        target="_blank"
-                                                        class="relative w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-85 transition group"
+                                                {#each activeReturn.media as media, idx}
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => openPreview(activeReturn.media.map(m => m.file_path), idx)}
+                                                        class="relative w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-85 transition group p-0 focus:outline-none"
                                                     >
                                                         {#if media.file_type === 'video'}
                                                             <div
@@ -1536,7 +1537,7 @@
                                                                 class="w-full h-full object-cover"
                                                             />
                                                         {/if}
-                                                    </a>
+                                                    </button>
                                                 {/each}
                                             </div>
                                         </div>
@@ -1978,13 +1979,24 @@
                                         <p class="text-xs text-slate-500 mb-1">
                                             Bukti bayar yang diunggah:
                                         </p>
-                                        <img
-                                            src={formatImagePath(
-                                                latestPayment.proof_image,
-                                            )}
-                                            alt="Bukti Pembayaran"
-                                            class="w-28 h-28 object-cover rounded-xl border border-slate-200"
-                                        />
+                                        <button
+                                            type="button"
+                                            onclick={() => openPreview([latestPayment.proof_image], 0)}
+                                            class="group relative overflow-hidden rounded-xl border border-slate-200 block text-left p-0 focus:outline-none"
+                                        >
+                                            <img
+                                                src={formatImagePath(
+                                                    latestPayment.proof_image,
+                                                )}
+                                                alt="Bukti Pembayaran"
+                                                class="w-28 h-28 object-cover hover:scale-105 transition duration-300"
+                                            />
+                                            <div
+                                                class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none"
+                                            >
+                                                <i class="ti ti-zoom-in text-base"></i>
+                                            </div>
+                                        </button>
                                         <p class="text-xs text-slate-400 mt-1">
                                             Diunggah {fmtDate(
                                                 latestPayment.proof_uploaded_at,
@@ -3365,6 +3377,31 @@
                         />
                     </div>
 
+                    <!-- Anonymous Toggle -->
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition select-none"
+                        style="border-color:{reviewIsAnonymous ? primary + '40' : '#e2e8f0'}; background:{reviewIsAnonymous ? primary + '08' : 'transparent'};"
+                        onclick={() => (reviewIsAnonymous = !reviewIsAnonymous)}
+                        onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') reviewIsAnonymous = !reviewIsAnonymous; }}
+                    >
+                        <div
+                            class="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition"
+                            style="border-color:{reviewIsAnonymous ? primary : '#cbd5e1'}; background:{reviewIsAnonymous ? primary : 'transparent'};"
+                        >
+                            {#if reviewIsAnonymous}
+                                <i class="ti ti-check text-white" style="font-size:11px;"></i>
+                            {/if}
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-slate-700">Sembunyikan Nama</p>
+                            <p class="text-[11px] text-slate-400 leading-snug">Nama Anda akan ditampilkan sebagai "Pengguna Anonim"</p>
+                        </div>
+                        <i class="ti ti-user-off text-slate-400 text-base"></i>
+                    </div>
+
                     <div class="flex gap-3 pt-1">
                         <button
                             onclick={() => (showReviewModal = false)}
@@ -3746,11 +3783,13 @@
 <!-- Full Screen Gallery Preview Modal -->
 {#if showPreviewModal && previewItems.length > 0}
     <!-- Full-screen Backdrop -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex flex-col justify-between p-4 sm:p-6 select-none"
         onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
         role="dialog"
         aria-label="File Preview"
+        tabindex="-1"
     >
         <!-- Top bar -->
         <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
@@ -3784,7 +3823,7 @@
                 <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
                     {#if isVideo(previewItems[previewIndex])}
                         <video
-                            src="/storage/{previewItems[previewIndex]}"
+                            src={formatImagePath(previewItems[previewIndex])}
                             controls
                             autoplay
                             class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
@@ -3793,7 +3832,7 @@
                         </video>
                     {:else}
                         <img
-                            src="/storage/{previewItems[previewIndex]}"
+                            src={formatImagePath(previewItems[previewIndex])}
                             alt="Bukti Pengiriman"
                             class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
                         />
@@ -3827,7 +3866,7 @@
                                 <i class="ti ti-video text-lg"></i>
                             </div>
                         {:else}
-                            <img src="/storage/{item}" alt="Thumb" class="w-full h-full object-cover" />
+                            <img src={formatImagePath(item)} alt="Thumb" class="w-full h-full object-cover" />
                         {/if}
                     </button>
                 {/each}

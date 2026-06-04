@@ -141,6 +141,40 @@
         url: string;
     } | null>(null);
 
+    // Report review
+    let showReportModal = $state(false);
+    let reportingReview = $state<any>(null);
+    let reportReason = $state('');
+    let submittingReport = $state(false);
+
+    function openReportModal(review: any) {
+        reportingReview = review;
+        reportReason = '';
+        showReportModal = true;
+    }
+
+    function submitReport() {
+        if (!reportReason.trim()) return;
+        submittingReport = true;
+        router.post(
+            `/reviews/${reportingReview.id}/report`,
+            { reason: reportReason.trim() },
+            {
+                onSuccess: () => {
+                    showReportModal = false;
+                    showToast('Ulasan berhasil dilaporkan.', 'success', 'top');
+                },
+                onError: (errors: any) => {
+                    const msg = Object.values(errors)[0] as string;
+                    showToast(msg ?? 'Gagal melaporkan ulasan.', 'error', 'top');
+                },
+                onFinish: () => {
+                    submittingReport = false;
+                },
+            },
+        );
+    }
+
     type DesktopSlide =
         | { type: 'image'; src: string; idx: number }
         | { type: 'video'; path: string }
@@ -3486,8 +3520,10 @@
                                     >
                                         <span
                                             class="text-sm font-bold text-slate-800"
-                                            >{review.user?.name ??
-                                                'Pembeli'}</span
+                                            >{review.is_anonymous
+                                                ? 'Pengguna Anonim'
+                                                : (review.user?.name ??
+                                                  'Pembeli')}</span
                                         >
                                         {#if review.product_variant?.options?.length > 0}
                                             <span
@@ -3576,6 +3612,21 @@
                                             {/each}
                                         </div>
                                     {/if}
+                                    <!-- Report button -->
+                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                    <div class="flex justify-end mt-2">
+                                        {#if review.is_reported}
+                                            <span class="text-[10px] text-orange-400 flex items-center gap-1"><i class="ti ti-flag-filled"></i> Dilaporkan</span>
+                                        {:else}
+                                            <button
+                                                aria-label="Laporkan ulasan"
+                                                onclick={() => openReportModal(review)}
+                                                class="text-[10px] text-slate-400 hover:text-red-400 flex items-center gap-1 transition"
+                                            >
+                                                <i class="ti ti-flag"></i> Laporkan
+                                            </button>
+                                        {/if}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3706,15 +3757,6 @@
                                     >
                                         {rp.name}
                                     </p>
-                                </div>
-                                <div class="flex items-center gap-1 mt-1">
-                                    <i
-                                        class="ti ti-star-filled text-amber-500 text-[10px]"
-                                    ></i>
-                                    <span
-                                        class="text-[10px] text-slate-500 font-bold"
-                                        >{rating}</span
-                                    >
                                 </div>
                                 <hr class="border-slate-100 my-2" />
                                 <div class="mb-3">
@@ -4865,8 +4907,12 @@
 
     <!-- Image Preview Modal -->
     {#if chatPreviewUrl}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
         <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4" onclick={() => chatPreviewUrl = null}>
             <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
             <div class="relative z-10 max-w-5xl w-full flex flex-col items-center justify-center" onclick={(e) => e.stopPropagation()}>
                 <button
                     onclick={() => chatPreviewUrl = null}
@@ -5005,6 +5051,85 @@
                         class="max-w-full h-auto max-h-[85vh] object-contain bg-white rounded-md"
                     />
                 {/if}
+            </div>
+        </div>
+    {/if}
+
+    <!-- Report Review Modal -->
+    {#if showReportModal && reportingReview}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            onclick={() => (showReportModal = false)}
+        >
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+                class="relative z-10 bg-white w-full max-w-md rounded-2xl shadow-2xl"
+                onclick={(e: any) => e.stopPropagation()}
+            >
+                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="ti ti-flag text-red-500"></i>
+                            Laporkan Ulasan
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Bantu kami menjaga kualitas ulasan</p>
+                    </div>
+                    <button
+                        aria-label="Tutup"
+                        onclick={() => (showReportModal = false)}
+                        class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition"
+                    >
+                        <i class="ti ti-x text-sm text-slate-600"></i>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Pilih alasan pelaporan ulasan ini. Laporan Anda akan ditinjau oleh tim kami.
+                    </p>
+                    <div class="space-y-2">
+                        {#each ['Konten tidak pantas / kasar', 'Spam atau promosi', 'Ulasan tidak relevan', 'Informasi palsu', 'Lainnya'] as reason}
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <div
+                                role="button"
+                                tabindex="0"
+                                class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition"
+                                style="border-color:{reportReason === reason ? primary + '60' : '#e2e8f0'}; background:{reportReason === reason ? primary + '08' : 'transparent'};"
+                                onclick={() => (reportReason = reason)}
+                                onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') reportReason = reason; }}
+                            >
+                                <div
+                                    class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition"
+                                    style="border-color:{reportReason === reason ? primary : '#cbd5e1'};"
+                                >
+                                    {#if reportReason === reason}
+                                        <div class="w-2 h-2 rounded-full" style="background:{primary};"></div>
+                                    {/if}
+                                </div>
+                                <span class="text-sm text-slate-700">{reason}</span>
+                            </div>
+                        {/each}
+                    </div>
+                    <div class="flex gap-3 pt-1">
+                        <button
+                            onclick={() => (showReportModal = false)}
+                            class="flex-1 py-3 rounded-xl border-2 border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            onclick={submitReport}
+                            disabled={submittingReport || !reportReason.trim()}
+                            class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 active:scale-95"
+                            style="background:#ef4444;"
+                        >
+                            {submittingReport ? 'Melaporkan...' : 'Laporkan'}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     {/if}

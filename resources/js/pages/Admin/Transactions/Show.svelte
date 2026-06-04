@@ -241,11 +241,17 @@
         );
     }
 
-    let storeBookingCode = $state(transaction.booking_code ?? '');
-    let storeTrackingNumber = $state(transaction.tracking_number ?? '');
+    let storeBookingCode = $state('');
+    let storeTrackingNumber = $state('');
     let customDeliveryLog = $state('');
-    let showStoreResiForm = $state(!transaction.tracking_number);
+    let showStoreResiForm = $state(true);
     let storeActionLoading = $state(false);
+
+    $effect(() => {
+        storeBookingCode = transaction.booking_code ?? '';
+        storeTrackingNumber = transaction.tracking_number ?? '';
+        showStoreResiForm = !transaction.tracking_number;
+    });
 
     function generateStoreBooking() {
         storeActionLoading = true;
@@ -664,12 +670,10 @@
                                 Bukti Pembayaran
                             </h3>
                             <div class="flex flex-col sm:flex-row gap-5">
-                                <a
-                                    href={formatImagePath(
-                                        latestPayment.proof_image,
-                                    )}
-                                    target="_blank"
-                                    class="shrink-0 group relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm block"
+                                <button
+                                    type="button"
+                                    onclick={() => openPreview([latestPayment.proof_image], 0)}
+                                    class="shrink-0 group relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm block text-left p-0 focus:outline-none"
                                 >
                                     <img
                                         src={formatImagePath(
@@ -679,12 +683,12 @@
                                         class="w-36 h-36 object-cover hover:scale-105 transition duration-300"
                                     />
                                     <div
-                                        class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none"
+                                        class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold"
                                     >
                                         <i class="ti ti-zoom-in text-lg mr-1"
                                         ></i> Lihat
                                     </div>
-                                </a>
+                                </button>
                                 <div
                                     class="flex-1 flex flex-col justify-between"
                                 >
@@ -1421,7 +1425,7 @@
                                         {/if}
                                     </div>
                                 {/if}
-                                {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
+                                <!-- {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
                                     <div class="mt-4 pt-4 border-t border-slate-200/60">
                                         <span class="font-bold text-slate-400 uppercase tracking-wider block mb-2 text-[9px]">Bukti Foto Pengiriman ({transaction.delivery_photos.length})</span>
                                         <div class="grid grid-cols-2 gap-2">
@@ -1442,7 +1446,7 @@
                                             {/each}
                                         </div>
                                     </div>
-                                {/if}
+                                {/if} -->
                             </div>
                         {/if}
                     </div>
@@ -1926,11 +1930,13 @@
 <!-- Full Screen Gallery Preview Modal -->
 {#if showPreviewModal && previewItems.length > 0}
     <!-- Full-screen Backdrop -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex flex-col justify-between p-4 sm:p-6 select-none"
         onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
         role="dialog"
         aria-label="File Preview"
+        tabindex="-1"
     >
         <!-- Top bar -->
         <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
@@ -1964,7 +1970,7 @@
                 <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
                     {#if isVideo(previewItems[previewIndex])}
                         <video
-                            src="/storage/{previewItems[previewIndex]}"
+                            src={formatImagePath(previewItems[previewIndex])}
                             controls
                             autoplay
                             class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
@@ -1973,7 +1979,7 @@
                         </video>
                     {:else}
                         <img
-                            src="/storage/{previewItems[previewIndex]}"
+                            src={formatImagePath(previewItems[previewIndex])}
                             alt="Bukti Pengiriman"
                             class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
                         />
@@ -2007,7 +2013,7 @@
                                 <i class="ti ti-video text-lg"></i>
                             </div>
                         {:else}
-                            <img src="/storage/{item}" alt="Thumb" class="w-full h-full object-cover" />
+                            <img src={formatImagePath(item)} alt="Thumb" class="w-full h-full object-cover" />
                         {/if}
                     </button>
                 {/each}

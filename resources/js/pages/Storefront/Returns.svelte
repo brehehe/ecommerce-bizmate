@@ -501,6 +501,9 @@
 <!-- Full Screen Gallery Preview Modal -->
 {#if showPreviewModal && previewItems.length > 0}
     <!-- Full-screen Backdrop -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_interactive_supports_focus -->
     <div
         class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex flex-col justify-between p-4 sm:p-6 select-none"
         onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}

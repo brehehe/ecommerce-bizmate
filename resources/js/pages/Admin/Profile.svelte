@@ -27,7 +27,8 @@
         password_confirmation: '',
     });
 
-    let previewUrl = $state(user?.avatar ? `/storage/${user.avatar}` : null);
+    let localPreviewUrl = $state<string | null>(null);
+    const previewUrl = $derived(localPreviewUrl || (user?.avatar ? `/storage/${user.avatar}` : null));
     let fileInput: HTMLInputElement;
     let showPasswordModal = $state(false);
 
@@ -37,7 +38,7 @@
             const file = input.files[0];
             profileForm.avatar = file;
             const reader = new FileReader();
-            reader.onload = (e) => { previewUrl = e.target?.result as string; };
+            reader.onload = (e) => { localPreviewUrl = e.target?.result as string; };
             reader.readAsDataURL(file);
         }
     }
@@ -56,6 +57,7 @@
             forceFormData: true,
             onSuccess: () => {
                 profileForm.reset('current_password');
+                localPreviewUrl = null;
                 showPasswordModal = false;
                 showToast('Profil berhasil diperbarui!', 'success');
             },
@@ -318,7 +320,7 @@
 <!-- Password Verification Modal -->
 {#if showPasswordModal}
     <div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick={() => showPasswordModal = false}></div>
+        <button type="button" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm w-full h-full cursor-default border-none p-0 focus:outline-none" onclick={() => showPasswordModal = false} aria-label="Tutup"></button>
         <div class="bg-white rounded-3xl shadow-xl w-full max-w-sm relative z-10 overflow-hidden">
             <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -327,7 +329,7 @@
                     </div>
                     <h3 class="font-outfit font-black text-lg text-slate-800">Verifikasi Keamanan</h3>
                 </div>
-                <button type="button" onclick={() => showPasswordModal = false} class="text-slate-400 hover:text-slate-600 transition">
+                <button type="button" onclick={() => showPasswordModal = false} class="text-slate-400 hover:text-slate-600 transition" aria-label="Tutup">
                     <i class="ti ti-x text-xl"></i>
                 </button>
             </div>
