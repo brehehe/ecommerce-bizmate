@@ -27,18 +27,22 @@ class MasterDataController extends Controller
             if ($request->filled('role') && $request->role !== 'Semua') {
                 $q->where('name', $request->role);
             }
-        });
+        })->select([
+            'id', 'name', 'email', 'phone_number', 'avatar',
+            'is_active', 'last_active_at', 'created_at',
+        ]);
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('email', 'ilike', "%{$search}%");
+                    ->orWhere('email', 'ilike', "%{$search}%")
+                    ->orWhere('phone_number', 'ilike', "%{$search}%");
             });
         }
 
         $perPage = $request->get('perPage', 10);
-        $admins = $query->paginate($perPage)->withQueryString();
+        $admins = $query->latest()->paginate($perPage)->withQueryString();
 
         // Roles for the dropdown when adding an admin (excluding Customer)
         $roles = Role::where('name', '!=', 'Customer')->get();
@@ -141,20 +145,28 @@ class MasterDataController extends Controller
     public function customers(Request $request)
     {
         // Customers are those who have the 'Customer' role
-        $query = User::with('roles')->whereHas('roles', function ($q) {
-            $q->where('name', 'Customer');
-        });
+        $query = User::with('roles')
+            ->withCount('transactions')
+            ->whereHas('roles', function ($q) {
+                $q->where('name', 'Customer');
+            })
+            ->select([
+                'id', 'name', 'email', 'phone_number', 'avatar',
+                'gender', 'birth_date', 'coins_balance',
+                'is_active', 'last_active_at', 'created_at',
+            ]);
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('email', 'ilike', "%{$search}%");
+                    ->orWhere('email', 'ilike', "%{$search}%")
+                    ->orWhere('phone_number', 'ilike', "%{$search}%");
             });
         }
 
         $perPage = $request->get('perPage', 10);
-        $customers = $query->paginate($perPage)->withQueryString();
+        $customers = $query->latest()->paginate($perPage)->withQueryString();
 
         return Inertia::render('Admin/MasterData/Customers', [
             'users' => $customers,

@@ -953,6 +953,18 @@
                                                         ></i>
                                                     </a>
                                                 {/if}
+                                                {#if trx.shipping_courier === 'store_courier'}
+                                                    <a
+                                                        href="/admin/transactions/{trx.id}/print-surat-jalan"
+                                                        target="_blank"
+                                                        class="inline-flex items-center justify-center w-8.5 h-8.5 rounded-xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition"
+                                                        title="Cetak Surat Jalan"
+                                                    >
+                                                        <i
+                                                            class="ti ti-truck text-base"
+                                                        ></i>
+                                                    </a>
+                                                {/if}
                                             </div>
                                         </td>
                                     </tr>

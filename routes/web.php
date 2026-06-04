@@ -225,6 +225,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions/bulk-tracking', [AdminTransactionController::class, 'bulkTracking'])->name('transactions.bulk-tracking');
     Route::get('/transactions/{transaction}/print-invoice', [AdminTransactionController::class, 'printInvoice'])->name('transactions.print-invoice');
     Route::get('/transactions/{transaction}/print-shipping-label', [AdminTransactionController::class, 'printShippingLabel'])->name('transactions.print-shipping-label');
+    Route::get('/transactions/{transaction}/print-surat-jalan', [AdminTransactionController::class, 'printSuratJalan'])->name('transactions.print-surat-jalan');
 
     // Stock Movements
     Route::get('/stock-movements', [AdminTransactionController::class, 'stockMovements'])->name('stock-movements.index');

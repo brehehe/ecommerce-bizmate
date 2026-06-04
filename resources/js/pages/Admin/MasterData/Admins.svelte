@@ -35,6 +35,11 @@
     let deleteModalOpen = $state(false);
     let itemToDelete = $state(null);
 
+    // Dropdown action menu per-row
+    let openMenuId = $state(null);
+    let menuPos = $state({ top: 0, left: 0, above: false });
+    let menuNode = $state(null);
+
     const form = useForm({
         name: '',
         email: '',
@@ -103,6 +108,7 @@
                 : 'Super Admin';
         form.password = '';
         isModalOpen = true;
+        openMenuId = null;
     }
 
     function closeModal() {
@@ -142,6 +148,7 @@
         }
         itemToDelete = admin;
         deleteModalOpen = true;
+        openMenuId = null;
     }
 
     function executeDelete() {
@@ -177,6 +184,30 @@
                 },
             },
         );
+        openMenuId = null;
+    }
+
+    function openMenu(e, adminId) {
+        e.stopPropagation();
+        if (openMenuId === adminId) {
+            openMenuId = null;
+            return;
+        }
+        const btn = e.currentTarget;
+        const rect = btn.getBoundingClientRect();
+        const viewportH = window.innerHeight;
+        const spaceBelow = viewportH - rect.bottom;
+        const above = spaceBelow < 180;
+        menuPos = {
+            top: above ? rect.top + window.scrollY - 4 : rect.bottom + window.scrollY + 4,
+            left: rect.right + window.scrollX - 160, // align right edge
+            above,
+        };
+        openMenuId = adminId;
+    }
+
+    function handleWindowClick() {
+        openMenuId = null;
     }
 
     function getInitials(name) {
@@ -205,13 +236,40 @@
                 bg: 'bg-blue-50 text-brand-blueRoyal border border-blue-200/50',
                 avatar: 'from-brand-blueRoyal to-sky-500',
             };
+        } else if (roleName === 'Kurir Toko') {
+            return {
+                bg: 'bg-amber-50 text-amber-600 border border-amber-200/50',
+                avatar: 'from-amber-500 to-orange-500',
+            };
         }
         return {
             bg: 'bg-slate-50 text-slate-600 border border-slate-200/50',
             avatar: 'from-slate-500 to-slate-600',
         };
     }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return null;
+        return new Date(dateStr).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        });
+    }
+
+    function formatDateTime(dateStr) {
+        if (!dateStr) return 'Belum Login';
+        return new Date(dateStr).toLocaleString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
 </script>
+
+<svelte:window onclick={handleWindowClick} />
 
 <svelte:head>
     <title>Master Data: Admin</title>
@@ -242,11 +300,12 @@
                     <span>Tambah Admin</span>
                 </button>
             </div>
+
             <!-- Filter Role Card -->
             <div
-                class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6 mb-6"
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
             >
-                <div class="w-full">
+                <div class="w-full sm:max-w-xs">
                     <SelectSearch
                         bind:value={activeFilter}
                         options={[
@@ -286,20 +345,19 @@
                             type="text"
                             bind:value={searchQuery}
                             oninput={handleSearch}
-                            placeholder="Cari nama, email, atau peran admin..."
+                            placeholder="Cari nama, email, atau no. HP..."
                             icon="ti-search"
                         />
                     </div>
                 </div>
 
                 {#if users.data.length === 0}
-                    <div
-                        class="py-12 text-center text-slate-400 font-bold font-outfit"
-                    >
-                        <i
-                            class="ti ti-shield-alert text-4xl block mb-2 text-slate-300"
-                        ></i>
-                        Tidak ada akun admin yang cocok.
+                    <div class="py-16 text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                            <i class="ti ti-shield-alert text-2xl text-slate-300"></i>
+                        </div>
+                        <p class="font-bold text-slate-400 font-outfit">Tidak ada akun admin yang cocok.</p>
+                        <p class="text-xs text-slate-300 mt-1">Coba ubah filter atau kata kunci pencarian.</p>
                     </div>
                 {:else}
                     <!-- Table Area -->
@@ -309,7 +367,7 @@
                                 <tr
                                     class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
                                 >
-                                    <th class="py-6 px-6 w-12 text-center">
+                                    <th class="py-4 px-6 w-12 text-center">
                                         <input
                                             type="checkbox"
                                             checked={selectAll}
@@ -317,13 +375,13 @@
                                             class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                         />
                                     </th>
-                                    <th class="py-6 px-6">Pengguna Admin</th>
-                                    <th class="py-6 px-6"
-                                        >Hak Akses Peran (Role)</th
-                                    >
-                                    <th class="py-6 px-6">Terakhir Aktif</th>
-                                    <th class="py-6 px-6">Status</th>
-                                    <th class="py-6 px-6 text-center">Aksi</th>
+                                    <th class="py-4 px-6">Pengguna Admin</th>
+                                    <th class="py-4 px-6">Hak Akses</th>
+                                    <th class="py-4 px-6">No. HP</th>
+                                    <th class="py-4 px-6">Bergabung</th>
+                                    <th class="py-4 px-6">Terakhir Aktif</th>
+                                    <th class="py-4 px-6">Status</th>
+                                    <th class="py-4 px-6 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody
@@ -343,11 +401,12 @@
                                         selectedAdmins.includes(admin.id)}
 
                                     <tr
-                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected
+                                        class="hover:bg-slate-50/50 transition duration-150 {isSelected
                                             ? 'bg-brand-blueRoyal/5'
                                             : ''}"
                                     >
-                                        <td class="py-6 px-6 text-center">
+                                        <!-- Checkbox -->
+                                        <td class="py-4 px-6 text-center">
                                             <input
                                                 type="checkbox"
                                                 checked={isSelected}
@@ -356,130 +415,95 @@
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             />
                                         </td>
-                                        <td class="py-6 px-6">
-                                            <div
-                                                class="flex items-center gap-3"
-                                            >
-                                                <div
-                                                    class="w-10 h-10 rounded-full bg-gradient-to-tr {roleStyles.avatar} text-white flex items-center justify-center text-xs font-black shadow-md shadow-slate-100 shrink-0"
-                                                >
-                                                    {getInitials(admin.name)}
-                                                </div>
+
+                                        <!-- User info -->
+                                        <td class="py-4 px-6">
+                                            <div class="flex items-center gap-3">
+                                                <!-- Avatar: photo or initials -->
+                                                {#if admin.avatar}
+                                                    <img
+                                                        src="/storage/{admin.avatar}"
+                                                        alt={admin.name}
+                                                        class="w-10 h-10 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-slate-100"
+                                                    />
+                                                {:else}
+                                                    <div
+                                                        class="w-10 h-10 rounded-full bg-gradient-to-tr {roleStyles.avatar} text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0"
+                                                    >
+                                                        {getInitials(admin.name)}
+                                                    </div>
+                                                {/if}
                                                 <div>
-                                                    <h4
-                                                        class="text-sm font-bold text-slate-800 flex items-center gap-1.5"
-                                                    >
+                                                    <p class="text-sm font-bold text-slate-800 leading-tight">
                                                         {admin.name}
-                                                    </h4>
-                                                    <p
-                                                        class="text-[11px] text-slate-400 font-bold mt-0.5 flex items-center gap-1"
-                                                    >
-                                                        <span
-                                                            >{admin.email}</span
-                                                        >
+                                                    </p>
+                                                    <p class="text-[11px] text-slate-400 mt-0.5">
+                                                        {admin.email}
                                                     </p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="py-6 px-6">
+
+                                        <!-- Role badge -->
+                                        <td class="py-4 px-6">
                                             <span
-                                                class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {roleStyles.bg}"
+                                                class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider whitespace-nowrap {roleStyles.bg}"
                                             >
                                                 {primaryRole}
                                             </span>
                                         </td>
-                                        <td class="py-6 px-6">
-                                            <span
-                                                class="text-xs text-slate-500 font-bold flex items-center gap-1.5"
-                                            >
+
+                                        <!-- Phone -->
+                                        <td class="py-4 px-6">
+                                            {#if admin.phone_number}
+                                                <span class="text-xs text-slate-600 font-medium flex items-center gap-1">
+                                                    <i class="ti ti-phone text-slate-300"></i>
+                                                    {admin.phone_number}
+                                                </span>
+                                            {:else}
+                                                <span class="text-xs text-slate-300 italic">—</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Join date -->
+                                        <td class="py-4 px-6">
+                                            <span class="text-xs text-slate-500 whitespace-nowrap">
+                                                {formatDate(admin.created_at) ?? '—'}
+                                            </span>
+                                        </td>
+
+                                        <!-- Last active -->
+                                        <td class="py-4 px-6">
+                                            <span class="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
                                                 <span
-                                                    class="w-1.5 h-1.5 rounded-full {isActive
+                                                    class="w-1.5 h-1.5 rounded-full shrink-0 {isActive
                                                         ? 'bg-emerald-400'
                                                         : 'bg-slate-300'}"
                                                 ></span>
-                                                {admin.last_active_at
-                                                    ? new Date(
-                                                          admin.last_active_at,
-                                                      ).toLocaleString(
-                                                          'id-ID',
-                                                          {
-                                                              day: 'numeric',
-                                                              month: 'short',
-                                                              year: 'numeric',
-                                                              hour: '2-digit',
-                                                              minute: '2-digit',
-                                                          },
-                                                      )
-                                                    : 'Belum Login'}
+                                                {formatDateTime(admin.last_active_at)}
                                             </span>
                                         </td>
-                                        <td class="py-6 px-6">
+
+                                        <!-- Status badge -->
+                                        <td class="py-4 px-6">
                                             <span
                                                 class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {isActive
                                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
                                                     : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
                                             >
-                                                {isActive
-                                                    ? 'Aktif'
-                                                    : 'Nonaktif'}
+                                                {isActive ? 'Aktif' : 'Nonaktif'}
                                             </span>
                                         </td>
-                                        <td class="py-6 px-6 text-center">
-                                            <div
-                                                class="flex items-center justify-center gap-2"
+
+                                        <!-- Actions dropdown -->
+                                        <td class="py-4 px-6 text-center">
+                                            <button
+                                                onclick={(e) => openMenu(e, admin.id)}
+                                                class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 flex items-center justify-center transition mx-auto"
+                                                title="Tindakan"
                                             >
-                                                <button
-                                                    onclick={() =>
-                                                        openEditModal(admin)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-brand-blueLight hover:text-brand-blueRoyal text-slate-500 flex items-center justify-center transition"
-                                                    title="Ubah Hak Akses"
-                                                >
-                                                    <i
-                                                        class="ti ti-pencil text-sm"
-                                                    ></i>
-                                                </button>
-                                                <button
-                                                    onclick={() =>
-                                                        toggleStatus(admin)}
-                                                    disabled={isSuperAdmin}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 {isSuperAdmin
-                                                        ? 'opacity-50 cursor-not-allowed bg-slate-50 text-slate-400'
-                                                        : isActive
-                                                          ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500'
-                                                          : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition"
-                                                    title={isSuperAdmin
-                                                        ? 'Status Super Admin tidak dapat diubah'
-                                                        : 'Ubah Status (Aktif/Nonaktif)'}
-                                                >
-                                                    <i
-                                                        class="ti {isActive
-                                                            ? 'ti-ban'
-                                                            : 'ti-check'} text-sm"
-                                                    ></i>
-                                                </button>
-                                                {#if primaryRole === 'Kurir Toko'}
-                                                    <Link
-                                                        href="/admin/master-data/admins/{admin.id}/courier-history"
-                                                        class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 text-slate-500 flex items-center justify-center transition"
-                                                        title="Riwayat Pengiriman"
-                                                    >
-                                                        <i class="ti ti-history text-sm"></i>
-                                                    </Link>
-                                                {/if}
-                                                <button
-                                                    onclick={() =>
-                                                        confirmDelete(admin)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-rose-50 hover:text-rose-600 {isSuperAdmin
-                                                        ? 'opacity-50 cursor-not-allowed bg-slate-50'
-                                                        : 'text-slate-500'} flex items-center justify-center transition"
-                                                    title="Hapus Akun"
-                                                    disabled={isSuperAdmin}
-                                                >
-                                                    <i
-                                                        class="ti ti-trash text-sm"
-                                                    ></i>
-                                                </button>
-                                            </div>
+                                                <i class="ti ti-dots-vertical text-sm"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 {/each}
@@ -493,6 +517,74 @@
         </main>
     </div>
 </AdminLayout>
+
+<!-- Fixed dropdown action menu -->
+{#if openMenuId !== null}
+    {@const admin = users.data.find((a) => a.id === openMenuId)}
+    {@const primaryRole = admin?.roles?.[0]?.name ?? 'Admin'}
+    {@const isSuperAdmin = primaryRole === 'Super Admin'}
+    {@const isActive = admin?.is_active ?? true}
+    {@const isKurir = primaryRole === 'Kurir Toko'}
+
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+        bind:this={menuNode}
+        class="fixed z-[9999] bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-44 overflow-hidden"
+        style="
+            left: {menuPos.left}px;
+            {menuPos.above
+                ? `bottom: calc(100vh - ${menuPos.top}px);`
+                : `top: ${menuPos.top}px;`}
+        "
+        onclick={(e) => e.stopPropagation()}
+    >
+        <button
+            onclick={() => admin && openEditModal(admin)}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition text-left"
+        >
+            <i class="ti ti-pencil w-4 text-brand-blueRoyal"></i>
+            Edit Admin
+        </button>
+
+        <button
+            onclick={() => admin && toggleStatus(admin)}
+            disabled={isSuperAdmin}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
+                {isSuperAdmin
+                    ? 'text-slate-300 cursor-not-allowed'
+                    : isActive
+                      ? 'text-amber-600 hover:bg-amber-50'
+                      : 'text-emerald-600 hover:bg-emerald-50'}"
+        >
+            <i class="ti {isActive ? 'ti-ban' : 'ti-check'} w-4"></i>
+            {isActive ? 'Nonaktifkan' : 'Aktifkan'}
+        </button>
+
+        {#if isKurir}
+            <Link
+                href="/admin/master-data/admins/{openMenuId}/courier-history"
+                class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition"
+            >
+                <i class="ti ti-history w-4 text-indigo-500"></i>
+                Riwayat Kurir
+            </Link>
+        {/if}
+
+        <div class="my-1 border-t border-slate-100"></div>
+
+        <button
+            onclick={() => admin && confirmDelete(admin)}
+            disabled={isSuperAdmin}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
+                {isSuperAdmin
+                    ? 'text-slate-300 cursor-not-allowed'
+                    : 'text-rose-600 hover:bg-rose-50'}"
+        >
+            <i class="ti ti-trash w-4"></i>
+            Hapus Akun
+        </button>
+    </div>
+{/if}
 
 <!-- Modal Admin -->
 {#if isModalOpen}

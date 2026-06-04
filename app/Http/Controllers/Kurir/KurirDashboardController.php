@@ -25,6 +25,7 @@ class KurirDashboardController extends Controller
             'user:id,name,email,phone_number',
             'customerAddress',
             'items.product:id,name',
+            'items.product.images:id,product_id,path,is_main',
         ])
             ->where('shipping_courier', 'store_courier')
             ->latest();
@@ -85,6 +86,7 @@ class KurirDashboardController extends Controller
             'user:id,name,email,phone_number',
             'customerAddress',
             'items.product:id,name',
+            'items.product.images:id,product_id,path,is_main',
             'statusHistories',
             'courierUser',
         ]);

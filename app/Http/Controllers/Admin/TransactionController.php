@@ -362,6 +362,38 @@ class TransactionController extends Controller
     }
 
     /**
+     * Print store courier delivery note (Surat Jalan) for store_courier shipments.
+     */
+    public function printSuratJalan(Transaction $transaction)
+    {
+        if ($transaction->shipping_courier !== 'store_courier') {
+            abort(403, 'Surat jalan hanya tersedia untuk pengiriman Kurir Toko.');
+        }
+
+        $transaction->load([
+            'user:id,name,email,phone_number',
+            'customerAddress',
+            'items.product:id,name,sku',
+            'courierUser:id,name',
+        ]);
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+        $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '-';
+        $storeAddress = Setting::where('key', 'address')->value('value') ?? '';
+        $storeCity = Setting::where('key', 'regency_name')->value('value') ?? '';
+
+        return view('print.surat-jalan', compact(
+            'transaction',
+            'storeName',
+            'storeLogo',
+            'storePhone',
+            'storeAddress',
+            'storeCity',
+        ));
+    }
+
+    /**
      * Display stock movements report.
      */
     public function stockMovements(Request $request)

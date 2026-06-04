@@ -28,6 +28,15 @@
     let deleteModalOpen = $state(false);
     let itemToDelete = $state(null);
 
+    // Detail drawer
+    let drawerOpen = $state(false);
+    let drawerCustomer = $state(null);
+
+    // Dropdown action menu per-row
+    let openMenuId = $state(null);
+    let menuPos = $state({ top: 0, left: 0, above: false });
+    let menuNode = $state(null);
+
     const form = useForm({
         name: '',
         email: '',
@@ -88,6 +97,7 @@
         form.email = customer.email;
         form.password = '';
         isModalOpen = true;
+        openMenuId = null;
     }
 
     function closeModal() {
@@ -123,6 +133,7 @@
     function confirmDelete(customer) {
         itemToDelete = customer;
         deleteModalOpen = true;
+        openMenuId = null;
     }
 
     function executeDelete() {
@@ -158,6 +169,36 @@
                 },
             },
         );
+        openMenuId = null;
+    }
+
+    function openDrawer(customer) {
+        drawerCustomer = customer;
+        drawerOpen = true;
+        openMenuId = null;
+    }
+
+    function openMenu(e, custId) {
+        e.stopPropagation();
+        if (openMenuId === custId) {
+            openMenuId = null;
+            return;
+        }
+        const btn = e.currentTarget;
+        const rect = btn.getBoundingClientRect();
+        const viewportH = window.innerHeight;
+        const spaceBelow = viewportH - rect.bottom;
+        const above = spaceBelow < 180;
+        menuPos = {
+            top: above ? rect.top + window.scrollY - 4 : rect.bottom + window.scrollY + 4,
+            left: rect.right + window.scrollX - 168,
+            above,
+        };
+        openMenuId = custId;
+    }
+
+    function handleWindowClick() {
+        openMenuId = null;
     }
 
     function getInitials(name) {
@@ -169,7 +210,45 @@
             .substring(0, 2)
             .toUpperCase();
     }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return null;
+        return new Date(dateStr).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        });
+    }
+
+    function formatDateTime(dateStr) {
+        if (!dateStr) return 'Belum Login';
+        return new Date(dateStr).toLocaleString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+
+    function getGenderLabel(gender) {
+        if (gender === 'male') return { label: 'Laki-laki', icon: 'ti-gender-male', color: 'text-sky-500' };
+        if (gender === 'female') return { label: 'Perempuan', icon: 'ti-gender-female', color: 'text-pink-500' };
+        return null;
+    }
+
+    function calculateAge(birthDate) {
+        if (!birthDate) return null;
+        const today = new Date();
+        const birth = new Date(birthDate);
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        return age;
+    }
 </script>
+
+<svelte:window onclick={handleWindowClick} />
 
 <svelte:head>
     <title>Master Data: Pelanggan</title>
@@ -209,7 +288,6 @@
                 <div
                     class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50/20"
                 >
-                    <!-- PerPage Selector -->
                     <div class="shrink-0 w-full sm:w-32">
                         <Select
                             bind:value={perPage}
@@ -223,36 +301,33 @@
                         />
                     </div>
 
-                    <!-- Search Bar -->
                     <div class="flex-grow sm:max-w-md w-full sm:ml-auto">
                         <Input
                             type="text"
                             bind:value={searchQuery}
                             oninput={handleSearch}
-                            placeholder="Cari nama atau email pelanggan..."
+                            placeholder="Cari nama, email, atau no. HP..."
                             icon="ti-search"
                         />
                     </div>
                 </div>
 
                 {#if users.data.length === 0}
-                    <div
-                        class="py-12 text-center text-slate-400 font-bold font-outfit"
-                    >
-                        <i
-                            class="ti ti-users text-4xl block mb-2 text-slate-300"
-                        ></i>
-                        Tidak ada data pelanggan yang cocok.
+                    <div class="py-16 text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                            <i class="ti ti-users text-2xl text-slate-300"></i>
+                        </div>
+                        <p class="font-bold text-slate-400 font-outfit">Tidak ada data pelanggan yang cocok.</p>
+                        <p class="text-xs text-slate-300 mt-1">Coba ubah kata kunci pencarian.</p>
                     </div>
                 {:else}
-                    <!-- Table Area -->
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr
                                     class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
                                 >
-                                    <th class="py-6 px-6 w-12 text-center">
+                                    <th class="py-4 px-6 w-12 text-center">
                                         <input
                                             type="checkbox"
                                             checked={selectAll}
@@ -260,135 +335,162 @@
                                             class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                         />
                                     </th>
-                                    <th class="py-6 px-6">Pelanggan</th>
-                                    <th class="py-6 px-6">Terakhir Aktif</th>
-                                    <th class="py-6 px-6">Status</th>
-                                    <th class="py-6 px-6 text-center">Aksi</th>
+                                    <th class="py-4 px-6">Pelanggan</th>
+                                    <th class="py-4 px-6">No. HP</th>
+                                    <th class="py-4 px-6">Gender / Usia</th>
+                                    <th class="py-4 px-6 text-center">Transaksi</th>
+                                    <th class="py-4 px-6 text-center">Koin</th>
+                                    <th class="py-4 px-6">Bergabung</th>
+                                    <th class="py-4 px-6">Terakhir Aktif</th>
+                                    <th class="py-4 px-6">Status</th>
+                                    <th class="py-4 px-6 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody
                                 class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
                             >
                                 {#each users.data as customer (customer.id)}
-                                    {@const isActive =
-                                        customer.is_active ?? true}
-                                    {@const isSelected =
-                                        selectedCustomers.includes(customer.id)}
+                                    {@const isActive = customer.is_active ?? true}
+                                    {@const isSelected = selectedCustomers.includes(customer.id)}
+                                    {@const genderInfo = getGenderLabel(customer.gender)}
+                                    {@const age = calculateAge(customer.birth_date)}
 
                                     <tr
-                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected
+                                        class="hover:bg-slate-50/50 transition duration-150 {isSelected
                                             ? 'bg-brand-blueRoyal/5'
                                             : ''}"
                                     >
-                                        <td class="py-6 px-6 text-center">
+                                        <!-- Checkbox -->
+                                        <td class="py-4 px-6 text-center">
                                             <input
                                                 type="checkbox"
                                                 checked={isSelected}
-                                                onchange={() =>
-                                                    toggleSelect(customer.id)}
+                                                onchange={() => toggleSelect(customer.id)}
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             />
                                         </td>
-                                        <td class="py-6 px-6">
-                                            <div
-                                                class="flex items-center gap-3"
-                                            >
-                                                <div
-                                                    class="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-blueRoyal to-sky-500 text-white flex items-center justify-center text-xs font-black shadow-md shadow-slate-100 shrink-0"
-                                                >
-                                                    {getInitials(customer.name)}
-                                                </div>
+
+                                        <!-- Customer info -->
+                                        <td class="py-4 px-6">
+                                            <div class="flex items-center gap-3">
+                                                <!-- Avatar: photo or initials -->
+                                                {#if customer.avatar}
+                                                    <img
+                                                        src="/storage/{customer.avatar}"
+                                                        alt={customer.name}
+                                                        class="w-10 h-10 rounded-full object-cover shadow-sm shrink-0 ring-2 ring-slate-100"
+                                                    />
+                                                {:else}
+                                                    <div
+                                                        class="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-blueRoyal to-sky-500 text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0"
+                                                    >
+                                                        {getInitials(customer.name)}
+                                                    </div>
+                                                {/if}
                                                 <div>
-                                                    <h4
-                                                        class="text-sm font-bold text-slate-800 flex items-center gap-1.5"
-                                                    >
+                                                    <p class="text-sm font-bold text-slate-800 leading-tight">
                                                         {customer.name}
-                                                    </h4>
-                                                    <p
-                                                        class="text-[11px] text-slate-400 font-bold mt-0.5 flex items-center gap-1"
-                                                    >
-                                                        <span
-                                                            >{customer.email}</span
-                                                        >
+                                                    </p>
+                                                    <p class="text-[11px] text-slate-400 mt-0.5">
+                                                        {customer.email}
                                                     </p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="py-6 px-6">
-                                            <span
-                                                class="text-xs text-slate-500 font-bold flex items-center gap-1.5"
-                                            >
+
+                                        <!-- Phone -->
+                                        <td class="py-4 px-6">
+                                            {#if customer.phone_number}
+                                                <span class="text-xs text-slate-600 font-medium flex items-center gap-1">
+                                                    <i class="ti ti-phone text-slate-300"></i>
+                                                    {customer.phone_number}
+                                                </span>
+                                            {:else}
+                                                <span class="text-xs text-slate-300 italic">—</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Gender / Age -->
+                                        <td class="py-4 px-6">
+                                            {#if genderInfo}
+                                                <div class="flex flex-col gap-0.5">
+                                                    <span class="text-xs font-semibold flex items-center gap-1 {genderInfo.color}">
+                                                        <i class="ti {genderInfo.icon}"></i>
+                                                        {genderInfo.label}
+                                                    </span>
+                                                    {#if age !== null}
+                                                        <span class="text-[11px] text-slate-400">
+                                                            {age} tahun
+                                                            {#if customer.birth_date}
+                                                                &middot; {formatDate(customer.birth_date)}
+                                                            {/if}
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            {:else}
+                                                <span class="text-xs text-slate-300 italic">—</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Transactions count -->
+                                        <td class="py-4 px-6 text-center">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                                <i class="ti ti-shopping-bag text-[11px]"></i>
+                                                {customer.transactions_count ?? 0}
+                                            </span>
+                                        </td>
+
+                                        <!-- Coins -->
+                                        <td class="py-4 px-6 text-center">
+                                            {#if (customer.coins_balance ?? 0) > 0}
+                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-50 text-amber-600 border border-amber-100">
+                                                    <i class="ti ti-coin text-[11px]"></i>
+                                                    {(customer.coins_balance ?? 0).toLocaleString('id-ID')}
+                                                </span>
+                                            {:else}
+                                                <span class="text-xs text-slate-300">0</span>
+                                            {/if}
+                                        </td>
+
+                                        <!-- Join date -->
+                                        <td class="py-4 px-6">
+                                            <span class="text-xs text-slate-500 whitespace-nowrap">
+                                                {formatDate(customer.created_at) ?? '—'}
+                                            </span>
+                                        </td>
+
+                                        <!-- Last active -->
+                                        <td class="py-4 px-6">
+                                            <span class="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
                                                 <span
-                                                    class="w-1.5 h-1.5 rounded-full {isActive
+                                                    class="w-1.5 h-1.5 rounded-full shrink-0 {isActive
                                                         ? 'bg-emerald-400'
                                                         : 'bg-slate-300'}"
                                                 ></span>
-                                                {customer.last_active_at
-                                                    ? new Date(
-                                                          customer.last_active_at,
-                                                      ).toLocaleString(
-                                                          'id-ID',
-                                                          {
-                                                              day: 'numeric',
-                                                              month: 'short',
-                                                              year: 'numeric',
-                                                              hour: '2-digit',
-                                                              minute: '2-digit',
-                                                          },
-                                                      )
-                                                    : 'Belum Login'}
+                                                {formatDateTime(customer.last_active_at)}
                                             </span>
                                         </td>
-                                        <td class="py-6 px-6">
+
+                                        <!-- Status badge -->
+                                        <td class="py-4 px-6">
                                             <span
                                                 class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {isActive
                                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
                                                     : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
                                             >
-                                                {isActive
-                                                    ? 'Aktif'
-                                                    : 'Nonaktif'}
+                                                {isActive ? 'Aktif' : 'Nonaktif'}
                                             </span>
                                         </td>
-                                        <td class="py-6 px-6 text-center">
-                                            <div
-                                                class="flex items-center justify-center gap-2"
+
+                                        <!-- Actions dropdown -->
+                                        <td class="py-4 px-6 text-center">
+                                            <button
+                                                onclick={(e) => openMenu(e, customer.id)}
+                                                class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 flex items-center justify-center transition mx-auto"
+                                                title="Tindakan"
                                             >
-                                                <button
-                                                    onclick={() =>
-                                                        openEditModal(customer)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-brand-blueLight hover:text-brand-blueRoyal text-slate-500 flex items-center justify-center transition"
-                                                    title="Ubah Data Pelanggan"
-                                                >
-                                                    <i
-                                                        class="ti ti-pencil text-sm"
-                                                    ></i>
-                                                </button>
-                                                <button
-                                                    onclick={() =>
-                                                        toggleStatus(customer)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 {isActive
-                                                        ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500'
-                                                        : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition"
-                                                    title="Ubah Status (Aktif/Nonaktif)"
-                                                >
-                                                    <i
-                                                        class="ti {isActive
-                                                            ? 'ti-ban'
-                                                            : 'ti-check'} text-sm"
-                                                    ></i>
-                                                </button>
-                                                <button
-                                                    onclick={() =>
-                                                        confirmDelete(customer)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center transition"
-                                                    title="Hapus Akun"
-                                                >
-                                                    <i
-                                                        class="ti ti-trash text-sm"
-                                                    ></i>
-                                                </button>
-                                            </div>
+                                                <i class="ti ti-dots-vertical text-sm"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 {/each}
@@ -402,6 +504,166 @@
         </main>
     </div>
 </AdminLayout>
+
+<!-- Fixed dropdown action menu -->
+{#if openMenuId !== null}
+    {@const customer = users.data.find((c) => c.id === openMenuId)}
+    {@const isActive = customer?.is_active ?? true}
+
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+        bind:this={menuNode}
+        class="fixed z-[9999] bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-48 overflow-hidden"
+        style="
+            left: {menuPos.left}px;
+            {menuPos.above
+                ? `bottom: calc(100vh - ${menuPos.top}px);`
+                : `top: ${menuPos.top}px;`}
+        "
+        onclick={(e) => e.stopPropagation()}
+    >
+        <button
+            onclick={() => customer && openDrawer(customer)}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition text-left"
+        >
+            <i class="ti ti-eye w-4 text-indigo-500"></i>
+            Detail Pelanggan
+        </button>
+
+        <button
+            onclick={() => customer && openEditModal(customer)}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition text-left"
+        >
+            <i class="ti ti-pencil w-4 text-brand-blueRoyal"></i>
+            Edit Data
+        </button>
+
+        <button
+            onclick={() => customer && toggleStatus(customer)}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
+                {isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}"
+        >
+            <i class="ti {isActive ? 'ti-ban' : 'ti-check'} w-4"></i>
+            {isActive ? 'Nonaktifkan' : 'Aktifkan'}
+        </button>
+
+        <div class="my-1 border-t border-slate-100"></div>
+
+        <button
+            onclick={() => customer && confirmDelete(customer)}
+            class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition text-left"
+        >
+            <i class="ti ti-trash w-4"></i>
+            Hapus Akun
+        </button>
+    </div>
+{/if}
+
+<!-- Detail Drawer -->
+{#if drawerOpen && drawerCustomer}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+        class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"
+        onclick={() => (drawerOpen = false)}
+        role="button"
+        tabindex="0"
+    ></div>
+    <aside
+        class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
+    >
+        <!-- Drawer header -->
+        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h3 class="font-outfit font-black text-lg text-slate-800">Detail Pelanggan</h3>
+            <button
+                onclick={() => (drawerOpen = false)}
+                class="p-1 text-slate-400 hover:text-slate-700 transition"
+            >
+                <i class="ti ti-x text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Drawer body -->
+        <div class="flex-grow overflow-y-auto p-6 space-y-6">
+            <!-- Profile header -->
+            <div class="flex flex-col items-center text-center gap-3">
+                {#if drawerCustomer.avatar}
+                    <img
+                        src="/storage/{drawerCustomer.avatar}"
+                        alt={drawerCustomer.name}
+                        class="w-20 h-20 rounded-full object-cover ring-4 ring-slate-100 shadow-md"
+                    />
+                {:else}
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-brand-blueRoyal to-sky-500 text-white flex items-center justify-center text-2xl font-black shadow-md">
+                        {getInitials(drawerCustomer.name)}
+                    </div>
+                {/if}
+                <div>
+                    <p class="font-black text-slate-800 text-xl font-outfit">{drawerCustomer.name}</p>
+                    <p class="text-sm text-slate-400 mt-0.5">{drawerCustomer.email}</p>
+                    <span class="mt-2 inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                        {(drawerCustomer.is_active ?? true)
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
+                            : 'bg-slate-50 text-slate-500 border border-slate-200/50'}">
+                        {(drawerCustomer.is_active ?? true) ? 'Aktif' : 'Nonaktif'}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Stats row -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-center">
+                    <p class="text-2xl font-black text-indigo-600 font-outfit">{drawerCustomer.transactions_count ?? 0}</p>
+                    <p class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider mt-0.5">Transaksi</p>
+                </div>
+                <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-center">
+                    <p class="text-2xl font-black text-amber-600 font-outfit">{(drawerCustomer.coins_balance ?? 0).toLocaleString('id-ID')}</p>
+                    <p class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mt-0.5">Koin</p>
+                </div>
+            </div>
+
+            <!-- Detail info list -->
+            <div class="space-y-3">
+                {#each [
+                    { icon: 'ti-phone', label: 'No. HP', value: drawerCustomer.phone_number || '—' },
+                    { icon: 'ti-gender-bigender', label: 'Gender', value: getGenderLabel(drawerCustomer.gender)?.label || '—' },
+                    { icon: 'ti-cake', label: 'Tanggal Lahir', value: drawerCustomer.birth_date
+                        ? `${formatDate(drawerCustomer.birth_date)} (${calculateAge(drawerCustomer.birth_date)} tahun)`
+                        : '—' },
+                    { icon: 'ti-calendar-plus', label: 'Bergabung', value: formatDate(drawerCustomer.created_at) || '—' },
+                    { icon: 'ti-clock', label: 'Terakhir Aktif', value: formatDateTime(drawerCustomer.last_active_at) },
+                ] as info}
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                            <i class="ti {info.icon} text-slate-500 text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{info.label}</p>
+                            <p class="text-sm font-semibold text-slate-700 mt-0.5">{info.value}</p>
+                        </div>
+                    </div>
+                {/each}
+            </div>
+        </div>
+
+        <!-- Drawer footer actions -->
+        <div class="p-6 border-t border-slate-100 flex gap-3">
+            <button
+                onclick={() => openEditModal(drawerCustomer)}
+                class="flex-1 flex items-center justify-center gap-2 py-3 bg-brand-blueRoyal hover:bg-blue-800 text-white font-bold rounded-2xl text-xs transition shadow-lg shadow-brand-blueRoyal/20 font-outfit uppercase tracking-wider"
+            >
+                <i class="ti ti-pencil"></i>
+                Edit
+            </button>
+            <button
+                onclick={() => confirmDelete(drawerCustomer)}
+                class="w-11 h-11 flex items-center justify-center rounded-2xl border border-rose-200 text-rose-500 hover:bg-rose-50 transition shrink-0"
+                title="Hapus"
+            >
+                <i class="ti ti-trash text-sm"></i>
+            </button>
+        </div>
+    </aside>
+{/if}
 
 <!-- Modal Customer -->
 {#if isModalOpen}

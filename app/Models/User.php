@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->hasMany(CoinHistory::class)->latest();
     }
 
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
     /**
      * Send the password reset notification.
      *

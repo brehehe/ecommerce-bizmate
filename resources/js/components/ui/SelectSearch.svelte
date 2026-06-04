@@ -1,40 +1,74 @@
 <script lang="ts">
-    let { 
-        value = $bindable(''), 
-        options = [], 
-        label = '', 
+    import { onDestroy } from 'svelte';
+
+    let {
+        value = $bindable(''),
+        options = [],
+        label = '',
         placeholder = 'Pilih salah satu',
         required = false,
         disabled = false,
         error = '',
-        onchange = null
+        onchange = null,
     } = $props();
 
     let isOpen = $state(false);
     let search = $state('');
-    let containerNode: HTMLElement | null = $state(null);
+    let triggerNode: HTMLElement | null = $state(null);
+    let dropdownNode: HTMLElement | null = $state(null);
     let searchInput: HTMLInputElement | null = $state(null);
+
+    // Dropdown position
+    let dropTop = $state(0);
+    let dropLeft = $state(0);
+    let dropWidth = $state(0);
+    let dropAbove = $state(false);
+
+    const DROPDOWN_MAX_H = 256; // max-h-64
+
+    function computePosition() {
+        if (!triggerNode) return;
+        const rect = triggerNode.getBoundingClientRect();
+        const viewportH = window.innerHeight;
+        const spaceBelow = viewportH - rect.bottom;
+        const spaceAbove = rect.top;
+
+        dropAbove = spaceBelow < DROPDOWN_MAX_H && spaceAbove > spaceBelow;
+        dropWidth = rect.width;
+        dropLeft = rect.left + window.scrollX;
+
+        if (dropAbove) {
+            dropTop = rect.top + window.scrollY - 4; // will anchor to bottom of dropdown
+        } else {
+            dropTop = rect.bottom + window.scrollY + 4;
+        }
+    }
 
     // Derived filtered options
     let filteredOptions = $derived(
-        options.filter(opt => opt.name.toLowerCase().includes(search.toLowerCase()))
+        options.filter((opt) =>
+            opt.name.toLowerCase().includes(search.toLowerCase()),
+        ),
     );
 
     // Derived selected label
     let selectedLabel = $derived(
-        options.find(opt => opt.id == value || opt.name == value)?.name || value || ''
+        options.find((opt) => opt.id == value || opt.name == value)?.name ||
+            value ||
+            '',
     );
 
     function toggleOpen() {
-        if (!disabled) {
-            isOpen = !isOpen;
-            if (isOpen) {
-                search = '';
-                // Focus search input on next tick
-                setTimeout(() => {
-                    if (searchInput) searchInput.focus();
-                }, 10);
-            }
+        if (disabled) return;
+        if (!isOpen) {
+            isOpen = true;
+            computePosition();
+            search = '';
+            setTimeout(() => {
+                if (searchInput) searchInput.focus();
+            }, 10);
+        } else {
+            isOpen = false;
         }
     }
 
@@ -47,15 +81,22 @@
     }
 
     function handleWindowClick(event) {
-        if (isOpen && containerNode && !containerNode.contains(event.target)) {
+        if (!isOpen) return;
+        const clickedTrigger = triggerNode?.contains(event.target);
+        const clickedDropdown = dropdownNode?.contains(event.target);
+        if (!clickedTrigger && !clickedDropdown) {
             isOpen = false;
         }
     }
+
+    function handleScroll() {
+        if (isOpen) computePosition();
+    }
 </script>
 
-<svelte:window onclick={handleWindowClick} />
+<svelte:window onclick={handleWindowClick} onscroll={handleScroll} />
 
-<div class="space-y-2 relative" bind:this={containerNode}>
+<div class="space-y-1.5">
     {#if label}
         <p class="text-xs font-bold text-slate-600 block">
             {label}
@@ -64,56 +105,79 @@
             {/if}
         </p>
     {/if}
-    
+
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div 
+    <div
+        bind:this={triggerNode}
         role="button"
         tabindex="0"
-        class="w-full px-3 py-2 border rounded-xl text-sm transition flex justify-between items-center {disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white cursor-pointer hover:border-brand-blueRoyal'} {error ? 'border-rose-500' : 'border-slate-200'}"
+        class="w-full px-3 py-2 border rounded-xl text-sm transition flex justify-between items-center {disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white cursor-pointer hover:border-brand-blueRoyal'} {error ? 'border-rose-500' : 'border-slate-200'} {isOpen ? 'border-brand-blueRoyal ring-2 ring-brand-blueRoyal/10' : ''}"
         onclick={toggleOpen}
     >
         <span class="truncate {selectedLabel ? 'text-slate-800' : 'text-slate-400'}">
             {selectedLabel || placeholder}
         </span>
-        <i class="ti ti-chevron-down text-slate-400 transition-transform {isOpen ? 'rotate-180' : ''}"></i>
+        <i class="ti ti-chevron-down text-slate-400 transition-transform duration-200 {isOpen ? 'rotate-180' : ''}"></i>
     </div>
 
     {#if error}
-        <span class="text-xs text-rose-500 font-medium block mt-1">{error}</span>
-    {/if}
-
-    {#if isOpen}
-        <div class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 flex flex-col overflow-hidden">
-            <div class="p-2 border-b border-slate-100 bg-slate-50 sticky top-0">
-                <div class="relative">
-                    <i class="ti ti-search absolute left-3 top-2.5 text-slate-400"></i>
-                    <input 
-                        type="text" 
-                        bind:value={search} 
-                        placeholder="Cari..." 
-                        bind:this={searchInput}
-                        class="w-full pl-9 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-blueRoyal"
-                    >
-                </div>
-            </div>
-            
-            <div class="overflow-y-auto flex-grow">
-                {#if filteredOptions.length === 0}
-                    <div class="p-4 text-center text-sm text-slate-500">Tidak ada hasil</div>
-                {:else}
-                    {#each filteredOptions as option}
-                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                        <div 
-                            role="button"
-                            tabindex="0"
-                            class="px-4 py-2.5 text-sm hover:bg-slate-50 cursor-pointer {value === option.id ? 'bg-brand-blueRoyal/5 text-brand-blueRoyal font-bold' : 'text-slate-700'}"
-                            onclick={() => selectOption(option.id)}
-                        >
-                            {option.name}
-                        </div>
-                    {/each}
-                {/if}
-            </div>
-        </div>
+        <span class="text-xs text-rose-500 font-medium block">{error}</span>
     {/if}
 </div>
+
+<!-- Portal-style dropdown rendered at fixed position -->
+{#if isOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+        bind:this={dropdownNode}
+        class="fixed z-[9999] bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 flex flex-col overflow-hidden"
+        style="
+            width: {dropWidth}px;
+            left: {dropLeft}px;
+            {dropAbove
+                ? `bottom: calc(100vh - ${dropTop}px);`
+                : `top: ${dropTop}px;`}
+        "
+    >
+        <!-- Search -->
+        <div class="p-2 border-b border-slate-100 bg-slate-50 shrink-0">
+            <div class="relative">
+                <i class="ti ti-search absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+                <input
+                    type="text"
+                    bind:value={search}
+                    placeholder="Cari..."
+                    bind:this={searchInput}
+                    class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-blueRoyal transition"
+                />
+            </div>
+        </div>
+
+        <!-- Options list -->
+        <div class="overflow-y-auto flex-grow">
+            {#if filteredOptions.length === 0}
+                <div class="p-4 text-center text-sm text-slate-400">Tidak ada hasil</div>
+            {:else}
+                {#each filteredOptions as option}
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class="px-4 py-2.5 text-sm cursor-pointer flex items-center gap-2 transition-colors
+                            {value === option.id || value === option.name
+                                ? 'bg-brand-blueRoyal/5 text-brand-blueRoyal font-bold'
+                                : 'text-slate-700 hover:bg-slate-50'}"
+                        onclick={() => selectOption(option.id)}
+                    >
+                        {#if value === option.id || value === option.name}
+                            <i class="ti ti-check text-xs shrink-0"></i>
+                        {:else}
+                            <span class="w-3.5 shrink-0"></span>
+                        {/if}
+                        {option.name}
+                    </div>
+                {/each}
+            {/if}
+        </div>
+    </div>
+{/if}
