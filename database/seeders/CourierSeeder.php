@@ -19,20 +19,12 @@ class CourierSeeder extends Seeder
             'sap' => 'SAP Express',
             'jnt' => 'J&T Express',
             'ninja' => 'Ninja Xpress',
-            'tiki' => 'TIKI',
             'lion' => 'Lion Parcel',
-            'anteraja' => 'AnterAja',
-            'pos' => 'POS Indonesia',
-            'ncs' => 'NCS',
-            'rex' => 'REX Express',
-            'rpx' => 'RPX',
-            'sentral' => 'Sentral Cargo',
-            'star' => 'Star Cargo',
-            'wahana' => 'Wahana Express',
-            'dse' => '21 Express (DSE)',
             'gojek' => 'GoSend (Instant)',
-            'grab' => 'GrabExpress (Instant)',
         ];
+
+        // Delete any other couriers from database
+        Courier::whereNotIn('code', array_keys($couriers))->forceDelete();
 
         $order = 1;
         foreach ($couriers as $code => $name) {

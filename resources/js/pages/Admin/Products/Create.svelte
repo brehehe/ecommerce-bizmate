@@ -235,6 +235,19 @@
     let activeView = $state('front');
     let activeSide = $state('front');
     
+    // 2D interactive canvas state
+    let canvas2dEl = $state(null);          // the <canvas> element for 2D preview
+    let canvas2dZoom = $state(1.0);         // zoom level for 2D canvas
+    let canvas2dPanX = $state(0);           // pan offset X
+    let canvas2dPanY = $state(0);           // pan offset Y
+    let isDraggingLayer = $state(false);    // true when dragging a layer
+    let dragOffsetX = $state(0);
+    let dragOffsetY = $state(0);
+    let isResizingLayer = $state(false);
+    let isPanning2d = $state(false);        // right-click/space+drag pan
+    let pan2dStartX = 0, pan2dStartY = 0, pan2dStartOffsetX = 0, pan2dStartOffsetY = 0;
+    const CANVAS_VIRTUAL_SIZE = 512;        // virtual pixel size of the design canvas
+    
     // Text editing properties
     let textInput = $state('');
     let fontFamily = $state('Arial');
@@ -303,7 +316,6 @@
             newLayer = {
                 id,
                 type: 'image',
-                side: activeSide,
                 name: content ? 'Logo' : 'Gambar',
                 src: content,
                 x: 256,
@@ -318,7 +330,6 @@
             newLayer = {
                 id,
                 type: 'text',
-                side: activeSide,
                 text: content || textInput || 'Teks Baru',
                 x: 256,
                 y: 256,
@@ -340,7 +351,6 @@
             newLayer = {
                 id,
                 type: 'qr',
-                side: activeSide,
                 text: content || qrInput || 'https://example.com',
                 x: 256,
                 y: 256,
@@ -388,6 +398,301 @@
         designLayers = copy;
         redrawCompositeCanvas();
     }
+
+    /** Returns the bounding box of a layer in virtual canvas coordinates */
+    function getLayerBounds(layer) {
+        let w = 0, h = 0;
+        if (layer.type === 'image') {
+            const size = CANVAS_VIRTUAL_SIZE * layer.scale;
+            w = size; h = size;
+        } else if (layer.type === 'text') {
+            // approximate: font size * scale * char count
+            const approxW = Math.max(60, (layer.text?.length || 8) * layer.fontSize * layer.scale * 0.6);
+            const approxH = layer.fontSize * layer.scale * 1.2;
+            w = approxW; h = approxH;
+        } else if (layer.type === 'qr') {
+            const size = 120 * layer.scale;
+            w = size; h = size;
+        }
+        return { x: layer.x - w / 2, y: layer.y - h / 2, w, h };
+    }
+
+    /** Convert mouse event position inside canvas2dEl to virtual canvas coordinates.
+     *  Uses canvas pixel space (canvas2dEl.width/height) not CSS space. */
+    function mouseToVirtualCoords(e) {
+        if (!canvas2dEl) return { vx: 0, vy: 0 };
+        const rect = canvas2dEl.getBoundingClientRect();
+        // Scale factor: canvas pixel size / CSS displayed size
+        const scaleX = canvas2dEl.width / rect.width;
+        const scaleY = canvas2dEl.height / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        // canvas is centered, zoom applied, then pan applied
+        const elW = canvas2dEl.width;
+        const elH = canvas2dEl.height;
+        const originX = elW / 2 + canvas2dPanX;
+        const originY = elH / 2 + canvas2dPanY;
+        const vx = (mouseX - originX) / canvas2dZoom + CANVAS_VIRTUAL_SIZE / 2;
+        const vy = (mouseY - originY) / canvas2dZoom + CANVAS_VIRTUAL_SIZE / 2;
+        return { vx, vy };
+    }
+
+    /** Hit test: returns matching layer id or null. Also returns if it's a resize handle. */
+    function hitTestCanvas2d(vx, vy) {
+        // Reverse iterate so top-most layer is hit first
+        for (let i = designLayers.length - 1; i >= 0; i--) {
+            const layer = designLayers[i];
+            if (layer.hide) continue;
+            const b = getLayerBounds(layer);
+            // Check resize handle (bottom-right corner)
+            const handleSize = 14 / canvas2dZoom;
+            if (
+                vx >= b.x + b.w - handleSize && vx <= b.x + b.w + handleSize &&
+                vy >= b.y + b.h - handleSize && vy <= b.y + b.h + handleSize
+            ) {
+                return { id: layer.id, mode: 'resize' };
+            }
+            // Check body
+            if (vx >= b.x && vx <= b.x + b.w && vy >= b.y && vy <= b.y + b.h) {
+                return { id: layer.id, mode: 'move' };
+            }
+        }
+        return null;
+    }
+
+    function onCanvas2dMouseDown(e) {
+        if (e.button === 2) {
+            // Right click = pan
+            isPanning2d = true;
+            pan2dStartX = e.clientX;
+            pan2dStartY = e.clientY;
+            pan2dStartOffsetX = canvas2dPanX;
+            pan2dStartOffsetY = canvas2dPanY;
+            e.preventDefault();
+            return;
+        }
+        const { vx, vy } = mouseToVirtualCoords(e);
+        const hit = hitTestCanvas2d(vx, vy);
+        if (hit) {
+            selectedLayerId = hit.id;
+            const layer = designLayers.find(l => l.id === hit.id);
+            if (hit.mode === 'resize') {
+                isResizingLayer = true;
+                isDraggingLayer = false;
+                dragOffsetX = vx - layer.x;
+                dragOffsetY = vy - layer.y;
+            } else {
+                isDraggingLayer = true;
+                isResizingLayer = false;
+                dragOffsetX = vx - layer.x;
+                dragOffsetY = vy - layer.y;
+            }
+        } else {
+            selectedLayerId = null;
+        }
+    }
+
+    function onCanvas2dMouseMove(e) {
+        if (isPanning2d) {
+            canvas2dPanX = pan2dStartOffsetX + (e.clientX - pan2dStartX);
+            canvas2dPanY = pan2dStartOffsetY + (e.clientY - pan2dStartY);
+            return;
+        }
+        if (!selectedLayerId) return;
+        const { vx, vy } = mouseToVirtualCoords(e);
+        if (isDraggingLayer) {
+            const idx = designLayers.findIndex(l => l.id === selectedLayerId);
+            if (idx !== -1) {
+                designLayers[idx].x = Math.round(vx - dragOffsetX);
+                designLayers[idx].y = Math.round(vy - dragOffsetY);
+                designLayers = [...designLayers]; // trigger reactivity
+                redrawCompositeCanvas();
+            }
+        } else if (isResizingLayer) {
+            const idx = designLayers.findIndex(l => l.id === selectedLayerId);
+            if (idx !== -1) {
+                const layer = designLayers[idx];
+                const dx = vx - layer.x;
+                const dy = vy - layer.y;
+                const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                if (layer.type === 'image') {
+                    layer.scale = Math.max(0.05, dist / CANVAS_VIRTUAL_SIZE * 2);
+                } else if (layer.type === 'text') {
+                    layer.scale = Math.max(0.1, dist / 60);
+                } else if (layer.type === 'qr') {
+                    layer.scale = Math.max(0.05, dist / 60);
+                }
+                designLayers = [...designLayers];
+                redrawCompositeCanvas();
+            }
+        }
+    }
+
+    function onCanvas2dMouseUp(e) {
+        isDraggingLayer = false;
+        isResizingLayer = false;
+        isPanning2d = false;
+    }
+
+    function onCanvas2dWheel(e) {
+        e.preventDefault();
+        const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+        canvas2dZoom = Math.max(0.2, Math.min(5.0, canvas2dZoom * zoomDelta));
+    }
+
+    function onCanvas2dContextMenu(e) {
+        e.preventDefault();
+    }
+
+    /** Draws the 2D interactive canvas including selection handles */
+    function drawCanvas2dPreview() {
+        if (!canvas2dEl) return;
+        const ctx = canvas2dEl.getContext('2d');
+        const elW = canvas2dEl.width;
+        const elH = canvas2dEl.height;
+        ctx.clearRect(0, 0, elW, elH);
+
+        // Checkerboard transparent bg
+        const tileSize = 16;
+        for (let ty = 0; ty < elH; ty += tileSize) {
+            for (let tx = 0; tx < elW; tx += tileSize) {
+                ctx.fillStyle = ((Math.floor(tx / tileSize) + Math.floor(ty / tileSize)) % 2 === 0) ? '#e2e8f0' : '#f8fafc';
+                ctx.fillRect(tx, ty, tileSize, tileSize);
+            }
+        }
+
+        // Apply zoom and pan transform centered in canvas
+        ctx.save();
+        const originX = elW / 2 + canvas2dPanX;
+        const originY = elH / 2 + canvas2dPanY;
+        ctx.translate(originX, originY);
+        ctx.scale(canvas2dZoom, canvas2dZoom);
+        ctx.translate(-CANVAS_VIRTUAL_SIZE / 2, -CANVAS_VIRTUAL_SIZE / 2);
+
+        // White canvas background
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(0,0,0,0.18)';
+        ctx.shadowBlur = 20;
+        ctx.fillRect(0, 0, CANVAS_VIRTUAL_SIZE, CANVAS_VIRTUAL_SIZE);
+        ctx.shadowBlur = 0;
+
+        // If there's a base image, draw it
+        if (selectedGenImage) {
+            const cachedImg = _canvas2dImgCache[selectedGenImage];
+            if (cachedImg) {
+                ctx.drawImage(cachedImg, 0, 0, CANVAS_VIRTUAL_SIZE, CANVAS_VIRTUAL_SIZE);
+            } else {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.src = selectedGenImage;
+                img.onload = () => {
+                    _canvas2dImgCache[selectedGenImage] = img;
+                    drawCanvas2dPreview();
+                };
+            }
+        }
+
+        // Draw all layers
+        designLayers.forEach(layer => {
+            if (layer.hide) return;
+            ctx.save();
+            ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
+            ctx.translate(layer.x, layer.y);
+            ctx.rotate((layer.rotation * Math.PI) / 180);
+
+            if (layer.type === 'image' && layer.src) {
+                const size = CANVAS_VIRTUAL_SIZE * layer.scale;
+                const cachedImg = _canvas2dImgCache[layer.src];
+                if (cachedImg) {
+                    ctx.drawImage(cachedImg, -size/2, -size/2, size, size);
+                } else {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.src = layer.src;
+                    img.onload = () => {
+                        _canvas2dImgCache[layer.src] = img;
+                        drawCanvas2dPreview();
+                    };
+                    // Placeholder while loading
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.setLineDash([6, 3]);
+                    ctx.strokeRect(-size/2, -size/2, size, size);
+                    ctx.setLineDash([]);
+                }
+            } else if (layer.type === 'text') {
+                const fontStyle = `${layer.italic ? 'italic ' : ''}${layer.bold ? 'bold ' : ''}${layer.fontSize * layer.scale}px ${layer.fontFamily}`;
+                ctx.font = fontStyle;
+                ctx.fillStyle = layer.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                if (layer.text) {
+                    ctx.fillText(layer.text, 0, 0);
+                    if (layer.stroke) {
+                        ctx.strokeStyle = layer.strokeColor || '#000000';
+                        ctx.lineWidth = 2 / canvas2dZoom;
+                        ctx.strokeText(layer.text, 0, 0);
+                    }
+                }
+            } else if (layer.type === 'qr') {
+                const size = 120 * layer.scale;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(-size/2, -size/2, size, size);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                ctx.fillStyle = '#000000';
+                ctx.font = `bold ${size * 0.12}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('QR CODE', 0, 0);
+            }
+            ctx.restore();
+
+            // Draw selection highlight + handles
+            if (layer.id === selectedLayerId) {
+                ctx.save();
+                ctx.translate(layer.x, layer.y);
+                ctx.rotate((layer.rotation * Math.PI) / 180);
+                const b = getLayerBounds(layer);
+                const bx = -b.w / 2, by = -b.h / 2;
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2 / canvas2dZoom;
+                ctx.setLineDash([5 / canvas2dZoom, 3 / canvas2dZoom]);
+                ctx.strokeRect(bx, by, b.w, b.h);
+                ctx.setLineDash([]);
+                // Resize handle (bottom-right)
+                const hs = 8 / canvas2dZoom;
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2 / canvas2dZoom;
+                ctx.fillRect(bx + b.w - hs, by + b.h - hs, hs * 2, hs * 2);
+                ctx.strokeRect(bx + b.w - hs, by + b.h - hs, hs * 2, hs * 2);
+                // Corner dots
+                [
+                    [bx, by], [bx + b.w, by],
+                    [bx, by + b.h]
+                ].forEach(([cx, cy]) => {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, hs * 0.7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.fill();
+                });
+                ctx.restore();
+            }
+        });
+        ctx.restore();
+    }
+
+    let _canvas2dImgCache = {};
+
+    /** Update canvas 2d on any change using effect */
+    $effect(() => {
+        // Reactive dependencies: layers, selectedLayerId, zoom, pan, selectedGenImage
+        const _ = [designLayers, selectedLayerId, canvas2dZoom, canvas2dPanX, canvas2dPanY, selectedGenImage];
+        if (canvas2dEl) {
+            drawCanvas2dPreview();
+        }
+    });
 
     function handleLayerImageUpload(e) {
         const file = e.target.files[0];
@@ -726,9 +1031,16 @@
         });
         
         threeRenderer.domElement.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            threeCamera.position.z += e.deltaY * 0.01;
-            threeCamera.position.z = Math.max(1.5, Math.min(threeCamera.position.z, 10));
+            const currentDistance = threeCamera.position.length();
+            let newDistance = currentDistance + e.deltaY * 0.01;
+            newDistance = Math.max(0.5, Math.min(newDistance, 30));
+            
+            if (Math.abs(newDistance - currentDistance) > 0.0001) {
+                e.preventDefault();
+                if (currentDistance > 0) {
+                    threeCamera.position.multiplyScalar(newDistance / currentDistance);
+                }
+            }
         });
 
         // Dynamic resize listener to fill client height/width
@@ -757,11 +1069,11 @@
         threeCamera.lookAt(0, 0, 0);
     }
 
-    function exportPrintReady4K(side = 'front') {
-        const sideLayers = designLayers.filter(l => l.side === side && !l.hide);
+    function exportPrintReady4K() {
+        const visibleLayers = designLayers.filter(l => !l.hide);
         
         // Preload all images in the layers
-        const loadPromises = sideLayers.map(layer => {
+        const loadPromises = visibleLayers.map(layer => {
             if (layer.type === 'image' && layer.src) {
                 return new Promise((resolve) => {
                     const img = new Image();
@@ -906,7 +1218,7 @@
         threeRenderer.render(threeScene, threeCamera);
     }
 
-    // Composites all active layers onto the high resolution 2D canvases
+    // Composites all active layers onto the high resolution 2D canvas
     function redrawCompositeCanvas() {
         if (!frontCanvas) {
             frontCanvas = document.createElement('canvas');
@@ -919,13 +1231,15 @@
             backCanvas.height = 512;
         }
         
-        const drawSide = (canvas, side, baseImgUrl) => {
+        const drawSide = (canvas, baseImgUrl) => {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, 512, 512);
             
-            // Draw background color (base color of the product)
-            ctx.fillStyle = selectedColor;
-            ctx.fillRect(0, 0, 512, 512);
+            // Draw background color (base color of the product) only for plane silhouette
+            if (modelType === 'plane') {
+                ctx.fillStyle = selectedColor;
+                ctx.fillRect(0, 0, 512, 512);
+            }
             
             // If base image exists (from photo upload), draw it first
             if (baseImgUrl) {
@@ -934,26 +1248,28 @@
                 img.src = baseImgUrl;
                 img.onload = () => {
                     ctx.drawImage(img, 0, 0, 512, 512);
-                    drawLayersOnCtx(ctx, side);
+                    drawLayersOnCtx(ctx);
                     updateThreeTexturesFromCanvases();
                 };
                 if (img.complete) {
                     ctx.drawImage(img, 0, 0, 512, 512);
-                    drawLayersOnCtx(ctx, side);
+                    drawLayersOnCtx(ctx);
                 }
             } else {
-                drawLayersOnCtx(ctx, side);
+                drawLayersOnCtx(ctx);
             }
         };
         
-        drawSide(frontCanvas, 'front', selectedGenImage);
-        drawSide(backCanvas, 'back', selectedGenImageBack);
+        drawSide(frontCanvas, selectedGenImage);
+        drawSide(backCanvas, selectedGenImageBack);
+        
+        updateThreeTexturesFromCanvases();
     }
 
-    function drawLayersOnCtx(ctx, side) {
-        const sideLayers = designLayers.filter(l => l.side === side && !l.hide);
+    function drawLayersOnCtx(ctx) {
+        const visibleLayers = designLayers.filter(l => !l.hide);
         
-        sideLayers.forEach(layer => {
+        visibleLayers.forEach(layer => {
             ctx.save();
             ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
             
@@ -1037,7 +1353,7 @@
         if (!threeScene || !threeMesh) return;
         threeMesh.traverse(child => {
             if (child.isMesh && child.material) {
-                if (child.material.map && child.material.map.isCanvasTexture) {
+                if (child.material.map) {
                     child.material.map.needsUpdate = true;
                 }
             }
@@ -1045,6 +1361,27 @@
         if (threeTexture) {
             threeTexture.needsUpdate = true;
         }
+    }
+
+    function onModelTypeChange() {
+        const preset = presets.find(p => p.id === modelType);
+        if (preset) {
+            mockupScale = preset.scale;
+            mockupY = preset.y;
+            mockupZ = preset.z ?? 0;
+            mockupX = 0;
+        } else if (modelType === 'plane') {
+            mockupScale = 10;
+            mockupY = -1.5;
+            mockupZ = 0;
+            mockupX = 0;
+        } else if (modelType === 'custom') {
+            mockupScale = 1.0;
+            mockupY = 0.0;
+            mockupZ = 0.0;
+            mockupX = 0.0;
+        }
+        updateThreeMesh();
     }
 
     function updateThreeMesh() {
@@ -1151,7 +1488,7 @@
         if (modelType === 'plane') {
             buildThreeMeshes(tempCanvasFront, tempCanvasBack, pixelsFront, pixelsBack, w, h);
         } else {
-            loadAndProcessMockupModel(tempCanvasFront, tempCanvasBack, pixelsFront, pixelsBack, w, h);
+            loadAndProcessMockupModel(frontCanvas, backCanvas, pixelsFront, pixelsBack, w, h);
         }
     }
 
@@ -1324,7 +1661,7 @@
                 targetMesh,
                 new THREE.Vector3(logoX, logoY, logoZ),
                 new THREE.Euler(0, 0, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 2.0)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
             );
             const decalMatFront = new THREE.MeshStandardMaterial({
                 map: textureFront,
@@ -1339,7 +1676,7 @@
             targetMesh.add(decalFront);
         }
         
-        if (canvasBack && (selectedGenImageBack || designLayers.some(l => l.side === 'back'))) {
+        if (canvasBack) {
             const textureBack = new THREE.CanvasTexture(canvasBack);
             textureBack.colorSpace = THREE.SRGBColorSpace;
             
@@ -1348,7 +1685,7 @@
                 targetMesh,
                 new THREE.Vector3(-logoX, logoY, logoZBack),
                 new THREE.Euler(0, Math.PI, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 2.0)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
             );
             const decalMatBack = new THREE.MeshStandardMaterial({
                 map: textureBack,
@@ -1674,7 +2011,7 @@
                 targetMesh,
                 new THREE.Vector3(logoX, logoY, localLogoZ),
                 new THREE.Euler(0, 0, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 2.0)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
             );
             const decalMatFront = new THREE.MeshStandardMaterial({
                 map: textureFront,
@@ -1689,7 +2026,7 @@
             targetMesh.add(decalFront);
         }
         
-        if (canvasBack && (selectedGenImageBack || designLayers.some(l => l.side === 'back'))) {
+        if (canvasBack) {
             const textureBack = new THREE.CanvasTexture(canvasBack);
             textureBack.colorSpace = THREE.SRGBColorSpace;
             
@@ -1698,7 +2035,7 @@
                 targetMesh,
                 new THREE.Vector3(-logoX, logoY, localLogoZBack),
                 new THREE.Euler(0, Math.PI, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 2.0)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
             );
             const decalMatBack = new THREE.MeshStandardMaterial({
                 map: textureBack,
@@ -4300,17 +4637,59 @@
                         {/if}
                     {:else}
                         <!-- Step 2: Loading State and Step 3: Editor -->
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch h-[calc(100vh-170px)] overflow-hidden">
-                            <!-- Left Side: Canvas Viewport & Views -->
-                            <div class="lg:col-span-8 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col justify-between relative h-full">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch h-[calc(100vh-170px)] overflow-hidden">
+                            <!-- Left Panel: 2D Interactive Canvas Design Editor -->
+                            <div class="lg:col-span-4 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col h-full relative">
                                 {#if generatorStep === 2}
-                                    <!-- Progress State -->
                                     <div class="flex flex-col items-center justify-center p-6 text-center h-full max-w-sm mx-auto">
-                                        <div class="relative w-20 h-20 mb-4 flex items-center justify-center">
+                                        <div class="relative w-16 h-16 mb-3 flex items-center justify-center">
                                             <div class="absolute inset-0 rounded-full border-4 border-slate-200"></div>
                                             <div class="absolute inset-0 rounded-full border-4 border-brand-blueRoyal border-t-transparent animate-spin"></div>
                                             <div class="text-xs font-black text-slate-700">{generationProgress}%</div>
                                         </div>
+                                        <h4 class="text-sm font-bold text-slate-700">{progressMessage}</h4>
+                                    </div>
+                                {:else if generatorStep === 3}
+                                    <!-- 2D Canvas Header -->
+                                    <div class="px-3 py-2 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
+                                        <div class="flex items-center gap-2">
+                                            <i class="ti ti-vector-bezier-2 text-brand-blueRoyal text-sm"></i>
+                                            <span class="text-[11px] font-black text-slate-700 uppercase tracking-wider">Kanvas Desain 2D</span>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <button type="button" onclick={() => { canvas2dZoom = Math.max(0.2, canvas2dZoom - 0.2); }} class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs transition" title="Zoom Out"><i class="ti ti-minus text-[10px]"></i></button>
+                                            <span class="text-[10px] font-bold text-slate-500 w-10 text-center">{Math.round(canvas2dZoom * 100)}%</span>
+                                            <button type="button" onclick={() => { canvas2dZoom = Math.min(5.0, canvas2dZoom + 0.2); }} class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs transition" title="Zoom In"><i class="ti ti-plus text-[10px]"></i></button>
+                                            <button type="button" onclick={() => { canvas2dZoom = 1.0; canvas2dPanX = 0; canvas2dPanY = 0; }} class="px-2 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-[9px] font-black text-slate-500 transition ml-1">Reset</button>
+                                        </div>
+                                    </div>
+                                    <!-- 2D Canvas Container -->
+                                    <div class="flex-1 overflow-hidden relative">
+                                        <canvas
+                                            bind:this={canvas2dEl}
+                                            width="600"
+                                            height="600"
+                                            class="w-full h-full block {isDraggingLayer ? 'cursor-grabbing' : isPanning2d ? 'cursor-all-scroll' : isResizingLayer ? 'cursor-se-resize' : 'cursor-default'}"
+                                            onmousedown={onCanvas2dMouseDown}
+                                            onmousemove={onCanvas2dMouseMove}
+                                            onmouseup={onCanvas2dMouseUp}
+                                            onmouseleave={onCanvas2dMouseUp}
+                                            onwheel={onCanvas2dWheel}
+                                            oncontextmenu={onCanvas2dContextMenu}
+                                        ></canvas>
+                                        <!-- Canvas hint overlay -->
+                                        <div class="absolute bottom-2 left-2 bg-slate-900/60 text-white text-[9px] font-black rounded px-2 py-1 uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm pointer-events-none">
+                                            <i class="ti ti-hand-click text-xs"></i> Klik & Geser Layer · Scroll Zoom · Klik Kanan Pan
+                                        </div>
+                                    </div>
+                                {/if}
+                            </div>
+
+                            <!-- Center Panel: 3D Viewport -->
+                            <div class="lg:col-span-5 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col justify-between relative h-full">
+                                {#if generatorStep === 2}
+                                    <!-- Progress State -->
+                                    <div class="flex flex-col items-center justify-center p-6 text-center h-full max-w-sm mx-auto">
                                         <h4 class="text-sm font-bold text-slate-700">{progressMessage}</h4>
                                         <p class="text-[10px] text-slate-400 font-medium mt-1">Menggunakan WebGL untuk merender model 3D interaktif.</p>
                                     </div>
@@ -4320,12 +4699,10 @@
                                     
                                      <!-- Viewpoint selector buttons -->
                                      <div class="absolute top-3 left-3 flex gap-1 bg-white/90 p-1.5 rounded-xl shadow-md border border-slate-200/60 backdrop-blur-sm">
-                                         <button type="button" onclick={() => setCameraView('front')} class="px-2.5 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'front' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Depan">Depan</button>
-                                         <button type="button" onclick={() => setCameraView('back')} class="px-2.5 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'back' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Belakang">Belakang</button>
-                                         <button type="button" onclick={() => setCameraView('left')} class="px-2.5 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'left' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Samping Kiri">Samping Kiri</button>
-                                         <button type="button" onclick={() => setCameraView('right')} class="px-2.5 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'right' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Samping Kanan">Samping Kanan</button>
-                                         <button type="button" onclick={() => setCameraView('top')} class="px-2.5 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'top' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Atas">Atas</button>
-                                         <button type="button" onclick={() => setCameraView('bottom')} class="px-2.5 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'bottom' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Bawah">Bawah</button>
+                                         <button type="button" onclick={() => setCameraView('front')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'front' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Depan">Depan</button>
+                                         <button type="button" onclick={() => setCameraView('back')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'back' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Belakang">Belakang</button>
+                                         <button type="button" onclick={() => setCameraView('left')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'left' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Samping">Samping</button>
+                                         <button type="button" onclick={() => setCameraView('top')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'top' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Atas">Atas</button>
                                      </div>
 
                                     <!-- Rotate toggle -->
@@ -4341,7 +4718,7 @@
                             </div>
 
                             <!-- Right Side: Editor Panel -->
-                            <div class="lg:col-span-4 flex flex-col justify-between h-full overflow-y-auto pr-1 pb-4">
+                            <div class="lg:col-span-3 flex flex-col justify-between h-full overflow-y-auto pr-1 pb-4">
                                 {#if generatorStep === 2}
                                     <div class="flex items-center justify-center h-full border border-dashed border-slate-200 rounded-2xl p-6 bg-white text-center text-xs text-slate-400 font-medium">
                                         Menunggu pembuatan model 3D selesai...
@@ -4349,16 +4726,11 @@
                                 {:else if generatorStep === 3}
                                     <!-- Dynamic Tabs inside steps -->
                                     <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 flex-grow">
-                                        <!-- Step 3 Settings Tab bar -->
-                                        <div class="flex gap-1 border-b pb-2">
-                                            <button type="button" onclick={() => activeSide = 'front'} class="flex-1 py-1 text-center text-[10px] font-black uppercase tracking-wider rounded-lg transition {activeSide === 'front' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-50 text-slate-650'}">Sisi Depan</button>
-                                            <button type="button" onclick={() => activeSide = 'back'} class="flex-1 py-1 text-center text-[10px] font-black uppercase tracking-wider rounded-lg transition {activeSide === 'back' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-50 text-slate-650'}">Sisi Belakang</button>
-                                        </div>
 
                                         <!-- Model Type & presets selector -->
                                         <div class="space-y-1">
                                             <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Tipe Mockup Objek</p>
-                                            <select bind:value={modelType} onchange={updateThreeMesh} class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white font-bold text-slate-700 focus:outline-none focus:border-brand-blueRoyal cursor-pointer">
+                                            <select bind:value={modelType} onchange={onModelTypeChange} class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white font-bold text-slate-700 focus:outline-none focus:border-brand-blueRoyal cursor-pointer">
                                                 <option value="plane">Siluet Gambar Asli (3D Card Solid)</option>
                                                 <option value="shirt">Kaos Polos (T-Shirt)</option>
                                                 <option value="custom">Model 3D Kustom (.glb)</option>
@@ -4380,7 +4752,7 @@
 
                                         <!-- Layer Creator Section -->
                                         <div class="space-y-2 border-t pt-3">
-                                            <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1"><i class="ti ti-layers-intersect text-brand-blueRoyal text-sm"></i> Canva Layer Editor ({activeSide === 'front' ? 'Depan' : 'Belakang'})</span>
+                                            <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1"><i class="ti ti-layers-intersect text-brand-blueRoyal text-sm"></i> Tambah Elemen Desain</span>
                                             
                                             <div class="flex flex-wrap gap-1.5">
                                                 <!-- Text adder -->
@@ -4403,11 +4775,11 @@
                                         </div>
 
                                         <!-- Active Layers List -->
-                                        {#if designLayers.filter(l => l.side === activeSide).length > 0}
+                                        {#if designLayers.length > 0}
                                             <div class="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-150">
-                                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Daftar Layer</span>
-                                                <div class="space-y-1 max-h-[120px] overflow-y-auto">
-                                                    {#each designLayers.filter(l => l.side === activeSide) as layer, idx}
+                                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Daftar Layer ({designLayers.length})</span>
+                                                <div class="space-y-1 max-h-[140px] overflow-y-auto">
+                                                    {#each [...designLayers].reverse() as layer, idx}
                                                         <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg border bg-white {selectedLayerId === layer.id ? 'border-brand-blueRoyal ring-1 ring-brand-blueRoyal/10' : 'border-slate-100'}">
                                                             <button type="button" onclick={() => selectedLayerId = layer.id} class="flex-grow text-left font-semibold text-xs truncate text-slate-700">
                                                                 {#if layer.type === 'text'}
@@ -4419,7 +4791,7 @@
                                                                 {/if}
                                                             </button>
                                                             <div class="flex items-center gap-1">
-                                                                <button type="button" onclick={() => layer.hide = !layer.hide} class="p-1 hover:bg-slate-100 rounded text-slate-400 {layer.hide ? 'text-rose-500' : 'text-slate-400'}" title="Sembunyikan"><i class="ti {layer.hide ? 'ti-eye-off' : 'ti-eye'} text-xs"></i></button>
+                                                                <button type="button" onclick={() => { layer.hide = !layer.hide; designLayers = [...designLayers]; redrawCompositeCanvas(); }} class="p-1 hover:bg-slate-100 rounded text-slate-400 {layer.hide ? 'text-rose-500' : 'text-slate-400'}" title="Sembunyikan"><i class="ti {layer.hide ? 'ti-eye-off' : 'ti-eye'} text-xs"></i></button>
                                                                 <button type="button" onclick={() => duplicateLayer(layer)} class="p-1 hover:bg-slate-100 rounded text-slate-400" title="Duplikat"><i class="ti ti-copy text-xs"></i></button>
                                                                 <button type="button" onclick={() => deleteLayer(layer.id)} class="p-1 hover:bg-slate-100 rounded text-rose-500" title="Hapus"><i class="ti ti-trash text-xs"></i></button>
                                                             </div>

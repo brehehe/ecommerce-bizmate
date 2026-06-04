@@ -5,6 +5,7 @@ use App\Models\Category;
 use App\Models\Courier;
 use App\Models\Product;
 use App\Models\User;
+use Database\Seeders\CourierSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 
@@ -107,4 +108,21 @@ test('checkout page returns only active couriers', function () {
         ->has('couriers', 1)
         ->where('couriers.0.code', 'jne')
     );
+});
+
+test('courier seeder seeds only specific couriers', function () {
+    $seeder = new CourierSeeder;
+    $seeder->run();
+
+    $couriers = Courier::all();
+    expect($couriers)->toHaveCount(8);
+
+    $courierCodes = $couriers->pluck('code')->toArray();
+    expect($courierCodes)->toEqualCanonicalizing([
+        'jne', 'sicepat', 'ide', 'sap', 'jnt', 'ninja', 'gojek', 'lion',
+    ]);
+
+    foreach ($couriers as $courier) {
+        expect($courier->is_active)->toBeTrue();
+    }
 });

@@ -1,6 +1,5 @@
 <script lang="ts">
     import '@melloware/coloris/dist/coloris.css';
-    import Coloris from '@melloware/coloris';
     import { onMount } from 'svelte';
 
     let { 
@@ -14,7 +13,8 @@
 
     let inputEl: HTMLInputElement;
 
-    onMount(() => {
+    onMount(async () => {
+        const { default: Coloris } = await import('@melloware/coloris');
         Coloris.init();
         Coloris({
             el: inputEl,

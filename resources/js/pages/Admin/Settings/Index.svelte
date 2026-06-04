@@ -151,6 +151,9 @@
         refund_terms_transfer: settings.refund_terms_transfer || '',
         refund_min_amount_points: settings.refund_min_amount_points || 0,
         refund_terms_points: settings.refund_terms_points || '',
+        payment_expiry_hours: settings.payment_expiry_hours || 24,
+        auto_complete_days: settings.auto_complete_days || 7,
+        extend_auto_complete_days: settings.extend_auto_complete_days || 3,
     });
 
     const dayLabels = {
@@ -2480,6 +2483,55 @@
                                             />
                                         </div>
                                     {/if}
+                                </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-3.5">
+                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                    Batas Waktu Transaksi
+                                </span>
+                                <p class="text-[11px] text-slate-400 font-bold">
+                                    Konfigurasi batas waktu pembayaran, pembatalan otomatis, dan konfirmasi penerimaan pesanan.
+                                </p>
+                                <div class="grid grid-cols-1 gap-4 mt-2">
+                                    <div>
+                                        <Input
+                                            id="input-payment-expiry-hours"
+                                            type="number"
+                                            bind:value={form.payment_expiry_hours}
+                                            label="Batas Waktu Pembayaran (Jam)"
+                                            placeholder="Contoh: 24"
+                                            min="1"
+                                            required={true}
+                                        />
+                                        <span class="text-[10px] text-slate-400 mt-1 block">Durasi (jam) sebelum pesanan belum dibayar dibatalkan otomatis.</span>
+                                    </div>
+                                    <div>
+                                        <Input
+                                            id="input-auto-complete-days"
+                                            type="number"
+                                            bind:value={form.auto_complete_days}
+                                            label="Selesai Otomatis Kirim (Hari)"
+                                            placeholder="Contoh: 7"
+                                            min="1"
+                                            required={true}
+                                        />
+                                        <span class="text-[10px] text-slate-400 mt-1 block">Durasi (hari) sebelum pesanan berstatus dikirim diselesaikan otomatis.</span>
+                                    </div>
+                                    <div>
+                                        <Input
+                                            id="input-extend-auto-complete-days"
+                                            type="number"
+                                            bind:value={form.extend_auto_complete_days}
+                                            label="Perpanjangan Jangka Waktu (Hari)"
+                                            placeholder="Contoh: 3"
+                                            min="1"
+                                            required={true}
+                                        />
+                                        <span class="text-[10px] text-slate-400 mt-1 block">Durasi tambahan (hari) ketika customer memperpanjang penerimaan.</span>
+                                    </div>
                                 </div>
                             </div>
 

@@ -81,6 +81,61 @@
     let reviewFiles: File[] = $state([]);
     let reviewPreviews: { url: string; type: string }[] = $state([]);
     let submittingReview = $state(false);
+    
+    // Countdown and Auto-complete Extension
+    let countdownText = $state('');
+    let isExpired = $state(false);
+    let extending = $state(false);
+
+    $effect(() => {
+        if (transaction.status === 'belum_bayar' && transaction.payment_expires_at) {
+            const updateCountdown = () => {
+                const now = new Date().getTime();
+                const expiry = new Date(transaction.payment_expires_at).getTime();
+                const distance = expiry - now;
+
+                if (distance <= 0) {
+                    countdownText = 'Waktu pembayaran habis';
+                    isExpired = true;
+                    router.reload();
+                    return;
+                }
+
+                const hours = Math.floor(distance / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                countdownText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            };
+
+            updateCountdown();
+            const interval = setInterval(updateCountdown, 1000);
+            return () => clearInterval(interval);
+        }
+    });
+
+    function extendConfirmation() {
+        if (extending) return;
+        if (!confirm('Apakah Anda yakin ingin memperpanjang jangka waktu penerimaan pesanan ini?')) return;
+        
+        extending = true;
+        router.post(
+            `/transactions/${transaction.id}/extend-auto-complete`,
+            {},
+            {
+                onSuccess: () => {
+                    showToast('Jangka waktu penerimaan pesanan berhasil diperpanjang.', 'success');
+                },
+                onError: (errors) => {
+                    const errMsg = Object.values(errors)[0] || 'Gagal memperpanjang jangka waktu.';
+                    showToast(errMsg, 'error');
+                },
+                onFinish: () => {
+                    extending = false;
+                }
+            }
+        );
+    }
 
     // Return/Retur system
     let showReturnModal = $state(false);
@@ -458,6 +513,209 @@
                   ? 'Komerce Payment'
                   : 'Xendit',
     );
+
+    async function downloadQrisImage(): Promise<void> {
+        if (!qrisData?.image) return;
+
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 500;
+            canvas.height = 760;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Enable smooth scaling
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+
+            // 1. Draw Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 500, 760);
+
+            // Draw a subtle border
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(3, 3, 494, 754);
+
+            // Helper to draw rounded rects
+            const drawRoundedRect = (
+                c: CanvasRenderingContext2D,
+                x: number,
+                y: number,
+                width: number,
+                height: number,
+                radius: number
+            ): void => {
+                if (typeof (c as any).roundRect === 'function') {
+                    (c as any).roundRect(x, y, width, height, radius);
+                } else {
+                    c.beginPath();
+                    c.moveTo(x + radius, y);
+                    c.lineTo(x + width - radius, y);
+                    c.quadraticCurveTo(x + width, y, x + width, y + radius);
+                    c.lineTo(x + width, y + height - radius);
+                    c.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                    c.lineTo(x + radius, y + height);
+                    c.quadraticCurveTo(x, y + height, x, y + height - radius);
+                    c.lineTo(x, y + radius);
+                    c.quadraticCurveTo(x, y, x + radius, y);
+                    c.closePath();
+                }
+            };
+
+            // Helper to wrap text
+            const drawWrappedText = (
+                c: CanvasRenderingContext2D,
+                text: string,
+                x: number,
+                y: number,
+                maxWidth: number,
+                lineHeight: number
+            ): number => {
+                const words = text.split(' ');
+                let line = '';
+                let currentY = y;
+                for (let n = 0; n < words.length; n++) {
+                    const testLine = line + words[n] + ' ';
+                    const metrics = c.measureText(testLine);
+                    const testWidth = metrics.width;
+                    if (testWidth > maxWidth && n > 0) {
+                        c.fillText(line, x, currentY);
+                        line = words[n] + ' ';
+                        currentY += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                c.fillText(line, x, currentY);
+                return currentY;
+            };
+
+            // 2. Merchant Info
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText(storeName || 'Merchant Pembayaran', 250, 60);
+
+            ctx.font = '500 13px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('NMID: ID102030405060', 250, 84);
+
+            // 3. QR Code Viewport (Gray background box)
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            drawRoundedRect(ctx, 105, 125, 290, 290, 24);
+            ctx.fill();
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 4. Draw QRIS Image inside Viewport
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            // Wait for image to load before drawing and exporting
+            await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = (err) => reject(err);
+                img.src = qrisData.image;
+            });
+
+            // Draw QR code
+            ctx.drawImage(img, 130, 150, 240, 240);
+
+            // 5. Instructions Box
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            drawRoundedRect(ctx, 50, 445, 400, 195, 20);
+            ctx.fill();
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Info Icon
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(75, 478, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText('i', 75, 482);
+
+            // Title "Cara Membayar:"
+            ctx.font = 'bold 14px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#1e293b';
+            ctx.textAlign = 'left';
+            ctx.fillText('Cara Membayar:', 92, 483);
+
+            // Draw Steps
+            ctx.font = '500 12px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#64748b';
+            
+            let nextY = 512;
+            nextY = drawWrappedText(ctx, '1. Buka e-wallet (GoPay, OVO, Dana, LinkAja) atau m-Banking Anda.', 70, nextY, 360, 18) + 20;
+            nextY = drawWrappedText(ctx, '2. Scan QR Code di atas.', 70, nextY, 360, 18) + 20;
+            nextY = drawWrappedText(ctx, `3. Pastikan nama merchant adalah ${storeName || 'Aplikasi'}.`, 70, nextY, 360, 18) + 20;
+            drawWrappedText(ctx, '4. Masukkan nominal yang sesuai & selesaikan pembayaran.', 70, nextY, 360, 18);
+
+            // 6. Payment Detail Footer
+            ctx.strokeStyle = '#f1f5f9';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(50, 670);
+            ctx.lineTo(450, 670);
+            ctx.stroke();
+
+            // Total Tagihan Label
+            ctx.font = 'bold 15px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.textAlign = 'left';
+            ctx.fillText('Total Tagihan:', 50, 705);
+
+            // Total Tagihan Value (Green color from screenshot)
+            ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#029d59';
+            ctx.textAlign = 'right';
+            ctx.fillText(fmt(transaction.grand_total), 450, 707);
+
+            // Invoice Label
+            ctx.font = 'bold 12px system-ui, -apple-system, sans-serif';
+            ctx.fillStyle = '#94a3b8';
+            ctx.textAlign = 'left';
+            ctx.fillText('No. Invoice:', 50, 740);
+
+            // Invoice Value
+            ctx.font = 'bold 12px monospace, Courier, monospace';
+            ctx.fillStyle = '#94a3b8';
+            ctx.textAlign = 'right';
+            ctx.fillText(transaction.transaction_number || transaction.invoice_number || '-', 450, 740);
+
+            // 7. Export and download
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `QRIS-${transaction.transaction_number || transaction.invoice_number || 'Payment'}.png`;
+            a.click();
+
+        } catch (error) {
+            console.error('Failed to generate receipt QRIS image, falling back to raw download:', error);
+            // Fallback to simple image download
+            try {
+                const res = await fetch(qrisData.image);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `QRIS-${transaction.transaction_number || transaction.invoice_number || 'Payment'}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch {
+                window.open(qrisData.image, '_blank');
+            }
+        }
+    }
 
     function getInvoiceUrl(payment: any) {
         if (!payment || !payment.gateway_response) return null;
@@ -967,6 +1225,60 @@
                                     </div>
                                 {/each}
                             </div>
+
+                            <!-- Batas Waktu Pembayaran (Countdown) -->
+                            {#if transaction.status === 'belum_bayar' && countdownText}
+                                <div class="mt-4 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                                            <i class="ti ti-clock-hour-4 text-rose-650 text-base"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800 leading-tight">
+                                                Batas Waktu Pembayaran
+                                            </p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5">
+                                                Selesaikan pembayaran sebelum waktu habis.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="px-3 py-1 bg-rose-100 border border-rose-200 rounded-lg text-rose-700 font-mono text-sm font-black tracking-wider animate-pulse">
+                                        {countdownText}
+                                    </div>
+                                </div>
+                            {/if}
+
+                            <!-- Auto Complete Deadline & Extend Extension Button -->
+                            {#if transaction.status === 'dikirim' && transaction.auto_complete_at}
+                                <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                            <i class="ti ti-calendar-time text-blue-600 text-base"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800 leading-tight">
+                                                Konfirmasi Penerimaan Otomatis
+                                            </p>
+                                            <p class="text-[10px] text-slate-500 mt-0.5">
+                                                Pesanan akan selesai otomatis pada {fmtDate(transaction.auto_complete_at)}.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {#if !transaction.is_extended}
+                                        <button
+                                            onclick={extendConfirmation}
+                                            disabled={extending}
+                                            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            {extending ? 'Memproses...' : 'Tambah Jangka Waktu'}
+                                        </button>
+                                    {:else}
+                                        <span class="text-[10px] bg-slate-100 border border-slate-200 text-slate-500 px-2 py-1 rounded-md font-bold self-start md:self-auto whitespace-nowrap">
+                                            Jangka Waktu Telah Diperpanjang
+                                        </span>
+                                    {/if}
+                                </div>
+                            {/if}
 
                             <!-- Complete Order Banner (when status is dikirim) -->
                             {#if canCompleteOrder}
@@ -1619,28 +1931,67 @@
                             </div>
                             <div class="p-4">
                                 {#if isQris && qrisData}
-                                    <div class="flex flex-col items-center justify-center py-4 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                                        <p class="text-xs font-bold text-slate-700 mb-2">Scan QRIS Untuk Bayar</p>
-                                        
-                                        {#if qrisData.image}
-                                            <img
-                                                src={qrisData.image}
-                                                alt="QRIS Code"
-                                                class="w-56 h-56 object-contain bg-white p-2 rounded-xl shadow-sm border border-slate-100"
-                                            />
-                                        {:else}
-                                            <div class="w-56 h-56 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center">
-                                                <i class="ti ti-qrcode text-4xl text-slate-400"></i>
+                                    <div class="flex flex-col items-center justify-center p-5 bg-white border border-slate-100/80 rounded-3xl shadow-xl shadow-slate-100/40 relative overflow-hidden">
+                                        <!-- Merchant Info -->
+                                        <div class="text-center mb-4">
+                                            <h4 class="font-bold text-slate-800 text-sm">{storeName || 'Merchant Pembayaran'}</h4>
+                                            <p class="text-[9px] text-slate-400 font-medium tracking-wide">NMID: ID102030405060</p>
+                                        </div>
+
+                                        <!-- QR Code Wrapper (No green corners, no scanner line) -->
+                                        <div class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80">
+                                            {#if qrisData.image}
+                                                <img
+                                                    src={qrisData.image}
+                                                    alt="QRIS Code"
+                                                    class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
+                                                />
+                                            {:else}
+                                                <div class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center">
+                                                    <i class="ti ti-qrcode text-4xl text-slate-400"></i>
+                                                </div>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Instructions / Tips -->
+                                        <div class="mt-4 w-full bg-slate-50/80 rounded-2xl p-3 border border-slate-100 text-[10px] text-slate-600 leading-normal">
+                                            <div class="font-bold text-slate-700 mb-1 flex items-center gap-1">
+                                                <i class="ti ti-info-circle text-xs text-blue-500"></i> Cara Membayar:
                                             </div>
-                                        {/if}
-                                        
-                                        <!-- <p class="text-[10px] text-slate-500 mt-2 font-mono text-center max-w-[200px] break-all">
-                                            {qrisData.string || 'Kode QRIS sedang dimuat...'}
-                                        </p> -->
-                                        
-                                        <div class="mt-4 pt-3 border-t border-slate-200/60 w-full px-4 flex justify-between items-center text-xs">
-                                            <span class="text-slate-500">Total Tagihan:</span>
-                                            <span class="font-black text-slate-800" style="color:{primary}">{fmt(transaction.grand_total)}</span>
+                                            <ul class="list-decimal pl-3 space-y-0.5 text-slate-500">
+                                                <li>Buka e-wallet (GoPay, OVO, Dana, LinkAja) atau m-Banking Anda.</li>
+                                                <li>Scan QR Code di atas.</li>
+                                                <li>Pastikan nama merchant adalah <strong class="text-slate-700">{storeName || 'Toko Kami'}</strong>.</li>
+                                                <li>Masukkan nominal yang sesuai & selesaikan pembayaran.</li>
+                                            </ul>
+                                        </div>
+
+                                        <!-- Payment Detail Footer -->
+                                        <div class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5">
+                                            <div class="flex justify-between items-center text-xs px-1">
+                                                <span class="text-slate-500">Total Tagihan:</span>
+                                                <span class="font-extrabold text-sm" style="color:{primary}">{fmt(transaction.grand_total)}</span>
+                                            </div>
+                                            
+                                            <div class="flex justify-between items-center text-[10px] px-1 text-slate-400">
+                                                <span>No. Invoice:</span>
+                                                <span class="font-mono">{transaction.transaction_number || transaction.invoice_number}</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="flex gap-2 w-full mt-4">
+                                            {#if qrisData.image}
+                                                <button
+                                                    type="button"
+                                                    onclick={downloadQrisImage}
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:brightness-95 active:scale-95 shadow-sm"
+                                                    style="background:{primary}"
+                                                >
+                                                    <i class="ti ti-download text-sm"></i>
+                                                    Simpan QR Code
+                                                </button>
+                                            {/if}
                                         </div>
                                     </div>
                                 {:else}

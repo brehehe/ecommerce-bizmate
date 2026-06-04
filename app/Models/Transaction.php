@@ -49,6 +49,9 @@ class Transaction extends Model
         'coins_redeemed',
         'coins_value',
         'coins_earned',
+        'payment_expires_at',
+        'auto_complete_at',
+        'is_extended',
     ];
 
     protected $casts = [
@@ -65,6 +68,9 @@ class Transaction extends Model
         'coins_redeemed' => 'integer',
         'coins_value' => 'integer',
         'coins_earned' => 'integer',
+        'payment_expires_at' => 'datetime',
+        'auto_complete_at' => 'datetime',
+        'is_extended' => 'boolean',
     ];
 
     /**
@@ -106,6 +112,20 @@ class Transaction extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (Transaction $transaction) {
+            if ($transaction->status === 'belum_bayar') {
+                $hours = (int) (Setting::where('key', 'payment_expiry_hours')->value('value') ?? 24);
+                $transaction->payment_expires_at = now()->addHours($hours);
+            }
+        });
+
+        static::updating(function (Transaction $transaction) {
+            if ($transaction->isDirty('status') && $transaction->status === 'dikirim') {
+                $days = (int) (Setting::where('key', 'auto_complete_days')->value('value') ?? 7);
+                $transaction->auto_complete_at = now()->addDays($days);
+            }
+        });
+
         static::updated(function (Transaction $transaction) {
             $statusChanged = $transaction->isDirty('status');
             $trackingChanged = $transaction->isDirty('tracking_number');
@@ -262,6 +282,40 @@ class Transaction extends Model
                 // Fail silently
             }
         });
+    }
+
+    /**
+     * Process auto status updates (cancel unpaid and complete shipped).
+     */
+    public static function processAutoStatusUpdates(?int $userId = null): void
+    {
+        // 1. Unpaid Expiry
+        $query = static::where('status', 'belum_bayar')
+            ->whereNotNull('payment_expires_at')
+            ->where('payment_expires_at', '<', now());
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+        foreach ($query->get() as $transaction) {
+            $transaction->update([
+                'status' => 'batal',
+                'cancel_reason' => 'Pembatalan otomatis oleh sistem karena batas waktu pembayaran habis.',
+                'cancelled_at' => now(),
+            ]);
+        }
+
+        // 2. Auto-complete shipped
+        $queryComplete = static::where('status', 'dikirim')
+            ->whereNotNull('auto_complete_at')
+            ->where('auto_complete_at', '<', now());
+        if ($userId) {
+            $queryComplete->where('user_id', $userId);
+        }
+        foreach ($queryComplete->get() as $transaction) {
+            $transaction->update([
+                'status' => 'selesai',
+            ]);
+        }
     }
 
     /**

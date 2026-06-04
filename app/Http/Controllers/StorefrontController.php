@@ -1581,6 +1581,8 @@ class StorefrontController extends Controller
      */
     public function transactionHistory(Request $request)
     {
+        Transaction::processAutoStatusUpdates($request->user()->id);
+
         $status = $request->input('status', 'all');
 
         $query = Transaction::with([
@@ -1633,6 +1635,8 @@ class StorefrontController extends Controller
      */
     public function transactionDetail(Request $request, Transaction $transaction)
     {
+        Transaction::processAutoStatusUpdates($request->user()->id);
+
         // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
         KomerceService::syncPaymentMethods();
 
@@ -1963,6 +1967,43 @@ class StorefrontController extends Controller
 
         return redirect()->route('transactions.show', $transaction->id)
             ->with('success', 'Pesanan telah diterima. Terima kasih telah berbelanja!');
+    }
+
+    /**
+     * Extend the order auto-complete confirmation period.
+     * Only allowed when status is dikirim and is_extended is false.
+     */
+    public function extendAutoComplete(Request $request, Transaction $transaction): RedirectResponse
+    {
+        if ($transaction->user_id !== $request->user()->id) {
+            abort(403);
+        }
+
+        if ($transaction->status !== 'dikirim') {
+            return redirect()->back()->with('error', 'Status pesanan harus dikirim terlebih dahulu.');
+        }
+
+        if ($transaction->is_extended) {
+            return redirect()->back()->with('error', 'Jangka waktu konfirmasi pesanan ini sudah pernah diperpanjang sebelumnya.');
+        }
+
+        $days = (int) (Setting::where('key', 'extend_auto_complete_days')->value('value') ?? 3);
+
+        $currentAutoComplete = $transaction->auto_complete_at ?: now();
+        $transaction->update([
+            'auto_complete_at' => $currentAutoComplete->addDays($days),
+            'is_extended' => true,
+        ]);
+
+        // Add history log
+        $transaction->statusHistories()->create([
+            'status' => 'dikirim',
+            'description' => "Jangka waktu konfirmasi pesanan diperpanjang selama {$days} hari.",
+            'created_by' => $request->user()->id,
+        ]);
+
+        return redirect()->route('transactions.show', $transaction->id)
+            ->with('success', "Jangka waktu konfirmasi pesanan berhasil diperpanjang selama {$days} hari.");
     }
 
     /**

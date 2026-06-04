@@ -5,12 +5,14 @@ use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductStock;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\TransactionPayment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -466,4 +468,95 @@ test('customer cannot print others transaction invoice', function () {
 
     $response = $this->actingAs($otherCustomer)->get(route('transactions.print-invoice-customer', $transaction));
     $response->assertForbidden();
+});
+
+test('transaction sets payment_expires_at when created and status is belum_bayar', function () {
+    Carbon::setTestNow(now());
+    Setting::updateOrCreate(['key' => 'payment_expiry_hours'], ['value' => '12']);
+    ['transaction' => $transaction] = createTestTransaction();
+
+    expect($transaction->payment_expires_at)->not->toBeNull();
+    $diffInHours = (int) round(now()->diffInMinutes($transaction->payment_expires_at) / 60);
+    expect($diffInHours)->toBe(12);
+
+    Carbon::setTestNow();
+});
+
+test('transaction sets auto_complete_at when status changes to dikirim', function () {
+    Carbon::setTestNow(now());
+    Setting::updateOrCreate(['key' => 'auto_complete_days'], ['value' => '5']);
+    ['transaction' => $transaction] = createTestTransaction();
+
+    $transaction->update(['status' => 'dikirim']);
+    expect($transaction->auto_complete_at)->not->toBeNull();
+    $diffInDays = (int) round(now()->diffInHours($transaction->auto_complete_at) / 24);
+    expect($diffInDays)->toBe(5);
+
+    Carbon::setTestNow();
+});
+
+test('processAutoStatusUpdates cancels expired unpaid transactions', function () {
+    ['transaction' => $transaction] = createTestTransaction();
+    $transaction->updateQuietly(['payment_expires_at' => now()->subMinutes(1)]);
+
+    Transaction::processAutoStatusUpdates();
+
+    $transaction->refresh();
+    expect($transaction->status)->toBe('batal');
+    expect($transaction->cancel_reason)->toContain('Pembatalan otomatis oleh sistem');
+});
+
+test('processAutoStatusUpdates completes shipped transactions when auto_complete_at is passed', function () {
+    ['transaction' => $transaction] = createTestTransaction();
+    $transaction->updateQuietly([
+        'status' => 'dikirim',
+        'auto_complete_at' => now()->subMinutes(1),
+    ]);
+
+    Transaction::processAutoStatusUpdates();
+
+    $transaction->refresh();
+    expect($transaction->status)->toBe('selesai');
+});
+
+test('customer can extend the auto-complete deadline of a shipped transaction', function () {
+    Carbon::setTestNow(now());
+    Setting::updateOrCreate(['key' => 'extend_auto_complete_days'], ['value' => '4']);
+    ['transaction' => $transaction, 'customer' => $customer] = createTestTransaction();
+
+    $transaction->updateQuietly([
+        'status' => 'dikirim',
+        'auto_complete_at' => now()->addDays(5),
+        'is_extended' => false,
+    ]);
+
+    $response = $this->actingAs($customer)->post(
+        route('transactions.extend-auto-complete', $transaction)
+    );
+
+    $response->assertRedirect();
+    $transaction->refresh();
+
+    expect($transaction->is_extended)->toBeTrue();
+    $diffInDays = (int) round(now()->diffInHours($transaction->auto_complete_at) / 24);
+    expect($diffInDays)->toBe(9);
+
+    Carbon::setTestNow();
+});
+
+test('customer cannot extend the auto-complete deadline twice', function () {
+    ['transaction' => $transaction, 'customer' => $customer] = createTestTransaction();
+
+    $transaction->updateQuietly([
+        'status' => 'dikirim',
+        'auto_complete_at' => now()->addDays(5),
+        'is_extended' => true,
+    ]);
+
+    $response = $this->actingAs($customer)->post(
+        route('transactions.extend-auto-complete', $transaction)
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Jangka waktu konfirmasi pesanan ini sudah pernah diperpanjang sebelumnya.');
 });

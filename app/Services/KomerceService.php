@@ -142,7 +142,12 @@ class KomerceService
         if ($courierLower === 'gosend' || $courierLower === 'grab') {
             $user = auth()->user();
             $address = null;
-            if ($user) {
+
+            if ($addressId) {
+                $address = CustomerAddress::find($addressId);
+            }
+
+            if (! $address && $user) {
                 $address = CustomerAddress::where('user_id', $user->id)
                     ->where('regency_id', $destination)
                     ->orderByDesc('is_primary')

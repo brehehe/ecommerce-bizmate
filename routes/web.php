@@ -103,6 +103,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/transactions/{transaction}/cancel', [StorefrontController::class, 'cancelTransaction'])->name('transactions.cancel');
     Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
     Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
+    Route::post('/transactions/{transaction}/extend-auto-complete', [StorefrontController::class, 'extendAutoComplete'])->name('transactions.extend-auto-complete');
     Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
     Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
 

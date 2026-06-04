@@ -953,6 +953,21 @@ class CheckoutController extends Controller
             return response()->json(['error' => 'Konfigurasi kota asal belum diatur di pengaturan.'], 422);
         }
 
+        $originName = Setting::where('key', 'regency_name')->value('value') ?? 'Unknown Origin';
+        $customerAddress = $request->address_id ? CustomerAddress::find($request->address_id) : null;
+
+        Log::info('Shipping cost calculation request payload:', [
+            'origin_id' => $origin,
+            'origin_name' => $originName,
+            'destination_id' => $request->destination,
+            'destination_name' => $customerAddress ? $customerAddress->regency_name : 'Unknown Destination',
+            'customer_address_detail' => $customerAddress ? $customerAddress->full_address : null,
+            'weight' => $request->weight,
+            'courier' => $request->courier,
+            'is_international' => $request->is_international,
+            'address_id' => $request->address_id,
+        ]);
+
         if ($request->is_international) {
             $response = KomerceService::getInternationalCost(
                 $origin,
@@ -969,6 +984,10 @@ class CheckoutController extends Controller
                 $request->address_id
             );
         }
+
+        Log::info('Shipping cost calculation response:', [
+            'response' => $response,
+        ]);
 
         if (isset($response['error'])) {
             return response()->json(['error' => $response['error']], 422);
