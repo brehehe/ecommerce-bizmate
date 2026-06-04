@@ -14,8 +14,40 @@
     let showTrackingModal = $state(false);
     let showCustomerTrackingModal = $state(false);
     let showReplacementTrackingModal = $state(false);
-    let showMediaViewer = $state(false);
-    let viewingMedia: any = $state(null);
+    
+    // Image/Video Gallery Preview Modal
+    let showPreviewModal = $state(false);
+    let previewItems = $state<any[]>([]);
+    let previewIndex = $state(0);
+
+    function openPreview(items: any[], index: number) {
+        previewItems = items;
+        previewIndex = index;
+        showPreviewModal = true;
+    }
+
+    function closePreview() {
+        showPreviewModal = false;
+    }
+
+    function nextPreview() {
+        if (previewItems.length > 0) {
+            previewIndex = (previewIndex + 1) % previewItems.length;
+        }
+    }
+
+    function prevPreview() {
+        if (previewItems.length > 0) {
+            previewIndex = (previewIndex - 1 + previewItems.length) % previewItems.length;
+        }
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (!showPreviewModal) return;
+        if (event.key === 'Escape') closePreview();
+        if (event.key === 'ArrowRight') nextPreview();
+        if (event.key === 'ArrowLeft') prevPreview();
+    }
 
     // svelte-ignore state_referenced_locally
     let adminNotes = $state(ret.notes_admin ?? '');
@@ -157,10 +189,7 @@
         });
     }
 
-    function openMedia(media: any) {
-        viewingMedia = media;
-        showMediaViewer = true;
-    }
+    // Media open placeholder
 </script>
 
 <AdminLayout>
@@ -292,9 +321,9 @@
                         <p class="text-xs text-slate-400 italic">Tidak ada bukti media.</p>
                     {:else}
                         <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                            {#each ret.media ?? [] as media (media.id)}
+                            {#each ret.media ?? [] as media, idx (media.id)}
                                 <button
-                                    onclick={() => openMedia(media)}
+                                    onclick={() => openPreview(ret.media ?? [], idx)}
                                     class="relative aspect-square bg-slate-100 rounded-xl overflow-hidden hover:opacity-90 transition group"
                                 >
                                     {#if media.file_type === 'video'}
@@ -725,27 +754,108 @@
     </div>
 {/if}
 
-<!-- Media Viewer -->
-{#if showMediaViewer && viewingMedia}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div class="fixed inset-0 z-[100] flex items-center justify-center" onclick={() => (showMediaViewer = false)}>
-        <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div class="relative z-10 max-w-3xl w-full p-4" onclick={(e: any) => e.stopPropagation()}>
-            <button aria-label="Tutup Media Viewer" onclick={() => (showMediaViewer = false)} class="absolute top-2 right-2 w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 transition">
-                <i class="ti ti-x text-lg"></i>
+<!-- Window Keydown Binder -->
+<svelte:window onkeydown={handleKeydown} />
+
+<!-- Full Screen Gallery Preview Modal -->
+{#if showPreviewModal && previewItems.length > 0}
+    <!-- Full-screen Backdrop -->
+    <div
+        class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex flex-col justify-between p-4 sm:p-6 select-none"
+        onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
+        role="dialog"
+        aria-label="File Preview"
+    >
+        <!-- Top bar -->
+        <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
+            <span class="text-sm font-bold opacity-75">
+                {previewIndex + 1} / {previewItems.length}
+            </span>
+            <button
+                onclick={closePreview}
+                class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition"
+                title="Tutup"
+            >
+                <i class="ti ti-x text-xl"></i>
             </button>
-            {#if viewingMedia.file_type === 'video'}
-                <!-- svelte-ignore a11y_media_has_caption -->
-                <video src={formatMediaUrl(viewingMedia.file_path)} controls class="w-full max-h-[80vh] rounded-xl" autoplay></video>
-            {:else}
-                <img src={formatMediaUrl(viewingMedia.file_path)} alt="Bukti retur" class="w-full max-h-[85vh] object-contain rounded-xl" />
+        </div>
+
+        <!-- Center Viewport -->
+        <div class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden">
+            <!-- Prev Button -->
+            {#if previewItems.length > 1}
+                <button
+                    onclick={prevPreview}
+                    class="absolute left-2 sm:left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition"
+                    title="Sebelumnya"
+                >
+                    <i class="ti ti-chevron-left text-2xl"></i>
+                </button>
+            {/if}
+
+            <!-- Media Content -->
+            {#key previewIndex}
+                <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
+                    {#if previewItems[previewIndex].file_type === 'video'}
+                        <video
+                            src={formatMediaUrl(previewItems[previewIndex].file_path)}
+                            controls
+                            autoplay
+                            class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
+                        >
+                            <track kind="captions" />
+                        </video>
+                    {:else}
+                        <img
+                            src={formatMediaUrl(previewItems[previewIndex].file_path)}
+                            alt="Bukti Retur"
+                            class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
+                        />
+                    {/if}
+                </div>
+            {/key}
+
+            <!-- Next Button -->
+            {#if previewItems.length > 1}
+                <button
+                    onclick={nextPreview}
+                    class="absolute right-2 sm:right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition"
+                    title="Selanjutnya"
+                >
+                    <i class="ti ti-chevron-right text-2xl"></i>
+                </button>
             {/if}
         </div>
+
+        <!-- Bottom Thumbnails -->
+        {#if previewItems.length > 1}
+            <div class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide">
+                {#each previewItems as item, idx}
+                    <button
+                        onclick={() => previewIndex = idx}
+                        class="w-16 h-10 rounded-lg overflow-hidden border-2 shrink-0 transition-all active:scale-95
+                            {previewIndex === idx ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-80'}"
+                    >
+                        {#if item.file_type === 'video'}
+                            <div class="w-full h-full bg-slate-800 flex items-center justify-center text-white">
+                                <i class="ti ti-video text-lg"></i>
+                            </div>
+                        {:else}
+                            <img src={formatMediaUrl(item.file_path)} alt="Thumb" class="w-full h-full object-cover" />
+                        {/if}
+                    </button>
+                {/each}
+            </div>
+        {:else}
+            <div class="h-10"></div>
+        {/if}
     </div>
 {/if}
+
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
 
 <!-- Toast -->
 {#if toastVisible}

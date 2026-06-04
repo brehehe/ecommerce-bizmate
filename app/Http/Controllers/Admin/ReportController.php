@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Courier;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
 class ReportController extends Controller
 {
@@ -739,6 +741,184 @@ class ReportController extends Controller
                 'date_from' => $dateFrom->format('Y-m-d'),
                 'date_to' => $dateTo->format('Y-m-d'),
                 'type' => $type,
+            ],
+        ]);
+    }
+
+    /**
+     * Laporan Kurir & Logistik (Courier & Logistics Report)
+     */
+    public function couriers(Request $request): Response
+    {
+        [$dateFrom, $dateTo] = $this->getDateRange($request);
+
+        // 1. Shipping Summary: Aggregates total orders, completed/cancelled count, total sales, shipping fees collected, and average fee
+        $shippingSummaryRaw = Transaction::whereBetween('created_at', [$dateFrom, $dateTo])
+            ->selectRaw("
+                CASE 
+                    WHEN shipping_courier = 'store_courier' THEN 'store_courier'
+                    WHEN shipping_courier = 'self_pickup' THEN 'self_pickup'
+                    ELSE 'rajaongkir'
+                END as method,
+                COUNT(id) as total_orders,
+                SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as completed_count,
+                SUM(CASE WHEN status = 'batal' THEN 1 ELSE 0 END) as cancelled_count,
+                SUM(CASE WHEN status IN ('diproses', 'dikemas', 'dikirim', 'selesai') THEN grand_total ELSE 0 END) as total_sales,
+                SUM(CASE WHEN status IN ('diproses', 'dikemas', 'dikirim', 'selesai') THEN shipping_fee ELSE 0 END) as shipping_fees,
+                AVG(CASE WHEN status IN ('diproses', 'dikemas', 'dikirim', 'selesai') AND shipping_fee > 0 THEN shipping_fee ELSE NULL END) as avg_shipping_fee
+            ")
+            ->groupBy(DB::raw("
+                CASE 
+                    WHEN shipping_courier = 'store_courier' THEN 'store_courier'
+                    WHEN shipping_courier = 'self_pickup' THEN 'self_pickup'
+                    ELSE 'rajaongkir'
+                END
+            "))
+            ->get()
+            ->keyBy('method');
+
+        // Ensure all three main methods are populated with default empty values if not found
+        $methods = ['rajaongkir', 'store_courier', 'self_pickup'];
+        $shippingSummary = [];
+        foreach ($methods as $m) {
+            $raw = $shippingSummaryRaw->get($m);
+            $shippingSummary[$m] = [
+                'method' => $m,
+                'total_orders' => $raw ? (int) $raw->total_orders : 0,
+                'completed_count' => $raw ? (int) $raw->completed_count : 0,
+                'cancelled_count' => $raw ? (int) $raw->cancelled_count : 0,
+                'total_sales' => $raw ? (float) $raw->total_sales : 0,
+                'shipping_fees' => $raw ? (float) $raw->shipping_fees : 0,
+                'avg_shipping_fee' => $raw ? (float) $raw->avg_shipping_fee : 0,
+            ];
+        }
+
+        // 2. RajaOngkir Breakdown: Details for 3PL couriers
+        $rajaongkirBreakdownRaw = Transaction::whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereNotIn('shipping_courier', ['store_courier', 'self_pickup'])
+            ->whereNotNull('shipping_courier')
+            ->where('shipping_courier', '!=', '')
+            ->selectRaw("
+                shipping_courier as courier_code,
+                COUNT(id) as total_orders,
+                SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as completed_count,
+                SUM(CASE WHEN status IN ('diproses', 'dikemas', 'dikirim', 'selesai') THEN shipping_fee ELSE 0 END) as shipping_fees,
+                SUM(CASE WHEN status IN ('diproses', 'dikemas', 'dikirim', 'selesai') THEN grand_total ELSE 0 END) as total_sales
+            ")
+            ->groupBy('shipping_courier')
+            ->get();
+
+        $courierNames = Courier::pluck('name', 'code')->toArray();
+        $rajaongkirBreakdown = $rajaongkirBreakdownRaw->map(function ($row) use ($courierNames) {
+            $code = strtolower($row->courier_code);
+
+            return [
+                'courier_code' => $row->courier_code,
+                'name' => $courierNames[$code] ?? strtoupper($row->courier_code),
+                'total_orders' => (int) $row->total_orders,
+                'completed_count' => (int) $row->completed_count,
+                'shipping_fees' => (float) $row->shipping_fees,
+                'total_sales' => (float) $row->total_sales,
+            ];
+        })->sortByDesc('total_orders')->values()->toArray();
+
+        // 3. Store Courier Performance: Drivers list and their metrics
+        try {
+            $driverIds = User::role('Kurir Toko')->pluck('id')->toArray();
+        } catch (RoleDoesNotExist $e) {
+            $driverIds = [];
+        }
+
+        $driver = DB::connection()->getDriverName();
+        $diffExpr = $driver === 'sqlite'
+            ? "(strftime('%s', delivery_arrived_at) - strftime('%s', created_at)) / 3600.0"
+            : 'EXTRACT(EPOCH FROM (delivery_arrived_at - created_at)) / 3600.0';
+
+        $performanceData = collect();
+        if (! empty($driverIds)) {
+            $performanceData = Transaction::whereIn('courier_user_id', $driverIds)
+                ->whereBetween('created_at', [$dateFrom, $dateTo])
+                ->selectRaw("
+                    courier_user_id,
+                    COUNT(id) as total_assigned,
+                    SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as completed_count,
+                    SUM(CASE WHEN status IN ('diproses', 'dikemas', 'out_for_pickup', 'dikirim') THEN 1 ELSE 0 END) as active_count,
+                    SUM(CASE WHEN status = 'batal' THEN 1 ELSE 0 END) as cancelled_count,
+                    AVG(CASE WHEN delivery_arrived_at IS NOT NULL THEN {$diffExpr} ELSE NULL END) as avg_delivery_hours
+                ")
+                ->groupBy('courier_user_id')
+                ->get()
+                ->keyBy('courier_user_id');
+        }
+
+        try {
+            $courierPerformance = User::role('Kurir Toko')->get()->map(function ($user) use ($performanceData) {
+                $perf = $performanceData->get($user->id);
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone_number' => $user->phone_number,
+                    'total_assigned' => $perf ? (int) $perf->total_assigned : 0,
+                    'completed_count' => $perf ? (int) $perf->completed_count : 0,
+                    'active_count' => $perf ? (int) $perf->active_count : 0,
+                    'cancelled_count' => $perf ? (int) $perf->cancelled_count : 0,
+                    'avg_delivery_hours' => $perf && $perf->avg_delivery_hours !== null ? round((float) $perf->avg_delivery_hours, 1) : null,
+                ];
+            })->toArray();
+        } catch (RoleDoesNotExist $e) {
+            $courierPerformance = [];
+        }
+
+        // 4. Recent Deliveries: latest 20 shipments
+        $recentDeliveries = Transaction::with(['user:id,name', 'courierUser:id,name', 'customerAddress'])
+            ->whereNotNull('shipping_courier')
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->latest()
+            ->limit(20)
+            ->get()
+            ->map(function ($tx) use ($courierNames) {
+                $code = strtolower($tx->shipping_courier);
+
+                return [
+                    'id' => $tx->id,
+                    'transaction_number' => $tx->transaction_number,
+                    'shipping_courier' => $tx->shipping_courier,
+                    'courier_name' => $tx->shipping_courier === 'store_courier' ? 'Kurir Toko' : ($tx->shipping_courier === 'self_pickup' ? 'Ambil di Toko' : ($courierNames[$code] ?? strtoupper($tx->shipping_courier))),
+                    'shipping_service' => $tx->shipping_service,
+                    'tracking_number' => $tx->tracking_number,
+                    'booking_code' => $tx->booking_code,
+                    'status' => $tx->status,
+                    'created_at' => $tx->created_at->toISOString(),
+                    'user_name' => $tx->user?->name ?? 'Guest',
+                    'courier_driver_name' => $tx->courierUser?->name,
+                    'address' => $tx->customerAddress ? [
+                        'name' => $tx->customerAddress->name,
+                        'phone' => $tx->customerAddress->phone,
+                        'address_line' => $tx->customerAddress->address_line,
+                        'city' => $tx->customerAddress->city_name ?? $tx->customerAddress->city,
+                    ] : null,
+                ];
+            })->toArray();
+
+        // Calculate overall metrics
+        $metrics = [
+            'total_shipping_revenue' => array_sum(array_column($shippingSummary, 'shipping_fees')),
+            'total_delivery_volume' => array_sum(array_column($shippingSummary, 'total_orders')),
+            'completed_deliveries' => array_sum(array_column($shippingSummary, 'completed_count')),
+            'cancelled_deliveries' => array_sum(array_column($shippingSummary, 'cancelled_count')),
+        ];
+
+        return Inertia::render('Admin/Reports/Couriers', [
+            'metrics' => $metrics,
+            'shippingSummary' => array_values($shippingSummary),
+            'rajaongkirBreakdown' => $rajaongkirBreakdown,
+            'courierPerformance' => $courierPerformance,
+            'recentDeliveries' => $recentDeliveries,
+            'filters' => [
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
             ],
         ]);
     }

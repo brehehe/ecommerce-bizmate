@@ -173,37 +173,43 @@
             url: '/admin/reports/stocks',
         },
         {
-            title: '15. Master Data Admin',
+            title: '15. Laporan Kurir & Logistik',
+            description:
+                'Analisis performa kurir pengiriman (RajaOngkir, Kurir Toko, Ambil di Toko) serta log pengantaran pesanan real-time.',
+            url: '/admin/reports/couriers',
+        },
+        {
+            title: '16. Master Data Admin',
             description:
                 'Mengatur akun dan hak akses tim operasional toko Anda. Anda dapat mendaftarkan akun Admin Toko, Admin Penjualan, atau Super Admin.',
             url: '/admin/master-data/admins',
         },
         {
-            title: '16. Master Data Pelanggan',
+            title: '17. Master Data Pelanggan',
             description:
                 'Kelola seluruh basis data pelanggan terdaftar. Anda dapat menonaktifkan akun pembeli, melihat data kontak, email, dan tanggal mendaftar.',
             url: '/admin/master-data/customers',
         },
         {
-            title: '17. Metode Pembayaran',
+            title: '18. Metode Pembayaran',
             description:
                 'Konfigurasikan rekening bank toko Anda untuk transfer manual, atau hubungkan dengan payment gateway untuk verifikasi transaksi otomatis.',
             url: '/admin/master-data/payment-methods',
         },
         {
-            title: '18. Jasa Kurir Pengiriman',
+            title: '19. Jasa Kurir Pengiriman',
             description:
                 'Aktifkan opsi ekspedisi pengiriman resmi (seperti JNE, POS, J&T, SiCepat) untuk perhitungan tarif ongkos kirim otomatis berdasarkan berat.',
             url: '/admin/master-data/couriers',
         },
         {
-            title: '19. CMS / Banner Promosi',
+            title: '20. CMS / Banner Promosi',
             description:
                 'Percantik tampilan halaman depan toko online Anda dengan mengunggah banner promosi, gambar slide utama, atau info promo terbaru.',
             url: '/admin/cms/banners',
         },
         {
-            title: '20. Pengaturan Toko',
+            title: '21. Pengaturan Toko',
             description:
                 'Pusat konfigurasi utama toko. Atur nama toko, logo resmi, favicon, email CS, nomor WhatsApp, alamat koordinat peta, hingga tarif pajak.',
             url: '/admin/settings',
@@ -233,12 +239,13 @@
             { urls: ['/admin/reports/profit-loss'], step: 12 },
             { urls: ['/admin/reports/customers'], step: 13 },
             { urls: ['/admin/reports/stocks'], step: 14 },
-            { urls: ['/admin/master-data/admins'], step: 15 },
-            { urls: ['/admin/master-data/customers'], step: 16 },
-            { urls: ['/admin/master-data/payment-methods'], step: 17 },
-            { urls: ['/admin/master-data/couriers'], step: 18 },
-            { urls: ['/admin/cms/banners'], step: 19 },
-            { urls: ['/admin/settings'], step: 20 },
+            { urls: ['/admin/reports/couriers'], step: 15 },
+            { urls: ['/admin/master-data/admins'], step: 16 },
+            { urls: ['/admin/master-data/customers'], step: 17 },
+            { urls: ['/admin/master-data/payment-methods'], step: 18 },
+            { urls: ['/admin/master-data/couriers'], step: 19 },
+            { urls: ['/admin/cms/banners'], step: 20 },
+            { urls: ['/admin/settings'], step: 21 },
         ];
 
         const found = mappings.find((item) =>
@@ -321,16 +328,18 @@
         } else if (step === 14) {
             router.visit('/admin/reports/stocks');
         } else if (step === 15) {
-            router.visit('/admin/master-data/admins');
+            router.visit('/admin/reports/couriers');
         } else if (step === 16) {
-            router.visit('/admin/master-data/customers');
+            router.visit('/admin/master-data/admins');
         } else if (step === 17) {
-            router.visit('/admin/master-data/payment-methods');
+            router.visit('/admin/master-data/customers');
         } else if (step === 18) {
-            router.visit('/admin/master-data/couriers');
+            router.visit('/admin/master-data/payment-methods');
         } else if (step === 19) {
-            router.visit('/admin/cms/banners');
+            router.visit('/admin/master-data/couriers');
         } else if (step === 20) {
+            router.visit('/admin/cms/banners');
+        } else if (step === 21) {
             router.visit('/admin/settings');
         }
     }

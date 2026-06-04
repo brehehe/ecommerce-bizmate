@@ -182,3 +182,19 @@ test('admin can view stocks and valuation report', function () {
         ->where('metrics.potential_profit', 600000)
     );
 });
+
+test('admin can view couriers report', function () {
+    $admin = setupReportTestData();
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.couriers'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Admin/Reports/Couriers')
+        ->has('metrics')
+        ->has('shippingSummary')
+        ->has('rajaongkirBreakdown')
+        ->has('courierPerformance')
+        ->has('recentDeliveries')
+    );
+});

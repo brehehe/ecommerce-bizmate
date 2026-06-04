@@ -255,6 +255,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
         Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
         Route::get('/stocks', [ReportController::class, 'stocks'])->name('stocks');
         Route::get('/pareto', [ReportController::class, 'pareto'])->name('pareto');
+        Route::get('/couriers', [ReportController::class, 'couriers'])->name('couriers');
     });
 });
 

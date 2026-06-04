@@ -15,6 +15,45 @@
     let courierName = $state('');
     let submittingTracking = $state(false);
 
+    // Image/Video Gallery Preview Modal
+    let showPreviewModal = $state(false);
+    let previewItems = $state<string[]>([]);
+    let previewIndex = $state(0);
+
+    function openPreview(items: string[], index: number) {
+        previewItems = items;
+        previewIndex = index;
+        showPreviewModal = true;
+    }
+
+    function closePreview() {
+        showPreviewModal = false;
+    }
+
+    function nextPreview() {
+        if (previewItems.length > 0) {
+            previewIndex = (previewIndex + 1) % previewItems.length;
+        }
+    }
+
+    function prevPreview() {
+        if (previewItems.length > 0) {
+            previewIndex = (previewIndex - 1 + previewItems.length) % previewItems.length;
+        }
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (!showPreviewModal) return;
+        if (event.key === 'Escape') closePreview();
+        if (event.key === 'ArrowRight') nextPreview();
+        if (event.key === 'ArrowLeft') prevPreview();
+    }
+
+    function isVideo(path: string): boolean {
+        const ext = path.split('.').pop()?.toLowerCase();
+        return ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(ext ?? '');
+    }
+
     function openReturnDetail(ret: any) {
         selectedReturn = ret;
         trackingNumber = ret.return_tracking_number || '';
@@ -304,10 +343,10 @@
                         <div class="space-y-2">
                             <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Bukti Foto &amp; Video</h4>
                             <div class="grid grid-cols-3 gap-2">
-                                {#each selectedReturn.media as mediaFile}
+                                {#each selectedReturn.media as mediaFile, idx}
                                     <button type="button" 
                                             class="aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer text-left w-full h-full"
-                                            onclick={() => window.open(formatImagePath(mediaFile.file_path), '_blank')}>
+                                            onclick={() => openPreview(selectedReturn.media.map(m => m.file_path), idx)}>
                                         {#if mediaFile.file_type === 'video'}
                                             <!-- svelte-ignore a11y_media_has_caption -->
                                             <video src={formatImagePath(mediaFile.file_path)} class="w-full h-full object-cover"></video>
@@ -455,3 +494,106 @@
         </div>
     {/if}
 </StorefrontLayout>
+
+<!-- Window Keydown Binder -->
+<svelte:window onkeydown={handleKeydown} />
+
+<!-- Full Screen Gallery Preview Modal -->
+{#if showPreviewModal && previewItems.length > 0}
+    <!-- Full-screen Backdrop -->
+    <div
+        class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex flex-col justify-between p-4 sm:p-6 select-none"
+        onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
+        role="dialog"
+        aria-label="File Preview"
+    >
+        <!-- Top bar -->
+        <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
+            <span class="text-sm font-bold opacity-75">
+                {previewIndex + 1} / {previewItems.length}
+            </span>
+            <button
+                onclick={closePreview}
+                class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition"
+                title="Tutup"
+            >
+                <i class="ti ti-x text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Center Viewport -->
+        <div class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden">
+            <!-- Prev Button -->
+            {#if previewItems.length > 1}
+                <button
+                    onclick={prevPreview}
+                    class="absolute left-2 sm:left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition"
+                    title="Sebelumnya"
+                >
+                    <i class="ti ti-chevron-left text-2xl"></i>
+                </button>
+            {/if}
+
+            <!-- Media Content -->
+            {#key previewIndex}
+                <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
+                    {#if isVideo(previewItems[previewIndex])}
+                        <video
+                            src={formatImagePath(previewItems[previewIndex])}
+                            controls
+                            autoplay
+                            class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
+                        >
+                            <track kind="captions" />
+                        </video>
+                    {:else}
+                        <img
+                            src={formatImagePath(previewItems[previewIndex])}
+                            alt="Bukti Retur"
+                            class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
+                        />
+                    {/if}
+                </div>
+            {/key}
+
+            <!-- Next Button -->
+            {#if previewItems.length > 1}
+                <button
+                    onclick={nextPreview}
+                    class="absolute right-2 sm:right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition"
+                    title="Selanjutnya"
+                >
+                    <i class="ti ti-chevron-right text-2xl"></i>
+                </button>
+            {/if}
+        </div>
+
+        <!-- Bottom Thumbnails -->
+        {#if previewItems.length > 1}
+            <div class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide">
+                {#each previewItems as item, idx}
+                    <button
+                        onclick={() => previewIndex = idx}
+                        class="w-16 h-10 rounded-lg overflow-hidden border-2 shrink-0 transition-all active:scale-95
+                            {previewIndex === idx ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-80'}"
+                    >
+                        {#if isVideo(item)}
+                            <div class="w-full h-full bg-slate-800 flex items-center justify-center text-white">
+                                <i class="ti ti-video text-lg"></i>
+                            </div>
+                        {:else}
+                            <img src={formatImagePath(item)} alt="Thumb" class="w-full h-full object-cover" />
+                        {/if}
+                    </button>
+                {/each}
+            </div>
+        {:else}
+            <div class="h-10"></div>
+        {/if}
+    </div>
+{/if}
+
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+</style>

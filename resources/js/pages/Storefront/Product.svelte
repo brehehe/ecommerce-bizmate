@@ -929,6 +929,7 @@
     let chatInterval: any = null;
     let attachedImage = $state<File | null>(null);
     let attachedImageUrl = $state<string | null>(null);
+    let chatPreviewUrl = $state<string | null>(null);
 
     $effect(() => {
         if (chatOpen) {
@@ -4532,11 +4533,7 @@
                                 <button
                                     type="button"
                                     aria-label="Lihat gambar"
-                                    onclick={() =>
-                                        window.open(
-                                            msg.attachment_data.url,
-                                            '_blank',
-                                        )}
+                                    onclick={() => chatPreviewUrl = msg.attachment_data.url}
                                     class="block w-full text-left p-0 border-0 bg-transparent cursor-pointer"
                                 >
                                     <img
@@ -4864,6 +4861,22 @@
                 </div>
             </div>
         {/if}
+    {/if}
+
+    <!-- Image Preview Modal -->
+    {#if chatPreviewUrl}
+        <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4" onclick={() => chatPreviewUrl = null}>
+            <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+            <div class="relative z-10 max-w-5xl w-full flex flex-col items-center justify-center" onclick={(e) => e.stopPropagation()}>
+                <button
+                    onclick={() => chatPreviewUrl = null}
+                    class="absolute -top-12 right-0 text-white hover:text-slate-300 transition flex items-center gap-1 text-xs font-bold bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-full"
+                >
+                    <i class="ti ti-x text-sm"></i> Tutup
+                </button>
+                <img src={chatPreviewUrl} alt="Preview Attachment" class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10" />
+            </div>
+        </div>
     {/if}
 
     <VariantSelectorModal
