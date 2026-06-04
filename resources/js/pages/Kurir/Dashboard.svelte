@@ -61,11 +61,21 @@
     async function startScanner() {
         scannerError = '';
         try {
-            const { Html5Qrcode } = await import('html5-qrcode');
+            const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
             html5QrCode = new Html5Qrcode('kurir-qr-reader');
             await html5QrCode.start(
                 { facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+                { 
+                    fps: 10, 
+                    qrbox: { width: 280, height: 140 },
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.UPC_A
+                    ]
+                },
                 (decodedText: string) => {
                     stopScanner();
                     scanInput = decodedText.trim();
@@ -82,8 +92,11 @@
 
     function stopScanner() {
         if (html5QrCode && scannerStarted) {
-            html5QrCode.stop().catch(() => {});
-            html5QrCode.clear();
+            html5QrCode.stop().then(() => {
+                html5QrCode.clear();
+            }).catch(() => {
+                html5QrCode.clear();
+            });
             scannerStarted = false;
         }
     }
@@ -113,6 +126,17 @@
             const res = await fetch(`/kurir/scan/${encodeURIComponent(scanInput.trim())}`, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
+
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                if (res.status === 401 || res.status === 403 || res.url.includes('/login')) {
+                    scannerError = 'Sesi Anda telah berakhir. Silakan muat ulang halaman untuk login kembali.';
+                } else {
+                    scannerError = `Server merespon dengan status ${res.status}`;
+                }
+                return;
+            }
+
             const data = await res.json();
 
             if (data.success) {
@@ -121,8 +145,9 @@
             } else {
                 scannerError = data.message ?? 'Transaksi tidak ditemukan.';
             }
-        } catch {
-            scannerError = 'Gagal menghubungi server.';
+        } catch (err: any) {
+            console.error('Scan error:', err);
+            scannerError = `Gagal menghubungi server: ${err.message ?? err}`;
         } finally {
             scanning = false;
         }
@@ -405,7 +430,7 @@
             <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
                 <div>
                     <h3 class="font-black text-slate-900 text-lg" style="font-family: 'Outfit', sans-serif;">Scan / Cari Pesanan</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Arahkan kamera ke QR code atau masukkan kode manual</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Arahkan kamera ke Barcode / QR code atau masukkan kode manual</p>
                 </div>
                 <button
                     id="btn-close-scanner"

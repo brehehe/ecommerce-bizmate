@@ -105,9 +105,11 @@ class KurirDashboardController extends Controller
      */
     public function scan(string $number): JsonResponse
     {
-        $transaction = Transaction::where('transaction_number', $number)
-            ->orWhere('booking_code', $number)
-            ->orWhere('tracking_number', $number)
+        $transaction = Transaction::where(function ($q) use ($number) {
+            $q->where('transaction_number', $number)
+                ->orWhere('booking_code', $number)
+                ->orWhere('tracking_number', $number);
+        })
             ->where('shipping_courier', 'store_courier')
             ->first();
 
