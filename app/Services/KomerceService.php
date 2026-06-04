@@ -293,6 +293,16 @@ class KomerceService
                     $destPinPoint = "{$destLat}, {$destLng}";
 
                     try {
+                        Log::info('Komerce tariff calculate request:', [
+                            'shipper_destination_id' => $shipperDestId,
+                            'receiver_destination_id' => $receiverDestId,
+                            'weight' => $weightKg,
+                            'item_value' => $itemValue,
+                            'cod' => 'yes',
+                            'origin_pin_point' => $originPinPoint,
+                            'destination_pin_point' => $destPinPoint,
+                        ]);
+
                         $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
                             ->get(self::getKomerceUrl('tariff/calculate'), [
                                 'shipper_destination_id' => $shipperDestId,
@@ -305,6 +315,9 @@ class KomerceService
                             ]);
 
                         if ($response->successful()) {
+                            Log::info('Komerce tariff calculate success:', [
+                                'response' => $response->json(),
+                            ]);
                             $data = $response->json();
                             $allRates = array_merge(
                                 $data['data']['calculate_reguler'] ?? [],
@@ -354,7 +367,15 @@ class KomerceService
                                 ];
                             }
                         } else {
-                            Log::warning('Komerce Tariff Calculate failed: '.$response->body());
+                            Log::warning('Komerce Tariff Calculate failed: '.$response->body().' Payload: '.json_encode([
+                                'shipper_destination_id' => $shipperDestId,
+                                'receiver_destination_id' => $receiverDestId,
+                                'weight' => $weightKg,
+                                'item_value' => $itemValue,
+                                'cod' => 'yes',
+                                'origin_pin_point' => $originPinPoint,
+                                'destination_pin_point' => $destPinPoint,
+                            ]));
                         }
                     } catch (\Exception $e) {
                         Log::error('KomerceService Tariff Calculate Error: '.$e->getMessage());
@@ -573,14 +594,27 @@ class KomerceService
         }
 
         try {
+            Log::info('Komerce destination search request:', [
+                'keyword' => $keyword,
+            ]);
+
             $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
                 ->get(self::getKomerceUrl('tariff/destination-search'), [
                     'keyword' => $keyword,
                 ]);
 
             if ($response->successful()) {
+                Log::info('Komerce destination search success:', [
+                    'response' => $response->json(),
+                ]);
+
                 return ['success' => true, 'data' => $response->json('data') ?? []];
             }
+
+            Log::warning('Komerce destination search failed:', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
 
             return ['error' => $response->json('meta.message') ?? 'Gagal mencari destinasi dari Komerce.'];
         } catch (\Exception $e) {
