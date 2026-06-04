@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/lib/browser.min.js"></script>
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -442,7 +442,7 @@
         });
 
         // Generate mini QR code for order number
-        QRCode.toCanvas(document.getElementById('mini-qrcode'), "{{ $transaction->transaction_number }}", {
+        QRCode.toCanvas(document.getElementById('mini-qrcode'), "{{ $transaction->tracking_number }}", {
             width: 70,
             margin: 0,
             errorCorrectionLevel: 'H'
