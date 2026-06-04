@@ -29,6 +29,45 @@
     let deliveryPhotoPreviews = $state<string[]>([]);
     let fileInputEl = $state<HTMLInputElement | null>(null);
 
+    // Image/Video Gallery Preview Modal
+    let showPreviewModal = $state(false);
+    let previewItems = $state<string[]>([]);
+    let previewIndex = $state(0);
+
+    function openPreview(items: string[], index: number) {
+        previewItems = items;
+        previewIndex = index;
+        showPreviewModal = true;
+    }
+
+    function closePreview() {
+        showPreviewModal = false;
+    }
+
+    function nextPreview() {
+        if (previewItems.length > 0) {
+            previewIndex = (previewIndex + 1) % previewItems.length;
+        }
+    }
+
+    function prevPreview() {
+        if (previewItems.length > 0) {
+            previewIndex = (previewIndex - 1 + previewItems.length) % previewItems.length;
+        }
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+        if (!showPreviewModal) return;
+        if (event.key === 'Escape') closePreview();
+        if (event.key === 'ArrowRight') nextPreview();
+        if (event.key === 'ArrowLeft') prevPreview();
+    }
+
+    function isVideo(path: string): boolean {
+        const ext = path.split('.').pop()?.toLowerCase();
+        return ['mp4', 'webm', 'ogg', 'mov', 'm4v'].includes(ext ?? '');
+    }
+
     function handleFileChange(event: Event) {
         const input = event.target as HTMLInputElement;
         if (input.files && input.files.length > 0) {
@@ -277,10 +316,20 @@
                     Foto Bukti Pengiriman ({transaction.delivery_photos.length})
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {#each transaction.delivery_photos as photo}
-                        <a href="/storage/{photo}" target="_blank" class="block relative rounded-xl overflow-hidden aspect-video bg-slate-50 border border-slate-150 hover:opacity-90 transition">
-                            <img src="/storage/{photo}" alt="Bukti Pengiriman" class="w-full h-full object-cover" />
-                        </a>
+                    {#each transaction.delivery_photos as photo, idx}
+                        <button
+                            onclick={() => openPreview(transaction.delivery_photos, idx)}
+                            class="block relative rounded-xl overflow-hidden aspect-video bg-slate-50 border border-slate-150 hover:opacity-90 transition text-left w-full cursor-pointer"
+                        >
+                            {#if isVideo(photo)}
+                                <div class="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-white gap-1">
+                                    <i class="ti ti-video text-2xl text-slate-300"></i>
+                                    <span class="text-[10px] font-bold opacity-75">Video Bukti</span>
+                                </div>
+                            {:else}
+                                <img src="/storage/{photo}" alt="Bukti Pengiriman" class="w-full h-full object-cover" />
+                            {/if}
+                        </button>
                     {/each}
                 </div>
             </div>
@@ -353,27 +402,27 @@
                     <i class="ti ti-barcode text-base" style="color: {primary};"></i>
                     Kode Pengiriman
                 </h2>
-                <div class="space-y-3">
+                <div class="space-y-4">
                     {#if transaction.booking_code}
-                        <div class="flex items-center justify-between">
-                            <div>
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
                                 <p class="text-xs text-slate-500">Kode Booking</p>
-                                <p class="text-sm font-black text-slate-800 font-mono">{transaction.booking_code}</p>
+                                <p class="text-sm font-black text-slate-800 font-mono break-all">{transaction.booking_code}</p>
                             </div>
-                            <span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold">Booking</span>
+                            <span class="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold shrink-0">Booking</span>
                         </div>
                     {/if}
                     {#if transaction.tracking_number}
-                        <div class="flex items-center justify-between">
-                            <div>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div class="min-w-0">
                                 <p class="text-xs text-slate-500">Nomor Resi</p>
-                                <p class="text-sm font-black text-emerald-700 font-mono">{transaction.tracking_number}</p>
+                                <p class="text-sm font-black text-emerald-700 font-mono break-all">{transaction.tracking_number}</p>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 self-start sm:self-auto shrink-0">
                                 <a
                                     href="/admin/transactions/{transaction.id}/print-shipping-label"
                                     target="_blank"
-                                    class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                                    class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
                                     title="Cetak Label Pengiriman"
                                 >
                                     <i class="ti ti-printer text-xs"></i>
@@ -389,12 +438,12 @@
                         </div>
                     {/if}
                     {#if transaction.courier_user}
-                        <div class="flex items-center justify-between pt-3 border-t border-slate-100/60">
-                            <div>
+                        <div class="flex items-center justify-between pt-3 border-t border-slate-100/60 gap-3">
+                            <div class="min-w-0">
                                 <p class="text-xs text-slate-500">Petugas Kurir</p>
-                                <p class="text-sm font-black text-slate-800">{transaction.courier_user.name}</p>
+                                <p class="text-sm font-black text-slate-800 truncate">{transaction.courier_user.name}</p>
                             </div>
-                            <span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold">Kurir</span>
+                            <span class="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold shrink-0">Kurir</span>
                         </div>
                     {/if}
                 </div>
@@ -572,3 +621,106 @@
         </div>
     </div>
 {/if}
+
+<!-- Window Keydown Binder -->
+<svelte:window onkeydown={handleKeydown} />
+
+<!-- Full Screen Gallery Preview Modal -->
+{#if showPreviewModal && previewItems.length > 0}
+    <!-- Full-screen Backdrop -->
+    <div
+        class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col justify-between p-4 sm:p-6 select-none"
+        onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
+        role="dialog"
+        aria-label="File Preview"
+    >
+        <!-- Top bar -->
+        <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
+            <span class="text-sm font-bold opacity-75">
+                {previewIndex + 1} / {previewItems.length}
+            </span>
+            <button
+                onclick={closePreview}
+                class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition"
+                title="Tutup"
+            >
+                <i class="ti ti-x text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Center Viewport -->
+        <div class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden">
+            <!-- Prev Button -->
+            {#if previewItems.length > 1}
+                <button
+                    onclick={prevPreview}
+                    class="absolute left-2 sm:left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition"
+                    title="Sebelumnya"
+                >
+                    <i class="ti ti-chevron-left text-2xl"></i>
+                </button>
+            {/if}
+
+            <!-- Media Content -->
+            {#key previewIndex}
+                <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
+                    {#if isVideo(previewItems[previewIndex])}
+                        <video
+                            src="/storage/{previewItems[previewIndex]}"
+                            controls
+                            autoplay
+                            class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
+                        >
+                            <track kind="captions" />
+                        </video>
+                    {:else}
+                        <img
+                            src="/storage/{previewItems[previewIndex]}"
+                            alt="Bukti Pengiriman"
+                            class="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain border border-white/10"
+                        />
+                    {/if}
+                </div>
+            {/key}
+
+            <!-- Next Button -->
+            {#if previewItems.length > 1}
+                <button
+                    onclick={nextPreview}
+                    class="absolute right-2 sm:right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-white transition"
+                    title="Selanjutnya"
+                >
+                    <i class="ti ti-chevron-right text-2xl"></i>
+                </button>
+            {/if}
+        </div>
+
+        <!-- Bottom Thumbnails -->
+        {#if previewItems.length > 1}
+            <div class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide">
+                {#each previewItems as item, idx}
+                    <button
+                        onclick={() => previewIndex = idx}
+                        class="w-16 h-10 rounded-lg overflow-hidden border-2 shrink-0 transition-all active:scale-95
+                            {previewIndex === idx ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-80'}"
+                    >
+                        {#if isVideo(item)}
+                            <div class="w-full h-full bg-slate-800 flex items-center justify-center text-white">
+                                <i class="ti ti-video text-lg"></i>
+                            </div>
+                        {:else}
+                            <img src="/storage/{item}" alt="Thumb" class="w-full h-full object-cover" />
+                        {/if}
+                    </button>
+                {/each}
+            </div>
+        {:else}
+            <div class="h-10"></div>
+        {/if}
+    </div>
+{/if}
+
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
