@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -219,9 +220,10 @@
             justify-content: flex-end;
             align-items: center;
         }
-        #mini-barcode {
-            max-height: 45px;
-            max-width: 140px;
+        #mini-qrcode {
+            width: 70px;
+            height: 70px;
+            display: block;
         }
         .packing-list-section {
             padding-top: 4px;
@@ -397,7 +399,7 @@
                 <div class="meta-row" style="font-size: 9.5px; word-break: break-all;">No. Pesanan: <strong>{{ $transaction->transaction_number }}</strong></div>
             </div>
             <div class="meta-barcode-container">
-                <svg id="mini-barcode"></svg>
+                <canvas id="mini-qrcode"></canvas>
             </div>
         </div>
 
@@ -439,13 +441,13 @@
             margin: 0
         });
 
-        // Generate mini barcode for order number
-        JsBarcode("#mini-barcode", "{{ $transaction->transaction_number }}", {
-            format: "CODE128",
-            width: 1.2,
-            height: 30,
-            displayValue: false,
-            margin: 0
+        // Generate mini QR code for order number
+        QRCode.toCanvas(document.getElementById('mini-qrcode'), "{{ $transaction->transaction_number }}", {
+            width: 70,
+            margin: 0,
+            errorCorrectionLevel: 'H'
+        }, function (error) {
+            if (error) console.error(error);
         });
 
         window.onload = function() {
