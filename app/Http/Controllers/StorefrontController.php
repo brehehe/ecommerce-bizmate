@@ -1415,6 +1415,7 @@ class StorefrontController extends Controller
         $minPrice = $request->input('min_price');
         $maxPrice = $request->input('max_price');
         $sort = $request->input('sort', 'latest');
+        $type = $request->input('type', 'all');
 
         $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
             ->orderBy('order')
@@ -1433,6 +1434,12 @@ class StorefrontController extends Controller
         ])
             ->where('active', true)
             ->where('category_id', $categoryModel->id);
+
+        if ($type === 'physical') {
+            $productsQuery->where('is_digital', false);
+        } elseif ($type === 'digital') {
+            $productsQuery->where('is_digital', true);
+        }
 
         $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
@@ -1543,6 +1550,7 @@ class StorefrontController extends Controller
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
                 'sort' => $sort,
+                'type' => $type,
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
@@ -1651,6 +1659,7 @@ class StorefrontController extends Controller
             'payments',
             'payment',
             'courier',
+            'courierUser',
             'statusHistories',
             'returns.items',
             'returns.media',

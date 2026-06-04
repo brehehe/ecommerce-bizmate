@@ -288,6 +288,7 @@ test('getDomesticCost logs warning on collaborator tariff calculation API failur
         ], 404),
     ]);
 
+    Log::shouldReceive('info');
     Log::shouldReceive('warning')
         ->once()
         ->with(Mockery::on(function ($message) {
@@ -308,6 +309,7 @@ test('getDomesticCost logs warning on RajaOngkir fallback API failure', function
         ], 401),
     ]);
 
+    Log::shouldReceive('info');
     Log::shouldReceive('warning')
         ->once()
         ->with(Mockery::on(function ($message) {

@@ -67,6 +67,8 @@
     let maxPrice = $state(filters.max_price || '');
     // svelte-ignore state_referenced_locally
     let selectedSort = $state(filters.sort || 'latest');
+    // svelte-ignore state_referenced_locally
+    let selectedType = $state(filters.type || 'all');
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
@@ -80,6 +82,7 @@
         minPrice = filters.min_price || '';
         maxPrice = filters.max_price || '';
         selectedSort = filters.sort || 'latest';
+        selectedType = filters.type || 'all';
     });
 
     // Auto-scroll the active category tab into view whenever category changes
@@ -122,6 +125,7 @@
                 min_price: minPrice,
                 max_price: maxPrice,
                 sort: selectedSort,
+                type: selectedType,
             },
             {
                 preserveState: true,
@@ -135,6 +139,7 @@
         minPrice = '';
         maxPrice = '';
         selectedSort = 'latest';
+        selectedType = 'all';
 
         if (!keepMobileOpen) {
             showMobileFilters = false;
@@ -607,6 +612,24 @@
                         Terapkan Harga
                     </button>
                 </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Jenis Produk Filter -->
+                <div class="space-y-2.5">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                        Jenis Produk
+                    </span>
+                    <select
+                        bind:value={selectedType}
+                        onchange={() => applyFilters(false)}
+                        class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300"
+                    >
+                        <option value="all">Semua Produk</option>
+                        <option value="physical">Produk Fisik</option>
+                        <option value="digital">Produk Digital</option>
+                    </select>
+                </div>
             </aside>
 
             <!-- ═══════════════════════════════════════════════════
@@ -875,6 +898,21 @@
                                 label="Harga Maksimum"
                             />
                         </div>
+                    </div>
+
+                    <!-- Jenis Produk Filter -->
+                    <div class="space-y-3 mt-6">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                            Jenis Produk
+                        </span>
+                        <select
+                            bind:value={selectedType}
+                            class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white"
+                        >
+                            <option value="all">Semua Produk</option>
+                            <option value="physical">Produk Fisik</option>
+                            <option value="digital">Produk Digital</option>
+                        </select>
                     </div>
                 </div>
 

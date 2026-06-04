@@ -140,92 +140,6 @@ class KomerceService
             $courierLower = 'gosend';
         }
 
-        if ($courierLower === 'gosend' || $courierLower === 'grab') {
-            $user = auth()->user();
-            $address = null;
-
-            if ($addressId) {
-                $address = CustomerAddress::find($addressId);
-            }
-
-            if (! $address && $user) {
-                $address = CustomerAddress::where('user_id', $user->id)
-                    ->where('regency_id', $destination)
-                    ->orderByDesc('is_primary')
-                    ->first();
-            }
-
-            if (! $address) {
-                $address = CustomerAddress::where('regency_id', $destination)
-                    ->orderByDesc('is_primary')
-                    ->first();
-            }
-
-            $storeLat = Setting::where('key', 'latitude')->value('value');
-            $storeLng = Setting::where('key', 'longitude')->value('value');
-
-            $distance = 10.0; // default 10 km
-            if ($address && $address->latitude && $address->longitude && $storeLat && $storeLng) {
-                $earthRadius = 6371; // km
-                $latDelta = deg2rad((float) $address->latitude - (float) $storeLat);
-                $lonDelta = deg2rad((float) $address->longitude - (float) $storeLng);
-                $a = sin($latDelta / 2) * sin($latDelta / 2) +
-                    cos(deg2rad((float) $storeLat)) * cos(deg2rad((float) $address->latitude)) *
-                    sin($lonDelta / 2) * sin($lonDelta / 2);
-                $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-                $distance = $earthRadius * $c; // in km
-            }
-
-            if ($distance > 50) {
-                return ['error' => 'Jarak pengiriman terlalu jauh untuk kurir instant (maksimal 50 km). Jarak saat ini: '.round($distance, 1).' km.'];
-            }
-
-            $name = $courierLower === 'gosend' ? 'GoSend' : 'GrabExpress';
-
-            if ($courierLower === 'gosend') {
-                $instantCost = max(15000, 10000 + round(2500 * $distance));
-                $samedayCost = max(10000, 8000 + round(1500 * $distance));
-            } else {
-                $instantCost = max(15000, 11000 + round(2400 * $distance));
-                $samedayCost = max(10000, 9000 + round(1400 * $distance));
-            }
-
-            $results = [
-                [
-                    'code' => $courierLower,
-                    'name' => $name,
-                    'costs' => [
-                        [
-                            'service' => 'Instant',
-                            'description' => 'Pengiriman Instant (1-2 Jam)',
-                            'cost' => [
-                                [
-                                    'value' => (float) $instantCost,
-                                    'etd' => '1-2 jam',
-                                    'note' => '',
-                                ],
-                            ],
-                        ],
-                        [
-                            'service' => 'Sameday',
-                            'description' => 'Pengiriman Same Day (6-8 Jam)',
-                            'cost' => [
-                                [
-                                    'value' => (float) $samedayCost,
-                                    'etd' => '6-8 jam',
-                                    'note' => '',
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-            ];
-
-            return ['results' => $results];
-        }
-
-        $courier = strtolower($courier) === 'gojek' ? 'gosend' : strtolower($courier);
-
         // Komerce Collaborator calculate API
         if (self::isDeliveryEnabled()) {
             $apiKey = self::getSetting('shipping_delivery_key', 'app.rajaongkir.shipping_delivery_key');
@@ -298,7 +212,7 @@ class KomerceService
                             'receiver_destination_id' => $receiverDestId,
                             'weight' => $weightKg,
                             'item_value' => $itemValue,
-                            'cod' => 'yes',
+                            'cod' => 'no',
                             'origin_pin_point' => $originPinPoint,
                             'destination_pin_point' => $destPinPoint,
                         ]);
@@ -309,7 +223,7 @@ class KomerceService
                                 'receiver_destination_id' => $receiverDestId,
                                 'weight' => $weightKg,
                                 'item_value' => $itemValue,
-                                'cod' => 'yes',
+                                'cod' => 'no',
                                 'origin_pin_point' => $originPinPoint,
                                 'destination_pin_point' => $destPinPoint,
                             ]);
@@ -331,11 +245,11 @@ class KomerceService
                             foreach ($allRates as $rate) {
                                 $rateCourier = strtolower($rate['shipping_name'] ?? '');
                                 $match = false;
-                                if ($rateCourier === strtolower($courier)) {
+                                if ($rateCourier === $courierLower) {
                                     $match = true;
-                                } elseif ($rateCourier === 'jnt' && strtolower($courier) === 'j&t') {
+                                } elseif ($rateCourier === 'jnt' && $courierLower === 'j&t') {
                                     $match = true;
-                                } elseif ($rateCourier === 'idexpress' && strtolower($courier) === 'idx') {
+                                } elseif ($rateCourier === 'idexpress' && $courierLower === 'idx') {
                                     $match = true;
                                 }
 
@@ -359,7 +273,7 @@ class KomerceService
                                 return [
                                     'results' => [
                                         [
-                                            'code' => $courier,
+                                            'code' => $courierLower,
                                             'name' => $courierName,
                                             'costs' => $costs,
                                         ],
@@ -372,7 +286,7 @@ class KomerceService
                                 'receiver_destination_id' => $receiverDestId,
                                 'weight' => $weightKg,
                                 'item_value' => $itemValue,
-                                'cod' => 'yes',
+                                'cod' => 'no',
                                 'origin_pin_point' => $originPinPoint,
                                 'destination_pin_point' => $destPinPoint,
                             ]));
@@ -382,6 +296,110 @@ class KomerceService
                     }
                 }
             }
+        }
+
+        // Fallback for GoSend / Grab (Local manual distance calculation)
+        if ($courierLower === 'gosend' || $courierLower === 'grab') {
+            Log::info('Using fallback local calculation for instant courier (GoSend/Grab):', [
+                'courier' => $courierLower,
+                'destination' => $destination,
+                'address_id' => $addressId,
+            ]);
+
+            $user = auth()->user();
+            $address = null;
+
+            if ($addressId) {
+                $address = CustomerAddress::find($addressId);
+            }
+
+            if (! $address && $user) {
+                $address = CustomerAddress::where('user_id', $user->id)
+                    ->where('regency_id', $destination)
+                    ->orderByDesc('is_primary')
+                    ->first();
+            }
+
+            if (! $address) {
+                $address = CustomerAddress::where('regency_id', $destination)
+                    ->orderByDesc('is_primary')
+                    ->first();
+            }
+
+            $storeLat = Setting::where('key', 'latitude')->value('value');
+            $storeLng = Setting::where('key', 'longitude')->value('value');
+
+            $distance = 10.0; // default 10 km
+            if ($address && $address->latitude && $address->longitude && $storeLat && $storeLng) {
+                $earthRadius = 6371; // km
+                $latDelta = deg2rad((float) $address->latitude - (float) $storeLat);
+                $lonDelta = deg2rad((float) $address->longitude - (float) $storeLng);
+                $a = sin($latDelta / 2) * sin($latDelta / 2) +
+                    cos(deg2rad((float) $storeLat)) * cos(deg2rad((float) $address->latitude)) *
+                    sin($lonDelta / 2) * sin($lonDelta / 2);
+                $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+                $distance = $earthRadius * $c; // in km
+            }
+
+            Log::info('Local calculation details:', [
+                'distance_km' => $distance,
+                'store_lat' => $storeLat,
+                'store_lng' => $storeLng,
+                'address_lat' => $address ? $address->latitude : null,
+                'address_lng' => $address ? $address->longitude : null,
+            ]);
+
+            if ($distance > 50) {
+                return ['error' => 'Jarak pengiriman terlalu jauh untuk kurir instant (maksimal 50 km). Jarak saat ini: '.round($distance, 1).' km.'];
+            }
+
+            $name = $courierLower === 'gosend' ? 'GoSend' : 'GrabExpress';
+
+            if ($courierLower === 'gosend') {
+                $instantCost = max(15000, 10000 + round(2500 * $distance));
+                $samedayCost = max(10000, 8000 + round(1500 * $distance));
+            } else {
+                $instantCost = max(15000, 11000 + round(2400 * $distance));
+                $samedayCost = max(10000, 9000 + round(1400 * $distance));
+            }
+
+            Log::info('Local calculation costs:', [
+                'instant_cost' => $instantCost,
+                'sameday_cost' => $samedayCost,
+            ]);
+
+            $results = [
+                [
+                    'code' => $courierLower,
+                    'name' => $name,
+                    'costs' => [
+                        [
+                            'service' => 'Instant',
+                            'description' => 'Pengiriman Instant (1-2 Jam)',
+                            'cost' => [
+                                [
+                                    'value' => (float) $instantCost,
+                                    'etd' => '1-2 jam',
+                                    'note' => '',
+                                ],
+                            ],
+                        ],
+                        [
+                            'service' => 'Sameday',
+                            'description' => 'Pengiriman Same Day (6-8 Jam)',
+                            'cost' => [
+                                [
+                                    'value' => (float) $samedayCost,
+                                    'etd' => '6-8 jam',
+                                    'note' => '',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+
+            return ['results' => $results];
         }
 
         // Fallback to Rajaongkir API
@@ -396,14 +414,26 @@ class KomerceService
             $isKomerce = str_contains($baseUrl, 'komerce.id');
             $endpoint = $isKomerce ? 'calculate/domestic-cost' : 'cost';
 
+            $payload = [
+                'origin' => $origin,
+                'destination' => $destination,
+                'weight' => $weight,
+                'courier' => $courier,
+            ];
+
+            Log::info('RajaOngkir cost calculation request:', [
+                'url' => rtrim($baseUrl, '/').'/'.$endpoint,
+                'payload' => $payload,
+            ]);
+
             $response = Http::withHeaders(['key' => $apiKey])
                 ->asForm()
-                ->post(rtrim($baseUrl, '/').'/'.$endpoint, [
-                    'origin' => $origin,
-                    'destination' => $destination,
-                    'weight' => $weight,
-                    'courier' => $courier,
-                ]);
+                ->post(rtrim($baseUrl, '/').'/'.$endpoint, $payload);
+
+            Log::info('RajaOngkir cost calculation response:', [
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -465,14 +495,26 @@ class KomerceService
         }
 
         try {
+            $payload = [
+                'origin' => $origin,
+                'destination' => $destinationCountryId,
+                'weight' => $weight,
+                'courier' => $courier,
+            ];
+
+            Log::info('RajaOngkir international cost request:', [
+                'url' => rtrim($baseUrl, '/').'/calculate/international-cost',
+                'payload' => $payload,
+            ]);
+
             $response = Http::withHeaders(['key' => $apiKey])
                 ->asForm()
-                ->post(rtrim($baseUrl, '/').'/calculate/international-cost', [
-                    'origin' => $origin,
-                    'destination' => $destinationCountryId,
-                    'weight' => $weight,
-                    'courier' => $courier,
-                ]);
+                ->post(rtrim($baseUrl, '/').'/calculate/international-cost', $payload);
+
+            Log::info('RajaOngkir international cost response:', [
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -560,12 +602,24 @@ class KomerceService
         }
 
         try {
+            $payload = [
+                'waybill' => $waybill,
+                'courier' => $courier,
+            ];
+
+            Log::info('RajaOngkir track waybill request:', [
+                'url' => rtrim($baseUrl, '/').'/waybill',
+                'payload' => $payload,
+            ]);
+
             $response = Http::withHeaders(['key' => $apiKey])
                 ->asForm()
-                ->post(rtrim($baseUrl, '/').'/waybill', [
-                    'waybill' => $waybill,
-                    'courier' => $courier,
-                ]);
+                ->post(rtrim($baseUrl, '/').'/waybill', $payload);
+
+            Log::info('RajaOngkir track waybill response:', [
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
 
             if ($response->successful()) {
                 $data = $response->json();

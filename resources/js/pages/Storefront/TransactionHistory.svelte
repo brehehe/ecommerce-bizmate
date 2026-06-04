@@ -183,7 +183,14 @@
                                                         </div>
                                                     {/if}
                                                     <div class="flex-1 min-w-0">
-                                                        <p class="text-xs font-bold text-slate-800 whitespace-pre-wrap break-words leading-tight group-hover:text-brand-blueRoyal transition">{item.product_name}</p>
+                                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                                            <p class="text-xs font-bold text-slate-800 whitespace-pre-wrap break-words leading-tight group-hover:text-brand-blueRoyal transition">{item.product_name}</p>
+                                                            {#if item.product?.is_digital}
+                                                                <span class="text-[8px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 uppercase tracking-wider shrink-0">
+                                                                    Digital
+                                                                </span>
+                                                            {/if}
+                                                        </div>
                                                         {#if item.variant_name}
                                                             <span class="inline-block text-[9px] font-bold px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded text-slate-500 mt-1">{item.variant_name}</span>
                                                         {/if}

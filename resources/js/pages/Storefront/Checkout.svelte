@@ -131,14 +131,26 @@
     );
 
     // Shipping
-    const availableCouriers = $derived(couriers.map((c: any) => c.code));
+    const availableCouriers = $derived.by(() => {
+        const list = couriers.map((c: any) => c.code);
+        if (storeSettings.store_courier_enabled) {
+            list.push('store_courier');
+        }
+        if (storeSettings.self_pickup_enabled) {
+            list.push('self_pickup');
+        }
+        return list;
+    });
 
-    const courierLabels = $derived(
-        couriers.reduce((acc: Record<string, string>, c: any) => {
+    const courierLabels = $derived.by(() => {
+        const labels = couriers.reduce((acc: Record<string, string>, c: any) => {
             acc[c.code] = c.name;
             return acc;
-        }, {}),
-    );
+        }, {});
+        labels['store_courier'] = 'Kurir Toko';
+        labels['self_pickup'] = 'Ambil di Toko';
+        return labels;
+    });
 
     let selectedCourier = $state('');
     const selectedCourierId = $derived(
@@ -185,6 +197,7 @@
     let shippingError = $state('');
 
     async function autoSelectShipping(courierIndex = 0) {
+        if (isDigitalOnly) return;
         if (!selectedAddressId) return;
         if (courierIndex >= availableCouriers.length) {
             selectedCourier = '';
@@ -207,6 +220,7 @@
     let initialAutoSelectDone = $state(false);
 
     $effect(() => {
+        if (isDigitalOnly) return;
         if (
             selectedAddressId &&
             !initialAutoSelectDone &&
@@ -328,6 +342,10 @@
 
     // Notes
     let orderNotes = $state('');
+    let itemNotes = $state<Record<number, string>>({});
+    const isDigitalOnly = $derived(
+        (cartItems || []).every((item: any) => item.product?.is_digital),
+    );
 
     // Submitting
     let isSubmitting = $state(false);
@@ -442,7 +460,11 @@
         ),
     );
     const shippingFee = $derived(
-        Number(selectedShipping ? (selectedShipping.cost[0]?.value ?? 0) : 0),
+        isDigitalOnly
+            ? 0
+            : Number(
+                  selectedShipping ? (selectedShipping.cost[0]?.value ?? 0) : 0,
+              ),
     );
     const shippingDiscount = $derived(
         Number(appliedVoucher?.shipping_discount ?? 0),
@@ -558,20 +580,49 @@
     // Total weight for shipping
     const totalWeightGrams = $derived(
         cartItems.reduce((acc: number, item: any) => {
+            if (item.product?.is_digital) {
+                return acc;
+            }
             const w =
                 item.productVariant?.weight ?? item.product?.weight ?? 1000;
             return acc + w * item.quantity;
         }, 0),
     );
 
-    function getEtdLabel(etd: any): string {
-        if (!etd) return 'Estimasi tidak tersedia';
+    function getCleanEtd(etd: any, service: string = ''): string {
+        if (!etd) {
+            return getFallbackEtdRaw(service);
+        }
         const clean = etd
             .toString()
             .toLowerCase()
             .replace(/days?|hari/gi, '')
             .trim();
-        if (clean === '' || clean === '-') return 'Estimasi tidak tersedia';
+        if (clean === '' || clean === '-') {
+            return getFallbackEtdRaw(service);
+        }
+        return clean;
+    }
+
+    function getFallbackEtdRaw(service: string): string {
+        const s = service.toLowerCase();
+        if (s.includes('cargo') || s.includes('gokil') || s.includes('jtr')) {
+            return '3-7';
+        }
+        if (
+            s.includes('instant') ||
+            s.includes('sameday') ||
+            s.includes('same day') ||
+            s.includes('gojek') ||
+            s.includes('grab')
+        ) {
+            return '0';
+        }
+        return '2-4';
+    }
+
+    function getEtdLabel(etd: any, service: string = ''): string {
+        const clean = getCleanEtd(etd, service);
         if (
             clean === '0' ||
             clean === '0-0' ||
@@ -588,7 +639,8 @@
             shippingError = 'Pilih negara tujuan terlebih dahulu.';
             return;
         }
-        if (!selectedAddress || !selectedCourier) return;
+        if (selectedCourier !== 'self_pickup' && !selectedAddress) return;
+        if (!selectedCourier) return;
 
         loadingShipping = true;
         shippingError = '';
@@ -609,16 +661,22 @@
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    destination: isInternational
-                        ? selectedCountryId
-                        : (selectedAddress.city_id ??
-                          selectedAddress.regency_id ??
-                          ''),
+                    destination:
+                        selectedCourier === 'self_pickup'
+                            ? ''
+                            : isInternational
+                              ? selectedCountryId
+                              : (selectedAddress?.city_id ??
+                                selectedAddress?.regency_id ??
+                                ''),
                     weight:
                         Math.max(1, Math.ceil(totalWeightGrams / 1000)) * 1000,
                     courier: selectedCourier,
                     is_international: isInternational,
-                    address_id: selectedAddress?.id ?? null,
+                    address_id:
+                        selectedCourier === 'self_pickup'
+                            ? null
+                            : (selectedAddress?.id ?? null),
                 }),
             });
 
@@ -760,16 +818,22 @@
             );
             return;
         }
-        if (!selectedAddressId) {
-            showToast('Pilih alamat pengiriman terlebih dahulu.', 'error');
-            return;
+        if (!isDigitalOnly) {
+            if (selectedCourier !== 'self_pickup' && !selectedAddressId) {
+                showToast('Pilih alamat pengiriman terlebih dahulu.', 'error');
+                return;
+            }
+            if (!selectedCourier) {
+                showToast('Pilih kurir pengiriman terlebih dahulu.', 'error');
+                return;
+            }
+            if (!selectedShipping) {
+                showToast('Pilih layanan pengiriman terlebih dahulu.', 'error');
+                return;
+            }
         }
         if (!selectedPaymentMethodId) {
             showToast('Pilih metode pembayaran.', 'error');
-            return;
-        }
-        if (!selectedShipping) {
-            showToast('Pilih layanan pengiriman terlebih dahulu.', 'error');
             return;
         }
 
@@ -778,16 +842,29 @@
         router.post(
             '/checkout',
             {
-                customer_address_id: selectedAddressId,
+                customer_address_id: isDigitalOnly
+                    ? null
+                    : selectedCourier === 'self_pickup'
+                      ? null
+                      : selectedAddressId,
                 payment_method_id: selectedPaymentMethodId,
-                courier_id: selectedCourierId,
-                shipping_courier: selectedCourier,
-                shipping_service: selectedShipping?.service,
-                shipping_etd: selectedShipping?.cost?.[0]?.etd ?? '',
-                shipping_fee: shippingFee,
+                courier_id: isDigitalOnly ? null : selectedCourierId,
+                shipping_courier: isDigitalOnly ? 'digital' : selectedCourier,
+                shipping_service: isDigitalOnly
+                    ? 'email'
+                    : (selectedShipping?.service ?? ''),
+                shipping_etd: isDigitalOnly
+                    ? '0'
+                    : getCleanEtd(
+                          selectedShipping?.cost?.[0]?.etd,
+                          selectedShipping?.service ||
+                              selectedShipping?.description,
+                      ),
+                shipping_fee: isDigitalOnly ? 0 : shippingFee,
                 voucher_code: voucherInputCode ?? '',
                 notes: orderNotes,
                 use_coins: useCoins,
+                item_notes: itemNotes,
             },
             {
                 onError: () => {
@@ -1003,84 +1080,117 @@
                         </div>
                     {/if}
 
-                    <!-- Address Section -->
-                    <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
+                    {#if !isDigitalOnly}
+                        <!-- Address Section -->
                         <div
-                            class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100"
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
                         >
-                            <div class="flex items-center gap-2">
-                                <i
-                                    class="ti ti-map-pin text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Alamat Pengiriman</span
+                            {#if selectedCourier === 'self_pickup'}
+                                <div
+                                    class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100 bg-slate-50"
                                 >
-                            </div>
-                            <button
-                                onclick={() => (showAddressModal = true)}
-                                class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
-                                style="color:{primary}"
-                            >
-                                Ganti Alamat
-                            </button>
-                        </div>
-
-                        {#if selectedAddress}
-                            <div class="py-3 px-4">
-                                <div class="flex items-start gap-2">
-                                    <div class="flex-1 min-w-0">
-                                        <div
-                                            class="flex items-center gap-2 flex-wrap mb-1"
+                                    <div class="flex items-center gap-2">
+                                        <i
+                                            class="ti ti-building-store text-lg text-emerald-600"
+                                        ></i>
+                                        <span class="font-bold text-slate-800 text-sm"
+                                            >Lokasi Pengambilan (Ambil di Toko)</span
                                         >
-                                            <span
-                                                class="font-bold text-slate-800 text-sm"
-                                                >{selectedAddress.receiver_name}</span
-                                            >
-                                            <span
-                                                class="text-xs text-slate-500 font-medium"
-                                                >{selectedAddress.phone_number}</span
-                                            >
-                                            {#if selectedAddress.is_primary}
-                                                <span
-                                                    class="text-[10px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-wider"
-                                                    style="background:{primary}"
-                                                    >Utama</span
-                                                >
-                                            {/if}
-                                        </div>
-                                        <p
-                                            class="text-xs text-slate-600 leading-relaxed font-medium"
-                                        >
-                                            {selectedAddress.full_address}
-                                            {#if selectedAddress.village_name}, {selectedAddress.village_name}{/if}
-                                            {#if selectedAddress.district_name}, {selectedAddress.district_name}{/if}
-                                            {#if selectedAddress.regency_name}, {selectedAddress.regency_name}{/if}
-                                            {#if selectedAddress.province_name}, {selectedAddress.province_name}{/if}
-                                            {#if selectedAddress.postal_code}
-                                                {selectedAddress.postal_code}{/if}
-                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                        {:else}
-                            <div class="py-3 px-4">
-                                <div
-                                    class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-sm font-medium"
-                                >
-                                    <i class="ti ti-alert-triangle mr-1"></i>
-                                    Belum ada alamat.
-                                    <Link
-                                        href="/profile/addresses?from=checkout"
-                                        class="font-black underline"
-                                        >Tambah Alamat</Link
-                                    >
+                                <div class="py-3 px-4">
+                                    <p class="text-xs font-bold text-slate-800 mb-1">{storeSettings.store_name || storeName}</p>
+                                    <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                                        {storeSettings.store_address}
+                                        {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
+                                        {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
+                                        {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
+                                        {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
+                                        {#if storeSettings.store_postal_code}
+                                            {storeSettings.store_postal_code}{/if}
+                                    </p>
+                                    <div class="mt-2.5 p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2 text-[11px] font-bold text-emerald-700">
+                                        <i class="ti ti-info-circle text-sm shrink-0"></i>
+                                        <span>Pesanan Anda akan disiapkan di toko. Anda dapat mengambilnya setelah status pembayaran selesai.</span>
+                                    </div>
                                 </div>
-                            </div>
-                        {/if}
-                    </div>
+                            {:else}
+                                <div
+                                    class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100"
+                                >
+                                    <div class="flex items-center gap-2">
+                                        <i
+                                            class="ti ti-map-pin text-lg"
+                                            style="color:{primary}"
+                                        ></i>
+                                        <span class="font-bold text-slate-800 text-sm"
+                                            >Alamat Pengiriman</span
+                                        >
+                                    </div>
+                                    <button
+                                        onclick={() => (showAddressModal = true)}
+                                        class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
+                                        style="color:{primary}"
+                                    >
+                                        Ganti Alamat
+                                    </button>
+                                </div>
+
+                                {#if selectedAddress}
+                                    <div class="py-3 px-4">
+                                        <div class="flex items-start gap-2">
+                                            <div class="flex-1 min-w-0">
+                                                <div
+                                                    class="flex items-center gap-2 flex-wrap mb-1"
+                                                >
+                                                    <span
+                                                        class="font-bold text-slate-800 text-sm"
+                                                        >{selectedAddress.receiver_name}</span
+                                                    >
+                                                    <span
+                                                        class="text-xs text-slate-500 font-medium"
+                                                        >{selectedAddress.phone_number}</span
+                                                    >
+                                                    {#if selectedAddress.is_primary}
+                                                        <span
+                                                            class="text-[10px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-wider"
+                                                            style="background:{primary}"
+                                                            >Utama</span
+                                                        >
+                                                    {/if}
+                                                </div>
+                                                <p
+                                                    class="text-xs text-slate-600 leading-relaxed font-medium"
+                                                >
+                                                    {selectedAddress.full_address}
+                                                    {#if selectedAddress.village_name}, {selectedAddress.village_name}{/if}
+                                                    {#if selectedAddress.district_name}, {selectedAddress.district_name}{/if}
+                                                    {#if selectedAddress.regency_name}, {selectedAddress.regency_name}{/if}
+                                                    {#if selectedAddress.province_name}, {selectedAddress.province_name}{/if}
+                                                    {#if selectedAddress.postal_code}
+                                                        {selectedAddress.postal_code}{/if}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {:else}
+                                    <div class="py-3 px-4">
+                                        <div
+                                            class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-sm font-medium"
+                                        >
+                                            <i class="ti ti-alert-triangle mr-1"></i>
+                                            Belum ada alamat.
+                                            <Link
+                                                href="/profile/addresses?from=checkout"
+                                                class="font-black underline"
+                                                >Tambah Alamat</Link
+                                            >
+                                        </div>
+                                    </div>
+                                {/if}
+                            {/if}
+                        </div>
+                    {/if}
 
                     <!-- Product List -->
                     <div
@@ -1102,42 +1212,59 @@
                                 {@const product = item.product}
                                 {@const variant = item.productVariant}
                                 {@const imgUrl = getCartItemImage(item)}
-                                <div class="px-4 py-3 flex gap-3">
-                                    <img
-                                        src={imgUrl}
-                                        alt={product?.name}
-                                        class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
-                                        onerror={(e: any) => {
-                                            e.target.src = '/noimage/image.png';
-                                        }}
-                                    />
-                                    <div class="flex-1 min-w-0">
-                                        <p
-                                            class="text-sm font-semibold text-slate-800 leading-tight truncate"
-                                        >
-                                            {product?.name}
-                                        </p>
-                                        {#if variant}
-                                            <p
-                                                class="text-xs text-slate-500 mt-0.5"
+                                <div class="px-4 py-3.5">
+                                    <div class="flex gap-3">
+                                        <img
+                                            src={imgUrl}
+                                            alt={product?.name}
+                                            class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
+                                            onerror={(e: any) => {
+                                                e.target.src = '/noimage/image.png';
+                                            }}
+                                        />
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <p
+                                                    class="text-sm font-semibold text-slate-800 leading-tight truncate"
+                                                >
+                                                    {product?.name}
+                                                </p>
+                                                {#if product?.is_digital}
+                                                    <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider">
+                                                        Digital
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            {#if variant}
+                                                <p
+                                                    class="text-xs text-slate-500 mt-0.5"
+                                                >
+                                                    {variant.options
+                                                        ?.map((o: any) => o.name)
+                                                        .join(' / ')}
+                                                </p>
+                                            {/if}
+                                            <div
+                                                class="flex items-center justify-between mt-1.5"
                                             >
-                                                {variant.options
-                                                    ?.map((o: any) => o.name)
-                                                    .join(' / ')}
-                                            </p>
-                                        {/if}
-                                        <div
-                                            class="flex items-center justify-between mt-1.5"
-                                        >
-                                            <span class="text-xs text-slate-500"
-                                                >x{item.quantity}</span
-                                            >
-                                            <span
-                                                class="text-sm font-bold"
-                                                style="color:{primary}"
-                                                >{fmt(item.unit_price)}</span
-                                            >
+                                                <span class="text-xs text-slate-500"
+                                                    >x{item.quantity}</span
+                                                >
+                                                <span
+                                                    class="text-sm font-bold"
+                                                    style="color:{primary}"
+                                                    >{fmt(item.unit_price)}</span
+                                                >
+                                            </div>
                                         </div>
+                                    </div>
+                                    <div class="mt-2" style="padding-left: 4.25rem;">
+                                        <input
+                                            type="text"
+                                            bind:value={itemNotes[item.id]}
+                                            placeholder="Catatan untuk item ini (opsional)..."
+                                            class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 font-medium"
+                                        />
                                     </div>
                                 </div>
                             {/each}
@@ -1242,27 +1369,28 @@
                         {/if}
                     </div>
 
-                    <!-- Shipping Section -->
-                    <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100"
-                    >
-                        <div class="px-4 pt-4 pb-3">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i
-                                    class="ti ti-truck text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Pengiriman</span
-                                >
-                            </div>
+                    {#if !isDigitalOnly}
+                        <!-- Shipping Section -->
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100"
+                        >
+                            <div class="px-4 pt-4 pb-3">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <i
+                                        class="ti ti-truck text-lg"
+                                        style="color:{primary}"
+                                    ></i>
+                                    <span class="font-bold text-slate-800 text-sm"
+                                        >Pengiriman</span
+                                    >
+                                </div>
 
-                            {#if !selectedAddress}
-                                <p class="text-xs text-slate-400 italic">
-                                    Pilih alamat terlebih dahulu untuk mengecek
-                                    ongkir.
-                                </p>
-                            {:else}
+                                {#if selectedCourier !== 'self_pickup' && !selectedAddress}
+                                    <p class="text-xs text-slate-400 italic">
+                                        Pilih alamat terlebih dahulu untuk mengecek
+                                        ongkir.
+                                    </p>
+                                {:else}
                                 <!-- International Shipping Option -->
                                 <!-- <div class="mb-4 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
                                     <label class="flex items-center justify-between cursor-pointer">
@@ -1482,7 +1610,7 @@
                                             <button
                                                 onclick={() =>
                                                     (selectedShipping = opt)}
-                                                class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.99] {selectedShipping?.service ===
+                                                class="w-full flex items-center justify-between gap-4 p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.99] {selectedShipping?.service ===
                                                 opt.service
                                                     ? 'shadow-sm border-transparent'
                                                     : 'border-slate-100 hover:border-slate-200 bg-slate-50/30'}"
@@ -1492,7 +1620,7 @@
                                                     : ''}
                                             >
                                                 <div
-                                                    class="flex items-center gap-3"
+                                                    class="flex items-center gap-3 flex-grow min-w-0"
                                                 >
                                                     <div
                                                         class="w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 shrink-0"
@@ -1507,39 +1635,42 @@
                                                             ></i>
                                                         {/if}
                                                     </div>
-                                                    <div>
-                                                        <p
-                                                            class="text-sm font-bold text-slate-800 flex items-center gap-1.5"
+                                                    <div class="min-w-0 flex-grow">
+                                                        <div
+                                                            class="flex items-center gap-1.5 flex-wrap"
                                                         >
                                                             <span
-                                                                class="uppercase px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-bold text-slate-500"
+                                                                class="uppercase px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 tracking-wider shrink-0"
                                                             >
-                                                                {selectedCourier}
+                                                                {courierLabels[selectedCourier] || selectedCourier}
                                                             </span>
-                                                            {opt.service}
-                                                        </p>
+                                                            <span
+                                                                class="text-sm font-bold text-slate-800"
+                                                            >
+                                                                {opt.service}
+                                                            </span>
+                                                        </div>
                                                         <p
-                                                            class="text-xs text-slate-500 mt-0.5"
+                                                            class="text-xs text-slate-500 mt-1 font-medium leading-relaxed"
                                                         >
                                                             {opt.description}
                                                         </p>
                                                         <p
-                                                            class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"
+                                                            class="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-medium"
                                                         >
                                                             <i
                                                                 class="ti ti-clock text-xs"
                                                             ></i>
                                                             <span
                                                                 >{getEtdLabel(
-                                                                    opt
-                                                                        .cost?.[0]
-                                                                        ?.etd,
+                                                                    opt.cost?.[0]?.etd,
+                                                                    opt.service || opt.description
                                                                 )}</span
                                                             >
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div class="text-right">
+                                                <div class="text-right shrink-0">
                                                     <p
                                                         class="text-sm font-bold"
                                                         style="color:{primary}"
@@ -1593,6 +1724,7 @@
                             {/if}
                         </div>
                     </div>
+                    {/if}
 
                     <!-- Voucher Section -->
                     <div
@@ -2134,25 +2266,27 @@
                                         >
                                     </div>
                                 {/if}
-                                <div class="flex justify-between">
-                                    <span class="text-slate-600"
-                                        >Ongkos Kirim</span
-                                    >
-                                    <span class="font-semibold text-slate-800"
-                                        >{selectedShipping
-                                            ? fmt(shippingFee)
-                                            : '-'}</span
-                                    >
-                                </div>
-                                {#if shippingDiscount > 0}
-                                    <div
-                                        class="flex justify-between text-green-600"
-                                    >
-                                        <span>Gratis Ongkir</span>
-                                        <span class="font-semibold"
-                                            >-{fmt(shippingDiscount)}</span
+                                {#if !isDigitalOnly}
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600"
+                                            >Ongkos Kirim</span
+                                        >
+                                        <span class="font-semibold text-slate-800"
+                                            >{selectedShipping
+                                                ? fmt(shippingFee)
+                                                : '-'}</span
                                         >
                                     </div>
+                                    {#if shippingDiscount > 0}
+                                        <div
+                                            class="flex justify-between text-green-600"
+                                        >
+                                            <span>Gratis Ongkir</span>
+                                            <span class="font-semibold"
+                                                >-{fmt(shippingDiscount)}</span
+                                            >
+                                        </div>
+                                    {/if}
                                 {/if}
                                 {#if adminFee > 0}
                                     <div class="flex justify-between">
@@ -2220,9 +2354,9 @@
                             <button
                                 onclick={submitCheckout}
                                 disabled={isSubmitting ||
-                                    !selectedAddressId ||
+                                    (!isDigitalOnly && selectedCourier !== 'self_pickup' && !selectedAddressId) ||
                                     !selectedPaymentMethodId ||
-                                    !selectedShipping ||
+                                    (!isDigitalOnly && !selectedShipping) ||
                                     !isStoreOpen}
                                 class="hidden lg:flex w-full mt-4 items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="background:linear-gradient(to right, {primary}, {primary})"
@@ -2255,9 +2389,9 @@
                 <button
                     onclick={submitCheckout}
                     disabled={isSubmitting ||
-                        !selectedAddressId ||
+                        (!isDigitalOnly && selectedCourier !== 'self_pickup' && !selectedAddressId) ||
                         !selectedPaymentMethodId ||
-                        !selectedShipping ||
+                        (!isDigitalOnly && !selectedShipping) ||
                         !isStoreOpen}
                     class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background:linear-gradient(to right, {primary}, {primary})"

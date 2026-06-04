@@ -154,6 +154,20 @@
         payment_expiry_hours: settings.payment_expiry_hours || 24,
         auto_complete_days: settings.auto_complete_days || 7,
         extend_auto_complete_days: settings.extend_auto_complete_days || 3,
+
+        self_pickup_enabled:
+            settings.self_pickup_enabled === 'true' ||
+            settings.self_pickup_enabled === true ||
+            settings.self_pickup_enabled === '1',
+        self_pickup_fee: settings.self_pickup_fee || 0,
+        store_courier_enabled:
+            settings.store_courier_enabled === 'true' ||
+            settings.store_courier_enabled === true ||
+            settings.store_courier_enabled === '1',
+        store_courier_type: settings.store_courier_type || 'flat',
+        store_courier_flat_fee: settings.store_courier_flat_fee || 0,
+        store_courier_per_km_fee: settings.store_courier_per_km_fee || 0,
+        store_courier_max_radius: settings.store_courier_max_radius || 50,
     });
 
     const dayLabels = {
@@ -2404,6 +2418,85 @@
                                     placeholder="Contoh: https://api-sandbox.collaborator.komerce.id/api/v1/"
                                     required={true}
                                 />
+
+                                <div class="h-px bg-slate-100 my-2"></div>
+
+                                <!-- Self Pickup Settings -->
+                                <div class="space-y-2">
+                                    <Toggle
+                                        bind:checked={form.self_pickup_enabled}
+                                        label="Aktifkan Pengambilan di Toko (Self-Pickup)"
+                                        icon="ti-building-store"
+                                    />
+                                    {#if form.self_pickup_enabled}
+                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                            <InputCurrency
+                                                id="input-self-pickup-fee"
+                                                bind:value={form.self_pickup_fee}
+                                                label="Biaya Penanganan Ambil di Toko"
+                                                placeholder="Contoh: 0"
+                                                required={true}
+                                            />
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <div class="h-px bg-slate-100 my-2"></div>
+
+                                <!-- Store Courier Settings -->
+                                <div class="space-y-2">
+                                    <Toggle
+                                        bind:checked={form.store_courier_enabled}
+                                        label="Aktifkan Kurir Toko"
+                                        icon="ti-truck-delivery"
+                                    />
+                                    {#if form.store_courier_enabled}
+                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-3">
+                                            <div class="space-y-1">
+                                                <label for="store-courier-type" class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                                    Metode Perhitungan Biaya
+                                                </label>
+                                                <select
+                                                    id="store-courier-type"
+                                                    bind:value={form.store_courier_type}
+                                                    class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
+                                                >
+                                                    <option value="flat">Tarif Flat (Sama Rata)</option>
+                                                    <option value="radius">Tarif Berdasarkan Radius (per Km)</option>
+                                                </select>
+                                            </div>
+
+                                            {#if form.store_courier_type === 'flat'}
+                                                <InputCurrency
+                                                    id="input-store-courier-flat-fee"
+                                                    bind:value={form.store_courier_flat_fee}
+                                                    label="Biaya Pengiriman Flat"
+                                                    placeholder="Contoh: 15000"
+                                                    required={true}
+                                                />
+                                            {:else}
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <InputCurrency
+                                                        id="input-store-courier-per-km-fee"
+                                                        bind:value={form.store_courier_per_km_fee}
+                                                        label="Biaya per Kilometer"
+                                                        placeholder="Contoh: 3000"
+                                                        required={true}
+                                                    />
+                                                    <Input
+                                                        id="input-store-courier-max-radius"
+                                                        type="number"
+                                                        bind:value={form.store_courier_max_radius}
+                                                        label="Radius Maksimal Pengiriman (Km)"
+                                                        placeholder="Contoh: 25"
+                                                        min="1"
+                                                        required={true}
+                                                    />
+                                                </div>
+                                            {/if}
+                                        </div>
+                                    {/if}
+                                </div>
 
                                 <div class="h-px bg-slate-100 my-2"></div>
 

@@ -45,6 +45,7 @@
         tax_enabled: false,
         tax_rate: '',
         active: true,
+        is_digital: false,
         photos: [],
         variations: [],
         variants: [],
@@ -2963,6 +2964,14 @@
                             error={form.errors.sku}
                         />
                     </div>
+                    <div class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                        <Toggle
+                            bind:checked={form.is_digital}
+                            label="Produk Digital"
+                            description="Aktifkan jika produk ini tidak memerlukan pengiriman fisik (voucher, lisensi, dll)"
+                            icon="ti-device-laptop"
+                        />
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
@@ -3267,54 +3276,56 @@
                     </div>
                 </div>
 
-                <!-- Card: Dimensi Master -->
-                <div
-                    class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft"
-                >
-                    <h3
-                        class="font-outfit font-black text-lg text-slate-800 mb-4 border-b border-slate-100 pb-4"
+                {#if !form.is_digital}
+                    <!-- Card: Dimensi Master -->
+                    <div
+                        class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft"
                     >
-                        Pengiriman & Dimensi (Master)
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <Input
-                            bind:value={form.weight}
-                            type="number"
-                            min="0"
-                            id="weight"
-                            label="Berat"
-                            prefix="Gram"
-                            error={form.errors.weight}
-                        />
-                        <Input
-                            bind:value={form.length}
-                            type="number"
-                            min="0"
-                            id="length"
-                            label="Panjang"
-                            prefix="Cm"
-                            error={form.errors.length}
-                        />
-                        <Input
-                            bind:value={form.width}
-                            type="number"
-                            min="0"
-                            id="width"
-                            label="Lebar"
-                            prefix="Cm"
-                            error={form.errors.width}
-                        />
-                        <Input
-                            bind:value={form.height}
-                            type="number"
-                            min="0"
-                            id="height"
-                            label="Tinggi"
-                            prefix="Cm"
-                            error={form.errors.height}
-                        />
+                        <h3
+                            class="font-outfit font-black text-lg text-slate-800 mb-4 border-b border-slate-100 pb-4"
+                        >
+                            Pengiriman & Dimensi (Master)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <Input
+                                bind:value={form.weight}
+                                type="number"
+                                min="0"
+                                id="weight"
+                                label="Berat"
+                                prefix="Gram"
+                                error={form.errors.weight}
+                            />
+                            <Input
+                                bind:value={form.length}
+                                type="number"
+                                min="0"
+                                id="length"
+                                label="Panjang"
+                                prefix="Cm"
+                                error={form.errors.length}
+                            />
+                            <Input
+                                bind:value={form.width}
+                                type="number"
+                                min="0"
+                                id="width"
+                                label="Lebar"
+                                prefix="Cm"
+                                error={form.errors.width}
+                            />
+                            <Input
+                                bind:value={form.height}
+                                type="number"
+                                min="0"
+                                id="height"
+                                label="Tinggi"
+                                prefix="Cm"
+                                error={form.errors.height}
+                            />
+                        </div>
                     </div>
-                </div>
+                {/if}
 
                 <!-- Card: Spesifikasi Produk -->
                 <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">

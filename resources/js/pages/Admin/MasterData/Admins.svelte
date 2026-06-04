@@ -1,6 +1,6 @@
 <script>
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { page, router } from '@inertiajs/svelte';
+    import { page, router, Link } from '@inertiajs/svelte';
     import { useForm } from '@inertiajs/svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
     import { showToast } from '@/utils/toast';
@@ -457,6 +457,15 @@
                                                             : 'ti-check'} text-sm"
                                                     ></i>
                                                 </button>
+                                                {#if primaryRole === 'Kurir Toko'}
+                                                    <Link
+                                                        href="/admin/master-data/admins/{admin.id}/courier-history"
+                                                        class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 text-slate-500 flex items-center justify-center transition"
+                                                        title="Riwayat Pengiriman"
+                                                    >
+                                                        <i class="ti ti-history text-sm"></i>
+                                                    </Link>
+                                                {/if}
                                                 <button
                                                     onclick={() =>
                                                         confirmDelete(admin)}

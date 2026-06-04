@@ -332,7 +332,7 @@
             });
             setTimeout(() => {
                 isScrollingFromButton = false;
-            }, 350);
+            }, 500);
         }
 
         syncActiveStatesForIndex(activeSlideIdx);
@@ -522,7 +522,7 @@
                 });
                 setTimeout(() => {
                     isScrollingFromButton = false;
-                }, 50);
+                }, 100);
             }
         }
 
@@ -1554,7 +1554,7 @@
                             <div
                                 bind:this={sliderContainer}
                                 onscroll={handleSliderScroll}
-                                class="w-full h-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+                                class="w-full h-full flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
                                 style="scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;"
                             >
                                 {#each combinedSlides as slide, i}

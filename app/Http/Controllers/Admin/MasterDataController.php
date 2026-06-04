@@ -6,10 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
+use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
 use Spatie\Permission\Models\Role;
 
 class MasterDataController extends Controller
@@ -531,5 +534,25 @@ class MasterDataController extends Controller
         $brand->update(['is_active' => ! $brand->is_active]);
 
         return back()->with('success', 'Status brand berhasil diubah.');
+    }
+
+    /**
+     * Display the courier delivery history.
+     */
+    public function courierHistory(User $user): Response|RedirectResponse
+    {
+        if (! $user->hasRole('Kurir Toko')) {
+            return back()->with('error', 'User tersebut bukan merupakan Kurir Toko.');
+        }
+
+        $transactions = Transaction::where('courier_user_id', $user->id)
+            ->with(['paymentMethod', 'user', 'customerAddress'])
+            ->latest()
+            ->paginate(15);
+
+        return Inertia::render('Admin/MasterData/CourierHistory', [
+            'courier' => $user,
+            'transactions' => $transactions,
+        ]);
     }
 }

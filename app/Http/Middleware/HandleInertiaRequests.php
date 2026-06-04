@@ -85,6 +85,23 @@ class HandleInertiaRequests extends Middleware
         $qrislyApiAdminFee = 0;
         $komerceDeliveryUrl = 'https://api-sandbox.collaborator.komerce.id/api/v1/';
 
+        $selfPickupEnabled = false;
+        $selfPickupFee = 0;
+        $storeCourierEnabled = false;
+        $storeCourierType = 'flat';
+        $storeCourierFlatFee = 0;
+        $storeCourierPerKmFee = 0;
+        $storeCourierMaxRadius = 50;
+
+        $storeAddress = '';
+        $storeProvince = '';
+        $storeRegency = '';
+        $storeDistrict = '';
+        $storeVillage = '';
+        $storePostalCode = '';
+        $storeLatitude = '';
+        $storeLongitude = '';
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -131,6 +148,23 @@ class HandleInertiaRequests extends Middleware
                 $qrislyApiEnabled = Setting::where('key', 'qrisly_api_enabled')->value('value') === '1';
                 $qrislyApiAdminFee = (float) (Setting::where('key', 'qrisly_api_admin_fee')->value('value') ?? 0);
                 $komerceDeliveryUrl = Setting::where('key', 'komerce_delivery_url')->value('value') ?? 'https://api-sandbox.collaborator.komerce.id/api/v1/';
+
+                $selfPickupEnabled = Setting::where('key', 'self_pickup_enabled')->value('value') === '1';
+                $selfPickupFee = (float) (Setting::where('key', 'self_pickup_fee')->value('value') ?? 0);
+                $storeCourierEnabled = Setting::where('key', 'store_courier_enabled')->value('value') === '1';
+                $storeCourierType = Setting::where('key', 'store_courier_type')->value('value') ?? 'flat';
+                $storeCourierFlatFee = (float) (Setting::where('key', 'store_courier_flat_fee')->value('value') ?? 0);
+                $storeCourierPerKmFee = (float) (Setting::where('key', 'store_courier_per_km_fee')->value('value') ?? 0);
+                $storeCourierMaxRadius = (float) (Setting::where('key', 'store_courier_max_radius')->value('value') ?? 50);
+
+                $storeAddress = Setting::where('key', 'address')->value('value') ?? '';
+                $storeProvince = Setting::where('key', 'province_name')->value('value') ?? '';
+                $storeRegency = Setting::where('key', 'regency_name')->value('value') ?? '';
+                $storeDistrict = Setting::where('key', 'district_name')->value('value') ?? '';
+                $storeVillage = Setting::where('key', 'village_name')->value('value') ?? '';
+                $storePostalCode = Setting::where('key', 'postal_code')->value('value') ?? '';
+                $storeLatitude = Setting::where('key', 'latitude')->value('value') ?? '';
+                $storeLongitude = Setting::where('key', 'longitude')->value('value') ?? '';
 
                 $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
                     'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
@@ -205,6 +239,23 @@ class HandleInertiaRequests extends Middleware
                 'qrisly_api_enabled' => $qrislyApiEnabled,
                 'qrisly_api_admin_fee' => $qrislyApiAdminFee,
                 'komerce_delivery_url' => $komerceDeliveryUrl,
+
+                'self_pickup_enabled' => $selfPickupEnabled,
+                'self_pickup_fee' => $selfPickupFee,
+                'store_courier_enabled' => $storeCourierEnabled,
+                'store_courier_type' => $storeCourierType,
+                'store_courier_flat_fee' => $storeCourierFlatFee,
+                'store_courier_per_km_fee' => $storeCourierPerKmFee,
+                'store_courier_max_radius' => $storeCourierMaxRadius,
+
+                'store_address' => $storeAddress,
+                'store_province' => $storeProvince,
+                'store_regency' => $storeRegency,
+                'store_district' => $storeDistrict,
+                'store_village' => $storeVillage,
+                'store_postal_code' => $storePostalCode,
+                'store_latitude' => $storeLatitude,
+                'store_longitude' => $storeLongitude,
             ],
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)

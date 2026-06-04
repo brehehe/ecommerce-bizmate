@@ -19,6 +19,9 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerAddressController;
+use App\Http\Controllers\Kurir\KurirAuthController;
+use App\Http\Controllers\Kurir\KurirDashboardController;
+use App\Http\Controllers\Kurir\KurirDeliveryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReturnController;
@@ -165,6 +168,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::put('/master-data/admins/{user}', [MasterDataController::class, 'updateAdmin'])->name('master-data.admins.update');
     Route::delete('/master-data/admins/{user}', [MasterDataController::class, 'destroyAdmin'])->name('master-data.admins.destroy');
     Route::post('/master-data/admins/{user}/toggle-active', [MasterDataController::class, 'toggleActiveAdmin'])->name('master-data.admins.toggle-active');
+    Route::get('/master-data/admins/{user}/courier-history', [MasterDataController::class, 'courierHistory'])->name('master-data.admins.courier-history');
 
     Route::get('/master-data/customers', [MasterDataController::class, 'customers'])->name('master-data.customers');
     Route::post('/master-data/customers', [MasterDataController::class, 'storeCustomer'])->name('master-data.customers.store');
@@ -202,11 +206,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // Transactions (Admin)
     Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/find-by-number/{number}', [AdminTransactionController::class, 'findByNumber'])->name('transactions.find-by-number');
     Route::get('/transactions/{transaction}', [AdminTransactionController::class, 'show'])->name('transactions.show');
     Route::post('/transactions/{transaction}/status', [AdminTransactionController::class, 'updateStatus'])->name('transactions.update-status');
     Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
     Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
     Route::post('/transactions/{transaction}/tracking', [AdminTransactionController::class, 'updateTracking'])->name('transactions.update-tracking');
+    Route::post('/transactions/{transaction}/delivery-history', [AdminTransactionController::class, 'addDeliveryHistory'])->name('transactions.add-delivery-history');
     Route::post('/transactions/{transaction}/komerce/store', [KomerceShipmentController::class, 'storeShipment'])->name('transactions.komerce.store');
     Route::post('/transactions/{transaction}/komerce/pickup', [KomerceShipmentController::class, 'requestPickup'])->name('transactions.komerce.pickup');
     Route::get('/transactions/{transaction}/komerce/print', [KomerceShipmentController::class, 'printLabel'])->name('transactions.komerce.print');
@@ -253,3 +259,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 });
 
 Route::redirect('/admin', '/admin/dashboard');
+
+// Kurir Toko Portal
+Route::prefix('kurir')->name('kurir.')->group(function () {
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [KurirAuthController::class, 'showLogin'])->name('login');
+        Route::post('/login', [KurirAuthController::class, 'authenticate']);
+    });
+
+    Route::middleware(['auth', 'is_kurir'])->group(function () {
+        Route::post('/logout', [KurirAuthController::class, 'logout'])->name('logout');
+        Route::get('/dashboard', [KurirDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/transactions/{transaction}', [KurirDashboardController::class, 'show'])->name('transactions.show');
+        Route::get('/scan/{number}', [KurirDashboardController::class, 'scan'])->name('scan');
+        Route::post('/transactions/{transaction}/update-status', [KurirDeliveryController::class, 'updateStatus'])->name('transactions.update-status');
+    });
+});
+
+Route::redirect('/kurir', '/kurir/dashboard');

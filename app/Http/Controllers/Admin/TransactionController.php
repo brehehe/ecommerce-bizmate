@@ -21,7 +21,7 @@ class TransactionController extends Controller
             'user:id,name,email',
             'paymentMethod:id,name,type',
             'payment',
-            'items',
+            'items.product:id,is_digital,name',
         ])->latest();
 
         // Filter by status
@@ -75,6 +75,7 @@ class TransactionController extends Controller
             'items.product.images',
             'payments.confirmedByUser:id,name',
             'stockMovements.product:id,name',
+            'courierUser',
         ]);
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
@@ -89,12 +90,36 @@ class TransactionController extends Controller
     }
 
     /**
+     * Find transaction by transaction number, booking code, or tracking number.
+     */
+    public function findByNumber($number)
+    {
+        $transaction = Transaction::where('transaction_number', $number)
+            ->orWhere('booking_code', $number)
+            ->orWhere('tracking_number', $number)
+            ->first();
+
+        if (! $transaction) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi tidak ditemukan.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'id' => $transaction->id,
+            'redirect_url' => "/admin/transactions/{$transaction->id}",
+        ]);
+    }
+
+    /**
      * Update the status of a transaction.
      */
     public function updateStatus(Request $request, Transaction $transaction)
     {
         $request->validate([
-            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,dikirim,selesai,batal',
+            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,out_for_pickup,dikirim,selesai,batal',
             'cancel_reason' => 'required_if:status,batal|nullable|string|max:500',
         ]);
 
@@ -175,17 +200,51 @@ class TransactionController extends Controller
         }
 
         $request->validate([
-            'tracking_number' => 'required|string|max:100',
+            'tracking_number' => 'nullable|string|max:100',
             'courier_name' => 'nullable|string|max:100',
+            'booking_code' => 'nullable|string|max:100',
+            'status' => 'nullable|string|max:50',
         ]);
 
-        $transaction->update([
-            'tracking_number' => $request->tracking_number,
-            'courier_name' => $request->courier_name,
-            'status' => 'dikirim',
+        $updateData = [];
+        if ($request->has('tracking_number')) {
+            $updateData['tracking_number'] = $request->tracking_number;
+        }
+        if ($request->has('courier_name')) {
+            $updateData['courier_name'] = $request->courier_name;
+        }
+        if ($request->has('booking_code')) {
+            $updateData['booking_code'] = $request->booking_code;
+        }
+
+        // If tracking number is set and status is not already shipped/completed, default to dikirim
+        if (! empty($request->tracking_number) && $transaction->shipping_courier !== 'store_courier' && ! in_array($transaction->status, ['dikirim', 'selesai'])) {
+            $updateData['status'] = 'dikirim';
+        } elseif ($request->filled('status')) {
+            $updateData['status'] = $request->status;
+        }
+
+        $transaction->update($updateData);
+
+        return back()->with('success', 'Informasi pengiriman berhasil diperbarui.');
+    }
+
+    /**
+     * Add custom delivery log history for store courier.
+     */
+    public function addDeliveryHistory(Request $request, Transaction $transaction)
+    {
+        $request->validate([
+            'description' => 'required|string|max:500',
         ]);
 
-        return back()->with('success', 'Nomor resi berhasil disimpan. Status diubah ke Dikirim.');
+        $transaction->statusHistories()->create([
+            'status' => $transaction->status,
+            'description' => $request->description,
+            'created_by' => $request->user()->id,
+        ]);
+
+        return back()->with('success', 'Riwayat pengiriman berhasil ditambahkan.');
     }
 
     /**
@@ -196,7 +255,7 @@ class TransactionController extends Controller
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'exists:transactions,id',
-            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,dikirim,selesai,batal',
+            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,out_for_pickup,dikirim,selesai,batal',
             'cancel_reason' => 'nullable|string|max:500',
         ]);
 

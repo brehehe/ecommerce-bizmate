@@ -141,6 +141,20 @@
                                         <div style="font-size:11px;color:#666666;margin-bottom:3px;">Variasi: {{ $item->variant_name }}</div>
                                     @endif
                                     <div style="color:#888888;">x{{ $item->quantity }}</div>
+                                    @if($item->note)
+                                        @php
+                                            $noteText = trim($item->note);
+                                            $isLink = str_starts_with(strtolower($noteText), 'http://') || str_starts_with(strtolower($noteText), 'https://');
+                                        @endphp
+                                        <div style="font-size:11px;color:#f97316;margin-top:4px;padding:3px 6px;background-color:#fff7ed;border:1px solid #ffedd5;border-radius:4px;display:inline-block;">
+                                            <strong>Catatan:</strong>
+                                            @if($isLink)
+                                                <a href="{{ $noteText }}" target="_blank" style="color:#0056b3;text-decoration:underline;">{{ $noteText }}</a>
+                                            @else
+                                                <code style="font-family:monospace;font-size:12px;background:#ffe4e6;padding:1px 3px;border-radius:2px;color:#e11d48;">{{ $noteText }}</code>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </td>
                                 {{-- Price --}}
                                 <td align="right" style="padding:10px 0;vertical-align:top;font-size:13px;font-weight:bold;color:#333333;white-space:nowrap;">
@@ -195,32 +209,87 @@
                         </table>
 
                         {{-- Section: Shipping Info --}}
-                        <div style="font-size:13px;font-weight:bold;color:#444444;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #eeeeee;padding-bottom:6px;letter-spacing:0.5px;">
-                            Alamat Pengiriman
-                        </div>
-                        <div style="font-size:13px;color:#333333;line-height:1.5;margin-bottom:25px;background-color:#fafafa;border:1px solid #eeeeee;border-radius:4px;padding:12px;">
-                            <strong style="color:#111111;">{{ $transaction->customerAddress->receiver_name ?? $transaction->user->name }}</strong>
-                            @if($transaction->customerAddress->phone_number ?? false)
-                                <span style="color:#666666;margin-left:5px;">({{ $transaction->customerAddress->phone_number }})</span>
-                            @endif
-                            <br />
+                        @if($transaction->shipping_courier === 'digital')
+                            <div style="font-size:13px;font-weight:bold;color:#444444;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #eeeeee;padding-bottom:6px;letter-spacing:0.5px;">
+                                Informasi Pengiriman
+                            </div>
+                            <div style="font-size:13px;color:#1e40af;line-height:1.5;margin-bottom:25px;background-color:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:12px;">
+                                <strong>Pengiriman Digital</strong><br />
+                                Produk digital Anda akan dikirimkan melalui email / chat catatan.
+                                @if($transaction->notes)
+                                    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #bfdbfe;font-size:12px;color:#1e40af;">
+                                        <strong>Catatan:</strong> {{ $transaction->notes }}
+                                    </div>
+                                @endif
+                            </div>
+                        @elseif($transaction->shipping_courier === 'self_pickup')
                             @php
-                                $addr = $transaction->customerAddress;
-                                $parts = array_filter([
-                                    $addr->full_address ?? null,
-                                    $addr->district_name ?? null,
-                                    $addr->regency_name ?? null,
-                                    $addr->province_name ?? null,
-                                    $addr->postal_code ?? null,
+                                $storeAddress = \App\Models\Setting::where('key', 'address')->value('value') ?? '';
+                                $storeProvince = \App\Models\Setting::where('key', 'province_name')->value('value') ?? '';
+                                $storeRegency = \App\Models\Setting::where('key', 'regency_name')->value('value') ?? '';
+                                $storeDistrict = \App\Models\Setting::where('key', 'district_name')->value('value') ?? '';
+                                $storeVillage = \App\Models\Setting::where('key', 'village_name')->value('value') ?? '';
+                                $storePostalCode = \App\Models\Setting::where('key', 'postal_code')->value('value') ?? '';
+                                $storeAddrParts = array_filter([
+                                    $storeAddress,
+                                    $storeVillage,
+                                    $storeDistrict,
+                                    $storeRegency,
+                                    $storeProvince,
+                                    $storePostalCode
                                 ]);
+                                $fullStoreAddress = implode(', ', $storeAddrParts);
                             @endphp
-                            {{ implode(', ', $parts) ?: '-' }}
-                            @if($transaction->notes)
-                                <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #dddddd;font-size:12px;color:#666666;">
-                                    <strong>Catatan:</strong> {{ $transaction->notes }}
+                            <div style="font-size:13px;font-weight:bold;color:#444444;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #eeeeee;padding-bottom:6px;letter-spacing:0.5px;">
+                                Tempat Pengambilan Barang (Self Pickup)
+                            </div>
+                            <div style="font-size:13px;color:#065f46;line-height:1.5;margin-bottom:25px;background-color:#ecfdf5;border:1px solid #a7f3d0;border-radius:4px;padding:12px;">
+                                <strong>{{ $storeName }}</strong><br />
+                                {{ $fullStoreAddress ?: 'Alamat toko belum diatur.' }}
+                                <div style="margin-top:10px;text-align:center;">
+                                    <p style="font-size:11px;font-weight:bold;color:#065f46;margin:0 0 5px 0;text-transform:uppercase;">Scan Kode Transaksi Saat Pengambilan</p>
+                                    <img
+                                        src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={{ urlencode($transaction->transaction_number) }}"
+                                        alt="QR Code Transaksi"
+                                        width="120"
+                                        height="120"
+                                        style="border:1px solid #a7f3d0;border-radius:6px;padding:3px;background-color:#ffffff;display:inline-block;"
+                                    />
                                 </div>
-                            @endif
-                        </div>
+                                @if($transaction->notes)
+                                    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #a7f3d0;font-size:12px;color:#065f46;">
+                                        <strong>Catatan:</strong> {{ $transaction->notes }}
+                                    </div>
+                                @endif
+                            </div>
+                        @else
+                            <div style="font-size:13px;font-weight:bold;color:#444444;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #eeeeee;padding-bottom:6px;letter-spacing:0.5px;">
+                                Alamat Pengiriman
+                            </div>
+                            <div style="font-size:13px;color:#333333;line-height:1.5;margin-bottom:25px;background-color:#fafafa;border:1px solid #eeeeee;border-radius:4px;padding:12px;">
+                                <strong style="color:#111111;">{{ $transaction->customerAddress->receiver_name ?? $transaction->user->name }}</strong>
+                                @if($transaction->customerAddress->phone_number ?? false)
+                                    <span style="color:#666666;margin-left:5px;">({{ $transaction->customerAddress->phone_number }})</span>
+                                @endif
+                                <br />
+                                @php
+                                    $addr = $transaction->customerAddress;
+                                    $parts = array_filter([
+                                        $addr->full_address ?? null,
+                                        $addr->district_name ?? null,
+                                        $addr->regency_name ?? null,
+                                        $addr->province_name ?? null,
+                                        $addr->postal_code ?? null,
+                                    ]);
+                                @endphp
+                                {{ implode(', ', $parts) ?: '-' }}
+                                @if($transaction->notes)
+                                    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #dddddd;font-size:12px;color:#666666;">
+                                        <strong>Catatan:</strong> {{ $transaction->notes }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
 
                         {{-- Button CTA --}}
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:30px auto 10px auto;">

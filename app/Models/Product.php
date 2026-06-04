@@ -29,6 +29,7 @@ class Product extends Model
         'tax_enabled',
         'tax_rate',
         'active',
+        'is_digital',
         'image',
         'video_path',
         'model_3d_path',
@@ -77,6 +78,7 @@ class Product extends Model
 
     protected $casts = [
         'active' => 'boolean',
+        'is_digital' => 'boolean',
         'tax_enabled' => 'boolean',
         'tax_rate' => 'decimal:2',
         'weight' => 'integer',

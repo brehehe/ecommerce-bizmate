@@ -52,6 +52,9 @@ class Transaction extends Model
         'payment_expires_at',
         'auto_complete_at',
         'is_extended',
+        'delivery_arrived_at',
+        'delivery_photos',
+        'courier_user_id',
     ];
 
     protected $casts = [
@@ -71,6 +74,9 @@ class Transaction extends Model
         'payment_expires_at' => 'datetime',
         'auto_complete_at' => 'datetime',
         'is_extended' => 'boolean',
+        'delivery_arrived_at' => 'datetime',
+        'delivery_photos' => 'array',
+        'courier_user_id' => 'integer',
     ];
 
     /**
@@ -119,6 +125,17 @@ class Transaction extends Model
             }
         });
 
+        static::saving(function (Transaction $transaction) {
+            if ($transaction->shipping_courier === 'store_courier' && in_array($transaction->status, ['dikemas', 'out_for_pickup', 'dikirim'])) {
+                if (empty($transaction->booking_code)) {
+                    $transaction->booking_code = 'ST-'.$transaction->transaction_number;
+                }
+                if (empty($transaction->tracking_number)) {
+                    $transaction->tracking_number = 'RSI-'.str_replace('TRX-', '', $transaction->transaction_number).'-'.now()->format('Ymd');
+                }
+            }
+        });
+
         static::updating(function (Transaction $transaction) {
             if ($transaction->isDirty('status') && $transaction->status === 'dikirim') {
                 $days = (int) (Setting::where('key', 'auto_complete_days')->value('value') ?? 7);
@@ -129,8 +146,27 @@ class Transaction extends Model
         static::updated(function (Transaction $transaction) {
             $statusChanged = $transaction->isDirty('status');
             $trackingChanged = $transaction->isDirty('tracking_number');
+            $bookingCodeChanged = $transaction->isDirty('booking_code');
 
-            if ($statusChanged || $trackingChanged) {
+            if ($statusChanged || $trackingChanged || $bookingCodeChanged) {
+                // 1. Booking Code Changed (Store Courier auto log)
+                if ($bookingCodeChanged && ! empty($transaction->booking_code) && $transaction->shipping_courier === 'store_courier') {
+                    $transaction->statusHistories()->create([
+                        'status' => $transaction->status,
+                        'description' => 'Kode Booking Sudah dibuat',
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+
+                // 2. Tracking Number Changed (Store Courier auto log)
+                if ($trackingChanged && ! empty($transaction->tracking_number) && $transaction->shipping_courier === 'store_courier') {
+                    $transaction->statusHistories()->create([
+                        'status' => $transaction->status,
+                        'description' => 'Resi Telah dibuat',
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+
                 if ($statusChanged) {
                     // Award coins when status is updated to completed ('selesai')
                     if ($transaction->status === 'selesai' && $transaction->coins_earned > 0) {
@@ -177,8 +213,8 @@ class Transaction extends Model
                         'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',
                         'diproses' => 'Pesanan sedang diproses.',
                         'dikemas' => 'Pesanan sedang dikemas.',
-                        'out_for_pickup' => 'Kurir sedang dalam perjalanan untuk menjemput paket (Out for Pickup).',
-                        'dikirim' => 'Pesanan telah dikirim.',
+                        'out_for_pickup' => $transaction->shipping_courier === 'store_courier' ? 'Sudah dipick' : 'Kurir sedang dalam perjalanan untuk menjemput paket (Out for Pickup).',
+                        'dikirim' => $transaction->shipping_courier === 'store_courier' ? 'Dalam Pengantaran' : 'Pesanan telah dikirim.',
                         'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
                         'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
                         default => 'Status pesanan diperbarui menjadi: '.$transaction->status,
@@ -192,20 +228,37 @@ class Transaction extends Model
 
                     // Create database notification for the customer
                     try {
+                        $notifMessage = 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
+                            'belum_bayar' => 'menunggu pembayaran.',
+                            'menunggu' => 'menunggu konfirmasi pembayaran.',
+                            'diproses' => 'sedang diproses.',
+                            'dikemas' => 'sedang dikemas.',
+                            'out_for_pickup' => 'sedang dalam proses penjemputan oleh kurir (Out for Pickup).',
+                            'dikirim' => 'telah dikirim.',
+                            'selesai' => 'selesai / telah diterima.',
+                            'batal' => 'dibatalkan.',
+                            default => 'diperbarui menjadi '.$transaction->status,
+                        };
+
+                        if (in_array($transaction->status, ['diproses', 'dikirim', 'selesai'])) {
+                            $digitalItems = $transaction->items()->whereHas('product', function ($query) {
+                                $query->where('is_digital', true);
+                            })->get();
+
+                            if ($digitalItems->isNotEmpty()) {
+                                $notifMessage .= ' Rincian produk digital Anda:';
+                                foreach ($digitalItems as $item) {
+                                    if ($item->note) {
+                                        $notifMessage .= ' ['.$item->product_name.': '.$item->note.']';
+                                    }
+                                }
+                            }
+                        }
+
                         Notification::create([
                             'user_id' => $transaction->user_id,
                             'title' => 'Pembaruan Status Pesanan',
-                            'message' => 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
-                                'belum_bayar' => 'menunggu pembayaran.',
-                                'menunggu' => 'menunggu konfirmasi pembayaran.',
-                                'diproses' => 'sedang diproses.',
-                                'dikemas' => 'sedang dikemas.',
-                                'out_for_pickup' => 'sedang dalam proses penjemputan oleh kurir (Out for Pickup).',
-                                'dikirim' => 'telah dikirim.',
-                                'selesai' => 'selesai / telah diterima.',
-                                'batal' => 'dibatalkan.',
-                                default => 'diperbarui menjadi '.$transaction->status,
-                            },
+                            'message' => $notifMessage,
                             'type' => 'transaction_status',
                             'url' => '/transactions/'.$transaction->id,
                             'is_read' => false,
@@ -276,6 +329,31 @@ class Transaction extends Model
                     'message' => 'Ada pesanan masuk atas nama '.$customerName.' dengan nomor transaksi #'.$transaction->transaction_number.' (Status: '.$statusLabel.').',
                     'type' => 'new_order',
                     'url' => '/admin/transactions/'.$transaction->id,
+                    'is_read' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // Fail silently
+            }
+
+            // Create database notification for the customer when a new transaction is created
+            try {
+                $hasDigital = $transaction->items()->whereHas('product', function ($query) {
+                    $query->where('is_digital', true);
+                })->exists();
+
+                $message = 'Pesanan Anda #'.$transaction->transaction_number.' berhasil dibuat.';
+                if ($hasDigital) {
+                    $message .= ' Catatan/kode produk digital Anda akan aktif setelah pembayaran dikonfirmasi.';
+                } else {
+                    $message .= ' Silakan selesaikan pembayaran agar pesanan dapat segera diproses.';
+                }
+
+                Notification::create([
+                    'user_id' => $transaction->user_id,
+                    'title' => 'Pesanan Berhasil Dibuat',
+                    'message' => $message,
+                    'type' => 'transaction_status',
+                    'url' => '/transactions/'.$transaction->id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {
@@ -372,6 +450,11 @@ class Transaction extends Model
     public function courier(): BelongsTo
     {
         return $this->belongsTo(Courier::class);
+    }
+
+    public function courierUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'courier_user_id');
     }
 
     public function statusHistories(): HasMany

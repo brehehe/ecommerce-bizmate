@@ -222,8 +222,29 @@ class CheckoutController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'customer_address_id' => 'required|exists:customer_addresses,id',
+        $user = $request->user();
+
+        // Get checked cart items
+        $cartItems = CartItem::with([
+            'product.productPrice',
+            'product.productStock',
+            'product.variants.productPrice',
+            'product.variants.productStock',
+            'productVariant.productPrice',
+            'productVariant.productStock',
+        ])
+            ->where('user_id', $user->id)
+            ->where('is_checked', true)
+            ->get();
+
+        if ($cartItems->isEmpty()) {
+            return back()->with('error', 'Tidak ada produk yang dipilih untuk checkout.');
+        }
+
+        $isDigitalOnly = $cartItems->every(fn ($item) => $item->product->is_digital);
+        $isSelfPickup = $request->input('shipping_courier') === 'self_pickup';
+
+        $rules = [
             'payment_method_id' => 'required|exists:payment_methods,id',
             'courier_id' => 'nullable|exists:couriers,id',
             'shipping_courier' => 'required|string|max:50',
@@ -233,13 +254,23 @@ class CheckoutController extends Controller
             'voucher_code' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:500',
             'use_coins' => 'nullable|boolean',
-        ]);
+            'item_notes' => 'nullable|array',
+        ];
 
-        $user = $request->user();
+        if (! $isDigitalOnly && ! $isSelfPickup) {
+            $rules['customer_address_id'] = 'required|exists:customer_addresses,id';
+        } else {
+            $rules['customer_address_id'] = 'nullable|exists:customer_addresses,id';
+        }
 
-        // Validate address belongs to user
-        $address = CustomerAddress::where('user_id', $user->id)
-            ->findOrFail($request->customer_address_id);
+        $request->validate($rules);
+
+        // Validate address belongs to user if provided
+        $address = null;
+        if ($request->customer_address_id) {
+            $address = CustomerAddress::where('user_id', $user->id)
+                ->findOrFail($request->customer_address_id);
+        }
 
         $paymentMethod = PaymentMethod::findOrFail($request->payment_method_id);
 
@@ -464,7 +495,7 @@ class CheckoutController extends Controller
             $transaction = Transaction::create([
                 'transaction_number' => Transaction::generateNumber(),
                 'user_id' => $user->id,
-                'customer_address_id' => $address->id,
+                'customer_address_id' => $address?->id,
                 'payment_method_id' => $paymentMethod->id,
                 'courier_id' => $request->courier_id,
                 'status' => 'belum_bayar',
@@ -539,6 +570,9 @@ class CheckoutController extends Controller
                 $appliedPromotionId = $variant ? ($variant->applied_promotion_id ?? null) : ($product->applied_promotion_id ?? null);
                 $promoQtyUsed = $variant ? ($variant->promo_quantity_used ?? null) : ($product->promo_quantity_used ?? null);
 
+                $itemNotes = $request->input('item_notes', []);
+                $note = $itemNotes[$item->id] ?? null;
+
                 TransactionItem::create([
                     'transaction_id' => $transaction->id,
                     'product_id' => $product->id,
@@ -555,6 +589,7 @@ class CheckoutController extends Controller
                     'subtotal' => $itemSubtotal,
                     'applied_promotion_id' => $appliedPromotionId,
                     'promo_quantity_used' => $promoQtyUsed,
+                    'note' => $note,
                 ]);
 
                 // Reduce stock
@@ -939,12 +974,110 @@ class CheckoutController extends Controller
     public function shippingCost(Request $request)
     {
         $request->validate([
-            'destination' => 'required|integer',
+            'destination' => 'required_unless:courier,self_pickup,store_courier|nullable|integer',
             'weight' => 'required|integer|min:1',
             'courier' => 'required|string',
             'is_international' => 'nullable|boolean',
-            'address_id' => 'nullable|integer',
+            'address_id' => 'required_if:courier,store_courier|nullable|integer',
         ]);
+
+        if ($request->courier === 'self_pickup') {
+            $enabled = Setting::where('key', 'self_pickup_enabled')->value('value') === '1';
+            if (! $enabled) {
+                return response()->json(['error' => 'Metode Ambil di Toko tidak aktif.'], 422);
+            }
+            $fee = (float) (Setting::where('key', 'self_pickup_fee')->value('value') ?? 0);
+
+            return response()->json([
+                'results' => [
+                    [
+                        'code' => 'self_pickup',
+                        'name' => 'Ambil di Toko',
+                        'costs' => [
+                            [
+                                'service' => 'Self Pickup',
+                                'description' => 'Ambil langsung di toko / outlet',
+                                'cost' => [
+                                    [
+                                        'value' => $fee,
+                                        'etd' => '0',
+                                        'note' => 'Silakan ambil di alamat toko kami.',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+        }
+
+        if ($request->courier === 'store_courier') {
+            $enabled = Setting::where('key', 'store_courier_enabled')->value('value') === '1';
+            if (! $enabled) {
+                return response()->json(['error' => 'Metode Kurir Toko tidak aktif.'], 422);
+            }
+
+            $customerAddress = CustomerAddress::find($request->address_id);
+            if (! $customerAddress) {
+                return response()->json(['error' => 'Alamat pengiriman tidak ditemukan.'], 422);
+            }
+
+            $storeLat = Setting::where('key', 'latitude')->value('value');
+            $storeLng = Setting::where('key', 'longitude')->value('value');
+
+            if (! $storeLat || ! $storeLng) {
+                return response()->json(['error' => 'Koordinat toko (latitude/longitude) belum diatur di pengaturan.'], 422);
+            }
+
+            if (! $customerAddress->latitude || ! $customerAddress->longitude) {
+                return response()->json(['error' => 'Koordinat alamat pengiriman Anda belum diatur. Silakan edit alamat untuk menentukan pin point pada peta.'], 422);
+            }
+
+            // Haversine distance
+            $earthRadius = 6371; // km
+            $latDelta = deg2rad((float) $customerAddress->latitude - (float) $storeLat);
+            $lonDelta = deg2rad((float) $customerAddress->longitude - (float) $storeLng);
+            $a = sin($latDelta / 2) * sin($latDelta / 2) +
+                cos(deg2rad((float) $storeLat)) * cos(deg2rad((float) $customerAddress->latitude)) *
+                sin($lonDelta / 2) * sin($lonDelta / 2);
+            $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+            $distance = $earthRadius * $c; // in km
+
+            $maxRadius = (float) (Setting::where('key', 'store_courier_max_radius')->value('value') ?? 50);
+            if ($distance > $maxRadius) {
+                return response()->json(['error' => 'Jarak pengiriman melebihi radius maksimal Kurir Toko (maksimal '.$maxRadius.' km). Jarak saat ini: '.round($distance, 1).' km.'], 422);
+            }
+
+            $type = Setting::where('key', 'store_courier_type')->value('value') ?? 'flat';
+            if ($type === 'radius') {
+                $perKmFee = (float) (Setting::where('key', 'store_courier_per_km_fee')->value('value') ?? 0);
+                $fee = round($perKmFee * $distance);
+            } else {
+                $fee = (float) (Setting::where('key', 'store_courier_flat_fee')->value('value') ?? 0);
+            }
+
+            return response()->json([
+                'results' => [
+                    [
+                        'code' => 'store_courier',
+                        'name' => 'Kurir Toko',
+                        'costs' => [
+                            [
+                                'service' => 'Store Courier',
+                                'description' => 'Dikirim menggunakan kurir internal toko',
+                                'cost' => [
+                                    [
+                                        'value' => $fee,
+                                        'etd' => '1-2 hari',
+                                        'note' => 'Jarak pengiriman: '.round($distance, 1).' km.',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+        }
 
         $origin = Setting::where('key', 'rajaongkir_origin')->value('value')
             ?? Setting::where('key', 'regency_id')->value('value');

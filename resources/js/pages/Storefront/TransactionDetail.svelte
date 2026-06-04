@@ -20,6 +20,7 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
+    const storeSettings = $derived((page.props as any).settings || {});
 
     let proofFile: File | null = $state(null);
     let proofPreview = $state('');
@@ -68,6 +69,34 @@
         }
     });
     let changingPayment = $state(false);
+
+    const deliverySteps = [
+        { key: 'dikemas', label: 'Dikemas', icon: 'ti-package', desc: 'Paket sedang dikemas' },
+        { key: 'out_for_pickup', label: 'Dijemput', icon: 'ti-building-warehouse', desc: 'Paket sudah dipick oleh kurir' },
+        { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck', desc: 'Dalam perjalanan ke tujuan' },
+        { key: 'arrived', label: 'Tiba', icon: 'ti-map-pin-check', desc: 'Paket telah tiba di tujuan' },
+        { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check', desc: 'Pesanan selesai dikonfirmasi pelanggan' },
+    ];
+
+    const storeCourierCurrentStatus = $derived(
+        transaction.status === 'selesai'
+            ? 'selesai'
+            : (transaction.delivery_arrived_at ? 'arrived' : transaction.status)
+    );
+
+    function getStoreCourierStepState(stepKey: string): 'done' | 'active' | 'pending' {
+        const statusOrder = ['dikemas', 'out_for_pickup', 'dikirim', 'arrived', 'selesai'];
+        const currentIdx = statusOrder.indexOf(storeCourierCurrentStatus);
+        const stepIdx = statusOrder.indexOf(stepKey);
+
+        if (stepIdx < currentIdx) {
+            return 'done';
+        }
+        if (stepIdx === currentIdx) {
+            return 'active';
+        }
+        return 'pending';
+    }
 
     // Complete order
     let completingOrder = $state(false);
@@ -1746,14 +1775,21 @@
                                             </div>
                                         {/if}
                                         <div class="flex-1 min-w-0">
-                                            <Link
-                                                href={item.product?.slug
-                                                    ? `/products/${item.product.slug}`
-                                                    : '#'}
-                                                class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words hover:text-brand-blueRoyal hover:underline transition"
-                                            >
-                                                {item.product_name}
-                                            </Link>
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <Link
+                                                    href={item.product?.slug
+                                                        ? `/products/${item.product.slug}`
+                                                        : '#'}
+                                                    class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words hover:text-brand-blueRoyal hover:underline transition"
+                                                >
+                                                    {item.product_name}
+                                                </Link>
+                                                {#if item.product?.is_digital}
+                                                    <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider">
+                                                        Digital
+                                                    </span>
+                                                {/if}
+                                            </div>
                                             {#if item.variant_name}
                                                 <p
                                                     class="text-xs text-slate-500 whitespace-pre-wrap break-words"
@@ -1794,6 +1830,31 @@
                                             </div>
                                         </div>
                                     </div>
+                                    {#if item.note}
+                                        {#if item.product?.is_digital}
+                                            <div class="mt-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs font-semibold text-blue-700 flex flex-col gap-1 text-left">
+                                                <div class="flex items-center gap-1.5">
+                                                    <i class="ti ti-key text-sm shrink-0"></i>
+                                                    <span>Akses / Catatan Produk Digital:</span>
+                                                </div>
+                                                {#if item.note.startsWith('http://') || item.note.startsWith('https://')}
+                                                    <a href={item.note} target="_blank" class="underline break-all text-blue-800 hover:text-blue-900 font-bold mt-0.5">
+                                                        {item.note}
+                                                    </a>
+                                                {:else}
+                                                    <div class="mt-1 bg-white border border-blue-200/60 rounded-lg p-2 font-mono font-bold select-all tracking-wider text-[11px] text-blue-900 break-all">
+                                                        {item.note}
+                                                    </div>
+                                                {/if}
+                                            </div>
+                                        {:else}
+                                            <div class="mt-2.5 p-2 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-500 flex gap-1.5 items-start">
+                                                <i class="ti ti-notes text-xs mt-0.5 shrink-0"></i>
+                                                <span class="break-words">Catatan: "{item.note}"</span>
+                                            </div>
+                                        {/if}
+                                    {/if}
+
                                     <!-- Beri Ulasan button for completed orders -->
                                     {#if isCompleted && !item.is_gift_item}
                                         <div class="mt-2 flex justify-end">
@@ -2044,7 +2105,62 @@
                 <!-- Right/Sidebar Column -->
                 <div class="space-y-4">
                     <!-- Shipping Address -->
-                    {#if customerAddress}
+                    {#if transaction.shipping_courier === 'digital'}
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-2"
+                        >
+                            <div class="flex items-center gap-2">
+                                <i
+                                    class="ti ti-mail text-base text-blue-600"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Pengiriman Digital</span
+                                >
+                            </div>
+                            <div class="p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-[11px] font-bold text-blue-700 flex items-start gap-2">
+                                <i class="ti ti-info-circle text-sm shrink-0 mt-0.5"></i>
+                                <span>Produk digital Anda akan dikirimkan melalui email / chat catatan.</span>
+                            </div>
+                        </div>
+                    {:else if transaction.shipping_courier === 'self_pickup'}
+                        <!-- Store Pickup Section -->
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-4"
+                        >
+                            <div class="flex items-center gap-2">
+                                <i
+                                    class="ti ti-building-store text-base text-emerald-600"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Ambil di Toko (Store Pickup)</span
+                                >
+                            </div>
+                            <div class="text-xs text-slate-600 space-y-1 font-medium">
+                                <p class="font-bold text-slate-800">{storeSettings.store_name || storeName}</p>
+                                <p>
+                                    {storeSettings.store_address}
+                                    {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
+                                    {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
+                                    {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
+                                    {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
+                                    {#if storeSettings.store_postal_code}
+                                        {storeSettings.store_postal_code}{/if}
+                                </p>
+                            </div>
+                            <div class="h-px bg-slate-100"></div>
+                            <div class="flex flex-col items-center text-center space-y-2">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">QR Code Transaksi</p>
+                                <img
+                                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(transaction.transaction_number)}"
+                                    alt="QR Code Transaksi"
+                                    class="w-36 h-36 border border-slate-100 rounded-xl p-1 bg-white"
+                                />
+                                <p class="text-[10.5px] font-medium text-slate-500 leading-relaxed px-2">
+                                    Tunjukkan QR Code ini kepada kasir/petugas toko untuk pengambilan barang.
+                                </p>
+                            </div>
+                        </div>
+                    {:else if customerAddress}
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
                         >
@@ -2119,10 +2235,14 @@
                                 <span
                                     class="font-bold text-slate-800 uppercase"
                                 >
-                                    {transaction.courier_name ||
-                                        transaction.shipping_courier ||
-                                        '-'}
-                                    {#if transaction.shipping_service}
+                                    {#if transaction.shipping_courier === 'store_courier' && transaction.courier_user}
+                                        Kurir Toko ({transaction.courier_user.name})
+                                    {:else}
+                                        {transaction.courier_name ||
+                                            transaction.shipping_courier ||
+                                            '-'}
+                                    {/if}
+                                    {#if transaction.shipping_service && transaction.shipping_courier !== 'store_courier'}
                                         ({transaction.shipping_service})
                                     {/if}
                                 </span>
@@ -2174,7 +2294,7 @@
                     </div>
 
                     <!-- Komerce Shipment Tracking Timeline -->
-                    {#if transaction.tracking_number}
+                    {#if transaction.tracking_number && transaction.shipping_courier !== 'store_courier'}
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
                             <div class="flex items-center gap-2 mb-3">
                                 <i class="ti ti-history text-base" style="color:{primary}"></i>
@@ -2234,6 +2354,64 @@
                                     Belum ada data perjalanan paket.
                                 </div>
                             {/if}
+                        </div>
+                    {/if}
+
+                    <!-- Kurir Toko Shipment Tracking Timeline (Status Pengiriman) -->
+                    {#if transaction.shipping_courier === 'store_courier'}
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="ti ti-truck-delivery text-base" style="color:{primary}"></i>
+                                <span class="font-bold text-slate-800 text-sm">Status Pengiriman (Kurir Toko)</span>
+                            </div>
+
+                            <!-- Steps (Responsive, no overlap) -->
+                            <div class="relative space-y-1">
+                                {#each deliverySteps as step, i}
+                                    {@const state = getStoreCourierStepState(step.key)}
+                                    <div class="flex items-start gap-4 relative pb-5 {i === deliverySteps.length - 1 ? 'pb-0' : ''}">
+                                        <!-- Vertical line -->
+                                        {#if i < deliverySteps.length - 1}
+                                            <div class="absolute left-[18px] top-9 bottom-0 w-0.5 {state !== 'pending' ? 'bg-emerald-300' : 'bg-slate-100'}"></div>
+                                        {/if}
+
+                                        <!-- Icon -->
+                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 transition-all z-10
+                                            {state === 'done' ? 'bg-emerald-100 text-emerald-600' : state === 'active' ? 'text-white shadow-md' : 'bg-slate-100 text-slate-400'}"
+                                            style={state === 'active' ? `background-color: ${primary};` : ''}
+                                        >
+                                            {#if state === 'done'}
+                                                <i class="ti ti-check font-black"></i>
+                                            {:else}
+                                                <i class="ti {step.icon}"></i>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Content -->
+                                        <div class="flex-1 pt-1.5 {state === 'pending' ? 'opacity-40' : ''}">
+                                            <p class="text-sm font-black text-slate-800 leading-none mb-1 {state === 'active' ? 'font-black' : ''}">{step.label}</p>
+                                            <p class="text-xs text-slate-500 leading-normal">{step.desc}</p>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
+
+                    <!-- Bukti Pengiriman Kurir Toko -->
+                    {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="ti ti-camera text-base" style="color:{primary}"></i>
+                                <span class="font-bold text-slate-800 text-sm">Foto Bukti Pengiriman ({transaction.delivery_photos.length})</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                {#each transaction.delivery_photos as photo}
+                                    <a href="/storage/{photo}" target="_blank" class="block relative rounded-xl overflow-hidden aspect-video bg-slate-50 border border-slate-150 hover:opacity-90 transition">
+                                        <img src="/storage/{photo}" alt="Bukti Pengiriman" class="w-full h-full object-cover rounded-xl" />
+                                    </a>
+                                {/each}
+                            </div>
                         </div>
                     {/if}
 

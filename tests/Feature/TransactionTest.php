@@ -560,3 +560,90 @@ test('customer cannot extend the auto-complete deadline twice', function () {
     $response->assertRedirect();
     $response->assertSessionHas('error', 'Jangka waktu konfirmasi pesanan ini sudah pernah diperpanjang sebelumnya.');
 });
+
+test('admin can find a transaction by transaction number, booking code, or tracking number', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    // Set a booking code and tracking number
+    $transaction->update([
+        'booking_code' => 'BK-123456',
+        'tracking_number' => 'TRK-987654',
+    ]);
+
+    // Find by transaction number
+    $response = $this->actingAs($admin)->get('/admin/transactions/find-by-number/'.$transaction->transaction_number);
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'id' => $transaction->id,
+        'redirect_url' => "/admin/transactions/{$transaction->id}",
+    ]);
+
+    // Find by booking code
+    $response = $this->actingAs($admin)->get('/admin/transactions/find-by-number/BK-123456');
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'id' => $transaction->id,
+    ]);
+
+    // Find by tracking number
+    $response = $this->actingAs($admin)->get('/admin/transactions/find-by-number/TRK-987654');
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'id' => $transaction->id,
+    ]);
+
+    // Find non-existent code returns 404
+    $response = $this->actingAs($admin)->get('/admin/transactions/find-by-number/INVALID-CODE');
+    $response->assertStatus(404);
+    $response->assertJson([
+        'success' => false,
+        'message' => 'Transaksi tidak ditemukan.',
+    ]);
+});
+
+test('store courier transaction automatically logs booking code, tracking resi, and status history updates', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    // Set courier to store_courier
+    $transaction->update(['shipping_courier' => 'store_courier']);
+
+    // 1. Generate booking code
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.update-tracking', $transaction),
+        ['booking_code' => 'ST-BK-123456']
+    );
+    $response->assertRedirect();
+    $this->assertDatabaseHas('transaction_status_histories', [
+        'transaction_id' => $transaction->id,
+        'description' => 'Kode Booking Sudah dibuat',
+    ]);
+
+    // 2. Update status to out_for_pickup
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.update-status', $transaction),
+        ['status' => 'out_for_pickup']
+    );
+    $response->assertRedirect();
+    $this->assertDatabaseHas('transaction_status_histories', [
+        'transaction_id' => $transaction->id,
+        'status' => 'out_for_pickup',
+        'description' => 'Sudah dipick',
+    ]);
+
+    // 3. Update tracking number (resi)
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.update-tracking', $transaction),
+        ['tracking_number' => 'ST-TRK-777888']
+    );
+    $response->assertRedirect();
+    $this->assertDatabaseHas('transaction_status_histories', [
+        'transaction_id' => $transaction->id,
+        'description' => 'Resi Telah dibuat',
+    ]);
+
+    // Status should remain 'out_for_pickup' and not automatically change to 'dikirim'
+    expect($transaction->fresh()->status)->toBe('out_for_pickup');
+});

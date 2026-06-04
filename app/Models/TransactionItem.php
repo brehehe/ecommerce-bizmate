@@ -28,6 +28,7 @@ class TransactionItem extends Model
         'gift_from_promotion',
         'applied_promotion_id',
         'promo_quantity_used',
+        'note',
     ];
 
     protected $casts = [
