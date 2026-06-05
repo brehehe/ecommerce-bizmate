@@ -1956,7 +1956,7 @@
                                 <i
                                     class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
                                 ></i>
-                                <span class="font-bold text-red-700 text-sm"
+                                <span class="font-bold text-rose-700 text-sm"
                                     >Upload Bukti Pembayaran</span
                                 >
                             </div>
@@ -1981,11 +1981,11 @@
                                     <div
                                         class="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between"
                                     >
-                                        <p class="text-xs text-slate-500">
+                                        <p class="text-xs text-rose-500">
                                             Jumlah transfer:
                                         </p>
                                         <p
-                                            class="text-base font-black text-red-600"
+                                            class="text-base font-black text-rose-600"
                                         >
                                             {fmt(transaction.grand_total)}
                                         </p>
@@ -2020,7 +2020,7 @@
                                             )}
                                             {#if latestPayment.status === 'rejected' && latestPayment.notes}
                                                 <span
-                                                    class="text-red-500 font-semibold"
+                                                    class="text-rose-500 font-semibold"
                                                 >
                                                     · Ditolak: {latestPayment.notes}</span
                                                 >
@@ -2030,7 +2030,7 @@
                                 {/if}
                                 <button
                                     onclick={() => (showUploadModal = true)}
-                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-red-600 hover:bg-red-700 shadow-sm"
+                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
                                 >
                                     <i class="ti ti-upload text-sm"></i>
                                     {latestPayment?.proof_image
@@ -2044,21 +2044,21 @@
                     <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
                     {#if isGateway && transaction.status === 'belum_bayar'}
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden"
+                            class="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden"
                         >
                             <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-red-50 bg-red-50/20"
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-50 bg-rose-50/20"
                             >
                                 <i
-                                    class="ti ti-credit-card text-base animate-pulse text-red-600"
+                                    class="ti ti-credit-card text-base animate-pulse text-rose-600"
                                 ></i>
-                                <span class="font-bold text-red-700 text-sm"
+                                <span class="font-bold text-rose-700 text-sm"
                                     >Selesaikan Pembayaran</span
                                 >
                             </div>
                             <div class="p-4">
                                 {#if isQris && qrisData}
-                                    <div class="flex flex-col items-center justify-center p-5 bg-white border border-red-100 rounded-3xl shadow-xl shadow-red-50/30 relative overflow-hidden">
+                                    <div class="flex flex-col items-center justify-center p-5 bg-white border border-rose-100 rounded-3xl shadow-xl shadow-rose-50/30 relative overflow-hidden">
                                         <!-- Merchant Info -->
                                         <div class="text-center mb-4">
                                             <h4 class="font-bold text-slate-800 text-sm">{storeName || 'Merchant Pembayaran'}</h4>
@@ -2097,7 +2097,7 @@
                                         <div class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5">
                                             <div class="flex justify-between items-center text-xs px-1">
                                                 <span class="text-slate-500">Total Tagihan:</span>
-                                                <span class="font-extrabold text-sm text-red-600">{fmt(transaction.grand_total)}</span>
+                                                <span class="font-extrabold text-sm text-rose-600">{fmt(transaction.grand_total)}</span>
                                             </div>
                                             
                                             <div class="flex justify-between items-center text-[10px] px-1 text-slate-400">
@@ -2112,7 +2112,7 @@
                                                 <button
                                                     type="button"
                                                     onclick={downloadQrisImage}
-                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-red-600 hover:bg-red-700 active:scale-95 shadow-sm"
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm"
                                                 >
                                                     <i class="ti ti-download text-sm"></i>
                                                     Simpan QR Code
@@ -2132,11 +2132,11 @@
                                         class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100"
                                     >
                                         <div>
-                                            <p class="text-xs text-slate-500">
+                                            <p class="text-xs text-rose-600">
                                                 Total Tagihan:
                                             </p>
                                             <p
-                                                class="text-base font-black text-red-600"
+                                                class="text-base font-black text-rose-600"
                                             >
                                                 {fmt(transaction.grand_total)}
                                             </p>
@@ -2144,14 +2144,14 @@
                                         {#if gatewayInvoiceUrl}
                                             <a
                                                 href={gatewayInvoiceUrl}
-                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-red-600 hover:bg-red-700 shadow-sm"
+                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
                                             >
                                                 Bayar Sekarang
                                                 <i class="ti ti-arrow-right"></i>
                                             </a>
                                         {:else if gatewayError}
                                             <div
-                                                class="text-xs text-red-500 font-bold max-w-[180px] leading-relaxed text-right"
+                                                class="text-xs text-rose-500 font-bold max-w-[180px] leading-relaxed text-right"
                                             >
                                                 <i class="ti ti-alert-circle mr-1"
                                                 ></i>
