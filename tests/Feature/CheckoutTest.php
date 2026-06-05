@@ -668,3 +668,122 @@ test('checkout fails when COD is selected with incompatible couriers like GoSend
 
     $response2->assertSessionHas('error', 'Metode pembayaran Cash on Delivery (COD) tidak didukung oleh kurir lion.');
 });
+
+test('customer can get tiered store courier shipping cost based on distance', function () {
+    // 1. Configure store courier settings
+    Setting::updateOrCreate(['key' => 'store_courier_enabled'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'latitude'], ['value' => '1.0']);
+    Setting::updateOrCreate(['key' => 'longitude'], ['value' => '1.0']);
+    Setting::updateOrCreate(['key' => 'store_courier_type'], ['value' => 'radius_tiered']);
+    Setting::updateOrCreate(['key' => 'store_courier_max_radius'], ['value' => '20']);
+    Setting::updateOrCreate(['key' => 'store_courier_tiered_rates'], ['value' => json_encode([
+        ['max_distance' => 5, 'fee' => 10000],
+        ['max_distance' => 10, 'fee' => 15000],
+        ['max_distance' => 15, 'fee' => 20000],
+    ])]);
+
+    // 2. Helper to set address distance
+    $setDistance = function ($distance) {
+        $lat = 1.0 + ($distance / 111.1949);
+        $this->address->update([
+            'latitude' => $lat,
+            'longitude' => 1.0,
+        ]);
+    };
+
+    // 3. Test tier 1 (4 km -> fee should be 10000)
+    $setDistance(4.0);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(10000);
+
+    // 4. Test tier 2 (8 km -> fee should be 15000)
+    $setDistance(8.0);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(15000);
+
+    // 5. Test tier 3 (12 km -> fee should be 20000)
+    $setDistance(12.0);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(20000);
+
+    // 6. Test fallback (18 km -> fee should fallback to highest tier: 20000)
+    $setDistance(18.0);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(20000);
+
+    // 7. Test exceeds max radius (25 km -> should return 422 error)
+    $setDistance(25.0);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertStatus(422);
+    $response->assertJsonPath('error', 'Jarak pengiriman melebihi radius maksimal Kurir Toko (maksimal 20 km). Jarak saat ini: 25 km.');
+});
+
+test('customer can get store courier shipping cost with distance rounded up', function () {
+    // 1. Configure store courier settings
+    Setting::updateOrCreate(['key' => 'store_courier_enabled'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'latitude'], ['value' => '1.0']);
+    Setting::updateOrCreate(['key' => 'longitude'], ['value' => '1.0']);
+    Setting::updateOrCreate(['key' => 'store_courier_type'], ['value' => 'radius']);
+    Setting::updateOrCreate(['key' => 'store_courier_per_km_fee'], ['value' => '10000']);
+    Setting::updateOrCreate(['key' => 'store_courier_max_radius'], ['value' => '20']);
+    Setting::updateOrCreate(['key' => 'store_courier_round_up'], ['value' => '1']);
+
+    // 2. Helper to set address distance
+    $setDistance = function ($distance) {
+        $lat = 1.0 + ($distance / 111.1949);
+        $this->address->update([
+            'latitude' => $lat,
+            'longitude' => 1.0,
+        ]);
+    };
+
+    // 3. Test fractional distance (0.2 km -> rounded up to 1 km -> cost should be 10000)
+    $setDistance(0.2);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect((float) $data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(10000.0);
+
+    // 4. Turn off round up (0.2 km -> exact calculation -> cost should be 2000)
+    Setting::updateOrCreate(['key' => 'store_courier_round_up'], ['value' => '0']);
+    $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
+        'weight' => 1000,
+        'courier' => 'store_courier',
+        'address_id' => $this->address->id,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect((float) $data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(2000.0);
+});

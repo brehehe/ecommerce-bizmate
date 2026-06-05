@@ -1,8 +1,30 @@
+const recentToasts = new Map<string, number>();
+
 export function showToast(
     message: string,
     type: 'success' | 'error' = 'success',
     position: 'top' | 'bottom' = 'bottom',
 ) {
+    const normalized = message.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const now = Date.now();
+    const lastTime = recentToasts.get(normalized);
+
+    if (lastTime && now - lastTime < 1000) {
+        // Skip duplicate toasts triggered within 1 second
+        return;
+    }
+
+    recentToasts.set(normalized, now);
+
+    // Clean up old entries to prevent memory leaks
+    if (recentToasts.size > 100) {
+        for (const [key, val] of recentToasts.entries()) {
+            if (now - val > 5000) {
+                recentToasts.delete(key);
+            }
+        }
+    }
+
     const containerId = `toast-container-${position}`;
     let container = document.getElementById(containerId);
 

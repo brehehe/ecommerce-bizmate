@@ -2643,10 +2643,10 @@
 
     let taxAmount = $derived(
         form.tax_enabled && form.price
-            ? (form.price * globalTaxPercentage) / 100
+            ? (Number(form.price) * globalTaxPercentage) / 100
             : 0,
     );
-    let finalPrice = $derived(form.price ? form.price + taxAmount : 0);
+    let finalPrice = $derived(form.price ? Number(form.price) + taxAmount : 0);
 
     function triggerPhotoUpload() {
         document.getElementById('multi-photo-input').click();
@@ -3372,7 +3372,7 @@
                                                 <span>Harga Asli (DPP):</span>
                                                 <span
                                                     class="font-bold text-slate-800"
-                                                    >Rp {form.price.toLocaleString(
+                                                    >Rp {Number(form.price).toLocaleString(
                                                         'id-ID',
                                                     )}</span
                                                 >
@@ -3411,7 +3411,7 @@
                                                 >
                                                 <span
                                                     class="font-bold text-slate-800"
-                                                    >Rp {form.price.toLocaleString(
+                                                    >Rp {Number(form.price).toLocaleString(
                                                         'id-ID',
                                                     )}</span
                                                 >

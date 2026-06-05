@@ -510,7 +510,7 @@
         { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
         { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
         { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
-        { key: 'out_for_pickup', label: 'Out for Pickup', icon: 'ti-truck-delivery' },
+        { key: 'out_for_pickup', label: 'Pick Up', icon: 'ti-truck-delivery' },
         { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck' },
         { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check' },
     ];
@@ -1232,35 +1232,40 @@
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
                         >
-                            <div class="flex items-center mb-4">
-                                <div
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold"
-                                    style="background-color:{currentStatusColor}"
-                                >
-                                    <i class="ti ti-circle-check text-sm"></i>
-                                    {statusLabels[transaction.status] ??
-                                        transaction.status}
-                                </div>
-                                <span class="ml-auto text-xs text-slate-400"
+                             <div class="flex items-center mb-4">
+                                    <div
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold font-outfit"
+                                        style="background-color:{currentStatusColor}"
+                                    >
+                                        <i class="ti {
+                                            transaction.status === 'belum_bayar' ? 'ti-cash' :
+                                            transaction.status === 'menunggu' ? 'ti-clock' :
+                                            transaction.status === 'diproses' ? 'ti-settings' :
+                                            transaction.status === 'dikemas' ? 'ti-package' :
+                                            transaction.status === 'out_for_pickup' ? 'ti-truck-delivery' :
+                                            transaction.status === 'dikirim' ? 'ti-truck' :
+                                            transaction.status === 'selesai' ? 'ti-circle-check' : 'ti-alert-circle'
+                                        } text-sm"></i>
+                                        {statusLabels[transaction.status] ??
+                                            transaction.status}
+                                    </div>
+                                <span class="ml-auto text-xs text-slate-400 font-medium"
                                     >{fmtDate(transaction.created_at)}</span
                                 >
                             </div>
 
                             <div
-                                class="flex items-center justify-between relative"
+                                class="flex items-center justify-between relative py-2"
                             >
+                                <!-- Background Line -->
                                 <div
-                                    class="absolute left-4 right-4 top-4 h-0.5 bg-slate-200 z-0"
+                                    class="absolute left-[7.14%] right-[7.14%] top-6 sm:top-7 h-[3px] bg-slate-100 rounded-full z-0"
                                 ></div>
+                                <!-- Active Line (Gradient) -->
                                 {#if statusIndex >= 0}
                                     <div
-                                        class="absolute left-4 top-4 h-0.5 z-0 transition-all duration-500"
-                                        style="background:{primary}; width: calc({statusIndex >
-                                        0
-                                            ? (statusIndex /
-                                                  (statusSteps.length - 1)) *
-                                              100
-                                            : 0}% - 2rem); right: auto;"
+                                        class="absolute left-[7.14%] top-6 sm:top-7 h-[3px] rounded-full z-0 transition-all duration-1000 ease-out"
+                                        style="background: linear-gradient(to right, {primary}, {secondary}); width: calc({statusIndex > 0 ? (statusIndex / (statusSteps.length - 1)) * 85.71 : 0}%);"
                                     ></div>
                                 {/if}
 
@@ -1268,31 +1273,44 @@
                                     {@const isCompleted = statusIndex >= i}
                                     {@const isCurrent = statusIndex === i}
                                     <div
-                                        class="flex flex-col items-center gap-1 z-10 flex-1"
+                                        class="flex flex-col items-center gap-2 z-10 flex-1 relative min-w-0"
                                     >
+                                        <!-- Step Circle -->
                                         <div
-                                            class="w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all"
-                                            style={isCompleted
-                                                ? `background:${primary}; border-color:${primary}`
-                                                : 'background:white; border-color:#e2e8f0'}
+                                            class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500 relative"
+                                            style={isCurrent
+                                                ? `background: white; border-color: ${primary}; box-shadow: 0 0 12px ${primary}40; transform: scale(1.1);`
+                                                : isCompleted
+                                                  ? `background: linear-gradient(135deg, ${primary}, ${secondary}); border-color: transparent;`
+                                                  : 'background: white; border-color: #e2e8f0;'}
                                         >
+                                            {#if isCurrent}
+                                                <!-- Pulse ring for current active step -->
+                                                <div class="absolute inset-0 rounded-full animate-ping opacity-25" style="background-color: {primary}"></div>
+                                            {/if}
                                             <i
-                                                class="ti {step.icon} text-sm"
-                                                style={isCompleted
-                                                    ? 'color:white'
-                                                    : 'color:#94a3b8'}
+                                                class="ti {step.icon} text-xs sm:text-sm transition-colors duration-500"
+                                                style={isCurrent
+                                                    ? `color: ${primary}`
+                                                    : isCompleted
+                                                      ? 'color: white'
+                                                      : 'color: #94a3b8'}
                                             ></i>
                                         </div>
-                                        <span
-                                            class="text-[9px] font-semibold text-center leading-tight"
-                                            style={isCurrent
-                                                ? `color:${primary}`
-                                                : isCompleted
-                                                  ? 'color:#64748b'
-                                                  : 'color:#94a3b8'}
-                                        >
-                                            {step.label}
-                                        </span>
+                                        
+                                        <!-- Step Label -->
+                                        <div class="h-6 sm:h-8 flex items-start justify-center">
+                                            <span
+                                                class="text-[8px] sm:text-[10px] font-black text-center leading-tight max-w-[50px] sm:max-w-[76px] transition-colors duration-500 font-outfit"
+                                                style={isCurrent
+                                                    ? `color:${primary}`
+                                                    : isCompleted
+                                                      ? 'color:#334155'
+                                                      : 'color:#94a3b8'}
+                                            >
+                                                {step.label}
+                                            </span>
+                                        </div>
                                     </div>
                                 {/each}
                             </div>
@@ -1930,15 +1948,15 @@
                     <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
                     {#if canUploadProof}
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                            class="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden"
                         >
                             <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-slate-100"
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-red-50 bg-red-50/20"
                             >
                                 <i
-                                    class="ti ti-alert-triangle text-base text-amber-500"
+                                    class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
                                 ></i>
-                                <span class="font-bold text-slate-800 text-sm"
+                                <span class="font-bold text-red-700 text-sm"
                                     >Upload Bukti Pembayaran</span
                                 >
                             </div>
@@ -1967,8 +1985,7 @@
                                             Jumlah transfer:
                                         </p>
                                         <p
-                                            class="text-base font-black"
-                                            style="color:{primary}"
+                                            class="text-base font-black text-red-600"
                                         >
                                             {fmt(transaction.grand_total)}
                                         </p>
@@ -2013,8 +2030,7 @@
                                 {/if}
                                 <button
                                     onclick={() => (showUploadModal = true)}
-                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95"
-                                    style="background:{primary}"
+                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-red-600 hover:bg-red-700 shadow-sm"
                                 >
                                     <i class="ti ti-upload text-sm"></i>
                                     {latestPayment?.proof_image
@@ -2028,22 +2044,21 @@
                     <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
                     {#if isGateway && transaction.status === 'belum_bayar'}
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                            class="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden"
                         >
                             <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-slate-100"
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-red-50 bg-red-50/20"
                             >
                                 <i
-                                    class="ti ti-credit-card text-base animate-pulse"
-                                    style="color:{primary}"
+                                    class="ti ti-credit-card text-base animate-pulse text-red-600"
                                 ></i>
-                                <span class="font-bold text-slate-800 text-sm"
+                                <span class="font-bold text-red-700 text-sm"
                                     >Selesaikan Pembayaran</span
                                 >
                             </div>
                             <div class="p-4">
                                 {#if isQris && qrisData}
-                                    <div class="flex flex-col items-center justify-center p-5 bg-white border border-slate-100/80 rounded-3xl shadow-xl shadow-slate-100/40 relative overflow-hidden">
+                                    <div class="flex flex-col items-center justify-center p-5 bg-white border border-red-100 rounded-3xl shadow-xl shadow-red-50/30 relative overflow-hidden">
                                         <!-- Merchant Info -->
                                         <div class="text-center mb-4">
                                             <h4 class="font-bold text-slate-800 text-sm">{storeName || 'Merchant Pembayaran'}</h4>
@@ -2082,7 +2097,7 @@
                                         <div class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5">
                                             <div class="flex justify-between items-center text-xs px-1">
                                                 <span class="text-slate-500">Total Tagihan:</span>
-                                                <span class="font-extrabold text-sm" style="color:{primary}">{fmt(transaction.grand_total)}</span>
+                                                <span class="font-extrabold text-sm text-red-600">{fmt(transaction.grand_total)}</span>
                                             </div>
                                             
                                             <div class="flex justify-between items-center text-[10px] px-1 text-slate-400">
@@ -2097,8 +2112,7 @@
                                                 <button
                                                     type="button"
                                                     onclick={downloadQrisImage}
-                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:brightness-95 active:scale-95 shadow-sm"
-                                                    style="background:{primary}"
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-red-600 hover:bg-red-700 active:scale-95 shadow-sm"
                                                 >
                                                     <i class="ti ti-download text-sm"></i>
                                                     Simpan QR Code
@@ -2122,8 +2136,7 @@
                                                 Total Tagihan:
                                             </p>
                                             <p
-                                                class="text-base font-black"
-                                                style="color:{primary}"
+                                                class="text-base font-black text-red-600"
                                             >
                                                 {fmt(transaction.grand_total)}
                                             </p>
@@ -2131,8 +2144,7 @@
                                         {#if gatewayInvoiceUrl}
                                             <a
                                                 href={gatewayInvoiceUrl}
-                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 hover:opacity-90 shadow-sm"
-                                                style="background:{primary}"
+                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-red-600 hover:bg-red-700 shadow-sm"
                                             >
                                                 Bayar Sekarang
                                                 <i class="ti ti-arrow-right"></i>

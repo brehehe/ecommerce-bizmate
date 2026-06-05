@@ -33,6 +33,7 @@
     });
 
     const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+    const storeAppName = $derived((page.props as any).settings?.store_app_name || storeName);
 
     let isSidebarOpen = $state(false);
     let isNotifOpen = $state(false);
@@ -59,16 +60,22 @@
             router.post(
                 `/notifications/${notif.id}/read`,
                 {},
-                { preserveScroll: true },
+                {
+                    preserveScroll: true,
+                    onFinish: () => {
+                        if (notif.url) {
+                            router.visit(notif.url);
+                        }
+                    },
+                },
             );
-        }
-        if (notif.url) {
+        } else if (notif.url) {
             router.visit(notif.url);
         }
     }
 
     function markAllAsRead() {
-        router.post('/notifications/read-all', {}, { preserveScroll: true });
+        router.post('/notifications/read-all', { type: 'admin' }, { preserveScroll: true });
     }
 
     // Guided Setup Tour
@@ -403,7 +410,7 @@
                         >Admin</span
                     >
                     <span class="font-black text-slate-800 tracking-tight"
-                        >{storeName} Console</span
+                        >{storeAppName} Console</span
                     >
                 </div>
             </div>
@@ -555,8 +562,12 @@
                                         </h4>
                                         <div class="space-y-2">
                                             {#each adminNotifications.outOfStockItems as item}
-                                                <div
-                                                    class="text-xs flex items-start justify-between gap-3"
+                                                <button
+                                                    onclick={() => {
+                                                        isNotifOpen = false;
+                                                        router.visit(`/admin/store/stocks?search=${encodeURIComponent(item.name.split(' (')[0])}`);
+                                                    }}
+                                                    class="w-full text-left text-xs flex items-start justify-between gap-3 hover:bg-rose-100/40 p-1 rounded-md transition"
                                                 >
                                                     <span
                                                         class="text-slate-700 font-bold leading-tight flex-grow"
@@ -566,7 +577,7 @@
                                                         class="px-2 py-0.5 bg-rose-100 text-rose-700 font-black rounded-md shrink-0"
                                                         >Habis</span
                                                     >
-                                                </div>
+                                                </button>
                                             {/each}
                                         </div>
                                     </div>
@@ -585,8 +596,12 @@
                                         </h4>
                                         <div class="space-y-2">
                                             {#each adminNotifications.lowStockItems as item}
-                                                <div
-                                                    class="text-xs flex items-start justify-between gap-3"
+                                                <button
+                                                    onclick={() => {
+                                                        isNotifOpen = false;
+                                                        router.visit(`/admin/store/stocks?search=${encodeURIComponent(item.name.split(' (')[0])}`);
+                                                    }}
+                                                    class="w-full text-left text-xs flex items-start justify-between gap-3 hover:bg-amber-100/40 p-1 rounded-md transition"
                                                 >
                                                     <span
                                                         class="text-slate-700 font-bold leading-tight flex-grow"
@@ -596,32 +611,9 @@
                                                         class="px-2 py-0.5 bg-amber-100 text-amber-700 font-black rounded-md shrink-0"
                                                         >Sisa {item.stock}</span
                                                     >
-                                                </div>
+                                                </button>
                                             {/each}
                                         </div>
-                                    </div>
-                                {/if}
-
-                                {#if totalUnreadCount === 0}
-                                    <div class="py-12 px-6 text-center">
-                                        <div
-                                            class="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3"
-                                        >
-                                            <i
-                                                class="ti ti-circle-check text-2xl"
-                                            ></i>
-                                        </div>
-                                        <p
-                                            class="text-xs font-bold text-slate-800"
-                                        >
-                                            Semua Berjalan Lancar
-                                        </p>
-                                        <p
-                                            class="text-[10px] text-slate-400 mt-1"
-                                        >
-                                            Tidak ada notifikasi sistem baru
-                                            saat ini.
-                                        </p>
                                     </div>
                                 {/if}
                             </div>
@@ -653,7 +645,7 @@
                     <i class="ti ti-help text-sm text-brand-orange"></i>
                     Tur Panduan
                 </button>
-                <a
+                <Link
                     href="/"
                     class="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-full text-xs font-bold transition"
                 >
@@ -662,7 +654,7 @@
                     ></span>
                     Live Storefront
                     <i class="ti ti-external-link text-sm"></i>
-                </a>
+                </Link>
             </div>
         </header>
 

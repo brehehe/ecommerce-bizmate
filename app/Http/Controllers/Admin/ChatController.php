@@ -39,6 +39,7 @@ class ChatController extends Controller
                 'id' => $chat->user->id,
                 'name' => $chat->user->name,
                 'email' => $chat->user->email,
+                'avatar' => $chat->user->avatar,
             ],
             'last_message' => $chat->lastMessage ? [
                 'body' => $chat->lastMessage->body,
@@ -89,6 +90,7 @@ class ChatController extends Controller
                 'id' => $chat->user->id,
                 'name' => $chat->user->name,
                 'email' => $chat->user->email,
+                'avatar' => $chat->user->avatar,
             ],
         ];
 
@@ -112,6 +114,7 @@ class ChatController extends Controller
                 'id' => $c->user->id,
                 'name' => $c->user->name,
                 'email' => $c->user->email,
+                'avatar' => $c->user->avatar,
             ],
             'last_message' => $c->lastMessage ? [
                 'body' => $c->lastMessage->body,

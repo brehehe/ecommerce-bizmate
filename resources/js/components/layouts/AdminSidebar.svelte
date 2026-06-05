@@ -35,11 +35,12 @@
     );
 
     const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+    const storeAppName = $derived((page.props as any).settings?.store_app_name || storeName);
     const storeIcon = $derived((page.props as any).settings?.store_icon || null);
-    const fallbackEmail = $derived('superadmin@' + storeName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.id');
+    const fallbackEmail = $derived('superadmin@' + storeAppName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.id');
     const storeNameFontClass = $derived(
-        storeName.length <= 10 ? 'text-xl' :
-        storeName.length <= 16 ? 'text-base' :
+        storeAppName.length <= 10 ? 'text-xl' :
+        storeAppName.length <= 16 ? 'text-base' :
         'text-sm'
     );
 
@@ -92,7 +93,7 @@
             <div class="flex flex-col">
                 <span
                     class="font-outfit font-black {storeNameFontClass} text-slate-800 tracking-tight leading-snug"
-                    >{storeName}</span
+                    >{storeAppName}</span
                 >
                 <span
                     class="font-sans font-bold text-[10px] text-slate-400 tracking-widest mt-1"
@@ -951,6 +952,37 @@
                                         : ''}
                                 ></i>
                                 <span>Kurir</span>
+                            </a>
+                        </div>
+
+                        <div class="relative">
+                            {#if isActive('/admin/master-data/social-media')}
+                                <div
+                                    class="absolute left-[-2.75rem] top-0 bottom-0 w-1 rounded-r-md"
+                                    style="background-color: {secondaryColor};"
+                                ></div>
+                            {/if}
+                            <a
+                                href="/admin/master-data/social-media"
+                                use:inertia
+                                class="flex items-center gap-3 px-4 py-2 rounded-xl transition duration-200 group {isActive(
+                                    '/admin/master-data/social-media',
+                                )
+                                    ? 'bg-slate-50 font-bold'
+                                    : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
+                                style={isActive('/admin/master-data/social-media')
+                                    ? `color: ${primaryColor};`
+                                    : ''}
+                            >
+                                <i
+                                    class="ti ti-share text-lg group-hover:scale-110 transition"
+                                    style={isActive(
+                                        '/admin/master-data/social-media',
+                                    )
+                                        ? `color: ${primaryColor};`
+                                        : ''}
+                                ></i>
+                                <span>Media Sosial</span>
                             </a>
                         </div>
                     </div>

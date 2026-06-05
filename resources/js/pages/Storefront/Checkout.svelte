@@ -1548,11 +1548,7 @@
                                                             ? `background-color:${primary};`
                                                             : ''}
                                                     >
-                                                        <span
-                                                            >{courierLabels[
-                                                                courier
-                                                            ]}</span
-                                                        >
+                                                        <span>{courierLabels[courier]}</span>
                                                         {#if selectedCourier === courier}
                                                             <i
                                                                 class="ti ti-check text-xs font-bold text-white"

@@ -157,10 +157,29 @@ test('admin can view customer activity report', function () {
         ->has('customers')
         ->where('customers.data.0.orders_count', 1)
         ->where('customers.data.0.total_spent', 307000)
+        ->where('customers.data.0.average_order_value', 307000)
+        ->where('customers.data.0.total_discounts', 10000)
+        ->where('customers.data.0.total_coins_redeemed', 0)
         ->has('metrics')
         ->where('metrics.new_customers', 1)
         ->where('metrics.active_customers', 1)
     );
+});
+
+test('admin can view customer transactions history json', function () {
+    $admin = setupReportTestData();
+    $customer = User::whereHas('roles', function ($q) {
+        $q->where('name', 'Customer');
+    })->first();
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reports.customers.transactions', $customer));
+
+    $response->assertOk();
+    $response->assertJsonPath('data.0.transaction_number', 'TRX-20260529-00001');
+    $response->assertJsonPath('data.0.grand_total', '307000.00');
+    $response->assertJsonPath('data.0.discount_amount', '10000.00');
+    $response->assertJsonPath('data.0.items_count', 1);
 });
 
 test('admin can view stocks and valuation report', function () {

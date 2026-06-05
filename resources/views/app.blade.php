@@ -6,6 +6,7 @@
 
         @php
             $storeIcon = \App\Models\Setting::where('key', 'store_icon')->value('value');
+            $title = \App\Models\Setting::where('key', 'store_name')->value('value');
         @endphp
 
         @if($storeIcon)
@@ -21,6 +22,8 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         
+        <title>{{$title}} - Toko Online</title>
+
         @php
             $storeFont = \App\Models\Setting::where('key', 'store_font')->value('value') ?: 'Plus Jakarta Sans';
             $fontQuery = str_replace(' ', '+', $storeFont);

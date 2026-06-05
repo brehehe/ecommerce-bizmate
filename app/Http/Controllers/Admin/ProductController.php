@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariationOption;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
@@ -1083,5 +1084,317 @@ class ProductController extends Controller
         });
 
         return redirect()->back()->with('success', 'Dimensi & Berat berhasil diperbarui.');
+    }
+
+    public function downloadImportTemplate()
+    {
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="template_import_produk.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $columns = [
+            'Nama Produk',
+            'SKU',
+            'Kategori',
+            'Brand',
+            'Ringkasan Singkat',
+            'Deskripsi',
+            'Apakah Digital',
+            'Harga Jual',
+            'Harga Modal',
+            'Stok',
+            'Batas Minimum',
+            'Min Pembelian',
+            'Apakah Unlimited Stock',
+            'Berat (gram)',
+            'Panjang (cm)',
+            'Lebar (cm)',
+            'Tinggi (cm)',
+            'Spesifikasi',
+            'Variasi 1 Nama',
+            'Variasi 1 Nilai',
+            'Variasi 2 Nama',
+            'Variasi 2 Nilai',
+            'Harga Varian',
+            'Stok Varian',
+        ];
+
+        $callback = function () use ($columns) {
+            $file = fopen('php://output', 'w');
+
+            // Add UTF-8 BOM for Excel compatibility
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Write the Excel separator instruction
+            fwrite($file, "sep=,\n");
+
+            fputcsv($file, $columns);
+
+            // Add some sample rows
+            fputcsv($file, [
+                'Kaos Combed 30s', 'COM-30S-001', 'Pakaian Pria, Kaos', 'KaosKu',
+                'Kaos combed kualitas premium super adem.', 'Bahan Combed 30s premium.', '0',
+                '100000', '70000', '100', '5', '1', '0',
+                '200', '30', '25', '2', 'Bahan: Cotton Combed 30s; Gaya: Kasual',
+                'Warna', 'Merah', 'Ukuran', 'L', '100000', '50',
+            ]);
+            fputcsv($file, [
+                'Kaos Combed 30s', 'COM-30S-001', 'Pakaian Pria, Kaos', 'KaosKu',
+                'Kaos combed kualitas premium super adem.', 'Bahan Combed 30s premium.', '0',
+                '100000', '70000', '100', '5', '1', '0',
+                '200', '30', '25', '2', 'Bahan: Cotton Combed 30s; Gaya: Kasual',
+                'Warna', 'Merah', 'Ukuran', 'XL', '105000', '30',
+            ]);
+            fputcsv($file, [
+                'Kaos Combed 30s', 'COM-30S-001', 'Pakaian Pria, Kaos', 'KaosKu',
+                'Kaos combed kualitas premium super adem.', 'Bahan Combed 30s premium.', '0',
+                '100000', '70000', '100', '5', '1', '0',
+                '200', '30', '25', '2', 'Bahan: Cotton Combed 30s; Gaya: Kasual',
+                'Warna', 'Hitam', 'Ukuran', 'L', '100000', '20',
+            ]);
+            fputcsv($file, [
+                'Sepeda Gunung', 'BIKE-MTB-001', 'Sepeda, Olahraga', 'Polygon',
+                'Sepeda gunung Polygon tangguh dan kuat.', 'Sepeda gunung Polygon dual suspension.', '0',
+                '3500000', '2500000', '10', '2', '1', '0',
+                '15000', '140', '20', '80', 'Frame: AluxX; Fork: SR Suntour',
+                '', '', '', '', '', '',
+            ]);
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function importProducts(Request $request)
+    {
+        $request->validate([
+            'products' => 'required|array|min:1',
+            'products.*.name' => 'required|string|max:255',
+            'products.*.sku' => 'required|string|max:100',
+            'products.*.price' => 'required|numeric|min:0',
+            'products.*.cost' => 'nullable|numeric|min:0',
+            'products.*.stock' => 'nullable|integer|min:0',
+            'products.*.min_stock' => 'nullable|integer|min:0',
+            'products.*.min_purchase' => 'nullable|integer|min:1',
+            'products.*.weight' => 'nullable|integer|min:0',
+            'products.*.length' => 'nullable|integer|min:0',
+            'products.*.width' => 'nullable|integer|min:0',
+            'products.*.height' => 'nullable|integer|min:0',
+            'products.*.description' => 'required|string',
+            'products.*.summary' => 'nullable|string|max:255',
+            'products.*.tax_enabled' => 'boolean',
+            'products.*.is_digital' => 'boolean',
+            'products.*.is_unlimited' => 'boolean',
+            'products.*.specifications' => 'nullable|array',
+            'products.*.category_names' => 'nullable|string',
+            'products.*.brand_name' => 'nullable|string',
+            'products.*.variations' => 'nullable|array',
+            'products.*.variants' => 'nullable|array',
+        ]);
+
+        $globalTaxPercentage = (float) Setting::where('key', 'tax_percentage')->value('value') ?: 10;
+
+        \DB::transaction(function () use ($request, $globalTaxPercentage) {
+            foreach ($request->input('products') as $pData) {
+                $sku = trim($pData['sku']);
+                $slug = Str::slug($pData['name']).'-'.Str::random(5);
+
+                $product = Product::where('sku', $sku)->first();
+                if ($product) {
+                    $product->update([
+                        'name' => $pData['name'],
+                        'summary' => $pData['summary'] ?? null,
+                        'description' => $pData['description'],
+                        'weight' => $pData['weight'] ?? 0,
+                        'length' => $pData['length'] ?? 0,
+                        'width' => $pData['width'] ?? 0,
+                        'height' => $pData['height'] ?? 0,
+                        'tax_enabled' => ! empty($pData['tax_enabled']),
+                        'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
+                        'is_digital' => ! empty($pData['is_digital']),
+                        'specifications' => $pData['specifications'] ?? null,
+                    ]);
+                } else {
+                    $product = Product::create([
+                        'name' => $pData['name'],
+                        'sku' => $sku,
+                        'slug' => $slug,
+                        'summary' => $pData['summary'] ?? null,
+                        'description' => $pData['description'],
+                        'weight' => $pData['weight'] ?? 0,
+                        'length' => $pData['length'] ?? 0,
+                        'width' => $pData['width'] ?? 0,
+                        'height' => $pData['height'] ?? 0,
+                        'tax_enabled' => ! empty($pData['tax_enabled']),
+                        'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
+                        'is_digital' => ! empty($pData['is_digital']),
+                        'active' => true,
+                        'specifications' => $pData['specifications'] ?? null,
+                    ]);
+                }
+
+                // Sync categories
+                $categoryIds = [];
+                if (! empty($pData['category_names'])) {
+                    $names = explode(',', $pData['category_names']);
+                    foreach ($names as $name) {
+                        $name = trim($name);
+                        if (! $name) {
+                            continue;
+                        }
+                        $category = Category::whereRaw('lower(name) = ?', [strtolower($name)])->first();
+                        if (! $category) {
+                            $baseSlug = Str::slug($name);
+                            $catSlug = $baseSlug;
+                            $count = 1;
+                            while (Category::where('slug', $catSlug)->exists()) {
+                                $catSlug = $baseSlug.'-'.$count;
+                                $count++;
+                            }
+                            $category = Category::create([
+                                'name' => $name,
+                                'slug' => $catSlug,
+                                'icon' => 'ti-tag',
+                                'order' => 0,
+                            ]);
+                        }
+                        $categoryIds[] = $category->id;
+                    }
+                }
+                if (! empty($categoryIds)) {
+                    $product->categories()->sync($categoryIds);
+                    $product->update(['category_id' => $categoryIds[0]]);
+                }
+
+                // Sync brand
+                $brandIds = [];
+                if (! empty($pData['brand_name'])) {
+                    $bName = trim($pData['brand_name']);
+                    if ($bName) {
+                        $brand = Brand::whereRaw('lower(name) = ?', [strtolower($bName)])->first();
+                        if (! $brand) {
+                            $baseSlug = Str::slug($bName);
+                            $bSlug = $baseSlug;
+                            $count = 1;
+                            while (Brand::where('slug', $bSlug)->exists()) {
+                                $bSlug = $baseSlug.'-'.$count;
+                                $count++;
+                            }
+                            $brand = Brand::create([
+                                'name' => $bName,
+                                'slug' => $bSlug,
+                                'is_active' => true,
+                                'order' => 0,
+                            ]);
+                        }
+                        $brandIds[] = $brand->id;
+                        $product->update([
+                            'brand_id' => $brand->id,
+                            'brand' => $brand->name,
+                        ]);
+                    }
+                }
+                $product->brands()->sync($brandIds);
+
+                // Main price
+                $product->productPrice()->updateOrCreate(
+                    ['product_variant_id' => null],
+                    [
+                        'price' => $pData['price'],
+                        'cost' => $pData['cost'] ?? null,
+                    ]
+                );
+
+                // Main stock
+                $product->productStock()->updateOrCreate(
+                    ['product_variant_id' => null],
+                    [
+                        'stock' => $pData['stock'] ?? 0,
+                        'min_stock' => $pData['min_stock'] ?? 0,
+                        'min_purchase' => $pData['min_purchase'] ?? 1,
+                        'is_unlimited' => ! empty($pData['is_unlimited']),
+                    ]
+                );
+
+                // Variations / Variants
+                if (! empty($pData['variations'])) {
+                    // Delete old variants & variations
+                    $product->variants()->each(function ($v) {
+                        $v->productPrice()->delete();
+                        $v->productStock()->delete();
+                        $v->options()->detach();
+                        $v->delete();
+                    });
+                    $product->variations()->each(function ($var) {
+                        $var->options()->delete();
+                        $var->delete();
+                    });
+
+                    // Create variations
+                    $variationMap = [];
+                    foreach ($pData['variations'] as $vData) {
+                        $variation = $product->variations()->create(['name' => $vData['name']]);
+                        foreach ($vData['options'] as $optData) {
+                            $option = $variation->options()->create([
+                                'name' => $optData['name'],
+                                'description' => null,
+                                'image' => null,
+                            ]);
+                            $variationMap[$optData['name']] = $option->id;
+                        }
+                    }
+
+                    // Create variants
+                    if (! empty($pData['variants'])) {
+                        foreach ($pData['variants'] as $vCombData) {
+                            $variant = $product->variants()->create([
+                                'sku' => $vCombData['sku'],
+                                'weight' => null,
+                                'length' => null,
+                                'width' => null,
+                                'height' => null,
+                            ]);
+
+                            // Custom Variant Price
+                            if (! empty($vCombData['is_custom']) && ! empty($vCombData['custom_price'])) {
+                                $variant->productPrice()->create([
+                                    'product_id' => $product->id,
+                                    'price' => $vCombData['price'] ?: 0,
+                                    'cost' => $vCombData['cost'] ?: null,
+                                ]);
+                            }
+
+                            // Custom Variant Stock
+                            if (! empty($vCombData['is_custom']) && ! empty($vCombData['custom_stock'])) {
+                                $variant->productStock()->create([
+                                    'product_id' => $product->id,
+                                    'stock' => $vCombData['stock'] ?: 0,
+                                    'min_stock' => 0,
+                                    'min_purchase' => 1,
+                                    'is_unlimited' => false,
+                                ]);
+                            }
+
+                            // Attach options
+                            $frontNames = explode('_', $vCombData['id']);
+                            $optionIdsToAttach = [];
+                            foreach ($frontNames as $optName) {
+                                if (isset($variationMap[$optName])) {
+                                    $optionIdsToAttach[] = $variationMap[$optName];
+                                }
+                            }
+                            $variant->options()->attach($optionIdsToAttach);
+                        }
+                    }
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', count($request->input('products')).' produk berhasil di-import.');
     }
 }

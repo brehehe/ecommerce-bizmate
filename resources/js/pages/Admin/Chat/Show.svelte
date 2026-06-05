@@ -223,6 +223,14 @@
         }
         itemToDeleteId = null;
     }
+
+    function formatAvatarPath(path: any): string {
+        if (!path || typeof path !== 'string') return '';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        if (path.startsWith('/storage/')) return path;
+        if (path.startsWith('storage/')) return '/' + path;
+        return path.startsWith('/') ? '/storage' + path : '/storage/' + path;
+    }
 </script>
 
 <svelte:head>
@@ -300,10 +308,14 @@
                                     ></div>
                                 {/if}
                                 <div 
-                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm"
-                                    style="background-color: {c.unread_count > 0 ? secondaryColor : primaryColor};"
+                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm overflow-hidden"
+                                    style={!(c.user.avatar) ? `background-color: ${c.unread_count > 0 ? secondaryColor : primaryColor};` : ''}
                                 >
-                                    {c.user.name.charAt(0).toUpperCase()}
+                                    {#if c.user.avatar}
+                                        <img src={formatAvatarPath(c.user.avatar)} alt={c.user.name} class="w-full h-full object-cover" />
+                                    {:else}
+                                        {c.user.name.charAt(0).toUpperCase()}
+                                    {/if}
                                 </div>
 
                                 <div class="flex-grow min-w-0">
@@ -388,10 +400,14 @@
                             <i class="ti ti-arrow-left text-lg text-slate-700"></i>
                         </button>
                         <div 
-                            class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm"
-                            style="background-color: {primaryColor};"
+                            class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm overflow-hidden"
+                            style={!(chat.user.avatar) ? `background-color: ${primaryColor};` : ''}
                         >
-                            {chat.user.name.charAt(0).toUpperCase()}
+                            {#if chat.user.avatar}
+                                <img src={formatAvatarPath(chat.user.avatar)} alt={chat.user.name} class="w-full h-full object-cover" />
+                            {:else}
+                                {chat.user.name.charAt(0).toUpperCase()}
+                            {/if}
                         </div>
                         <div>
                             <h2 class="font-outfit font-black text-xs sm:text-sm text-slate-800 flex items-center gap-2">
@@ -581,10 +597,14 @@
                             </div>
                             <div class="flex items-center gap-2.5 pb-2.5 border-b border-slate-100 mb-2.5">
                                 <div 
-                                    class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-xs bg-gradient-to-tr"
-                                    style="background-image: linear-gradient(135deg, {primaryColor}, {secondaryColor});"
+                                    class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-xs overflow-hidden"
+                                    style={!(chat.user.avatar) ? `background-image: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});` : ''}
                                 >
-                                    {chat.user.name.charAt(0).toUpperCase()}
+                                    {#if chat.user.avatar}
+                                        <img src={formatAvatarPath(chat.user.avatar)} alt={chat.user.name} class="w-full h-full object-cover" />
+                                    {:else}
+                                        {chat.user.name.charAt(0).toUpperCase()}
+                                    {/if}
                                 </div>
                                 <div class="min-w-0">
                                     <h4 class="font-bold text-xs text-slate-800 truncate">{chat.user.name}</h4>

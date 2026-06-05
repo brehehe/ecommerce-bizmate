@@ -1048,13 +1048,61 @@ class CheckoutController extends Controller
                 return response()->json(['error' => 'Jarak pengiriman melebihi radius maksimal Kurir Toko (maksimal '.$maxRadius.' km). Jarak saat ini: '.round($distance, 1).' km.'], 422);
             }
 
+            // Check if distance should be rounded up to the nearest kilometer
+            $roundUp = Setting::where('key', 'store_courier_round_up')->value('value') === '1';
+            if ($roundUp) {
+                $distance = ceil($distance);
+                if ($distance < 1) {
+                    $distance = 1;
+                }
+            }
+
             $type = Setting::where('key', 'store_courier_type')->value('value') ?? 'flat';
             if ($type === 'radius') {
                 $perKmFee = (float) (Setting::where('key', 'store_courier_per_km_fee')->value('value') ?? 0);
                 $fee = round($perKmFee * $distance);
+            } elseif ($type === 'radius_tiered') {
+                $tieredRatesVal = Setting::where('key', 'store_courier_tiered_rates')->value('value');
+                $tieredRates = $tieredRatesVal ? json_decode($tieredRatesVal, true) : [];
+                if (! is_array($tieredRates)) {
+                    $tieredRates = [];
+                }
+
+                // Sort tiers by max_distance ascending
+                usort($tieredRates, function ($a, $b) {
+                    $distA = (float) ($a['max_distance'] ?? 0);
+                    $distB = (float) ($b['max_distance'] ?? 0);
+
+                    return $distA <=> $distB;
+                });
+
+                $fee = null;
+                foreach ($tieredRates as $tier) {
+                    if ($distance <= (float) ($tier['max_distance'] ?? 0)) {
+                        $fee = (float) ($tier['fee'] ?? 0);
+                        break;
+                    }
+                }
+
+                if ($fee === null) {
+                    // Fallback to the highest tier's fee if distance exceeds all tiers
+                    if (! empty($tieredRates)) {
+                        $lastTier = end($tieredRates);
+                        $fee = (float) ($lastTier['fee'] ?? 0);
+                    } else {
+                        $fee = 0.0;
+                    }
+                }
             } else {
                 $fee = (float) (Setting::where('key', 'store_courier_flat_fee')->value('value') ?? 0);
             }
+
+            $description = match ($type) {
+                'flat' => 'Tarif Flat (Sama Rata)',
+                'radius' => 'Tarif Berdasarkan Radius (per Km)',
+                'radius_tiered' => 'Tarif Berdasarkan Radius Bertingkat (Tiered)',
+                default => 'Dikirim menggunakan kurir internal toko',
+            };
 
             return response()->json([
                 'results' => [
@@ -1064,7 +1112,7 @@ class CheckoutController extends Controller
                         'costs' => [
                             [
                                 'service' => 'Store Courier',
-                                'description' => 'Dikirim menggunakan kurir internal toko',
+                                'description' => $description,
                                 'cost' => [
                                     [
                                         'value' => $fee,

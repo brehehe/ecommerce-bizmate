@@ -9,6 +9,7 @@ use App\Models\ProductStock;
 use App\Models\RefundRequest;
 use App\Models\ReturnRequest;
 use App\Models\Setting;
+use App\Models\SocialMedia;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -49,6 +50,7 @@ class HandleInertiaRequests extends Middleware
         $taxEnabled = false;
         $taxPercentage = 0;
         $storeName = config('app.name');
+        $storeAppName = config('app.name');
         $storeLogo = null;
 
         $setupTourCompleted = false;
@@ -92,6 +94,8 @@ class HandleInertiaRequests extends Middleware
         $storeCourierFlatFee = 0;
         $storeCourierPerKmFee = 0;
         $storeCourierMaxRadius = 50;
+        $storeCourierRoundUp = false;
+        $storeCourierTieredRates = [];
 
         $storeAddress = '';
         $storeProvince = '';
@@ -102,6 +106,15 @@ class HandleInertiaRequests extends Middleware
         $storeLatitude = '';
         $storeLongitude = '';
 
+        $storeEmail = '';
+        $storePhone = '';
+        $storeWhatsapp = '';
+        $storeInstagram = '';
+        $storeTiktok = '';
+        $storeDescription = '';
+
+        $socialMediaLinks = [];
+
         try {
             if (Schema::hasTable('settings')) {
                 $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
@@ -109,6 +122,7 @@ class HandleInertiaRequests extends Middleware
                 $taxEnabled = Setting::where('key', 'tax_enabled')->value('value') === '1';
                 $taxPercentage = Setting::where('key', 'tax_percentage')->value('value') ?? 0;
                 $storeName = Setting::where('key', 'store_name')->value('value') ?? $storeName;
+                $storeAppName = Setting::where('key', 'store_app_name')->value('value') ?? $storeName;
                 $storeLogo = Setting::where('key', 'store_logo')->value('value');
                 $storeIcon = Setting::where('key', 'store_icon')->value('value');
                 $setupTourCompleted = Setting::where('key', 'setup_tour_completed')->value('value') === '1';
@@ -156,6 +170,13 @@ class HandleInertiaRequests extends Middleware
                 $storeCourierFlatFee = (float) (Setting::where('key', 'store_courier_flat_fee')->value('value') ?? 0);
                 $storeCourierPerKmFee = (float) (Setting::where('key', 'store_courier_per_km_fee')->value('value') ?? 0);
                 $storeCourierMaxRadius = (float) (Setting::where('key', 'store_courier_max_radius')->value('value') ?? 50);
+                $storeCourierRoundUp = Setting::where('key', 'store_courier_round_up')->value('value') === '1';
+
+                $tieredRatesVal = Setting::where('key', 'store_courier_tiered_rates')->value('value');
+                $storeCourierTieredRates = $tieredRatesVal ? json_decode($tieredRatesVal, true) : [];
+                if (! is_array($storeCourierTieredRates)) {
+                    $storeCourierTieredRates = [];
+                }
 
                 $storeAddress = Setting::where('key', 'address')->value('value') ?? '';
                 $storeProvince = Setting::where('key', 'province_name')->value('value') ?? '';
@@ -165,6 +186,13 @@ class HandleInertiaRequests extends Middleware
                 $storePostalCode = Setting::where('key', 'postal_code')->value('value') ?? '';
                 $storeLatitude = Setting::where('key', 'latitude')->value('value') ?? '';
                 $storeLongitude = Setting::where('key', 'longitude')->value('value') ?? '';
+
+                $storeEmail = Setting::where('key', 'store_email')->value('value') ?? '';
+                $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '';
+                $storeWhatsapp = Setting::where('key', 'store_whatsapp')->value('value') ?? '';
+                $storeInstagram = Setting::where('key', 'store_instagram')->value('value') ?? '';
+                $storeTiktok = Setting::where('key', 'store_tiktok')->value('value') ?? '';
+                $storeDescription = Setting::where('key', 'store_description')->value('value') ?? '';
 
                 $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
                     'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
@@ -178,6 +206,21 @@ class HandleInertiaRequests extends Middleware
                 if (! is_array($operationalHours)) {
                     $operationalHours = [];
                 }
+            }
+
+            if (Schema::hasTable('social_media')) {
+                $socialMediaLinks = SocialMedia::where('is_active', true)
+                    ->orderBy('order')
+                    ->orderBy('id')
+                    ->get()
+                    ->map(fn ($s) => [
+                        'id' => $s->id,
+                        'platform' => $s->platform,
+                        'label' => $s->label,
+                        'url' => $s->url,
+                        'icon' => $s->icon,
+                    ])
+                    ->toArray();
             }
         } catch (\Throwable $e) {
             // Fallback when database is not ready
@@ -206,6 +249,7 @@ class HandleInertiaRequests extends Middleware
                 'tax_enabled' => $taxEnabled,
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,
+                'store_app_name' => $storeAppName,
                 'store_logo' => $storeLogo,
                 'store_icon' => $storeIcon,
                 'setup_tour_completed' => $setupTourCompleted,
@@ -247,6 +291,8 @@ class HandleInertiaRequests extends Middleware
                 'store_courier_flat_fee' => $storeCourierFlatFee,
                 'store_courier_per_km_fee' => $storeCourierPerKmFee,
                 'store_courier_max_radius' => $storeCourierMaxRadius,
+                'store_courier_round_up' => $storeCourierRoundUp,
+                'store_courier_tiered_rates' => $storeCourierTieredRates,
 
                 'store_address' => $storeAddress,
                 'store_province' => $storeProvince,
@@ -256,7 +302,15 @@ class HandleInertiaRequests extends Middleware
                 'store_postal_code' => $storePostalCode,
                 'store_latitude' => $storeLatitude,
                 'store_longitude' => $storeLongitude,
+
+                'store_email' => $storeEmail,
+                'store_phone' => $storePhone,
+                'store_whatsapp' => $storeWhatsapp,
+                'store_instagram' => $storeInstagram,
+                'store_tiktok' => $storeTiktok,
+                'store_description' => $storeDescription,
             ],
+            'socialMediaLinks' => $socialMediaLinks,
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)
                     ->where('stock', '>', 0)

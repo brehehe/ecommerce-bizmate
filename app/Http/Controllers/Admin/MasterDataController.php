@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
+use App\Models\SocialMedia;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -566,5 +567,127 @@ class MasterDataController extends Controller
             'courier' => $user,
             'transactions' => $transactions,
         ]);
+    }
+
+    /**
+     * Display a listing of social media links.
+     */
+    public function socialMedia(Request $request): Response
+    {
+        $query = SocialMedia::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('label', 'ilike', "%{$search}%")
+                    ->orWhere('platform', 'ilike', "%{$search}%")
+                    ->orWhere('url', 'ilike', "%{$search}%");
+            });
+        }
+
+        $perPage = $request->get('perPage', 25);
+        $socialMediaLinks = $query->orderBy('order')->orderBy('id')->paginate($perPage)->withQueryString();
+
+        return Inertia::render('Admin/MasterData/SocialMedia', [
+            'socialMediaLinks' => $socialMediaLinks,
+            'filters' => [
+                'search' => $request->search,
+                'perPage' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created social media link.
+     */
+    public function storeSocialMedia(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'platform' => 'required|string|max:50',
+            'label' => 'required|string|max:255',
+            'url' => 'required|string|max:500',
+            'icon' => 'nullable|string|max:100',
+            'order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $maxOrder = SocialMedia::max('order') ?? 0;
+
+        SocialMedia::create([
+            'platform' => $validated['platform'],
+            'label' => $validated['label'],
+            'url' => $validated['url'],
+            'icon' => $validated['icon'] ?? 'ti-brand-instagram',
+            'order' => $validated['order'] ?? $maxOrder + 1,
+            'is_active' => $request->input('is_active', true),
+        ]);
+
+        return back()->with('success', 'Akun media sosial berhasil ditambahkan.');
+    }
+
+    /**
+     * Update the specified social media link.
+     */
+    public function updateSocialMedia(Request $request, SocialMedia $socialMedia): RedirectResponse
+    {
+        $validated = $request->validate([
+            'platform' => 'required|string|max:50',
+            'label' => 'required|string|max:255',
+            'url' => 'required|string|max:500',
+            'icon' => 'nullable|string|max:100',
+            'order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $socialMedia->update([
+            'platform' => $validated['platform'],
+            'label' => $validated['label'],
+            'url' => $validated['url'],
+            'icon' => $validated['icon'] ?? $socialMedia->icon,
+            'order' => $validated['order'] ?? $socialMedia->order,
+            'is_active' => $request->input('is_active', $socialMedia->is_active),
+        ]);
+
+        return back()->with('success', 'Akun media sosial berhasil diperbarui.');
+    }
+
+    /**
+     * Remove the specified social media link.
+     */
+    public function destroySocialMedia(SocialMedia $socialMedia): RedirectResponse
+    {
+        $socialMedia->delete();
+
+        return back()->with('success', 'Akun media sosial berhasil dihapus.');
+    }
+
+    /**
+     * Toggle active status of a social media link.
+     */
+    public function toggleActiveSocialMedia(SocialMedia $socialMedia): RedirectResponse
+    {
+        $socialMedia->update(['is_active' => ! $socialMedia->is_active]);
+
+        return back()->with('success', 'Status media sosial berhasil diubah.');
+    }
+
+    /**
+     * Reorder social media links.
+     *
+     * @param  array<int, array{id: int, order: int}>  $items
+     */
+    public function reorderSocialMedia(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.id' => 'required|integer|exists:social_media,id',
+            'items.*.order' => 'required|integer|min:0',
+        ]);
+
+        foreach ($request->items as $item) {
+            SocialMedia::where('id', $item['id'])->update(['order' => $item['order']]);
+        }
+
+        return back()->with('success', 'Urutan media sosial berhasil disimpan.');
     }
 }

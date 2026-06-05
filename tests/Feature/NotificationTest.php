@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -370,4 +371,78 @@ test('an email is sent to customer when transaction tracking number changes', fu
     Mail::assertQueued(OrderStatusChanged::class, function ($mail) use ($customer) {
         return $mail->hasTo($customer->email) && $mail->transaction->tracking_number === 'RESI123456789';
     });
+});
+
+test('admin can mark all system notifications as read by passing admin type', function () {
+    Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
+    $admin = User::factory()->create();
+    $admin->assignRole('Super Admin');
+
+    // Create system notification (user_id is null)
+    Notification::create([
+        'user_id' => null,
+        'title' => 'Stok Produk Habis',
+        'message' => 'Stok habis',
+        'type' => 'out_of_stock',
+        'url' => '/admin/store/stocks',
+        'is_read' => false,
+    ]);
+
+    // Create personal storefront notification for admin user (user_id = admin->id)
+    Notification::create([
+        'user_id' => $admin->id,
+        'title' => 'Pembaruan Status Pesanan',
+        'message' => 'Pesanan dikirim',
+        'type' => 'transaction_status',
+        'url' => '/transactions/1',
+        'is_read' => false,
+    ]);
+
+    // Mark all admin/system notifications as read
+    $response = $this->actingAs($admin)
+        ->post(route('notifications.read-all'), ['type' => 'admin']);
+
+    $response->assertRedirect();
+
+    // System notification should be read
+    expect(Notification::whereNull('user_id')->where('is_read', false)->count())->toBe(0);
+    // Personal/customer notification should still be unread
+    expect(Notification::where('user_id', $admin->id)->where('is_read', false)->count())->toBe(1);
+});
+
+test('admin can mark all personal/customer notifications as read by passing customer type or default', function () {
+    Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
+    $admin = User::factory()->create();
+    $admin->assignRole('Super Admin');
+
+    // Create system notification (user_id is null)
+    Notification::create([
+        'user_id' => null,
+        'title' => 'Stok Produk Habis',
+        'message' => 'Stok habis',
+        'type' => 'out_of_stock',
+        'url' => '/admin/store/stocks',
+        'is_read' => false,
+    ]);
+
+    // Create personal storefront notification for admin user (user_id = admin->id)
+    Notification::create([
+        'user_id' => $admin->id,
+        'title' => 'Pembaruan Status Pesanan',
+        'message' => 'Pesanan dikirim',
+        'type' => 'transaction_status',
+        'url' => '/transactions/1',
+        'is_read' => false,
+    ]);
+
+    // Mark all customer notifications as read
+    $response = $this->actingAs($admin)
+        ->post(route('notifications.read-all'), ['type' => 'customer']);
+
+    $response->assertRedirect();
+
+    // System notification should STILL be unread
+    expect(Notification::whereNull('user_id')->where('is_read', false)->count())->toBe(1);
+    // Personal/customer notification should be read
+    expect(Notification::where('user_id', $admin->id)->where('is_read', false)->count())->toBe(0);
 });

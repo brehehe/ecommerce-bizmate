@@ -40,6 +40,20 @@
         searchQuery = '';
         router.get('/admin/chats', {}, { preserveState: true });
     }
+
+    function formatImagePath(path: any): string {
+        if (!path || typeof path !== 'string') return '/noimage/image.png';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        return path.startsWith('/') ? path : '/' + path;
+    }
+
+    function formatAvatarPath(path: any): string {
+        if (!path || typeof path !== 'string') return '';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        if (path.startsWith('/storage/')) return path;
+        if (path.startsWith('storage/')) return '/' + path;
+        return path.startsWith('/') ? '/storage' + path : '/storage/' + path;
+    }
 </script>
 
 <svelte:head>
@@ -110,10 +124,14 @@
                                 class="w-full text-left p-3 flex items-start gap-3 hover:bg-slate-50 rounded-2xl transition duration-150 relative cursor-pointer block"
                             >
                                 <div 
-                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm"
-                                    style="background-color: {c.unread_count > 0 ? secondaryColor : primaryColor};"
+                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm overflow-hidden"
+                                    style={!(c.user.avatar) ? `background-color: ${c.unread_count > 0 ? secondaryColor : primaryColor};` : ''}
                                 >
-                                    {c.user.name.charAt(0).toUpperCase()}
+                                    {#if c.user.avatar}
+                                        <img src={formatAvatarPath(c.user.avatar)} alt={c.user.name} class="w-full h-full object-cover" />
+                                    {:else}
+                                        {c.user.name.charAt(0).toUpperCase()}
+                                    {/if}
                                 </div>
 
                                 <div class="flex-grow min-w-0">

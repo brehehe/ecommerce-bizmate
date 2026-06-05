@@ -124,7 +124,8 @@
         }
         .summary-wrapper {
             display: flex;
-            justify-content: flex-end;
+            flex-direction: column;
+            align-items: flex-end;
         }
         .summary-table {
             width: 320px;
@@ -334,7 +335,7 @@
                 </tr>
             </table>
             @if(\App\Models\Setting::where('key', 'tax_enabled')->value('value') == '1')
-                <div style="text-align: right; font-size: 11px; color: #64748b; margin-top: 5px; font-style: italic;">
+                <div style="text-align: right; font-size: 11px; color: #64748b; margin-top: 8px; font-style: italic; padding-right: 16px;">
                     * Harga sudah termasuk Pajak
                 </div>
             @endif

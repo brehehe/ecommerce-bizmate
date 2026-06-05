@@ -10,6 +10,7 @@ use App\Models\ProductReview;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -378,6 +379,9 @@ class ReportController extends Controller
                 users.created_at as registered_at,
                 COUNT(transactions.id) as orders_count,
                 COALESCE(SUM(transactions.grand_total), 0) as total_spent,
+                COALESCE(AVG(transactions.grand_total), 0) as average_order_value,
+                COALESCE(SUM(transactions.discount_amount), 0) as total_discounts,
+                COALESCE(SUM(transactions.coins_redeemed), 0) as total_coins_redeemed,
                 MAX(transactions.created_at) as last_order_date
             ')
             ->groupBy('users.id', 'users.name', 'users.email', 'users.created_at')
@@ -412,6 +416,21 @@ class ReportController extends Controller
                 'search' => $request->search,
             ],
         ]);
+    }
+
+    /**
+     * Get transaction history for a specific customer.
+     */
+    public function customerTransactions(Request $request, User $user): JsonResponse
+    {
+        $transactions = Transaction::where('user_id', $user->id)
+            ->with(['paymentMethod'])
+            ->withCount('items')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
+
+        return response()->json($transactions);
     }
 
     /**

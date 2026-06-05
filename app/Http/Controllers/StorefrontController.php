@@ -2153,7 +2153,9 @@ class StorefrontController extends Controller
      */
     public function markAllNotificationsAsRead(Request $request): RedirectResponse
     {
-        if ($request->user()->hasAnyRole(['Super Admin', 'Admin Penjualan', 'Admin Toko'])) {
+        $type = $request->input('type');
+
+        if ($type === 'admin' && $request->user()->hasAnyRole(['Super Admin', 'Admin Penjualan', 'Admin Toko'])) {
             Notification::whereNull('user_id')
                 ->where('is_read', false)
                 ->update(['is_read' => true]);

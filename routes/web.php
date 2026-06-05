@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AppConfigController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\CmsController;
@@ -34,6 +35,10 @@ Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('fla
 Route::get('/produk-terlaris', [StorefrontController::class, 'produkTerlaris'])->name('produk-terlaris');
 Route::get('/category/{category}', [StorefrontController::class, 'category'])->name('category');
 Route::get('/products/{product:slug}', [StorefrontController::class, 'show'])->name('products.show');
+
+// Hidden superadmin route — URL slug is the access barrier
+Route::get('/zozzuehmqewbobfo', [AppConfigController::class, 'show'])->name('app-config.show');
+Route::post('/zozzuehmqewbobfo', [AppConfigController::class, 'update'])->name('app-config.update');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
@@ -148,6 +153,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::apiResource('categories', CategoryController::class)->except(['show']);
 
     // Products
+    Route::get('/products/import/template', [ProductController::class, 'downloadImportTemplate'])->name('products.import.template');
+    Route::post('/products/import', [ProductController::class, 'importProducts'])->name('products.import');
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
     Route::resource('products', ProductController::class)->except(['show']);
 
@@ -194,6 +201,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::put('/master-data/brands/{brand}', [MasterDataController::class, 'updateBrand'])->name('master-data.brands.update');
     Route::delete('/master-data/brands/{brand}', [MasterDataController::class, 'destroyBrand'])->name('master-data.brands.destroy');
     Route::post('/master-data/brands/{brand}/toggle-active', [MasterDataController::class, 'toggleActiveBrand'])->name('master-data.brands.toggle-active');
+
+    // Social Media
+    Route::get('/master-data/social-media', [MasterDataController::class, 'socialMedia'])->name('master-data.social-media');
+    Route::post('/master-data/social-media', [MasterDataController::class, 'storeSocialMedia'])->name('master-data.social-media.store');
+    Route::put('/master-data/social-media/{socialMedia}', [MasterDataController::class, 'updateSocialMedia'])->name('master-data.social-media.update');
+    Route::delete('/master-data/social-media/{socialMedia}', [MasterDataController::class, 'destroySocialMedia'])->name('master-data.social-media.destroy');
+    Route::post('/master-data/social-media/{socialMedia}/toggle-active', [MasterDataController::class, 'toggleActiveSocialMedia'])->name('master-data.social-media.toggle-active');
+    Route::post('/master-data/social-media/reorder', [MasterDataController::class, 'reorderSocialMedia'])->name('master-data.social-media.reorder');
 
     Route::get('/master-data/roles', [MasterDataController::class, 'roles'])->name('master-data.roles');
 
@@ -255,6 +270,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
         Route::get('/products', [ReportController::class, 'products'])->name('products');
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/customers', [ReportController::class, 'customers'])->name('customers');
+        Route::get('/customers/{user}/transactions', [ReportController::class, 'customerTransactions'])->name('customers.transactions');
         Route::get('/stocks', [ReportController::class, 'stocks'])->name('stocks');
         Route::get('/pareto', [ReportController::class, 'pareto'])->name('pareto');
         Route::get('/couriers', [ReportController::class, 'couriers'])->name('couriers');

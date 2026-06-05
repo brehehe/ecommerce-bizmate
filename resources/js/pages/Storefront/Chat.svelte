@@ -347,10 +347,18 @@
                             >
                                 <!-- Store avatar or Subject symbol -->
                                 <div 
-                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm"
-                                    style="background-color: {activeChatId === chat.id ? secondary : primary};"
+                                    class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm overflow-hidden"
+                                    style={!((page.props as any).settings?.store_icon) ? `background-color: ${activeChatId === chat.id ? secondary : primary};` : ''}
                                 >
-                                    {storeName.charAt(0).toUpperCase()}
+                                    {#if (page.props as any).settings?.store_icon || (page.props as any).settings?.store_icon}
+                                        <img 
+                                            src={formatImagePath((page.props as any).settings?.store_icon || (page.props as any).settings?.store_icon)} 
+                                            alt={storeName} 
+                                            class="w-full h-full object-cover"
+                                        />
+                                    {:else}
+                                        {storeName.charAt(0).toUpperCase()}
+                                    {/if}
                                 </div>
 
                                 <!-- Thread Info info -->
@@ -423,10 +431,18 @@
                         </button>
 
                         <div 
-                            class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm"
-                            style="background-color: {primary};"
+                            class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm overflow-hidden"
+                            style={!((page.props as any).settings?.store_icon) ? `background-color: ${primary};` : ''}
                         >
-                            {storeName.charAt(0).toUpperCase()}
+                            {#if (page.props as any).settings?.store_icon || (page.props as any).settings?.store_icon}
+                                <img 
+                                    src={formatImagePath((page.props as any).settings?.store_icon || (page.props as any).settings?.store_icon)} 
+                                    alt={storeName} 
+                                    class="w-full h-full object-cover"
+                                />
+                            {:else}
+                                {storeName.charAt(0).toUpperCase()}
+                            {/if}
                         </div>
 
                         <div class="flex-grow min-w-0">

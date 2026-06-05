@@ -168,6 +168,23 @@
         store_courier_flat_fee: settings.store_courier_flat_fee || 0,
         store_courier_per_km_fee: settings.store_courier_per_km_fee || 0,
         store_courier_max_radius: settings.store_courier_max_radius || 50,
+        store_courier_round_up:
+            settings.store_courier_round_up === 'true' ||
+            settings.store_courier_round_up === true ||
+            settings.store_courier_round_up === '1',
+        store_courier_tiered_rates: (() => {
+            try {
+                if (Array.isArray(settings.store_courier_tiered_rates)) {
+                    return settings.store_courier_tiered_rates;
+                }
+                if (typeof settings.store_courier_tiered_rates === 'string') {
+                    return JSON.parse(settings.store_courier_tiered_rates);
+                }
+            } catch (e) {
+                // ignore
+            }
+            return [];
+        })(),
     });
 
     const dayLabels = {
@@ -866,14 +883,28 @@
         );
     }
 
+    function addCourierTier() {
+        form.store_courier_tiered_rates = [
+            ...form.store_courier_tiered_rates,
+            { max_distance: null, fee: null },
+        ];
+    }
+
+    function removeCourierTier(index: number) {
+        form.store_courier_tiered_rates = form.store_courier_tiered_rates.filter(
+            (_, i) => i !== index,
+        );
+    }
+
     function submit() {
         form.transform((data) => ({
             ...data,
             coin_earning_tiers: JSON.stringify(data.coin_earning_tiers || []),
+            store_courier_tiered_rates: JSON.stringify(data.store_courier_tiered_rates || []),
         })).post('/admin/settings', {
             preserveScroll: true,
             onSuccess: () => {
-                showToast('Pengaturan berhasil disimpan!', 'success');
+                // Handled by flash message automatically
             },
         });
     }
@@ -2463,8 +2494,18 @@
                                                 >
                                                     <option value="flat">Tarif Flat (Sama Rata)</option>
                                                     <option value="radius">Tarif Berdasarkan Radius (per Km)</option>
+                                                    <option value="radius_tiered">Tarif Berdasarkan Radius Bertingkat (Tiered)</option>
                                                 </select>
                                             </div>
+
+                                            {#if form.store_courier_type !== 'flat'}
+                                                <Toggle
+                                                    bind:checked={form.store_courier_round_up}
+                                                    label="Bulatkan Jarak Ke Atas"
+                                                    description="Bulatkan jarak pengiriman di bawah 1 km atau kelipatan pecahan ke kilometer terdekat (misal: 0,2 km dibulatkan menjadi 1 km)."
+                                                    icon="ti-arrows-sort"
+                                                />
+                                            {/if}
 
                                             {#if form.store_courier_type === 'flat'}
                                                 <InputCurrency
@@ -2475,24 +2516,109 @@
                                                     required={true}
                                                 />
                                             {:else}
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <InputCurrency
-                                                        id="input-store-courier-per-km-fee"
-                                                        bind:value={form.store_courier_per_km_fee}
-                                                        label="Biaya per Kilometer"
-                                                        placeholder="Contoh: 3000"
-                                                        required={true}
-                                                    />
-                                                    <Input
-                                                        id="input-store-courier-max-radius"
-                                                        type="number"
-                                                        bind:value={form.store_courier_max_radius}
-                                                        label="Radius Maksimal Pengiriman (Km)"
-                                                        placeholder="Contoh: 25"
-                                                        min="1"
-                                                        required={true}
-                                                    />
-                                                </div>
+                                                {#if form.store_courier_type === 'radius'}
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <InputCurrency
+                                                            id="input-store-courier-per-km-fee"
+                                                            bind:value={form.store_courier_per_km_fee}
+                                                            label="Biaya per Kilometer"
+                                                            placeholder="Contoh: 3000"
+                                                            required={true}
+                                                        />
+                                                        <Input
+                                                            id="input-store-courier-max-radius"
+                                                            type="number"
+                                                            bind:value={form.store_courier_max_radius}
+                                                            label="Radius Maksimal Pengiriman (Km)"
+                                                            placeholder="Contoh: 25"
+                                                            min="1"
+                                                            required={true}
+                                                        />
+                                                    </div>
+                                                {:else if form.store_courier_type === 'radius_tiered'}
+                                                    <div class="space-y-4">
+                                                        <div class="flex justify-between items-center">
+                                                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                                                Aturan Jarak & Biaya (Bertingkat)
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onclick={addCourierTier}
+                                                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition flex items-center gap-1 cursor-pointer font-sans"
+                                                            >
+                                                                <i class="ti ti-plus"></i> Tambah Tingkatan
+                                                            </button>
+                                                        </div>
+
+                                                        {#if form.store_courier_tiered_rates.length === 0}
+                                                            <div class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans">
+                                                                <i class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"></i>
+                                                                <span class="text-[11px] font-bold text-slate-500">Belum Ada Aturan Tingkatan</span>
+                                                                <p class="text-[9px] text-slate-400 mt-0.5 leading-none">
+                                                                    Klik "+ Tambah Tingkatan" untuk membuat aturan baru.
+                                                                </p>
+                                                            </div>
+                                                        {:else}
+                                                            <div class="space-y-3 font-sans">
+                                                                {#each form.store_courier_tiered_rates as tier, index}
+                                                                    <div class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm" transition:slide>
+                                                                        <div class="flex-grow grid grid-cols-2 gap-3.5">
+                                                                            <div class="space-y-1">
+                                                                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Jarak Maksimal (Km)</span>
+                                                                                <div class="relative">
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        min="0.1"
+                                                                                        step="0.1"
+                                                                                        bind:value={tier.max_distance}
+                                                                                        class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
+                                                                                        placeholder="Contoh: 5"
+                                                                                        required
+                                                                                    />
+                                                                                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans">Km</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="space-y-1">
+                                                                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Biaya Pengiriman</span>
+                                                                                <div class="relative">
+                                                                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        min="0"
+                                                                                        bind:value={tier.fee}
+                                                                                        class="w-full pl-9 pr-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
+                                                                                        placeholder="Contoh: 10000"
+                                                                                        required
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick={() => removeCourierTier(index)}
+                                                                            class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition self-end cursor-pointer"
+                                                                            title="Hapus Aturan"
+                                                                        >
+                                                                            <i class="ti ti-trash text-sm"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                {/each}
+                                                            </div>
+                                                        {/if}
+
+                                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                                            <Input
+                                                                id="input-store-courier-max-radius"
+                                                                type="number"
+                                                                bind:value={form.store_courier_max_radius}
+                                                                label="Radius Maksimal Pengiriman (Km)"
+                                                                placeholder="Contoh: 25"
+                                                                min="1"
+                                                                required={true}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                {/if}
                                             {/if}
                                         </div>
                                     {/if}

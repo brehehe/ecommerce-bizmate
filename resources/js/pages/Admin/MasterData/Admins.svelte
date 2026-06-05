@@ -121,7 +121,6 @@
         if (isEditing) {
             form.put(`/admin/master-data/admins/${editId}`, {
                 onSuccess: () => {
-                    showToast('Admin berhasil diperbarui', 'success');
                     closeModal();
                 },
                 onError: (err) => {
@@ -131,7 +130,6 @@
         } else {
             form.post('/admin/master-data/admins', {
                 onSuccess: () => {
-                    showToast('Admin berhasil ditambahkan', 'success');
                     closeModal();
                 },
                 onError: (err) => {
@@ -156,7 +154,6 @@
 
         router.delete(`/admin/master-data/admins/${itemToDelete.id}`, {
             onSuccess: () => {
-                showToast('Admin berhasil dihapus', 'success');
                 deleteModalOpen = false;
                 itemToDelete = null;
             },
@@ -174,10 +171,7 @@
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    showToast(
-                        `Status ${admin.name} berhasil diubah`,
-                        'success',
-                    );
+                    // Handled by flash message automatically
                 },
                 onError: (err) => {
                     showToast(err?.error || 'Gagal mengubah status', 'error');
