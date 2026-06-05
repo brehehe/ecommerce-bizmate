@@ -65,15 +65,16 @@
             'Toko Kami',
     );
     const storeAppName = $derived(
-        (page.props as any).settings?.store_app_name ||
-            storeName,
+        (page.props as any).settings?.store_app_name || storeName,
     );
     const storeLogo = $derived(
         (page.props as any).storeLogo ||
             (page.props as any).settings?.store_logo,
     );
     const storeIcon = $derived((page.props as any).settings?.store_icon);
-    const socialMediaLinks = $derived((page.props as any).socialMediaLinks || []);
+    const socialMediaLinks = $derived(
+        (page.props as any).socialMediaLinks || [],
+    );
 
     // Modal state
     let authModalOpen = $state(false);
@@ -551,7 +552,11 @@
     }
 
     function markAllAsRead() {
-        router.post('/notifications/read-all', { type: 'customer' }, { preserveScroll: true });
+        router.post(
+            '/notifications/read-all',
+            { type: 'customer' },
+            { preserveScroll: true },
+        );
     }
 
     function getInitials(name: string) {
@@ -649,9 +654,14 @@
                 const response = await fetch(`/chats/${itemToDeleteId}`, {
                     method: 'DELETE',
                     headers: {
-                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                        'Accept': 'application/json',
-                    }
+                        'X-CSRF-TOKEN':
+                            (
+                                document.querySelector(
+                                    'meta[name="csrf-token"]',
+                                ) as HTMLMetaElement
+                            )?.content || '',
+                        Accept: 'application/json',
+                    },
                 });
                 if (response.ok) {
                     if (activeChatId === itemToDeleteId) {
@@ -669,15 +679,25 @@
             }
         } else {
             try {
-                const response = await fetch(`/chats/${activeChatId}/messages/${itemToDeleteId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-                        'Accept': 'application/json',
-                    }
-                });
+                const response = await fetch(
+                    `/chats/${activeChatId}/messages/${itemToDeleteId}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN':
+                                (
+                                    document.querySelector(
+                                        'meta[name="csrf-token"]',
+                                    ) as HTMLMetaElement
+                                )?.content || '',
+                            Accept: 'application/json',
+                        },
+                    },
+                );
                 if (response.ok) {
-                    chatMessages = chatMessages.filter((m: any) => m.id !== itemToDeleteId);
+                    chatMessages = chatMessages.filter(
+                        (m: any) => m.id !== itemToDeleteId,
+                    );
                     await fetchChatList(true);
                     showToast('Pesan berhasil dihapus', 'success');
                 } else {
@@ -1478,7 +1498,11 @@
                 <!-- Brand -->
                 <div class="flex items-center gap-2">
                     {#if storeIcon}
-                        <img src={storeIcon} alt={storeName} class="w-8 h-8 object-contain rounded-lg" />
+                        <img
+                            src={storeIcon}
+                            alt={storeName}
+                            class="w-8 h-8 object-contain rounded-lg"
+                        />
                     {:else}
                         <div
                             class="w-8 h-8 rounded-xl flex items-center justify-center text-white"
@@ -1495,7 +1519,15 @@
                 <!-- Copyright -->
                 <p class="text-xs text-slate-500">
                     © {new Date().getFullYear()}
-                    {storeAppName}. Hak cipta dilindungi.
+                    <a
+                        href="https://aplikasitokoonline.id/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hover:text-slate-300 transition-colors"
+                    >
+                        {storeAppName}
+                    </a>
+                    . Hak cipta dilindungi.
                 </p>
 
                 <!-- Socials -->
@@ -1504,15 +1536,27 @@
                         {#each socialMediaLinks as sm}
                             {@const url = (() => {
                                 const u = sm.url?.trim() || '';
-                                if (u.startsWith('http://') || u.startsWith('https://')) return u;
-                                if (sm.platform === 'whatsapp') return `https://wa.me/${u.replace(/\D/g, '')}`;
-                                if (sm.platform === 'instagram') return `https://instagram.com/${u.replace(/^@/, '')}`;
-                                if (sm.platform === 'tiktok') return `https://tiktok.com/@${u.replace(/^@/, '')}`;
-                                if (sm.platform === 'facebook') return `https://facebook.com/${u}`;
-                                if (sm.platform === 'twitter') return `https://x.com/${u.replace(/^@/, '')}`;
-                                if (sm.platform === 'youtube') return `https://youtube.com/@${u.replace(/^@/, '')}`;
-                                if (sm.platform === 'telegram') return `https://t.me/${u.replace(/^@/, '')}`;
-                                if (sm.platform === 'linkedin') return `https://linkedin.com/in/${u}`;
+                                if (
+                                    u.startsWith('http://') ||
+                                    u.startsWith('https://')
+                                )
+                                    return u;
+                                if (sm.platform === 'whatsapp')
+                                    return `https://wa.me/${u.replace(/\D/g, '')}`;
+                                if (sm.platform === 'instagram')
+                                    return `https://instagram.com/${u.replace(/^@/, '')}`;
+                                if (sm.platform === 'tiktok')
+                                    return `https://tiktok.com/@${u.replace(/^@/, '')}`;
+                                if (sm.platform === 'facebook')
+                                    return `https://facebook.com/${u}`;
+                                if (sm.platform === 'twitter')
+                                    return `https://x.com/${u.replace(/^@/, '')}`;
+                                if (sm.platform === 'youtube')
+                                    return `https://youtube.com/@${u.replace(/^@/, '')}`;
+                                if (sm.platform === 'telegram')
+                                    return `https://t.me/${u.replace(/^@/, '')}`;
+                                if (sm.platform === 'linkedin')
+                                    return `https://linkedin.com/in/${u}`;
                                 return u || '#';
                             })()}
                             <a
@@ -1995,13 +2039,17 @@
                             <!-- Avatar -->
                             <div
                                 class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-xs overflow-hidden"
-                                style={!((page.props as any).settings?.store_icon) ? `background-color: ${activeChatId === chat.id ? secondary : primary};` : ''}
+                                style={!(page.props as any).settings?.store_icon
+                                    ? `background-color: ${activeChatId === chat.id ? secondary : primary};`
+                                    : ''}
                             >
                                 {#if (page.props as any).settings?.store_icon || (page.props as any).settings?.store_icon}
                                     <img
                                         src={formatMiniChatImagePath(
-                                            (page.props as any).settings?.store_icon ||
-                                                (page.props as any).settings?.store_icon,
+                                            (page.props as any).settings
+                                                ?.store_icon ||
+                                                (page.props as any).settings
+                                                    ?.store_icon,
                                         )}
                                         alt={storeName}
                                         class="w-full h-full object-cover"
@@ -2062,13 +2110,16 @@
                 {#if activeChat}
                     <div
                         class="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden"
-                        style={!((page.props as any).settings?.store_icon) ? `background-color: ${primary};` : ''}
+                        style={!(page.props as any).settings?.store_icon
+                            ? `background-color: ${primary};`
+                            : ''}
                     >
                         {#if (page.props as any).settings?.store_icon || (page.props as any).settings?.store_icon}
                             <img
                                 src={formatMiniChatImagePath(
                                     (page.props as any).settings?.store_icon ||
-                                        (page.props as any).settings?.store_icon,
+                                        (page.props as any).settings
+                                            ?.store_icon,
                                 )}
                                 alt={storeName}
                                 class="w-full h-full object-cover"
@@ -2161,12 +2212,23 @@
                 {:else}
                     {#each chatMessages as msg (msg.id)}
                         <div
-                            class="group relative flex flex-col {msg.sender_type === 'user'
+                            class="group relative flex flex-col {msg.sender_type ===
+                            'user'
                                 ? 'items-end'
                                 : 'items-start'} gap-0.5"
                         >
-                            <div class="flex items-center gap-1.5 max-w-full {msg.sender_type === 'user' ? 'flex-row-reverse' : 'flex-row'}">
-                                <div class="flex flex-col {msg.sender_type === 'user' ? 'items-end' : 'items-start'} gap-0.5">
+                            <div
+                                class="flex items-center gap-1.5 max-w-full {msg.sender_type ===
+                                'user'
+                                    ? 'flex-row-reverse'
+                                    : 'flex-row'}"
+                            >
+                                <div
+                                    class="flex flex-col {msg.sender_type ===
+                                    'user'
+                                        ? 'items-end'
+                                        : 'items-start'} gap-0.5"
+                                >
                                     {#if msg.attachment_type === 'product' && msg.attachment_data}
                                         <!-- Product Card -->
                                         <div
@@ -2179,12 +2241,16 @@
                                                 ? primary
                                                 : 'white'};"
                                         >
-                                            <div class="flex items-center gap-2 p-2">
+                                            <div
+                                                class="flex items-center gap-2 p-2"
+                                            >
                                                 <img
                                                     src={formatMiniChatImagePath(
-                                                        msg.attachment_data.image,
+                                                        msg.attachment_data
+                                                            .image,
                                                     )}
-                                                    alt={msg.attachment_data.name}
+                                                    alt={msg.attachment_data
+                                                        .name}
                                                     class="w-10 h-10 rounded-lg object-cover shrink-0 bg-slate-100"
                                                     onerror={(e: any) => {
                                                         e.target.src =
@@ -2198,7 +2264,8 @@
                                                             ? 'text-white'
                                                             : 'text-slate-800'}"
                                                     >
-                                                        {msg.attachment_data.name}
+                                                        {msg.attachment_data
+                                                            .name}
                                                     </p>
                                                     <p
                                                         class="text-[10px] mt-0.5 font-black {msg.sender_type ===
@@ -2207,9 +2274,11 @@
                                                             : 'text-orange-500'}"
                                                     >
                                                         Rp{Number(
-                                                            msg.attachment_data.price ??
-                                                                0,
-                                                        ).toLocaleString('id-ID')}
+                                                            msg.attachment_data
+                                                                .price ?? 0,
+                                                        ).toLocaleString(
+                                                            'id-ID',
+                                                        )}
                                                     </p>
                                                 </div>
                                             </div>
@@ -2257,7 +2326,8 @@
 
                                 {#if msg.id > 0 && msg.sender_type === 'user'}
                                     <button
-                                        onclick={() => confirmDeleteMessage(msg.id)}
+                                        onclick={() =>
+                                            confirmDeleteMessage(msg.id)}
                                         class="opacity-0 group-hover:opacity-100 transition-opacity duration-150 p-1.5 rounded-full hover:bg-rose-50 text-slate-400 hover:text-rose-600 cursor-pointer shrink-0"
                                         title="Hapus pesan"
                                     >
@@ -2303,7 +2373,9 @@
 
             <!-- Delete Confirmation Modal -->
             {#if deleteModalOpen}
-                <div class="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+                <div
+                    class="fixed inset-0 z-[99999] flex items-center justify-center p-4"
+                >
                     <div
                         class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
                         onclick={() => (deleteModalOpen = false)}
@@ -2323,13 +2395,21 @@
                         <h4
                             class="font-outfit font-black text-lg text-center text-slate-800 mb-1"
                         >
-                            {deleteType === 'chat' ? 'Hapus Percakapan?' : 'Hapus Pesan?'}
+                            {deleteType === 'chat'
+                                ? 'Hapus Percakapan?'
+                                : 'Hapus Pesan?'}
                         </h4>
-                        <p class="text-xs text-center text-slate-500 font-medium mb-6">
+                        <p
+                            class="text-xs text-center text-slate-500 font-medium mb-6"
+                        >
                             {#if deleteType === 'chat'}
-                                Seluruh obrolan ini akan terhapus secara <strong>permanen</strong> dan tidak dapat dikembalikan.
+                                Seluruh obrolan ini akan terhapus secara <strong
+                                    >permanen</strong
+                                > dan tidak dapat dikembalikan.
                             {:else}
-                                Pesan ini akan terhapus secara <strong>permanen</strong> dan tidak dapat dikembalikan.
+                                Pesan ini akan terhapus secara <strong
+                                    >permanen</strong
+                                > dan tidak dapat dikembalikan.
                             {/if}
                         </p>
                         <div class="flex items-center gap-3">
