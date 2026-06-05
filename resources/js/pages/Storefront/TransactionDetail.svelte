@@ -1962,7 +1962,7 @@
                             </div>
                             <div class="p-4">
                                 <div
-                                    class="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-3"
+                                    class="bg-slate-50 rounded-xl p-3 border border-red-300 mb-3"
                                 >
                                     <p class="text-xs text-slate-500 mb-0.5">
                                         Transfer ke:
@@ -2129,7 +2129,7 @@
                                         di bawah untuk membuka portal pembayaran {gatewayName}.
                                     </p>
                                     <div
-                                        class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-100"
+                                        class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-red-300"
                                     >
                                         <div>
                                             <p class="text-xs text-rose-600">

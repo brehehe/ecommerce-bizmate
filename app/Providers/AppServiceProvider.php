@@ -32,6 +32,13 @@ class AppServiceProvider extends ServiceProvider
                 'last_active_at' => now(),
             ]);
         });
+
+        \Illuminate\Support\Facades\Route::bind('transaction', function (string $value) {
+            if (is_numeric($value)) {
+                return \App\Models\Transaction::findOrFail($value);
+            }
+            return \App\Models\Transaction::where('transaction_number', $value)->firstOrFail();
+        });
     }
 
     /**

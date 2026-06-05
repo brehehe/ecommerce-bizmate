@@ -25,9 +25,9 @@
             $publicPath = public_path($cleanLogoPath);
 
             if (file_exists($storagePath)) {
-                $logoUrl = $message->embed($storagePath);
+                $logoUrl = $appUrl . "/storage/" . ltrim($cleanLogoPath, "/");
             } elseif (file_exists($publicPath)) {
-                $logoUrl = $message->embed($publicPath);
+                $logoUrl = $appUrl . "/" . ltrim($cleanLogoPath, "/");
             } else {
                 $logoUrl = $appUrl . '/' . $cleanLogoPath;
             }
@@ -47,9 +47,7 @@
                 <!-- Header -->
                 <tr>
                     <td style="background:linear-gradient(135deg,#0c4cb4,#2563eb);border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
-                        @if($logoUrl)
-                            <img src="{{ $logoUrl }}" alt="{{ $storeName }}" style="height:48px;width:auto;object-fit:contain;margin-bottom:20px;border-radius:8px;" />
-                        @endif
+                        
                         <div style="width:72px;height:72px;background:rgba(255,255,255,0.15);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:36px;line-height:72px;text-align:center;">
                             📦
                         </div>

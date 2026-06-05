@@ -33,9 +33,9 @@
             $publicPath = public_path($cleanLogoPath);
             
             if (file_exists($storagePath)) {
-                $logoUrl = $message->embed($storagePath);
+                $logoUrl = $appUrl . "/storage/" . ltrim($cleanLogoPath, "/");
             } elseif (file_exists($publicPath)) {
-                $logoUrl = $message->embed($publicPath);
+                $logoUrl = $appUrl . "/" . ltrim($cleanLogoPath, "/");
             } else {
                 $logoUrl = $appUrl . '/' . $cleanLogoPath;
             }
@@ -59,9 +59,7 @@
                 {{-- ══════════ HEADER ══════════ --}}
                 <tr>
                     <td style="padding:24px 30px;border-bottom:3px solid #0056b3;text-align:center;">
-                        @if($logoUrl)
-                            <img src="{{ $logoUrl }}" alt="{{ $storeName }}" height="35" style="max-height:35px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto;" />
-                        @endif
+                        
                         <div style="color:#0056b3;font-size:20px;font-weight:bold;letter-spacing:0.5px;">{{ $storeName }}</div>
                     </td>
                 </tr>
@@ -106,34 +104,7 @@
 
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;margin-bottom:20px;">
                             @foreach($transaction->items as $item)
-                            @php
-                                $imgPath = $item->product_image;
-                                $imgUrl = null;
-                                if ($imgPath) {
-                                    if (str_starts_with($imgPath, 'http://') || str_starts_with($imgPath, 'https://')) {
-                                        $imgUrl = $imgPath;
-                                    } else {
-                                        $cleanPath = ltrim($imgPath, '/');
-                                        $localPath = storage_path('app/public/' . $cleanPath);
-                                        if (file_exists($localPath)) {
-                                            $imgUrl = $message->embed($localPath);
-                                        } else {
-                                            $imgUrl = $appUrl . '/storage/' . $cleanPath;
-                                        }
-                                    }
-                                }
-                            @endphp
-                            <tr style="border-bottom:1px solid #f0f0f0;">
-                                {{-- Product image --}}
-                                <td width="70" style="padding:10px 10px 10px 0;vertical-align:top;">
-                                    @if($imgUrl)
-                                        <img class="product-img" src="{{ $imgUrl }}" alt="{{ $item->product_name }}" width="60" height="60" style="width:60px;height:60px;border-radius:4px;object-fit:cover;border:1px solid #e8e8e8;display:block;" />
-                                    @else
-                                        <div style="width:60px;height:60px;background-color:#f5f5f5;border-radius:4px;border:1px solid #e8e8e8;text-align:center;line-height:60px;font-size:20px;color:#aaaaaa;">
-                                            📦
-                                        </div>
-                                    @endif
-                                </td>
+                            <tr style=\"border-bottom:1px solid #f0f0f0;\">
                                 {{-- Product info --}}
                                 <td style="padding:10px 0;vertical-align:top;font-size:13px;line-height:1.4;">
                                     <div style="font-weight:bold;color:#333333;margin-bottom:3px;">{{ $item->product_name }}</div>
