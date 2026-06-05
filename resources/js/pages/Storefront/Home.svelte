@@ -687,7 +687,7 @@
                 </div>
                 <!-- Categories scroll row -->
                 <div
-                    class="overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 pb-1"
+                    class="overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 py-2"
                 >
                     <div class="flex gap-3 w-max sm:w-auto sm:flex-wrap">
                         {#each categories as cat, i}
