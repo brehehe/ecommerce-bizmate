@@ -6,6 +6,7 @@
         heroBanners = [],
         sideBanners = [],
         middleWideBanner = null,
+        popupBanner = null,
         storefrontUrl,
     } = $props();
 
@@ -42,9 +43,16 @@
             alt: 'Flash Sale Promo',
             link: '#',
         },
+        popup_banner: popupBanner || {
+            image: '',
+            alt: 'Promo Spesial',
+            link: '#',
+            is_active: false,
+        },
         hero_files: {} as Record<number, File>,
         side_files: {} as Record<number, File>,
         middle_wide_file: null as File | null,
+        popup_file: null as File | null,
     });
 
     let iframeElement: HTMLIFrameElement;
@@ -109,6 +117,20 @@
             form.middle_wide_file = file;
             form.middle_wide_banner.image = URL.createObjectURL(file);
         }
+    }
+
+    function handlePopupFileChange(e: Event) {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (file) {
+            form.popup_file = file;
+            form.popup_banner.image = URL.createObjectURL(file);
+        }
+    }
+
+    function clearPopupBanner() {
+        form.popup_banner.image = '';
+        form.popup_file = null;
     }
 
     function submit() {
@@ -565,6 +587,134 @@
                                         type="text"
                                         bind:value={
                                             form.middle_wide_banner.link
+                                        }
+                                        placeholder="Contoh: /flash-sale atau #"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 transition"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Promo Popup Banner Section -->
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6"
+                >
+                    <div
+                        class="flex justify-between items-center border-b border-slate-100 pb-4"
+                    >
+                        <div>
+                            <h3
+                                class="font-outfit font-black text-lg text-slate-800"
+                            >
+                                Promo Popup Banner
+                            </h3>
+                            <p class="text-xs text-slate-500 font-medium">
+                                Banner popup gambar yang muncul otomatis setelah loading intro selesai di beranda.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="inline-flex items-center cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    bind:checked={form.popup_banner.is_active}
+                                    class="sr-only peer"
+                                />
+                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 relative"></div>
+                                <span class="ml-2 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                    {form.popup_banner.is_active ? 'Aktif' : 'Nonaktif'}
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div
+                        class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4"
+                    >
+                        {#if form.popup_banner.image}
+                            <button
+                                type="button"
+                                onclick={clearPopupBanner}
+                                class="absolute -top-2.5 -right-2.5 w-7 h-7 bg-rose-50 border border-rose-200 text-rose-600 rounded-full flex items-center justify-center shadow-sm hover:bg-rose-100 transition z-10"
+                                title="Hapus Gambar Popup"
+                            >
+                                <i class="ti ti-trash text-sm"></i>
+                            </button>
+                        {/if}
+
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center"
+                        >
+                            <!-- Image Preview / File Dropzone -->
+                            <div class="md:col-span-4">
+                                {#if form.popup_banner.image}
+                                    <div
+                                        class="relative rounded-xl overflow-hidden aspect-square border border-slate-200 shadow-sm bg-white group/preview max-w-[150px] mx-auto md:mx-0"
+                                    >
+                                        <img
+                                            src={form.popup_banner.image}
+                                            alt="Preview"
+                                            class="w-full h-full object-cover"
+                                        />
+                                        <label
+                                            class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5"
+                                        >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                class="hidden"
+                                                onchange={handlePopupFileChange}
+                                            />
+                                            <i class="ti ti-camera"></i> Ganti Gambar
+                                        </label>
+                                    </div>
+                                {:else}
+                                    <label
+                                        class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-square flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop max-w-[150px] mx-auto md:mx-0"
+                                    >
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            class="hidden"
+                                            onchange={handlePopupFileChange}
+                                        />
+                                        <i
+                                            class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"
+                                        ></i>
+                                        <span
+                                            class="text-[10px] font-bold text-slate-500 mt-2 text-center"
+                                            >Upload Popup</span
+                                        >
+                                    </label>
+                                {/if}
+                            </div>
+
+                            <!-- Fields -->
+                            <div class="md:col-span-8 space-y-3">
+                                <div>
+                                    <p
+                                        class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                    >
+                                        Alt Text (Deskripsi Gambar)
+                                    </p>
+                                    <input
+                                        type="text"
+                                        bind:value={form.popup_banner.alt}
+                                        placeholder="Contoh: Popup Diskon Member Baru"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 transition"
+                                    />
+                                </div>
+                                <div>
+                                    <p
+                                        class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                    >
+                                        Tautan URL (Link)
+                                    </p>
+                                    <input
+                                        type="text"
+                                        bind:value={
+                                            form.popup_banner.link
                                         }
                                         placeholder="Contoh: /flash-sale atau #"
                                         class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 transition"

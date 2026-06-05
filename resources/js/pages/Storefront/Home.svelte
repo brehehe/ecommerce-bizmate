@@ -17,9 +17,11 @@
         sideBanners: incomingSideBanners = [],
         middleWideBanner = null,
         recentReviews = [] as any[],
+        popupBanner = null,
     } = $props();
 
     let showIntro = $state(false);
+    let showPopup = $state(false);
     const storeLogo = $derived(
         (page.props as any).storeLogo ||
             (page.props as any).settings?.store_logo,
@@ -228,9 +230,18 @@
             sessionStorage.setItem('storefront_intro_played', 'true');
             setTimeout(() => {
                 showIntro = false;
+                checkAndShowPopup();
             }, 1800);
         }
     });
+
+    function checkAndShowPopup() {
+        if (popupBanner && popupBanner.image && popupBanner.is_active) {
+            setTimeout(() => {
+                showPopup = true;
+            }, 400);
+        }
+    }
 
     // ──────────────────────────────────────────────────
     // HELPERS
@@ -1556,6 +1567,61 @@
                 <div class="w-32 h-1 bg-white/10 rounded-full overflow-hidden relative mt-4">
                     <div class="absolute inset-0 bg-gradient-to-r from-white/40 via-white to-white/40 rounded-full animate-loadingBar"></div>
                 </div>
+            </div>
+        </div>
+    {/if}
+
+    {#if showPopup}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div
+            transition:fade={{ duration: 300 }}
+            class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onclick={() => (showPopup = false)}
+            role="dialog"
+            aria-modal="true"
+        >
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+                class="relative max-w-sm w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col group"
+                onclick={(e) => e.stopPropagation()}
+                transition:scale={{ duration: 400, start: 0.95 }}
+            >
+                <!-- Close Button -->
+                <button
+                    onclick={() => (showPopup = false)}
+                    class="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition backdrop-blur-sm z-50 border border-white/10"
+                    aria-label="Tutup Promo"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+
+                <!-- Banner Image Link -->
+                <Link
+                    href={popupBanner.link || '#'}
+                    onclick={() => (showPopup = false)}
+                    class="block w-full overflow-hidden aspect-[4/5] bg-slate-100 relative"
+                >
+                    <img
+                        src={popupBanner.image}
+                        alt={popupBanner.alt || 'Promo Spesial'}
+                        class="w-full h-full object-cover hover:scale-105 transition duration-500"
+                    />
+                </Link>
+
+                <!-- Optional Action Button -->
+                {#if popupBanner.link && popupBanner.link !== '#'}
+                    <div class="p-4 bg-white border-t border-slate-50 flex justify-center">
+                        <Link
+                            href={popupBanner.link}
+                            onclick={() => (showPopup = false)}
+                            class="px-6 py-2.5 text-white font-bold rounded-xl text-xs sm:text-sm tracking-wide uppercase transition duration-200 shadow-md hover:shadow-lg w-full text-center"
+                            style="background-color: {primary};"
+                        >
+                            Lihat Detail Promo
+                        </Link>
+                    </div>
+                {/if}
             </div>
         </div>
     {/if}

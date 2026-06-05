@@ -25,10 +25,14 @@ class CmsController extends Controller
         $middleWideBannerJson = Setting::where('key', 'middle_wide_banner')->value('value');
         $middleWideBanner = $middleWideBannerJson ? json_decode($middleWideBannerJson, true) : null;
 
+        $popupBannerJson = Setting::where('key', 'popup_banner')->value('value');
+        $popupBanner = $popupBannerJson ? json_decode($popupBannerJson, true) : null;
+
         return Inertia::render('Admin/Cms/Banners', [
             'heroBanners' => $heroBanners,
             'sideBanners' => $sideBanners,
             'middleWideBanner' => $middleWideBanner,
+            'popupBanner' => $popupBanner,
             'storefrontUrl' => url('/'),
         ]);
     }
@@ -107,6 +111,29 @@ class CmsController extends Controller
             Setting::updateOrCreate(
                 ['key' => 'middle_wide_banner'],
                 ['value' => json_encode($middleWideBanner)]
+            );
+        }
+
+        if ($request->has('popup_banner')) {
+            $popupInput = $request->input('popup_banner');
+            $imagePath = $popupInput['image'] ?? '';
+
+            if ($request->hasFile('popup_file')) {
+                $file = $request->file('popup_file');
+                $path = $file->store('banners', 'public');
+                $imagePath = '/storage/'.$path;
+            }
+
+            $popupBanner = [
+                'image' => $imagePath,
+                'alt' => $popupInput['alt'] ?? '',
+                'link' => $popupInput['link'] ?? '#',
+                'is_active' => filter_var($popupInput['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            ];
+
+            Setting::updateOrCreate(
+                ['key' => 'popup_banner'],
+                ['value' => json_encode($popupBanner)]
             );
         }
 

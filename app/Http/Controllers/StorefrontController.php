@@ -175,6 +175,9 @@ class StorefrontController extends Controller
         $middleWideBannerJson = Setting::where('key', 'middle_wide_banner')->value('value');
         $middleWideBanner = $middleWideBannerJson ? json_decode($middleWideBannerJson, true) : null;
 
+        $popupBannerJson = Setting::where('key', 'popup_banner')->value('value');
+        $popupBanner = $popupBannerJson ? json_decode($popupBannerJson, true) : null;
+
         $recentReviews = ProductReview::with(['user', 'product.images', 'productVariant.options'])
             ->latest()
             ->take(8)
@@ -192,6 +195,7 @@ class StorefrontController extends Controller
             'heroBanners' => $heroBanners,
             'sideBanners' => $sideBanners,
             'middleWideBanner' => $middleWideBanner,
+            'popupBanner' => $popupBanner,
         ]);
     }
 
