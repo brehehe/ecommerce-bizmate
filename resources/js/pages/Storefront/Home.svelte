@@ -231,7 +231,7 @@
             setTimeout(() => {
                 showIntro = false;
                 checkAndShowPopup();
-            }, 3500);
+            }, 1500);
         }
     });
 
@@ -239,7 +239,7 @@
         if (popupBanner && popupBanner.image && popupBanner.is_active) {
             setTimeout(() => {
                 showPopup = true;
-            }, 3500);
+            }, 1500);
         }
     }
 
