@@ -33,9 +33,9 @@
             $publicPath = public_path($cleanLogoPath);
             
             if (file_exists($storagePath)) {
-                $logoUrl = $message->embed($storagePath);
+                $logoUrl = $appUrl . "/storage/" . $cleanLogoPath;
             } elseif (file_exists($publicPath)) {
-                $logoUrl = $message->embed($publicPath);
+                $logoUrl = $appUrl . "/" . $cleanLogoPath;
             } else {
                 $logoUrl = $appUrl . '/' . $cleanLogoPath;
             }
@@ -58,7 +58,7 @@
         'menunggu' => 'Pembayaran Anda telah kami terima dan saat ini sedang menunggu konfirmasi/verifikasi.',
         'diproses' => 'Pembayaran berhasil dikonfirmasi. Penjual sedang memproses pesanan Anda.',
         'dikemas' => 'Pesanan Anda saat ini sedang dikemas dengan rapi dan bersiap untuk diserahkan ke kurir.',
-        'dikirim' => 'Kabar gembira! Pesanan Anda telah dikirim dan sedang dalam perjalanan ke alamat Anda.',
+        'dikirim' => 'Pesanan Anda telah dikirim dan sedang dalam perjalanan ke alamat Anda.',
         'selesai' => 'Terima kasih! Pesanan Anda telah selesai dan diterima dengan baik. Selamat menikmati produk Anda!',
         'batal' => 'Pesanan Anda telah dibatalkan.' . ($transaction->cancel_reason ? ' Alasan: ' . $transaction->cancel_reason : ''),
         default => 'Status pesanan Anda telah diperbarui menjadi ' . $statusText,
@@ -151,7 +151,7 @@
                                         $cleanPath = ltrim($imgPath, '/');
                                         $localPath = storage_path('app/public/' . $cleanPath);
                                         if (file_exists($localPath)) {
-                                            $imgUrl = $message->embed($localPath);
+                                            $imgUrl = $appUrl . "/storage/" . $cleanPath;
                                         } else {
                                             $imgUrl = $appUrl . '/storage/' . $cleanPath;
                                         }

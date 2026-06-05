@@ -1948,10 +1948,10 @@
                     <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
                     {#if canUploadProof}
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden"
+                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
                         >
                             <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-red-50 bg-red-50/20"
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
                             >
                                 <i
                                     class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
@@ -2044,10 +2044,10 @@
                     <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
                     {#if isGateway && transaction.status === 'belum_bayar'}
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden"
+                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
                         >
                             <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-50 bg-rose-50/20"
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
                             >
                                 <i
                                     class="ti ti-credit-card text-base animate-pulse text-rose-600"

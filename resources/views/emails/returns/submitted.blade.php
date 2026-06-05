@@ -33,9 +33,9 @@ gi
             $publicPath = public_path($cleanLogoPath);
             
             if (file_exists($storagePath)) {
-                $logoUrl = $message->embed($storagePath);
+                $logoUrl = $appUrl . "/storage/" . $cleanLogoPath;
             } elseif (file_exists($publicPath)) {
-                $logoUrl = $message->embed($publicPath);
+                $logoUrl = $appUrl . "/" . $cleanLogoPath;
             } else {
                 $logoUrl = $appUrl . '/' . $cleanLogoPath;
             }

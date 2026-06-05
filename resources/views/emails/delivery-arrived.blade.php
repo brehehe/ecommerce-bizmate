@@ -65,7 +65,7 @@
                             Halo, <strong>{{ $customerName }}</strong>! 👋
                         </p>
                         <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-                            Kabar baik! Kurir toko kami telah berhasil mengantarkan paket pesanan
+                            Kurir toko kami telah berhasil mengantarkan paket pesanan
                             <strong>#{{ $transaction->transaction_number }}</strong> ke alamat tujuan Anda.
                         </p>
 
