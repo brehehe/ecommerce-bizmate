@@ -190,7 +190,9 @@
         const spaceBelow = viewportH - rect.bottom;
         const above = spaceBelow < 180;
         menuPos = {
-            top: above ? rect.top + window.scrollY - 4 : rect.bottom + window.scrollY + 4,
+            top: above
+                ? rect.top + window.scrollY - 4
+                : rect.bottom + window.scrollY + 4,
             left: rect.right + window.scrollX - 168,
             above,
         };
@@ -232,8 +234,18 @@
     }
 
     function getGenderLabel(gender) {
-        if (gender === 'male') return { label: 'Laki-laki', icon: 'ti-gender-male', color: 'text-sky-500' };
-        if (gender === 'female') return { label: 'Perempuan', icon: 'ti-gender-female', color: 'text-pink-500' };
+        if (gender === 'male')
+            return {
+                label: 'Laki-laki',
+                icon: 'ti-gender-male',
+                color: 'text-sky-500',
+            };
+        if (gender === 'female')
+            return {
+                label: 'Perempuan',
+                icon: 'ti-gender-female',
+                color: 'text-pink-500',
+            };
         return null;
     }
 
@@ -314,11 +326,17 @@
 
                 {#if users.data.length === 0}
                     <div class="py-16 text-center">
-                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <div
+                            class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4"
+                        >
                             <i class="ti ti-users text-2xl text-slate-300"></i>
                         </div>
-                        <p class="font-bold text-slate-400 font-outfit">Tidak ada data pelanggan yang cocok.</p>
-                        <p class="text-xs text-slate-300 mt-1">Coba ubah kata kunci pencarian.</p>
+                        <p class="font-bold text-slate-400 font-outfit">
+                            Tidak ada data pelanggan yang cocok.
+                        </p>
+                        <p class="text-xs text-slate-300 mt-1">
+                            Coba ubah kata kunci pencarian.
+                        </p>
                     </div>
                 {:else}
                     <div class="overflow-x-auto">
@@ -338,7 +356,9 @@
                                     <th class="py-4 px-6">Pelanggan</th>
                                     <th class="py-4 px-6">No. HP</th>
                                     <th class="py-4 px-6">Gender / Usia</th>
-                                    <th class="py-4 px-6 text-center">Transaksi</th>
+                                    <th class="py-4 px-6 text-center"
+                                        >Transaksi</th
+                                    >
                                     <th class="py-4 px-6 text-center">Koin</th>
                                     <th class="py-4 px-6">Bergabung</th>
                                     <th class="py-4 px-6">Terakhir Aktif</th>
@@ -350,10 +370,16 @@
                                 class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
                             >
                                 {#each users.data as customer (customer.id)}
-                                    {@const isActive = customer.is_active ?? true}
-                                    {@const isSelected = selectedCustomers.includes(customer.id)}
-                                    {@const genderInfo = getGenderLabel(customer.gender)}
-                                    {@const age = calculateAge(customer.birth_date)}
+                                    {@const isActive =
+                                        customer.is_active ?? true}
+                                    {@const isSelected =
+                                        selectedCustomers.includes(customer.id)}
+                                    {@const genderInfo = getGenderLabel(
+                                        customer.gender,
+                                    )}
+                                    {@const age = calculateAge(
+                                        customer.birth_date,
+                                    )}
 
                                     <tr
                                         class="hover:bg-slate-50/50 transition duration-150 {isSelected
@@ -365,14 +391,17 @@
                                             <input
                                                 type="checkbox"
                                                 checked={isSelected}
-                                                onchange={() => toggleSelect(customer.id)}
+                                                onchange={() =>
+                                                    toggleSelect(customer.id)}
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             />
                                         </td>
 
                                         <!-- Customer info -->
                                         <td class="py-4 px-6">
-                                            <div class="flex items-center gap-3">
+                                            <div
+                                                class="flex items-center gap-3"
+                                            >
                                                 <!-- Avatar: photo or initials -->
                                                 {#if customer.avatar}
                                                     <img
@@ -384,14 +413,20 @@
                                                     <div
                                                         class="w-10 h-10 rounded-full bg-gradient-to-tr from-brand-blueRoyal to-sky-500 text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0"
                                                     >
-                                                        {getInitials(customer.name)}
+                                                        {getInitials(
+                                                            customer.name,
+                                                        )}
                                                     </div>
                                                 {/if}
                                                 <div>
-                                                    <p class="text-sm font-bold text-slate-800 leading-tight">
+                                                    <p
+                                                        class="text-sm font-bold text-slate-800 leading-tight"
+                                                    >
                                                         {customer.name}
                                                     </p>
-                                                    <p class="text-[11px] text-slate-400 mt-0.5">
+                                                    <p
+                                                        class="text-[11px] text-slate-400 mt-0.5"
+                                                    >
                                                         {customer.email}
                                                     </p>
                                                 </div>
@@ -401,73 +436,116 @@
                                         <!-- Phone -->
                                         <td class="py-4 px-6">
                                             {#if customer.phone_number}
-                                                <span class="text-xs text-slate-600 font-medium flex items-center gap-1">
-                                                    <i class="ti ti-phone text-slate-300"></i>
+                                                <span
+                                                    class="text-xs text-slate-600 font-medium flex items-center gap-1"
+                                                >
+                                                    <i
+                                                        class="ti ti-phone text-slate-300"
+                                                    ></i>
                                                     {customer.phone_number}
                                                 </span>
                                             {:else}
-                                                <span class="text-xs text-slate-300 italic">—</span>
+                                                <span
+                                                    class="text-xs text-slate-300 italic"
+                                                    >—</span
+                                                >
                                             {/if}
                                         </td>
 
                                         <!-- Gender / Age -->
                                         <td class="py-4 px-6">
                                             {#if genderInfo}
-                                                <div class="flex flex-col gap-0.5">
-                                                    <span class="text-xs font-semibold flex items-center gap-1 {genderInfo.color}">
-                                                        <i class="ti {genderInfo.icon}"></i>
+                                                <div
+                                                    class="flex flex-col gap-0.5"
+                                                >
+                                                    <span
+                                                        class="text-xs font-semibold flex items-center gap-1 {genderInfo.color}"
+                                                    >
+                                                        <i
+                                                            class="ti {genderInfo.icon}"
+                                                        ></i>
                                                         {genderInfo.label}
                                                     </span>
                                                     {#if age !== null}
-                                                        <span class="text-[11px] text-slate-400">
+                                                        <span
+                                                            class="text-[11px] text-slate-400"
+                                                        >
                                                             {age} tahun
                                                             {#if customer.birth_date}
-                                                                &middot; {formatDate(customer.birth_date)}
+                                                                &middot; {formatDate(
+                                                                    customer.birth_date,
+                                                                )}
                                                             {/if}
                                                         </span>
                                                     {/if}
                                                 </div>
                                             {:else}
-                                                <span class="text-xs text-slate-300 italic">—</span>
+                                                <span
+                                                    class="text-xs text-slate-300 italic"
+                                                    >—</span
+                                                >
                                             {/if}
                                         </td>
 
                                         <!-- Transactions count -->
                                         <td class="py-4 px-6 text-center">
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-50 text-indigo-600 border border-indigo-100">
-                                                <i class="ti ti-shopping-bag text-[11px]"></i>
-                                                {customer.transactions_count ?? 0}
+                                            <span
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-50 text-indigo-600 border border-indigo-100"
+                                            >
+                                                <i
+                                                    class="ti ti-shopping-bag text-[11px]"
+                                                ></i>
+                                                {customer.transactions_count ??
+                                                    0}
                                             </span>
                                         </td>
 
                                         <!-- Coins -->
                                         <td class="py-4 px-6 text-center">
                                             {#if (customer.coins_balance ?? 0) > 0}
-                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-50 text-amber-600 border border-amber-100">
-                                                    <i class="ti ti-coin text-[11px]"></i>
-                                                    {(customer.coins_balance ?? 0).toLocaleString('id-ID')}
+                                                <span
+                                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-amber-50 text-amber-600 border border-amber-100"
+                                                >
+                                                    <i
+                                                        class="ti ti-coin text-[11px]"
+                                                    ></i>
+                                                    {(
+                                                        customer.coins_balance ??
+                                                        0
+                                                    ).toLocaleString('id-ID')}
                                                 </span>
                                             {:else}
-                                                <span class="text-xs text-slate-300">0</span>
+                                                <span
+                                                    class="text-xs text-slate-300"
+                                                    >0</span
+                                                >
                                             {/if}
                                         </td>
 
                                         <!-- Join date -->
                                         <td class="py-4 px-6">
-                                            <span class="text-xs text-slate-500 whitespace-nowrap">
-                                                {formatDate(customer.created_at) ?? '—'}
+                                            <span
+                                                class="text-xs text-slate-500 whitespace-nowrap"
+                                            >
+                                                {formatDate(
+                                                    customer.created_at,
+                                                ) ?? '—'}
                                             </span>
                                         </td>
 
                                         <!-- Last active -->
                                         <td class="py-4 px-6">
-                                            <span class="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                                            <span
+                                                class="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap"
+                                            >
                                                 <span
                                                     class="w-1.5 h-1.5 rounded-full shrink-0 {isActive
                                                         ? 'bg-emerald-400'
                                                         : 'bg-slate-300'}"
                                                 ></span>
-                                                {formatDateTime(customer.last_active_at)}
+                                                {formatDateTime(
+                                                    customer.last_active_at,
+                                                )}
                                             </span>
                                         </td>
 
@@ -478,18 +556,23 @@
                                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
                                                     : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
                                             >
-                                                {isActive ? 'Aktif' : 'Nonaktif'}
+                                                {isActive
+                                                    ? 'Aktif'
+                                                    : 'Nonaktif'}
                                             </span>
                                         </td>
 
                                         <!-- Actions dropdown -->
                                         <td class="py-4 px-6 text-center">
                                             <button
-                                                onclick={(e) => openMenu(e, customer.id)}
+                                                onclick={(e) =>
+                                                    openMenu(e, customer.id)}
                                                 class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 flex items-center justify-center transition mx-auto"
                                                 title="Tindakan"
                                             >
-                                                <i class="ti ti-dots-vertical text-sm"></i>
+                                                <i
+                                                    class="ti ti-dots-vertical text-sm"
+                                                ></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -517,8 +600,8 @@
         style="
             left: {menuPos.left}px;
             {menuPos.above
-                ? `bottom: calc(100vh - ${menuPos.top}px);`
-                : `top: ${menuPos.top}px;`}
+            ? `bottom: calc(100vh - ${menuPos.top}px);`
+            : `top: ${menuPos.top}px;`}
         "
         onclick={(e) => e.stopPropagation()}
     >
@@ -541,7 +624,9 @@
         <button
             onclick={() => customer && toggleStatus(customer)}
             class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
-                {isActive ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'}"
+                {isActive
+                ? 'text-amber-600 hover:bg-amber-50'
+                : 'text-emerald-600 hover:bg-emerald-50'}"
         >
             <i class="ti {isActive ? 'ti-ban' : 'ti-check'} w-4"></i>
             {isActive ? 'Nonaktifkan' : 'Aktifkan'}
@@ -572,8 +657,12 @@
         class="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
     >
         <!-- Drawer header -->
-        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h3 class="font-outfit font-black text-lg text-slate-800">Detail Pelanggan</h3>
+        <div
+            class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+        >
+            <h3 class="font-outfit font-black text-lg text-slate-800">
+                Detail Pelanggan
+            </h3>
             <button
                 onclick={() => (drawerOpen = false)}
                 class="p-1 text-slate-400 hover:text-slate-700 transition"
@@ -593,52 +682,83 @@
                         class="w-20 h-20 rounded-full object-cover ring-4 ring-slate-100 shadow-md"
                     />
                 {:else}
-                    <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-brand-blueRoyal to-sky-500 text-white flex items-center justify-center text-2xl font-black shadow-md">
+                    <div
+                        class="w-20 h-20 rounded-full bg-gradient-to-tr from-brand-blueRoyal to-sky-500 text-white flex items-center justify-center text-2xl font-black shadow-md"
+                    >
                         {getInitials(drawerCustomer.name)}
                     </div>
                 {/if}
                 <div>
-                    <p class="font-black text-slate-800 text-xl font-outfit">{drawerCustomer.name}</p>
-                    <p class="text-sm text-slate-400 mt-0.5">{drawerCustomer.email}</p>
-                    <span class="mt-2 inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
+                    <p class="font-black text-slate-800 text-xl font-outfit">
+                        {drawerCustomer.name}
+                    </p>
+                    <p class="text-sm text-slate-400 mt-0.5">
+                        {drawerCustomer.email}
+                    </p>
+                    <span
+                        class="mt-2 inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
                         {(drawerCustomer.is_active ?? true)
                             ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
-                            : 'bg-slate-50 text-slate-500 border border-slate-200/50'}">
-                        {(drawerCustomer.is_active ?? true) ? 'Aktif' : 'Nonaktif'}
+                            : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
+                    >
+                        {(drawerCustomer.is_active ?? true)
+                            ? 'Aktif'
+                            : 'Nonaktif'}
                     </span>
                 </div>
             </div>
 
             <!-- Stats row -->
             <div class="grid grid-cols-2 gap-3">
-                <div class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-center">
-                    <p class="text-2xl font-black text-indigo-600 font-outfit">{drawerCustomer.transactions_count ?? 0}</p>
-                    <p class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider mt-0.5">Transaksi</p>
+                <div
+                    class="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 text-center"
+                >
+                    <p class="text-2xl font-black text-indigo-600 font-outfit">
+                        {drawerCustomer.transactions_count ?? 0}
+                    </p>
+                    <p
+                        class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider mt-0.5"
+                    >
+                        Transaksi
+                    </p>
                 </div>
-                <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-center">
-                    <p class="text-2xl font-black text-amber-600 font-outfit">{(drawerCustomer.coins_balance ?? 0).toLocaleString('id-ID')}</p>
-                    <p class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mt-0.5">Koin</p>
+                <div
+                    class="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-center"
+                >
+                    <p class="text-2xl font-black text-amber-600 font-outfit">
+                        {(drawerCustomer.coins_balance ?? 0).toLocaleString(
+                            'id-ID',
+                        )}
+                    </p>
+                    <p
+                        class="text-[11px] font-bold text-amber-400 uppercase tracking-wider mt-0.5"
+                    >
+                        Koin
+                    </p>
                 </div>
             </div>
 
             <!-- Detail info list -->
             <div class="space-y-3">
-                {#each [
-                    { icon: 'ti-phone', label: 'No. HP', value: drawerCustomer.phone_number || '—' },
-                    { icon: 'ti-gender-bigender', label: 'Gender', value: getGenderLabel(drawerCustomer.gender)?.label || '—' },
-                    { icon: 'ti-cake', label: 'Tanggal Lahir', value: drawerCustomer.birth_date
-                        ? `${formatDate(drawerCustomer.birth_date)} (${calculateAge(drawerCustomer.birth_date)} tahun)`
-                        : '—' },
-                    { icon: 'ti-calendar-plus', label: 'Bergabung', value: formatDate(drawerCustomer.created_at) || '—' },
-                    { icon: 'ti-clock', label: 'Terakhir Aktif', value: formatDateTime(drawerCustomer.last_active_at) },
-                ] as info}
+                {#each [{ icon: 'ti-phone', label: 'No. HP', value: drawerCustomer.phone_number || '—' }, { icon: 'ti-gender-bigender', label: 'Gender', value: getGenderLabel(drawerCustomer.gender)?.label || '—' }, { icon: 'ti-cake', label: 'Tanggal Lahir', value: drawerCustomer.birth_date ? `${formatDate(drawerCustomer.birth_date)} (${calculateAge(drawerCustomer.birth_date)} tahun)` : '—' }, { icon: 'ti-calendar-plus', label: 'Bergabung', value: formatDate(drawerCustomer.created_at) || '—' }, { icon: 'ti-clock', label: 'Terakhir Aktif', value: formatDateTime(drawerCustomer.last_active_at) }] as info}
                     <div class="flex items-start gap-3">
-                        <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                            <i class="ti {info.icon} text-slate-500 text-sm"></i>
+                        <div
+                            class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center shrink-0"
+                        >
+                            <i class="ti {info.icon} text-slate-500 text-sm"
+                            ></i>
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{info.label}</p>
-                            <p class="text-sm font-semibold text-slate-700 mt-0.5">{info.value}</p>
+                            <p
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                            >
+                                {info.label}
+                            </p>
+                            <p
+                                class="text-sm font-semibold text-slate-700 mt-0.5"
+                            >
+                                {info.value}
+                            </p>
                         </div>
                     </div>
                 {/each}

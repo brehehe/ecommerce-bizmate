@@ -193,7 +193,9 @@
         const spaceBelow = viewportH - rect.bottom;
         const above = spaceBelow < 180;
         menuPos = {
-            top: above ? rect.top + window.scrollY - 4 : rect.bottom + window.scrollY + 4,
+            top: above
+                ? rect.top + window.scrollY - 4
+                : rect.bottom + window.scrollY + 4,
             left: rect.right + window.scrollX - 160, // align right edge
             above,
         };
@@ -347,11 +349,19 @@
 
                 {#if users.data.length === 0}
                     <div class="py-16 text-center">
-                        <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                            <i class="ti ti-shield-alert text-2xl text-slate-300"></i>
+                        <div
+                            class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4"
+                        >
+                            <i
+                                class="ti ti-shield-alert text-2xl text-slate-300"
+                            ></i>
                         </div>
-                        <p class="font-bold text-slate-400 font-outfit">Tidak ada akun admin yang cocok.</p>
-                        <p class="text-xs text-slate-300 mt-1">Coba ubah filter atau kata kunci pencarian.</p>
+                        <p class="font-bold text-slate-400 font-outfit">
+                            Tidak ada akun admin yang cocok.
+                        </p>
+                        <p class="text-xs text-slate-300 mt-1">
+                            Coba ubah filter atau kata kunci pencarian.
+                        </p>
                     </div>
                 {:else}
                     <!-- Table Area -->
@@ -412,7 +422,9 @@
 
                                         <!-- User info -->
                                         <td class="py-4 px-6">
-                                            <div class="flex items-center gap-3">
+                                            <div
+                                                class="flex items-center gap-3"
+                                            >
                                                 <!-- Avatar: photo or initials -->
                                                 {#if admin.avatar}
                                                     <img
@@ -424,14 +436,20 @@
                                                     <div
                                                         class="w-10 h-10 rounded-full bg-gradient-to-tr {roleStyles.avatar} text-white flex items-center justify-center text-xs font-black shadow-sm shrink-0"
                                                     >
-                                                        {getInitials(admin.name)}
+                                                        {getInitials(
+                                                            admin.name,
+                                                        )}
                                                     </div>
                                                 {/if}
                                                 <div>
-                                                    <p class="text-sm font-bold text-slate-800 leading-tight">
+                                                    <p
+                                                        class="text-sm font-bold text-slate-800 leading-tight"
+                                                    >
                                                         {admin.name}
                                                     </p>
-                                                    <p class="text-[11px] text-slate-400 mt-0.5">
+                                                    <p
+                                                        class="text-[11px] text-slate-400 mt-0.5"
+                                                    >
                                                         {admin.email}
                                                     </p>
                                                 </div>
@@ -450,31 +468,45 @@
                                         <!-- Phone -->
                                         <td class="py-4 px-6">
                                             {#if admin.phone_number}
-                                                <span class="text-xs text-slate-600 font-medium flex items-center gap-1">
-                                                    <i class="ti ti-phone text-slate-300"></i>
+                                                <span
+                                                    class="text-xs text-slate-600 font-medium flex items-center gap-1"
+                                                >
+                                                    <i
+                                                        class="ti ti-phone text-slate-300"
+                                                    ></i>
                                                     {admin.phone_number}
                                                 </span>
                                             {:else}
-                                                <span class="text-xs text-slate-300 italic">—</span>
+                                                <span
+                                                    class="text-xs text-slate-300 italic"
+                                                    >—</span
+                                                >
                                             {/if}
                                         </td>
 
                                         <!-- Join date -->
                                         <td class="py-4 px-6">
-                                            <span class="text-xs text-slate-500 whitespace-nowrap">
-                                                {formatDate(admin.created_at) ?? '—'}
+                                            <span
+                                                class="text-xs text-slate-500 whitespace-nowrap"
+                                            >
+                                                {formatDate(admin.created_at) ??
+                                                    '—'}
                                             </span>
                                         </td>
 
                                         <!-- Last active -->
                                         <td class="py-4 px-6">
-                                            <span class="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap">
+                                            <span
+                                                class="text-xs text-slate-500 flex items-center gap-1.5 whitespace-nowrap"
+                                            >
                                                 <span
                                                     class="w-1.5 h-1.5 rounded-full shrink-0 {isActive
                                                         ? 'bg-emerald-400'
                                                         : 'bg-slate-300'}"
                                                 ></span>
-                                                {formatDateTime(admin.last_active_at)}
+                                                {formatDateTime(
+                                                    admin.last_active_at,
+                                                )}
                                             </span>
                                         </td>
 
@@ -485,18 +517,23 @@
                                                     ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
                                                     : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
                                             >
-                                                {isActive ? 'Aktif' : 'Nonaktif'}
+                                                {isActive
+                                                    ? 'Aktif'
+                                                    : 'Nonaktif'}
                                             </span>
                                         </td>
 
                                         <!-- Actions dropdown -->
                                         <td class="py-4 px-6 text-center">
                                             <button
-                                                onclick={(e) => openMenu(e, admin.id)}
+                                                onclick={(e) =>
+                                                    openMenu(e, admin.id)}
                                                 class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 flex items-center justify-center transition mx-auto"
                                                 title="Tindakan"
                                             >
-                                                <i class="ti ti-dots-vertical text-sm"></i>
+                                                <i
+                                                    class="ti ti-dots-vertical text-sm"
+                                                ></i>
                                             </button>
                                         </td>
                                     </tr>
@@ -527,8 +564,8 @@
         style="
             left: {menuPos.left}px;
             {menuPos.above
-                ? `bottom: calc(100vh - ${menuPos.top}px);`
-                : `top: ${menuPos.top}px;`}
+            ? `bottom: calc(100vh - ${menuPos.top}px);`
+            : `top: ${menuPos.top}px;`}
         "
         onclick={(e) => e.stopPropagation()}
     >
@@ -545,10 +582,10 @@
             disabled={isSuperAdmin}
             class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
                 {isSuperAdmin
-                    ? 'text-slate-300 cursor-not-allowed'
-                    : isActive
-                      ? 'text-amber-600 hover:bg-amber-50'
-                      : 'text-emerald-600 hover:bg-emerald-50'}"
+                ? 'text-slate-300 cursor-not-allowed'
+                : isActive
+                  ? 'text-amber-600 hover:bg-amber-50'
+                  : 'text-emerald-600 hover:bg-emerald-50'}"
         >
             <i class="ti {isActive ? 'ti-ban' : 'ti-check'} w-4"></i>
             {isActive ? 'Nonaktifkan' : 'Aktifkan'}
@@ -571,8 +608,8 @@
             disabled={isSuperAdmin}
             class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
                 {isSuperAdmin
-                    ? 'text-slate-300 cursor-not-allowed'
-                    : 'text-rose-600 hover:bg-rose-50'}"
+                ? 'text-slate-300 cursor-not-allowed'
+                : 'text-rose-600 hover:bg-rose-50'}"
         >
             <i class="ti ti-trash w-4"></i>
             Hapus Akun

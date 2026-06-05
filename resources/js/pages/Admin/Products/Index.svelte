@@ -9,7 +9,9 @@
 
     const page = usePage();
     let globalTaxEnabled = $derived(page.props.settings?.tax_enabled ?? false);
-    let globalTaxPercentage = $derived(page.props.settings?.tax_percentage ?? 0);
+    let globalTaxPercentage = $derived(
+        page.props.settings?.tax_percentage ?? 0,
+    );
 
     let isImportModalOpen = $state(false);
     let importFile = $state(null);
@@ -28,7 +30,7 @@
         // Simple delimiter detection
         let delimiter = ',';
         const firstLine = text.split(/\r?\n/)[0] || '';
-        
+
         // If sep=X line is present, use X as delimiter
         let hasSepLine = false;
         if (firstLine.trim().toLowerCase().startsWith('sep=')) {
@@ -47,7 +49,7 @@
         }
 
         const lines = [];
-        let row = [""];
+        let row = [''];
         let insideQuote = false;
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
@@ -60,18 +62,18 @@
                     insideQuote = !insideQuote;
                 }
             } else if (char === delimiter && !insideQuote) {
-                row.push("");
+                row.push('');
             } else if ((char === '\r' || char === '\n') && !insideQuote) {
                 if (char === '\r' && nextChar === '\n') {
                     i++;
                 }
                 lines.push(row);
-                row = [""];
+                row = [''];
             } else {
                 row[row.length - 1] += char;
             }
         }
-        if (row.length > 1 || row[0] !== "") {
+        if (row.length > 1 || row[0] !== '') {
             lines.push(row);
         }
 
@@ -82,7 +84,6 @@
 
         return lines;
     }
-
 
     function handleFileChange(e) {
         const file = e.target.files?.[0];
@@ -100,8 +101,8 @@
                     return;
                 }
 
-                const headers = rows[0].map(h => h.trim().toLowerCase());
-                
+                const headers = rows[0].map((h) => h.trim().toLowerCase());
+
                 // Map header names to indices
                 const headerMap = {
                     name: headers.indexOf('nama produk'),
@@ -127,11 +128,12 @@
                     var2_name: headers.indexOf('variasi 2 nama'),
                     var2_val: headers.indexOf('variasi 2 nilai'),
                     var_price: headers.indexOf('harga varian'),
-                    var_stock: headers.indexOf('stok varian')
+                    var_stock: headers.indexOf('stok varian'),
                 };
 
                 if (headerMap.name === -1 || headerMap.sku === -1) {
-                    importError = 'Kolom wajib "Nama Produk" dan "SKU" tidak ditemukan di file CSV.';
+                    importError =
+                        'Kolom wajib "Nama Produk" dan "SKU" tidak ditemukan di file CSV.';
                     return;
                 }
 
@@ -146,7 +148,10 @@
                     if (!name) continue;
 
                     // Parse specifications: "Bahan: Kayu Solid; Tahan Air: Ya"
-                    const specRaw = headerMap.specifications !== -1 ? row[headerMap.specifications] || '' : '';
+                    const specRaw =
+                        headerMap.specifications !== -1
+                            ? row[headerMap.specifications] || ''
+                            : '';
                     const specifications = {};
                     if (specRaw.trim()) {
                         const pairs = specRaw.split(';');
@@ -154,7 +159,8 @@
                             const pair = pairs[pIdx];
                             const parts = pair.split(':');
                             if (parts.length >= 2) {
-                                specifications[parts[0].trim()] = parts[1].trim();
+                                specifications[parts[0].trim()] =
+                                    parts[1].trim();
                             }
                         }
                     }
@@ -163,61 +169,150 @@
                         productsMap[sku] = {
                             name: name,
                             sku: sku,
-                            category_names: headerMap.categories !== -1 ? row[headerMap.categories] || '' : '',
-                            brand_name: headerMap.brand !== -1 ? row[headerMap.brand] || '' : '',
-                            summary: headerMap.summary !== -1 ? row[headerMap.summary] || '' : '',
-                            price: headerMap.price !== -1 ? parseFloat(row[headerMap.price]) || 0 : 0,
-                            cost: headerMap.cost !== -1 ? parseFloat(row[headerMap.cost]) || null : null,
-                            stock: headerMap.stock !== -1 ? parseInt(row[headerMap.stock]) || 0 : 0,
-                            min_stock: headerMap.min_stock !== -1 ? parseInt(row[headerMap.min_stock]) || 0 : 0,
-                            min_purchase: headerMap.min_purchase !== -1 ? parseInt(row[headerMap.min_purchase]) || 1 : 1,
-                            weight: headerMap.weight !== -1 ? parseInt(row[headerMap.weight]) || 0 : 0,
-                            length: headerMap.length !== -1 ? parseInt(row[headerMap.length]) || 0 : 0,
-                            width: headerMap.width !== -1 ? parseInt(row[headerMap.width]) || 0 : 0,
-                            height: headerMap.height !== -1 ? parseInt(row[headerMap.height]) || 0 : 0,
-                            description: headerMap.description !== -1 ? row[headerMap.description] || 'Impor dari CSV' : 'Impor dari CSV',
-                            is_digital: headerMap.is_digital !== -1 ? (row[headerMap.is_digital] === '1' || row[headerMap.is_digital]?.toLowerCase() === 'ya') : false,
-                            is_unlimited: headerMap.is_unlimited !== -1 ? (row[headerMap.is_unlimited] === '1' || row[headerMap.is_unlimited]?.toLowerCase() === 'ya') : false,
+                            category_names:
+                                headerMap.categories !== -1
+                                    ? row[headerMap.categories] || ''
+                                    : '',
+                            brand_name:
+                                headerMap.brand !== -1
+                                    ? row[headerMap.brand] || ''
+                                    : '',
+                            summary:
+                                headerMap.summary !== -1
+                                    ? row[headerMap.summary] || ''
+                                    : '',
+                            price:
+                                headerMap.price !== -1
+                                    ? parseFloat(row[headerMap.price]) || 0
+                                    : 0,
+                            cost:
+                                headerMap.cost !== -1
+                                    ? parseFloat(row[headerMap.cost]) || null
+                                    : null,
+                            stock:
+                                headerMap.stock !== -1
+                                    ? parseInt(row[headerMap.stock]) || 0
+                                    : 0,
+                            min_stock:
+                                headerMap.min_stock !== -1
+                                    ? parseInt(row[headerMap.min_stock]) || 0
+                                    : 0,
+                            min_purchase:
+                                headerMap.min_purchase !== -1
+                                    ? parseInt(row[headerMap.min_purchase]) || 1
+                                    : 1,
+                            weight:
+                                headerMap.weight !== -1
+                                    ? parseInt(row[headerMap.weight]) || 0
+                                    : 0,
+                            length:
+                                headerMap.length !== -1
+                                    ? parseInt(row[headerMap.length]) || 0
+                                    : 0,
+                            width:
+                                headerMap.width !== -1
+                                    ? parseInt(row[headerMap.width]) || 0
+                                    : 0,
+                            height:
+                                headerMap.height !== -1
+                                    ? parseInt(row[headerMap.height]) || 0
+                                    : 0,
+                            description:
+                                headerMap.description !== -1
+                                    ? row[headerMap.description] ||
+                                      'Impor dari CSV'
+                                    : 'Impor dari CSV',
+                            is_digital:
+                                headerMap.is_digital !== -1
+                                    ? row[headerMap.is_digital] === '1' ||
+                                      row[
+                                          headerMap.is_digital
+                                      ]?.toLowerCase() === 'ya'
+                                    : false,
+                            is_unlimited:
+                                headerMap.is_unlimited !== -1
+                                    ? row[headerMap.is_unlimited] === '1' ||
+                                      row[
+                                          headerMap.is_unlimited
+                                      ]?.toLowerCase() === 'ya'
+                                    : false,
                             specifications: specifications,
                             variations: [],
-                            variants: []
+                            variants: [],
                         };
                     }
 
                     const p = productsMap[sku];
 
                     // Process variations and variants
-                    const var1Name = headerMap.var1_name !== -1 ? row[headerMap.var1_name]?.trim() : '';
-                    const var1Val = headerMap.var1_val !== -1 ? row[headerMap.var1_val]?.trim() : '';
-                    const var2Name = headerMap.var2_name !== -1 ? row[headerMap.var2_name]?.trim() : '';
-                    const var2Val = headerMap.var2_val !== -1 ? row[headerMap.var2_val]?.trim() : '';
+                    const var1Name =
+                        headerMap.var1_name !== -1
+                            ? row[headerMap.var1_name]?.trim()
+                            : '';
+                    const var1Val =
+                        headerMap.var1_val !== -1
+                            ? row[headerMap.var1_val]?.trim()
+                            : '';
+                    const var2Name =
+                        headerMap.var2_name !== -1
+                            ? row[headerMap.var2_name]?.trim()
+                            : '';
+                    const var2Val =
+                        headerMap.var2_val !== -1
+                            ? row[headerMap.var2_val]?.trim()
+                            : '';
 
                     if (var1Name && var1Val) {
-                        let v1 = p.variations.find(v => v.name.toLowerCase() === var1Name.toLowerCase());
+                        let v1 = p.variations.find(
+                            (v) =>
+                                v.name.toLowerCase() === var1Name.toLowerCase(),
+                        );
                         if (!v1) {
                             v1 = { name: var1Name, options: [] };
                             p.variations.push(v1);
                         }
-                        if (!v1.options.find(o => o.name.toLowerCase() === var1Val.toLowerCase())) {
+                        if (
+                            !v1.options.find(
+                                (o) =>
+                                    o.name.toLowerCase() ===
+                                    var1Val.toLowerCase(),
+                            )
+                        ) {
                             v1.options.push({ id: var1Val, name: var1Val });
                         }
 
                         let optionComboId = var1Val;
 
                         if (var2Name && var2Val) {
-                            let v2 = p.variations.find(v => v.name.toLowerCase() === var2Name.toLowerCase());
+                            let v2 = p.variations.find(
+                                (v) =>
+                                    v.name.toLowerCase() ===
+                                    var2Name.toLowerCase(),
+                            );
                             if (!v2) {
                                 v2 = { name: var2Name, options: [] };
                                 p.variations.push(v2);
                             }
-                            if (!v2.options.find(o => o.name.toLowerCase() === var2Val.toLowerCase())) {
+                            if (
+                                !v2.options.find(
+                                    (o) =>
+                                        o.name.toLowerCase() ===
+                                        var2Val.toLowerCase(),
+                                )
+                            ) {
                                 v2.options.push({ id: var2Val, name: var2Val });
                             }
                             optionComboId = `${var1Val}_${var2Val}`;
                         }
 
-                        const varPrice = headerMap.var_price !== -1 ? parseFloat(row[headerMap.var_price]) || null : null;
-                        const varStock = headerMap.var_stock !== -1 ? parseInt(row[headerMap.var_stock]) || null : null;
+                        const varPrice =
+                            headerMap.var_price !== -1
+                                ? parseFloat(row[headerMap.var_price]) || null
+                                : null;
+                        const varStock =
+                            headerMap.var_stock !== -1
+                                ? parseInt(row[headerMap.var_stock]) || null
+                                : null;
 
                         p.variants.push({
                             id: optionComboId,
@@ -227,18 +322,20 @@
                             stock: varStock,
                             is_custom: varPrice !== null || varStock !== null,
                             custom_price: varPrice !== null,
-                            custom_stock: varStock !== null
+                            custom_stock: varStock !== null,
                         });
                     }
                 }
 
                 previewProducts = Object.values(productsMap);
                 if (previewProducts.length === 0) {
-                    importError = 'Tidak ada produk yang valid untuk di-import.';
+                    importError =
+                        'Tidak ada produk yang valid untuk di-import.';
                 }
             } catch (err) {
                 console.error(err);
-                importError = 'Gagal memproses file CSV. Pastikan format file benar.';
+                importError =
+                    'Gagal memproses file CSV. Pastikan format file benar.';
             }
         };
         reader.readAsText(file);
@@ -250,10 +347,10 @@
         importError = '';
 
         // Inject tax settings into all products in payload
-        const finalPayload = previewProducts.map(p => {
+        const finalPayload = previewProducts.map((p) => {
             return {
                 ...p,
-                tax_enabled: importTaxEnabled
+                tax_enabled: importTaxEnabled,
             };
         });
 
@@ -262,14 +359,19 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN':
+                        document.querySelector('meta[name="csrf-token"]')
+                            ?.content || '',
                 },
-                body: JSON.stringify({ products: finalPayload })
+                body: JSON.stringify({ products: finalPayload }),
             });
 
             if (response.ok) {
-                showToast(`${finalPayload.length} produk berhasil di-import.`, 'success');
+                showToast(
+                    `${finalPayload.length} produk berhasil di-import.`,
+                    'success',
+                );
                 isImportModalOpen = false;
                 importFile = null;
                 previewProducts = [];
@@ -448,7 +550,7 @@
                 </div>
                 <div class="flex items-center gap-2.5 w-full sm:w-auto">
                     <button
-                        onclick={() => isImportModalOpen = true}
+                        onclick={() => (isImportModalOpen = true)}
                         class="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition cursor-pointer"
                     >
                         <i class="ti ti-file-import"></i> Import
@@ -559,7 +661,8 @@
                                     class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none min-h-[44px]"
                                 >
                                     <option value="all">Status: Semua</option>
-                                    <option value="active">Status: Aktif</option>
+                                    <option value="active">Status: Aktif</option
+                                    >
                                     <option value="draft">Status: Draft</option>
                                 </select>
                             </div>
@@ -731,8 +834,15 @@
                                                         SKU Induk: {product.sku}
                                                     </p>
                                                     {#if product.brands && product.brands.length > 0}
-                                                        <p class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5">
-                                                            Merek: {product.brands.map(b => b.name).join(', ')}
+                                                        <p
+                                                            class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5"
+                                                        >
+                                                            Merek: {product.brands
+                                                                .map(
+                                                                    (b) =>
+                                                                        b.name,
+                                                                )
+                                                                .join(', ')}
                                                         </p>
                                                     {/if}
                                                     {#if hasVariants}
@@ -780,24 +890,37 @@
                                         </td>
                                         <td class="px-3 xl:px-4 py-4">
                                             {#if product.categories && product.categories.length > 0}
-                                                <div class="flex flex-wrap gap-1 max-w-[120px]">
+                                                <div
+                                                    class="flex flex-wrap gap-1 max-w-[120px]"
+                                                >
                                                     <span
                                                         class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 truncate max-w-[90px]"
-                                                        title={product.categories[0].name}
+                                                        title={product
+                                                            .categories[0].name}
                                                     >
-                                                        {product.categories[0].name}
+                                                        {product.categories[0]
+                                                            .name}
                                                     </span>
                                                     {#if product.categories.length > 1}
                                                         <span
                                                             class="inline-flex items-center px-1.5 py-0.5 bg-brand-blueLight text-brand-blueRoyal border border-blue-100 rounded-lg text-[9px] font-extrabold"
-                                                            title={product.categories.map(c => c.name).join(', ')}
+                                                            title={product.categories
+                                                                .map(
+                                                                    (c) =>
+                                                                        c.name,
+                                                                )
+                                                                .join(', ')}
                                                         >
-                                                            +{product.categories.length - 1}
+                                                            +{product.categories
+                                                                .length - 1}
                                                         </span>
                                                     {/if}
                                                 </div>
                                             {:else}
-                                                <span class="text-slate-300 font-semibold text-xs">-</span>
+                                                <span
+                                                    class="text-slate-300 font-semibold text-xs"
+                                                    >-</span
+                                                >
                                             {/if}
                                         </td>
                                         <td class="px-3 xl:px-4 py-4">
@@ -1150,7 +1273,11 @@
                                         >
                                             {product.categories[0].name}
                                             {#if product.categories.length > 1}
-                                                <span class="text-brand-blueRoyal ml-0.5 font-extrabold text-[8px]">(+{product.categories.length - 1})</span>
+                                                <span
+                                                    class="text-brand-blueRoyal ml-0.5 font-extrabold text-[8px]"
+                                                    >(+{product.categories
+                                                        .length - 1})</span
+                                                >
                                             {/if}
                                         </span>
                                     {:else}
@@ -1252,8 +1379,12 @@
                                                         : 'SKU'}: {product.sku}
                                                 </p>
                                                 {#if product.brands && product.brands.length > 0}
-                                                    <p class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5">
-                                                        {product.brands.map(b => b.name).join(', ')}
+                                                    <p
+                                                        class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5"
+                                                    >
+                                                        {product.brands
+                                                            .map((b) => b.name)
+                                                            .join(', ')}
                                                     </p>
                                                 {/if}
                                             </div>
@@ -1486,539 +1617,1404 @@
                 <!-- Pagination -->
                 <Pagination paginator={products} />
             </div>
-            </main>
+        </main>
     </div>
 
     <!-- Import Modal -->
     {#if isImportModalOpen}
-        <div class="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden animate-in fade-in duration-200" transition:fade={{ duration: 150 }}>
+        <div
+            class="fixed inset-0 z-50 bg-white flex flex-col overflow-hidden animate-in fade-in duration-200"
+            transition:fade={{ duration: 150 }}
+        >
             <!-- Header -->
-            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
-                    <div>
-                        <h4 class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2">
-                            <i class="ti ti-file-import text-brand-blueRoyal text-xl"></i>
-                            Import Katalog Produk
-                        </h4>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                            Unggah produk massal via file spreadsheet CSV
-                        </p>
-                    </div>
-                    <button
-                        onclick={() => !isImporting && (isImportModalOpen = false)}
-                        class="w-8 h-8 rounded-full flex items-center justify-center border border-slate-200 hover:bg-slate-50 transition cursor-pointer text-slate-400 hover:text-slate-600"
-                        disabled={isImporting}
+            <div
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50"
+            >
+                <div>
+                    <h4
+                        class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2"
                     >
-                        <i class="ti ti-x text-sm"></i>
-                    </button>
+                        <i
+                            class="ti ti-file-import text-brand-blueRoyal text-xl"
+                        ></i>
+                        Import Katalog Produk
+                    </h4>
+                    <p
+                        class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5"
+                    >
+                        Unggah produk massal via file spreadsheet CSV
+                    </p>
                 </div>
+                <button
+                    onclick={() => !isImporting && (isImportModalOpen = false)}
+                    class="w-8 h-8 rounded-full flex items-center justify-center border border-slate-200 hover:bg-slate-50 transition cursor-pointer text-slate-400 hover:text-slate-600"
+                    disabled={isImporting}
+                >
+                    <i class="ti ti-x text-sm"></i>
+                </button>
+            </div>
 
-                <!-- Body -->
-                <div class="flex-grow flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden bg-slate-50">
-                    <!-- Step 1: Download & Upload (Sidebar Pane) -->
-                    <div class="w-full lg:w-96 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col lg:overflow-y-auto p-6 space-y-5 shrink-0">
-                        <!-- Download Template Card -->
-                        <div class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs">
-                            <h5 class="text-xs font-black text-slate-700 flex items-center gap-1.5 mb-1.5 font-outfit uppercase tracking-wider">
-                                <i class="ti ti-download text-sm text-brand-blueRoyal"></i>
-                                1. Format Excel / CSV
-                            </h5>
-                            <p class="text-[11px] text-slate-500 leading-relaxed mb-4">
-                                Gunakan template resmi kami agar format kolom sesuai dan proses impor berhasil tanpa kendala.
-                            </p>
-                            <a 
-                                href="/admin/products/import/template" 
-                                class="w-full justify-center flex items-center gap-2 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition duration-150 cursor-pointer"
+            <!-- Body -->
+            <div
+                class="flex-grow flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden bg-slate-50"
+            >
+                <!-- Step 1: Download & Upload (Sidebar Pane) -->
+                <div
+                    class="w-full lg:w-96 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50 flex flex-col lg:overflow-y-auto p-6 space-y-5 shrink-0"
+                >
+                    <!-- Download Template Card -->
+                    <div
+                        class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs"
+                    >
+                        <h5
+                            class="text-xs font-black text-slate-700 flex items-center gap-1.5 mb-1.5 font-outfit uppercase tracking-wider"
+                        >
+                            <i
+                                class="ti ti-download text-sm text-brand-blueRoyal"
+                            ></i>
+                            1. Format Excel / CSV
+                        </h5>
+                        <p
+                            class="text-[11px] text-slate-500 leading-relaxed mb-4"
+                        >
+                            Gunakan template resmi kami agar format kolom sesuai
+                            dan proses impor berhasil tanpa kendala.
+                        </p>
+                        <a
+                            href="/admin/products/import/template"
+                            class="w-full justify-center flex items-center gap-2 py-2.5 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition duration-150 cursor-pointer"
+                        >
+                            <i
+                                class="ti ti-file-spreadsheet text-sm text-emerald-600"
+                            ></i> Download Template CSV
+                        </a>
+                    </div>
+
+                    <!-- Upload Area -->
+                    <div
+                        class="p-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center shadow-2xs"
+                    >
+                        <input
+                            type="file"
+                            id="import-file-input"
+                            accept=".csv"
+                            class="hidden"
+                            onchange={handleFileChange}
+                        />
+                        <i
+                            class="ti ti-cloud-upload text-3xl text-slate-400 mb-2"
+                        ></i>
+                        <h5
+                            class="text-xs font-black text-slate-700 mb-1 font-outfit uppercase tracking-wider"
+                        >
+                            2. Pilih File CSV
+                        </h5>
+                        <p
+                            class="text-[10px] text-slate-400 max-w-xs leading-normal mb-4"
+                        >
+                            Seret file ke sini atau klik tombol untuk memilih
+                            berkas dari komputer Anda.
+                        </p>
+                        <button
+                            type="button"
+                            onclick={triggerFileSelect}
+                            class="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition duration-150 cursor-pointer"
+                        >
+                            Pilih Berkas
+                        </button>
+                        {#if importFile}
+                            <div
+                                class="mt-3 flex items-center gap-1.5 text-xs text-brand-blueRoyal bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100 max-w-full truncate"
                             >
-                                <i class="ti ti-file-spreadsheet text-sm text-emerald-600"></i> Download Template CSV
-                            </a>
-                        </div>
-
-                        <!-- Upload Area -->
-                        <div class="p-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center shadow-2xs">
-                            <input 
-                                type="file" 
-                                id="import-file-input" 
-                                accept=".csv" 
-                                class="hidden" 
-                                onchange={handleFileChange}
-                            />
-                            <i class="ti ti-cloud-upload text-3xl text-slate-400 mb-2"></i>
-                            <h5 class="text-xs font-black text-slate-700 mb-1 font-outfit uppercase tracking-wider">2. Pilih File CSV</h5>
-                            <p class="text-[10px] text-slate-400 max-w-xs leading-normal mb-4">
-                                Seret file ke sini atau klik tombol untuk memilih berkas dari komputer Anda.
-                            </p>
-                            <button 
-                                type="button"
-                                onclick={triggerFileSelect}
-                                class="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition duration-150 cursor-pointer"
-                            >
-                                Pilih Berkas
-                            </button>
-                            {#if importFile}
-                                <div class="mt-3 flex items-center gap-1.5 text-xs text-brand-blueRoyal bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100 max-w-full truncate">
-                                    <i class="ti ti-file-check text-sm"></i>
-                                    <span class="truncate font-semibold">{importFile.name}</span>
-                                </div>
-                            {/if}
-                        </div>
-
-                        <!-- Tax Settings Toggle -->
-                        {#if globalTaxEnabled}
-                            <div class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs">
-                                <Toggle
-                                    bind:checked={importTaxEnabled}
-                                    label="Belum Termasuk Pajak"
-                                    description="Aktifkan jika harga dalam file CSV belum ditambah pajak PPN {globalTaxPercentage}%"
-                                    icon="ti-receipt-tax"
-                                />
+                                <i class="ti ti-file-check text-sm"></i>
+                                <span class="truncate font-semibold"
+                                    >{importFile.name}</span
+                                >
                             </div>
                         {/if}
                     </div>
 
-                    <!-- Step 2: Preview Area (Main Workspace Pane) -->
-                    <div class="flex-grow flex flex-col lg:overflow-y-auto p-6 bg-white space-y-4">
-                            <h5 class="text-xs font-black text-slate-700 flex items-center gap-1.5">
-                                <i class="ti ti-table text-sm text-slate-500"></i>
-                                Pratinjau Produk ({previewProducts.length} Ditemukan)
-                            </h5>
-
-                            {#if importError}
-                                <div class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-xs text-rose-700 font-medium">
-                                    <i class="ti ti-alert-circle text-lg shrink-0 mt-0.5"></i>
-                                    <div>{importError}</div>
-                                </div>
-                            {/if}
-
-                            {#if previewProducts.length === 0}
-                                <div class="border border-slate-200 bg-slate-50/50 rounded-2xl p-6 space-y-4 text-slate-600">
-                                    <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
-                                        <div class="w-10 h-10 rounded-full bg-blue-50 text-brand-blueRoyal flex items-center justify-center text-lg shrink-0">
-                                            <i class="ti ti-info-circle"></i>
-                                        </div>
-                                        <div>
-                                            <h6 class="text-xs font-black text-slate-800">Panduan Pengisian Berkas Impor</h6>
-                                            <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Harap ikuti pedoman ini agar data produk tersimpan dengan benar</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <ul class="text-[11px] space-y-2.5 list-none pl-0">
-                                        <li class="flex items-start gap-2">
-                                            <span class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5">1</span>
-                                            <span><strong>Kolom Wajib & Informasi Dasar:</strong> Kolom <code class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700 font-mono text-[10px]">Nama Produk</code>, <code class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700 font-mono text-[10px]">SKU</code>, dan <code class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700 font-mono text-[10px]">Deskripsi</code> wajib diisi. Tambahkan penjelasan singkat pada <code class="text-slate-700">Ringkasan Singkat</code> untuk ditampilkan di halaman list.</span>
-                                        </li>
-                                        <li class="flex items-start gap-2">
-                                            <span class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5">2</span>
-                                            <span><strong>Kategori & Brand:</strong> Pisahkan kategori dengan koma (misal: <code class="text-slate-700">Pakaian, Kaos</code>). Kategori & Brand baru akan otomatis dibuat oleh sistem jika belum terdaftar.</span>
-                                        </li>
-                                        <li class="flex items-start gap-2">
-                                            <span class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5">3</span>
-                                            <span><strong>Harga, Batas Minimum & Min Beli:</strong> Tulis angka murni tanpa titik/koma (misal: <code class="text-slate-700">150000</code>). Kolom <code class="text-slate-700">Batas Minimum</code> untuk pengingat stok menipis dan <code class="text-slate-700">Min Pembelian</code> untuk jumlah minimum pembelian oleh customer.</span>
-                                        </li>
-                                        <li class="flex items-start gap-2">
-                                            <span class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5">4</span>
-                                            <span><strong>Spesifikasi & Atribut:</strong> Tuliskan spesifikasi produk dengan format pasangan <code class="text-slate-700">Nama: Nilai</code> dipisahkan oleh titik koma (contoh: <code class="text-slate-700">Material: Kayu Solid; Tahan Air: Ya</code>).</span>
-                                        </li>
-                                        <li class="flex items-start gap-2">
-                                            <span class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5">5</span>
-                                            <span><strong>Produk Tanpa Variasi (Tunggal):</strong> Isi kolom utama <code class="text-slate-700">Harga Jual</code>, <code class="text-slate-700">Harga Modal</code>, dan <code class="text-slate-700">Stok</code>. Biarkan kolom variasi (Variasi 1 Nama, Variasi 1 Nilai, dll) kosong (seperti baris <i>Sepeda Gunung</i> pada contoh tabel).</span>
-                                        </li>
-                                        <li class="flex items-start gap-2">
-                                            <span class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5">6</span>
-                                            <span><strong>Produk Dengan Variasi (Multi-varian):</strong></span>
-                                        </li>
-                                    </ul>
-
-                                    <div class="pl-6 text-[11px] text-slate-500 space-y-2 border-l-2 border-slate-200 ml-2">
-                                        <p>
-                                            * Tulis **SKU utama yang sama** di beberapa baris berturut-turut untuk menyatukan variasi ke dalam satu produk.
-                                        </p>
-                                        <p>
-                                            * Isi kolom variasi, misal: <code class="text-slate-700">Variasi 1 Nama: Warna</code>, <code class="text-slate-700">Variasi 1 Nilai: Merah</code>, <code class="text-slate-700">Variasi 2 Nama: Ukuran</code>, <code class="text-slate-700">Variasi 2 Nilai: M</code>.
-                                        </p>
-                                        <p>
-                                            * Tentukan <code class="text-slate-700">Harga Varian</code> dan <code class="text-slate-700">Stok Varian</code> khusus untuk kombinasi baris tersebut.
-                                        </p>
-                                    </div>
-
-                                    <!-- Visual Guide Table Preview -->
-                                    <div class="mt-4 pt-3 border-t border-slate-200">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <div class="text-[11px] font-black text-slate-700 font-outfit uppercase tracking-wider flex items-center gap-1.5">
-                                                <i class="ti ti-table-shortcut text-emerald-600"></i> Contoh Struktur Tabel Excel/CSV
-                                            </div>
-                                            <span class="text-[9px] text-slate-400 font-extrabold bg-slate-100 border border-slate-200 rounded px-2 py-0.5 uppercase tracking-wide">
-                                                Format 24 Kolom
-                                            </span>
-                                        </div>
-
-                                        <!-- Excel-like Spreadsheet Mockup Container -->
-                                        <div class="overflow-hidden rounded-xl border border-slate-300 shadow-sm bg-[#f3f2f1]">
-                                            <!-- Excel Title/Tab Bar -->
-                                            <div class="bg-[#107c41] px-3 py-2 text-white flex items-center gap-2">
-                                                <i class="ti ti-file-spreadsheet text-base text-emerald-100"></i>
-                                                <span class="text-[10px] font-bold tracking-wide font-sans">Microsoft Excel - template_import_produk.csv</span>
-                                            </div>
-                                            
-                                            <!-- Spreadsheet Toolbar Quick Settings -->
-                                            <div class="bg-[#f3f2f1] px-3 py-1.5 border-b border-slate-300 flex items-center gap-4 text-[10px] text-slate-500 font-sans select-none">
-                                                <div class="flex items-center gap-2.5 border-r border-slate-300 pr-4">
-                                                    <span class="font-bold text-slate-700 cursor-pointer">File</span>
-                                                    <span class="font-medium hover:text-slate-800 cursor-pointer">Beranda</span>
-                                                    <span class="font-medium hover:text-slate-800 cursor-pointer">Sisipkan</span>
-                                                    <span class="font-medium hover:text-slate-800 cursor-pointer">Tata Letak</span>
-                                                    <span class="font-medium hover:text-slate-800 cursor-pointer">Data</span>
-                                                </div>
-                                                <div class="flex items-center gap-2 font-mono text-[9px] text-slate-400 bg-white border border-slate-300 px-2 py-0.5 rounded shadow-2xs">
-                                                    <span class="text-slate-700 font-bold">A1</span>
-                                                    <span class="text-slate-300">|</span>
-                                                    <span class="text-slate-500">fx: Nama Produk</span>
-                                                </div>
-                                            </div>
-
-                                            <!-- Scrollable Sheet Table -->
-                                            <div class="overflow-x-auto custom-scrollbar">
-                                                <table class="w-full text-[10px] border-collapse bg-white font-mono whitespace-nowrap">
-                                                    <thead>
-                                                        <!-- Excel Column Letter Headers (A, B, C...) -->
-                                                        <tr class="bg-[#f3f2f1] text-center text-slate-500 font-semibold select-none border-b border-slate-300">
-                                                            <!-- Top-left corner cell for row numbers -->
-                                                            <th class="w-10 px-2 py-1 bg-[#e1dfdd] border-r border-b border-slate-300 text-[9px] font-bold text-slate-600"></th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">A</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">B</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">C</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">D</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">E</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">F</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">G</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">H</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">I</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">J</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">K</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">L</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">M</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">N</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">O</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">P</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">Q</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">R</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">S</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">T</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">U</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">V</th>
-                                                            <th class="px-3 py-1 border-r border-b border-slate-300">W</th>
-                                                            <th class="px-3 py-1 border-b border-slate-300">X</th>
-                                                        </tr>
-                                                        <!-- Row 1: Header Names -->
-                                                        <tr class="bg-[#f3f2f1] text-slate-700 font-bold border-b border-slate-300 text-[10px]">
-                                                            <!-- Row header '1' -->
-                                                            <td class="w-10 px-2 py-1.5 bg-[#e1dfdd] border-r border-b border-slate-300 text-center font-bold text-slate-600 select-none text-[9px]">1</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans text-[#107c41]">Nama Produk</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans text-[#107c41]">SKU</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Kategori</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Brand</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Ringkasan Singkat</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Deskripsi</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Apakah Digital</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans text-[#107c41]">Harga Jual</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Harga Modal</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Stok</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Batas Minimum</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Min Pembelian</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Apakah Unlimited Stock</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Berat (gram)</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Panjang (cm)</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Lebar (cm)</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Tinggi (cm)</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Spesifikasi</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Variasi 1 Nama</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Variasi 1 Nilai</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Variasi 2 Nama</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Variasi 2 Nilai</td>
-                                                            <td class="px-3 py-1.5 border-r border-b border-slate-300 font-sans">Harga Varian</td>
-                                                            <td class="px-3 py-1.5 border-b border-slate-300 font-sans">Stok Varian</td>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody class="text-slate-600 divide-y divide-[#e1dfdd] text-[10px]">
-                                                        <!-- Row 2: Kaos Combed 30s Red L -->
-                                                        <tr class="hover:bg-slate-50 transition-colors">
-                                                            <td class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-350 text-center font-bold text-slate-600 select-none text-[9px]">2</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800">Kaos Combed 30s</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold">COM-30S-001</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Pakaian Pria, Kaos</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">KaosKu</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Kaos combed premium super adem.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Bahan Cotton 30s.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">100000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">70000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">100</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">5</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">1</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">200</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">30</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">25</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">2</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Bahan: Cotton; Gaya: Kasual</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Warna</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Merah</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Ukuran</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">L</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right text-slate-800">100000</td>
-                                                            <td class="px-3 py-1.5 text-center text-slate-800">50</td>
-                                                        </tr>
-                                                        <!-- Row 3: Kaos Combed 30s Red XL -->
-                                                        <tr class="hover:bg-slate-50 transition-colors">
-                                                            <td class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-350 text-center font-bold text-slate-600 select-none text-[9px]">3</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800">Kaos Combed 30s</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold">COM-30S-001</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Pakaian Pria, Kaos</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">KaosKu</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Kaos combed premium super adem.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Bahan Cotton 30s.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">100000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">70000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">100</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">5</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">1</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">200</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">30</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">25</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">2</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Bahan: Cotton; Gaya: Kasual</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Warna</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Merah</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Ukuran</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">XL</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right text-emerald-600 font-bold">105000</td>
-                                                            <td class="px-3 py-1.5 text-center text-slate-800">30</td>
-                                                        </tr>
-                                                        <!-- Row 4: Kaos Combed 30s Black L -->
-                                                        <tr class="hover:bg-slate-50 transition-colors">
-                                                            <td class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-355 text-center font-bold text-slate-600 select-none text-[9px]">4</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800">Kaos Combed 30s</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold">COM-30S-001</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Pakaian Pria, Kaos</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">KaosKu</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Kaos combed premium super adem.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Bahan Cotton 30s.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">100000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">70000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">100</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">5</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">1</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">200</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">30</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">25</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">2</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Bahan: Cotton; Gaya: Kasual</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Warna</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Hitam</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Ukuran</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">L</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right text-slate-800">100000</td>
-                                                            <td class="px-3 py-1.5 text-center text-slate-800">20</td>
-                                                        </tr>
-                                                        <!-- Row 5: Sepeda Gunung (Tunggal) -->
-                                                        <tr class="hover:bg-slate-50 transition-colors">
-                                                            <td class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-360 text-center font-bold text-slate-600 select-none text-[9px]">5</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800">Sepeda Gunung</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold">BIKE-MTB-001</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Sepeda, Olahraga</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Polygon</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Sepeda gunung Polygon tangguh.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Sepeda gunung dual suspension.</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">3500000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-right">2500000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">10</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">2</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">1</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">0</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">15000</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">140</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">20</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center">80</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans">Frame: AluxX; Fork: SR Suntour</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300">-</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300">-</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300">-</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300">-</td>
-                                                            <td class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300">-</td>
-                                                            <td class="px-3 py-1.5 text-center text-slate-300">-</td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {:else}
-                                <div class="border border-slate-200 rounded-2xl overflow-x-auto bg-white shadow-2xs custom-scrollbar">
-                                    <table class="w-full text-left border-collapse text-xs">
-                                        <thead>
-                                            <tr class="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase">
-                                                <th class="p-3">Nama / SKU</th>
-                                                <th class="p-3">Kategori / Brand</th>
-                                                <th class="p-3 text-right">Harga Jual</th>
-                                                {#if globalTaxEnabled && importTaxEnabled}
-                                                    <th class="p-3 text-right text-rose-500">PPN ({globalTaxPercentage}%)</th>
-                                                    <th class="p-3 text-right text-brand-blueRoyal">Total</th>
-                                                {/if}
-                                                <th class="p-3 text-center">Stok</th>
-                                                <th class="p-3 text-center">Varian</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-100 text-slate-700">
-                                            {#each previewProducts as p}
-                                                <tr class="bg-white hover:bg-slate-50/30 transition-colors">
-                                                    <td class="p-3">
-                                                        <div class="font-outfit font-black text-slate-800 text-xs">{p.name}</div>
-                                                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">{p.sku}</div>
-                                                        {#if p.summary}
-                                                            <div class="text-[10px] text-slate-400 italic mt-1 max-w-[200px] truncate" title={p.summary}>{p.summary}</div>
-                                                        {/if}
-                                                        <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                                            {#if p.is_digital}
-                                                                <span class="inline-flex items-center px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-black rounded-md border border-indigo-100 uppercase tracking-wide">
-                                                                    <i class="ti ti-device-laptop mr-0.5"></i> Digital
-                                                                </span>
-                                                            {/if}
-                                                            {#if p.is_unlimited}
-                                                                <span class="inline-flex items-center px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[8px] font-black rounded-md border border-amber-100 uppercase tracking-wide">
-                                                                    <i class="ti ti-infinity mr-0.5"></i> Unlimited Stock
-                                                                </span>
-                                                            {/if}
-                                                        </div>
-                                                    </td>
-                                                    <td class="p-3">
-                                                        <div class="text-[10px] text-slate-500 font-semibold">{p.category_names || '-'}</div>
-                                                        <div class="text-[10px] text-slate-400 mt-0.5">{p.brand_name || '-'}</div>
-                                                    </td>
-                                                    <td class="p-3 text-right font-bold font-mono">
-                                                        Rp {p.price.toLocaleString('id-ID')}
-                                                        {#if p.cost}
-                                                            <div class="text-[9px] text-slate-400 font-normal mt-0.5">HPP: Rp {p.cost.toLocaleString('id-ID')}</div>
-                                                        {/if}
-                                                    </td>
-                                                    {#if globalTaxEnabled && importTaxEnabled}
-                                                        {@const ppn = (p.price * globalTaxPercentage) / 100}
-                                                        {@const total = p.price + ppn}
-                                                        <td class="p-3 text-right text-rose-500 font-bold font-mono">
-                                                            +Rp {ppn.toLocaleString('id-ID')}
-                                                        </td>
-                                                        <td class="p-3 text-right text-brand-blueRoyal font-black font-mono">
-                                                            Rp {total.toLocaleString('id-ID')}
-                                                        </td>
-                                                    {/if}
-                                                    <td class="p-3 text-center">
-                                                        <div class="font-bold font-mono">{p.is_unlimited ? '∞' : p.stock}</div>
-                                                        {#if p.min_stock > 0 || p.min_purchase > 1}
-                                                            <div class="text-[9px] text-slate-400 font-normal mt-0.5">
-                                                                {#if p.min_stock > 0}Min Alert: {p.min_stock}{/if}
-                                                                {#if p.min_stock > 0 && p.min_purchase > 1} | {/if}
-                                                                {#if p.min_purchase > 1}Min Beli: {p.min_purchase}{/if}
-                                                            </div>
-                                                        {/if}
-                                                    </td>
-                                                    <td class="p-3 text-center">
-                                                        {#if p.variants.length > 0}
-                                                            <span class="inline-flex px-2 py-0.5 bg-blue-50 text-brand-blueRoyal text-[10px] font-black rounded-md border border-blue-100">
-                                                                {p.variants.length} Varian
-                                                            </span>
-                                                        {:else}
-                                                            <span class="text-slate-400 font-semibold">-</span>
-                                                        {/if}
-                                                    </td>
-                                                </tr>
-                                                {#if (p.specifications && Object.keys(p.specifications).length > 0) || p.variants.length > 0}
-                                                    <tr class="bg-slate-50/50">
-                                                        <td colspan={globalTaxEnabled && importTaxEnabled ? 7 : 5} class="px-5 py-3 border-t border-slate-100/50">
-                                                            <div class="space-y-3">
-                                                                <!-- Specifications list -->
-                                                                {#if p.specifications && Object.keys(p.specifications).length > 0}
-                                                                    <div>
-                                                                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                                                                            <i class="ti ti-list text-slate-500"></i> Spesifikasi Produk:
-                                                                        </div>
-                                                                        <div class="flex flex-wrap gap-1.5">
-                                                                            {#each Object.entries(p.specifications) as [name, value]}
-                                                                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200/80 rounded-lg text-[10px] text-slate-600 shadow-2xs">
-                                                                                    <strong class="text-slate-700">{name}:</strong> {value}
-                                                                                </span>
-                                                                            {/each}
-                                                                        </div>
-                                                                    </div>
-                                                                {/if}
-
-                                                                <!-- Variants combination details -->
-                                                                {#if p.variants.length > 0}
-                                                                    <div>
-                                                                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                                                                            <i class="ti ti-git-branch text-slate-500"></i> Detail Kombinasi Varian:
-                                                                        </div>
-                                                                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                                                            {#each p.variants as v}
-                                                                                <div class="bg-white border border-slate-200/80 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors">
-                                                                                    <div>
-                                                                                        <span class="text-[9px] font-black text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/50">
-                                                                                            {v.id.replace('_', ' / ')}
-                                                                                        </span>
-                                                                                        <div class="text-[9px] font-mono text-slate-400 mt-1.5 truncate" title={v.sku}>{v.sku}</div>
-                                                                                    </div>
-                                                                                    <div class="mt-2.5 pt-1.5 border-t border-slate-100 flex justify-between items-center text-[10px]">
-                                                                                        <span class="text-slate-500 font-medium">Stok: <strong>{v.stock !== null ? v.stock : p.stock}</strong></span>
-                                                                                        <span class="font-bold font-mono text-slate-800">
-                                                                                            Rp {((v.price !== null ? v.price : p.price) + (globalTaxEnabled && importTaxEnabled ? ((v.price !== null ? v.price : p.price) * globalTaxPercentage / 100) : 0)).toLocaleString('id-ID')}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                </div>
-                                                                            {/each}
-                                                                        </div>
-                                                                    </div>
-                                                                {/if}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                {/if}
-                                            {/each}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            {/if}
+                    <!-- Tax Settings Toggle -->
+                    {#if globalTaxEnabled}
+                        <div
+                            class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs"
+                        >
+                            <Toggle
+                                bind:checked={importTaxEnabled}
+                                label="Belum Termasuk Pajak"
+                                description="Aktifkan jika harga dalam file CSV belum ditambah pajak PPN {globalTaxPercentage}%"
+                                icon="ti-receipt-tax"
+                            />
                         </div>
-                    </div>
-
-                <!-- Footer -->
-                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
-                    <div class="text-[10px] text-slate-400 font-semibold leading-normal font-outfit">
-                        * Data dengan SKU yang sama akan otomatis memperbarui produk yang sudah ada (updateOrCreate).
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button
-                            onclick={() => !isImporting && (isImportModalOpen = false)}
-                            class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition duration-150 cursor-pointer"
-                            disabled={isImporting}
-                        >
-                            Batal
-                        </button>
-                        <button
-                            onclick={submitImport}
-                            class="py-2.5 px-5 bg-brand-blueRoyal hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition duration-150 shadow-md shadow-brand-blueRoyal/10 cursor-pointer flex items-center gap-1.5"
-                            disabled={previewProducts.length === 0 || isImporting}
-                        >
-                            {#if isImporting}
-                                <i class="ti ti-loader animate-spin text-sm"></i> Memproses...
-                            {:else}
-                                <i class="ti ti-check text-sm"></i> Proses Import
-                            {/if}
-                        </button>
-                    </div>
+                    {/if}
                 </div>
+
+                <!-- Step 2: Preview Area (Main Workspace Pane) -->
+                <div
+                    class="flex-grow flex flex-col lg:overflow-y-auto p-6 bg-white space-y-4"
+                >
+                    <h5
+                        class="text-xs font-black text-slate-700 flex items-center gap-1.5"
+                    >
+                        <i class="ti ti-table text-sm text-slate-500"></i>
+                        Pratinjau Produk ({previewProducts.length} Ditemukan)
+                    </h5>
+
+                    {#if importError}
+                        <div
+                            class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-xs text-rose-700 font-medium"
+                        >
+                            <i
+                                class="ti ti-alert-circle text-lg shrink-0 mt-0.5"
+                            ></i>
+                            <div>{importError}</div>
+                        </div>
+                    {/if}
+
+                    {#if previewProducts.length === 0}
+                        <div
+                            class="border border-slate-200 bg-slate-50/50 rounded-2xl p-6 space-y-4 text-slate-600"
+                        >
+                            <div
+                                class="flex items-center gap-3 border-b border-slate-200 pb-3"
+                            >
+                                <div
+                                    class="w-10 h-10 rounded-full bg-blue-50 text-brand-blueRoyal flex items-center justify-center text-lg shrink-0"
+                                >
+                                    <i class="ti ti-info-circle"></i>
+                                </div>
+                                <div>
+                                    <h6
+                                        class="text-xs font-black text-slate-800"
+                                    >
+                                        Panduan Pengisian Berkas Impor
+                                    </h6>
+                                    <p
+                                        class="text-[10px] text-slate-400 font-semibold mt-0.5"
+                                    >
+                                        Harap ikuti pedoman ini agar data produk
+                                        tersimpan dengan benar
+                                    </p>
+                                </div>
+                            </div>
+
+                            <ul class="text-[11px] space-y-2.5 list-none pl-0">
+                                <li class="flex items-start gap-2">
+                                    <span
+                                        class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5"
+                                        >1</span
+                                    >
+                                    <span
+                                        ><strong
+                                            >Kolom Wajib & Informasi Dasar:</strong
+                                        >
+                                        Kolom
+                                        <code
+                                            class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700 font-mono text-[10px]"
+                                            >Nama Produk</code
+                                        >,
+                                        <code
+                                            class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700 font-mono text-[10px]"
+                                            >SKU</code
+                                        >, dan
+                                        <code
+                                            class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-700 font-mono text-[10px]"
+                                            >Deskripsi</code
+                                        >
+                                        wajib diisi. Tambahkan penjelasan singkat
+                                        pada
+                                        <code class="text-slate-700"
+                                            >Ringkasan Singkat</code
+                                        > untuk ditampilkan di halaman list.</span
+                                    >
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span
+                                        class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5"
+                                        >2</span
+                                    >
+                                    <span
+                                        ><strong>Kategori & Brand:</strong>
+                                        Pisahkan kategori dengan koma (misal:
+                                        <code class="text-slate-700"
+                                            >Pakaian, Kaos</code
+                                        >). Kategori & Brand baru akan otomatis
+                                        dibuat oleh sistem jika belum terdaftar.</span
+                                    >
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span
+                                        class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5"
+                                        >3</span
+                                    >
+                                    <span
+                                        ><strong
+                                            >Harga, Batas Minimum & Min Beli:</strong
+                                        >
+                                        Tulis angka murni tanpa titik/koma (misal:
+                                        <code class="text-slate-700"
+                                            >150000</code
+                                        >). Kolom
+                                        <code class="text-slate-700"
+                                            >Batas Minimum</code
+                                        >
+                                        untuk pengingat stok menipis dan
+                                        <code class="text-slate-700"
+                                            >Min Pembelian</code
+                                        > untuk jumlah minimum pembelian oleh customer.</span
+                                    >
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span
+                                        class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5"
+                                        >4</span
+                                    >
+                                    <span
+                                        ><strong>Spesifikasi & Atribut:</strong>
+                                        Tuliskan spesifikasi produk dengan format
+                                        pasangan
+                                        <code class="text-slate-700"
+                                            >Nama: Nilai</code
+                                        >
+                                        dipisahkan oleh titik koma (contoh:
+                                        <code class="text-slate-700"
+                                            >Material: Kayu Solid; Tahan Air: Ya</code
+                                        >).</span
+                                    >
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span
+                                        class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5"
+                                        >5</span
+                                    >
+                                    <span
+                                        ><strong
+                                            >Produk Tanpa Variasi (Tunggal):</strong
+                                        >
+                                        Isi kolom utama
+                                        <code class="text-slate-700"
+                                            >Harga Jual</code
+                                        >,
+                                        <code class="text-slate-700"
+                                            >Harga Modal</code
+                                        >, dan
+                                        <code class="text-slate-700">Stok</code
+                                        >. Biarkan kolom variasi (Variasi 1
+                                        Nama, Variasi 1 Nilai, dll) kosong
+                                        (seperti baris <i>Sepeda Gunung</i> pada contoh
+                                        tabel).</span
+                                    >
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span
+                                        class="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-black items-center justify-center shrink-0 text-slate-700 mt-0.5"
+                                        >6</span
+                                    >
+                                    <span
+                                        ><strong
+                                            >Produk Dengan Variasi
+                                            (Multi-varian):</strong
+                                        ></span
+                                    >
+                                </li>
+                            </ul>
+
+                            <div
+                                class="pl-6 text-[11px] text-slate-500 space-y-2 border-l-2 border-slate-200 ml-2"
+                            >
+                                <p>
+                                    * Tulis **SKU utama yang sama** di beberapa
+                                    baris berturut-turut untuk menyatukan
+                                    variasi ke dalam satu produk.
+                                </p>
+                                <p>
+                                    * Isi kolom variasi, misal: <code
+                                        class="text-slate-700"
+                                        >Variasi 1 Nama: Warna</code
+                                    >,
+                                    <code class="text-slate-700"
+                                        >Variasi 1 Nilai: Merah</code
+                                    >,
+                                    <code class="text-slate-700"
+                                        >Variasi 2 Nama: Ukuran</code
+                                    >,
+                                    <code class="text-slate-700"
+                                        >Variasi 2 Nilai: M</code
+                                    >.
+                                </p>
+                                <p>
+                                    * Tentukan <code class="text-slate-700"
+                                        >Harga Varian</code
+                                    >
+                                    dan
+                                    <code class="text-slate-700"
+                                        >Stok Varian</code
+                                    > khusus untuk kombinasi baris tersebut.
+                                </p>
+                            </div>
+
+                            <!-- Visual Guide Table Preview -->
+                            <div class="mt-4 pt-3 border-t border-slate-200">
+                                <div
+                                    class="flex items-center justify-between mb-2"
+                                >
+                                    <div
+                                        class="text-[11px] font-black text-slate-700 font-outfit uppercase tracking-wider flex items-center gap-1.5"
+                                    >
+                                        <i
+                                            class="ti ti-table-shortcut text-emerald-600"
+                                        ></i> Contoh Struktur Tabel Excel/CSV
+                                    </div>
+                                    <span
+                                        class="text-[9px] text-slate-400 font-extrabold bg-slate-100 border border-slate-200 rounded px-2 py-0.5 uppercase tracking-wide"
+                                    >
+                                        Format 24 Kolom
+                                    </span>
+                                </div>
+
+                                <!-- Excel-like Spreadsheet Mockup Container -->
+                                <div
+                                    class="overflow-hidden rounded-xl border border-slate-300 shadow-sm bg-[#f3f2f1]"
+                                >
+                                    <!-- Excel Title/Tab Bar -->
+                                    <div
+                                        class="bg-[#107c41] px-3 py-2 text-white flex items-center gap-2"
+                                    >
+                                        <i
+                                            class="ti ti-file-spreadsheet text-base text-emerald-100"
+                                        ></i>
+                                        <span
+                                            class="text-[10px] font-bold tracking-wide font-sans"
+                                            >Microsoft Excel -
+                                            template_import_produk.csv</span
+                                        >
+                                    </div>
+
+                                    <!-- Spreadsheet Toolbar Quick Settings -->
+                                    <div
+                                        class="bg-[#f3f2f1] px-3 py-1.5 border-b border-slate-300 flex items-center gap-4 text-[10px] text-slate-500 font-sans select-none"
+                                    >
+                                        <div
+                                            class="flex items-center gap-2.5 border-r border-slate-300 pr-4"
+                                        >
+                                            <span
+                                                class="font-bold text-slate-700 cursor-pointer"
+                                                >File</span
+                                            >
+                                            <span
+                                                class="font-medium hover:text-slate-800 cursor-pointer"
+                                                >Beranda</span
+                                            >
+                                            <span
+                                                class="font-medium hover:text-slate-800 cursor-pointer"
+                                                >Sisipkan</span
+                                            >
+                                            <span
+                                                class="font-medium hover:text-slate-800 cursor-pointer"
+                                                >Tata Letak</span
+                                            >
+                                            <span
+                                                class="font-medium hover:text-slate-800 cursor-pointer"
+                                                >Data</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="flex items-center gap-2 font-mono text-[9px] text-slate-400 bg-white border border-slate-300 px-2 py-0.5 rounded shadow-2xs"
+                                        >
+                                            <span
+                                                class="text-slate-700 font-bold"
+                                                >A1</span
+                                            >
+                                            <span class="text-slate-300">|</span
+                                            >
+                                            <span class="text-slate-500"
+                                                >fx: Nama Produk</span
+                                            >
+                                        </div>
+                                    </div>
+
+                                    <!-- Scrollable Sheet Table -->
+                                    <div
+                                        class="overflow-x-auto custom-scrollbar"
+                                    >
+                                        <table
+                                            class="w-full text-[10px] border-collapse bg-white font-mono whitespace-nowrap"
+                                        >
+                                            <thead>
+                                                <!-- Excel Column Letter Headers (A, B, C...) -->
+                                                <tr
+                                                    class="bg-[#f3f2f1] text-center text-slate-500 font-semibold select-none border-b border-slate-300"
+                                                >
+                                                    <!-- Top-left corner cell for row numbers -->
+                                                    <th
+                                                        class="w-10 px-2 py-1 bg-[#e1dfdd] border-r border-b border-slate-300 text-[9px] font-bold text-slate-600"
+                                                    ></th>
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >A</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >B</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >C</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >D</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >E</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >F</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >G</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >H</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >I</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >J</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >K</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >L</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >M</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >N</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >O</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >P</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >Q</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >R</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >S</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >T</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >U</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >V</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-r border-b border-slate-300"
+                                                        >W</th
+                                                    >
+                                                    <th
+                                                        class="px-3 py-1 border-b border-slate-300"
+                                                        >X</th
+                                                    >
+                                                </tr>
+                                                <!-- Row 1: Header Names -->
+                                                <tr
+                                                    class="bg-[#f3f2f1] text-slate-700 font-bold border-b border-slate-300 text-[10px]"
+                                                >
+                                                    <!-- Row header '1' -->
+                                                    <td
+                                                        class="w-10 px-2 py-1.5 bg-[#e1dfdd] border-r border-b border-slate-300 text-center font-bold text-slate-600 select-none text-[9px]"
+                                                        >1</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans text-[#107c41]"
+                                                        >Nama Produk</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans text-[#107c41]"
+                                                        >SKU</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Kategori</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Brand</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Ringkasan Singkat</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Deskripsi</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Apakah Digital</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans text-[#107c41]"
+                                                        >Harga Jual</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Harga Modal</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Stok</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Batas Minimum</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Min Pembelian</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Apakah Unlimited Stock</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Berat (gram)</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Panjang (cm)</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Lebar (cm)</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Tinggi (cm)</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Spesifikasi</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Variasi 1 Nama</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Variasi 1 Nilai</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Variasi 2 Nama</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Variasi 2 Nilai</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-b border-slate-300 font-sans"
+                                                        >Harga Varian</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-b border-slate-300 font-sans"
+                                                        >Stok Varian</td
+                                                    >
+                                                </tr>
+                                            </thead>
+                                            <tbody
+                                                class="text-slate-600 divide-y divide-[#e1dfdd] text-[10px]"
+                                            >
+                                                <!-- Row 2: Kaos Combed 30s Red L -->
+                                                <tr
+                                                    class="hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <td
+                                                        class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-350 text-center font-bold text-slate-600 select-none text-[9px]"
+                                                        >2</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800"
+                                                        >Kaos Combed 30s</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold"
+                                                        >COM-30S-001</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Pakaian Pria, Kaos</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >KaosKu</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Kaos combed premium
+                                                        super adem.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Bahan Cotton 30s.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >100000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >70000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >100</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >5</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >1</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >200</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >30</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >25</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >2</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Bahan: Cotton; Gaya:
+                                                        Kasual</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Warna</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Merah</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Ukuran</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >L</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right text-slate-800"
+                                                        >100000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 text-center text-slate-800"
+                                                        >50</td
+                                                    >
+                                                </tr>
+                                                <!-- Row 3: Kaos Combed 30s Red XL -->
+                                                <tr
+                                                    class="hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <td
+                                                        class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-350 text-center font-bold text-slate-600 select-none text-[9px]"
+                                                        >3</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800"
+                                                        >Kaos Combed 30s</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold"
+                                                        >COM-30S-001</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Pakaian Pria, Kaos</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >KaosKu</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Kaos combed premium
+                                                        super adem.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Bahan Cotton 30s.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >100000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >70000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >100</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >5</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >1</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >200</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >30</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >25</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >2</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Bahan: Cotton; Gaya:
+                                                        Kasual</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Warna</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Merah</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Ukuran</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >XL</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right text-emerald-600 font-bold"
+                                                        >105000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 text-center text-slate-800"
+                                                        >30</td
+                                                    >
+                                                </tr>
+                                                <!-- Row 4: Kaos Combed 30s Black L -->
+                                                <tr
+                                                    class="hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <td
+                                                        class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-355 text-center font-bold text-slate-600 select-none text-[9px]"
+                                                        >4</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800"
+                                                        >Kaos Combed 30s</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold"
+                                                        >COM-30S-001</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Pakaian Pria, Kaos</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >KaosKu</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Kaos combed premium
+                                                        super adem.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Bahan Cotton 30s.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >100000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >70000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >100</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >5</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >1</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >200</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >30</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >25</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >2</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Bahan: Cotton; Gaya:
+                                                        Kasual</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Warna</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Hitam</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Ukuran</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >L</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right text-slate-800"
+                                                        >100000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 text-center text-slate-800"
+                                                        >20</td
+                                                    >
+                                                </tr>
+                                                <!-- Row 5: Sepeda Gunung (Tunggal) -->
+                                                <tr
+                                                    class="hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <td
+                                                        class="w-10 px-2 py-1.5 bg-[#f3f2f1] border-r border-b border-slate-360 text-center font-bold text-slate-600 select-none text-[9px]"
+                                                        >5</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans font-bold text-slate-800"
+                                                        >Sepeda Gunung</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-slate-800 font-semibold"
+                                                        >BIKE-MTB-001</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Sepeda, Olahraga</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Polygon</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Sepeda gunung Polygon
+                                                        tangguh.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Sepeda gunung dual
+                                                        suspension.</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >3500000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-right"
+                                                        >2500000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >10</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >2</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >1</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >0</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >15000</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >140</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >20</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center"
+                                                        >80</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] font-sans"
+                                                        >Frame: AluxX; Fork: SR
+                                                        Suntour</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300"
+                                                        >-</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300"
+                                                        >-</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300"
+                                                        >-</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300"
+                                                        >-</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 border-r border-[#e1dfdd] text-center text-slate-300"
+                                                        >-</td
+                                                    >
+                                                    <td
+                                                        class="px-3 py-1.5 text-center text-slate-300"
+                                                        >-</td
+                                                    >
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {:else}
+                        <div
+                            class="border border-slate-200 rounded-2xl overflow-x-auto bg-white shadow-2xs custom-scrollbar"
+                        >
+                            <table
+                                class="w-full text-left border-collapse text-xs"
+                            >
+                                <thead>
+                                    <tr
+                                        class="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase"
+                                    >
+                                        <th class="p-3">Nama / SKU</th>
+                                        <th class="p-3">Kategori / Brand</th>
+                                        <th class="p-3 text-right"
+                                            >Harga Jual</th
+                                        >
+                                        {#if globalTaxEnabled && importTaxEnabled}
+                                            <th
+                                                class="p-3 text-right text-rose-500"
+                                                >PPN ({globalTaxPercentage}%)</th
+                                            >
+                                            <th
+                                                class="p-3 text-right text-brand-blueRoyal"
+                                                >Total</th
+                                            >
+                                        {/if}
+                                        <th class="p-3 text-center">Stok</th>
+                                        <th class="p-3 text-center">Varian</th>
+                                    </tr>
+                                </thead>
+                                <tbody
+                                    class="divide-y divide-slate-100 text-slate-700"
+                                >
+                                    {#each previewProducts as p}
+                                        <tr
+                                            class="bg-white hover:bg-slate-50/30 transition-colors"
+                                        >
+                                            <td class="p-3">
+                                                <div
+                                                    class="font-outfit font-black text-slate-800 text-xs"
+                                                >
+                                                    {p.name}
+                                                </div>
+                                                <div
+                                                    class="text-[10px] text-slate-400 font-mono mt-0.5"
+                                                >
+                                                    {p.sku}
+                                                </div>
+                                                {#if p.summary}
+                                                    <div
+                                                        class="text-[10px] text-slate-400 italic mt-1 max-w-[200px] truncate"
+                                                        title={p.summary}
+                                                    >
+                                                        {p.summary}
+                                                    </div>
+                                                {/if}
+                                                <div
+                                                    class="flex items-center gap-1.5 mt-1.5 flex-wrap"
+                                                >
+                                                    {#if p.is_digital}
+                                                        <span
+                                                            class="inline-flex items-center px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-black rounded-md border border-indigo-100 uppercase tracking-wide"
+                                                        >
+                                                            <i
+                                                                class="ti ti-device-laptop mr-0.5"
+                                                            ></i> Digital
+                                                        </span>
+                                                    {/if}
+                                                    {#if p.is_unlimited}
+                                                        <span
+                                                            class="inline-flex items-center px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[8px] font-black rounded-md border border-amber-100 uppercase tracking-wide"
+                                                        >
+                                                            <i
+                                                                class="ti ti-infinity mr-0.5"
+                                                            ></i> Unlimited Stock
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            </td>
+                                            <td class="p-3">
+                                                <div
+                                                    class="text-[10px] text-slate-500 font-semibold"
+                                                >
+                                                    {p.category_names || '-'}
+                                                </div>
+                                                <div
+                                                    class="text-[10px] text-slate-400 mt-0.5"
+                                                >
+                                                    {p.brand_name || '-'}
+                                                </div>
+                                            </td>
+                                            <td
+                                                class="p-3 text-right font-bold font-mono"
+                                            >
+                                                Rp {p.price.toLocaleString(
+                                                    'id-ID',
+                                                )}
+                                                {#if p.cost}
+                                                    <div
+                                                        class="text-[9px] text-slate-400 font-normal mt-0.5"
+                                                    >
+                                                        HPP: Rp {p.cost.toLocaleString(
+                                                            'id-ID',
+                                                        )}
+                                                    </div>
+                                                {/if}
+                                            </td>
+                                            {#if globalTaxEnabled && importTaxEnabled}
+                                                {@const ppn =
+                                                    (p.price *
+                                                        globalTaxPercentage) /
+                                                    100}
+                                                {@const total = p.price + ppn}
+                                                <td
+                                                    class="p-3 text-right text-rose-500 font-bold font-mono"
+                                                >
+                                                    +Rp {ppn.toLocaleString(
+                                                        'id-ID',
+                                                    )}
+                                                </td>
+                                                <td
+                                                    class="p-3 text-right text-brand-blueRoyal font-black font-mono"
+                                                >
+                                                    Rp {total.toLocaleString(
+                                                        'id-ID',
+                                                    )}
+                                                </td>
+                                            {/if}
+                                            <td class="p-3 text-center">
+                                                <div
+                                                    class="font-bold font-mono"
+                                                >
+                                                    {p.is_unlimited
+                                                        ? '∞'
+                                                        : p.stock}
+                                                </div>
+                                                {#if p.min_stock > 0 || p.min_purchase > 1}
+                                                    <div
+                                                        class="text-[9px] text-slate-400 font-normal mt-0.5"
+                                                    >
+                                                        {#if p.min_stock > 0}Min
+                                                            Alert: {p.min_stock}{/if}
+                                                        {#if p.min_stock > 0 && p.min_purchase > 1}
+                                                            |
+                                                        {/if}
+                                                        {#if p.min_purchase > 1}Min
+                                                            Beli: {p.min_purchase}{/if}
+                                                    </div>
+                                                {/if}
+                                            </td>
+                                            <td class="p-3 text-center">
+                                                {#if p.variants.length > 0}
+                                                    <span
+                                                        class="inline-flex px-2 py-0.5 bg-blue-50 text-brand-blueRoyal text-[10px] font-black rounded-md border border-blue-100"
+                                                    >
+                                                        {p.variants.length} Varian
+                                                    </span>
+                                                {:else}
+                                                    <span
+                                                        class="text-slate-400 font-semibold"
+                                                        >-</span
+                                                    >
+                                                {/if}
+                                            </td>
+                                        </tr>
+                                        {#if (p.specifications && Object.keys(p.specifications).length > 0) || p.variants.length > 0}
+                                            <tr class="bg-slate-50/50">
+                                                <td
+                                                    colspan={globalTaxEnabled &&
+                                                    importTaxEnabled
+                                                        ? 7
+                                                        : 5}
+                                                    class="px-5 py-3 border-t border-slate-100/50"
+                                                >
+                                                    <div class="space-y-3">
+                                                        <!-- Specifications list -->
+                                                        {#if p.specifications && Object.keys(p.specifications).length > 0}
+                                                            <div>
+                                                                <div
+                                                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"
+                                                                >
+                                                                    <i
+                                                                        class="ti ti-list text-slate-500"
+                                                                    ></i> Spesifikasi
+                                                                    Produk:
+                                                                </div>
+                                                                <div
+                                                                    class="flex flex-wrap gap-1.5"
+                                                                >
+                                                                    {#each Object.entries(p.specifications) as [name, value]}
+                                                                        <span
+                                                                            class="inline-flex items-center gap-1 px-2 py-1 bg-white border border-slate-200/80 rounded-lg text-[10px] text-slate-600 shadow-2xs"
+                                                                        >
+                                                                            <strong
+                                                                                class="text-slate-700"
+                                                                                >{name}:</strong
+                                                                            >
+                                                                            {value}
+                                                                        </span>
+                                                                    {/each}
+                                                                </div>
+                                                            </div>
+                                                        {/if}
+
+                                                        <!-- Variants combination details -->
+                                                        {#if p.variants.length > 0}
+                                                            <div>
+                                                                <div
+                                                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1"
+                                                                >
+                                                                    <i
+                                                                        class="ti ti-git-branch text-slate-500"
+                                                                    ></i> Detail Kombinasi
+                                                                    Varian:
+                                                                </div>
+                                                                <div
+                                                                    class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2"
+                                                                >
+                                                                    {#each p.variants as v}
+                                                                        <div
+                                                                            class="bg-white border border-slate-200/80 rounded-xl p-2.5 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-colors"
+                                                                        >
+                                                                            <div
+                                                                            >
+                                                                                <span
+                                                                                    class="text-[9px] font-black text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/50"
+                                                                                >
+                                                                                    {v.id.replace(
+                                                                                        '_',
+                                                                                        ' / ',
+                                                                                    )}
+                                                                                </span>
+                                                                                <div
+                                                                                    class="text-[9px] font-mono text-slate-400 mt-1.5 truncate"
+                                                                                    title={v.sku}
+                                                                                >
+                                                                                    {v.sku}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div
+                                                                                class="mt-2.5 pt-1.5 border-t border-slate-100 flex justify-between items-center text-[10px]"
+                                                                            >
+                                                                                <span
+                                                                                    class="text-slate-500 font-medium"
+                                                                                    >Stok:
+                                                                                    <strong
+                                                                                        >{v.stock !==
+                                                                                        null
+                                                                                            ? v.stock
+                                                                                            : p.stock}</strong
+                                                                                    ></span
+                                                                                >
+                                                                                <span
+                                                                                    class="font-bold font-mono text-slate-800"
+                                                                                >
+                                                                                    Rp
+                                                                                    {(
+                                                                                        (v.price !==
+                                                                                        null
+                                                                                            ? v.price
+                                                                                            : p.price) +
+                                                                                        (globalTaxEnabled &&
+                                                                                        importTaxEnabled
+                                                                                            ? ((v.price !==
+                                                                                              null
+                                                                                                  ? v.price
+                                                                                                  : p.price) *
+                                                                                                  globalTaxPercentage) /
+                                                                                              100
+                                                                                            : 0)
+                                                                                    ).toLocaleString(
+                                                                                        'id-ID',
+                                                                                    )}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    {/each}
+                                                                </div>
+                                                            </div>
+                                                        {/if}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {/if}
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div
+                class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0"
+            >
+                <div
+                    class="text-[10px] text-slate-400 font-semibold leading-normal font-outfit"
+                >
+                    * Data dengan SKU yang sama akan otomatis memperbarui produk
+                    yang sudah ada (updateOrCreate).
+                </div>
+                <div class="flex items-center gap-3">
+                    <button
+                        onclick={() =>
+                            !isImporting && (isImportModalOpen = false)}
+                        class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition duration-150 cursor-pointer"
+                        disabled={isImporting}
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={submitImport}
+                        class="py-2.5 px-5 bg-brand-blueRoyal hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition duration-150 shadow-md shadow-brand-blueRoyal/10 cursor-pointer flex items-center gap-1.5"
+                        disabled={previewProducts.length === 0 || isImporting}
+                    >
+                        {#if isImporting}
+                            <i class="ti ti-loader animate-spin text-sm"></i> Memproses...
+                        {:else}
+                            <i class="ti ti-check text-sm"></i> Proses Import
+                        {/if}
+                    </button>
+                </div>
+            </div>
         </div>
     {/if}
 </AdminLayout>

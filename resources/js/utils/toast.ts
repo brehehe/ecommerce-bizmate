@@ -45,11 +45,12 @@ export function showToast(
             ? 'ti-circle-check-filled text-emerald-500'
             : 'ti-circle-x-filled text-rose-500';
 
-    const initTransform = position === 'top' ? '-translate-y-4' : 'translate-y-4';
-    const endTransform = position === 'top' ? '-translate-y-2' : 'translate-y-2';
+    const initTransform =
+        position === 'top' ? '-translate-y-4' : 'translate-y-4';
+    const endTransform =
+        position === 'top' ? '-translate-y-2' : 'translate-y-2';
 
-    toast.className =
-        `flex items-center gap-3 bg-white border border-slate-200 shadow-xl px-4 py-3 rounded-2xl min-w-[260px] max-w-sm transition-all duration-300 ${initTransform} opacity-0`;
+    toast.className = `flex items-center gap-3 bg-white border border-slate-200 shadow-xl px-4 py-3 rounded-2xl min-w-[260px] max-w-sm transition-all duration-300 ${initTransform} opacity-0`;
     toast.innerHTML = `
         <i class="ti ${icon} text-xl shrink-0"></i>
         <p class="text-xs font-bold text-slate-800 flex-grow">${message}</p>
@@ -72,4 +73,3 @@ export function showToast(
         setTimeout(() => toast.remove(), 300);
     }, 3500);
 }
-

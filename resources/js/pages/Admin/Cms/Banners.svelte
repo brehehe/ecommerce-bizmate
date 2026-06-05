@@ -2,24 +2,49 @@
     import { page, useForm } from '@inertiajs/svelte';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
 
-    let { heroBanners = [], sideBanners = [], middleWideBanner = null, storefrontUrl } = $props();
+    let {
+        heroBanners = [],
+        sideBanners = [],
+        middleWideBanner = null,
+        storefrontUrl,
+    } = $props();
 
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
-    const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const secondaryColor = $derived(
+        page.props.theme?.secondary_color || '#fa7315',
+    );
 
     // Create the Inertia form
     // svelte-ignore state_referenced_locally
     const form = useForm({
-        hero_banners: heroBanners.length > 0 ? [...heroBanners] : [
-            { image: '/banners/promo-main.png', alt: 'Promo Spesial', link: '#' }
-        ],
-        side_banners: sideBanners.length > 0 ? [...sideBanners] : [
-            { image: '/banners/fashion.png', alt: 'Fashion Diskon', link: '#' }
-        ],
-        middle_wide_banner: middleWideBanner || { image: '/banners/flash-sale.png', alt: 'Flash Sale Promo', link: '#' },
+        hero_banners:
+            heroBanners.length > 0
+                ? [...heroBanners]
+                : [
+                      {
+                          image: '/banners/promo-main.png',
+                          alt: 'Promo Spesial',
+                          link: '#',
+                      },
+                  ],
+        side_banners:
+            sideBanners.length > 0
+                ? [...sideBanners]
+                : [
+                      {
+                          image: '/banners/fashion.png',
+                          alt: 'Fashion Diskon',
+                          link: '#',
+                      },
+                  ],
+        middle_wide_banner: middleWideBanner || {
+            image: '/banners/flash-sale.png',
+            alt: 'Flash Sale Promo',
+            link: '#',
+        },
         hero_files: {} as Record<number, File>,
         side_files: {} as Record<number, File>,
-        middle_wide_file: null as File | null
+        middle_wide_file: null as File | null,
     });
 
     let iframeElement: HTMLIFrameElement;
@@ -28,7 +53,7 @@
     function addHeroBanner() {
         form.hero_banners = [
             ...form.hero_banners,
-            { image: '', alt: 'Banner Baru', link: '#' }
+            { image: '', alt: 'Banner Baru', link: '#' },
         ];
     }
 
@@ -45,7 +70,7 @@
     function addSideBanner() {
         form.side_banners = [
             ...form.side_banners,
-            { image: '', alt: 'Side Banner Baru', link: '#' }
+            { image: '', alt: 'Side Banner Baru', link: '#' },
         ];
     }
 
@@ -93,7 +118,7 @@
             onSuccess: () => {
                 // Refresh preview iframe
                 previewKey += 1;
-            }
+            },
         });
     }
 
@@ -109,16 +134,21 @@
 <AdminLayout>
     <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-8">
         <!-- Page Header -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+        >
             <div>
-                <h1 class="font-outfit font-black text-2xl sm:text-3xl text-slate-800 tracking-tight">
+                <h1
+                    class="font-outfit font-black text-2xl sm:text-3xl text-slate-800 tracking-tight"
+                >
                     CMS Banner Manager
                 </h1>
                 <p class="text-sm text-slate-500 font-medium mt-1">
-                    Kelola banner promosi halaman depan toko Anda dan lihat pratinjau tampilan mobile secara langsung.
+                    Kelola banner promosi halaman depan toko Anda dan lihat
+                    pratinjau tampilan mobile secara langsung.
                 </p>
             </div>
-            
+
             <button
                 onclick={submit}
                 disabled={form.processing}
@@ -126,7 +156,9 @@
                 style="background-color: {primaryColor};"
             >
                 {#if form.processing}
-                    <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span
+                        class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                    ></span>
                     Menyimpan...
                 {:else}
                     <i class="ti ti-device-floppy text-base"></i> Simpan Perubahan
@@ -135,27 +167,37 @@
         </div>
 
         {#if form.wasSuccessful}
-            <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-3">
+            <div
+                class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-3"
+            >
                 <i class="ti ti-circle-check text-xl"></i>
-                <span class="text-sm font-bold">Banner berhasil diperbarui! Tampilan preview mobile telah disinkronkan.</span>
+                <span class="text-sm font-bold"
+                    >Banner berhasil diperbarui! Tampilan preview mobile telah
+                    disinkronkan.</span
+                >
             </div>
         {/if}
 
         <!-- Split Screen Layout -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
             <!-- Left Panel: Banner Editors (8 Cols) -->
             <div class="lg:col-span-7 space-y-8">
-                
                 <!-- Hero Banners Section -->
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6">
-                    <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6"
+                >
+                    <div
+                        class="flex justify-between items-center border-b border-slate-100 pb-4"
+                    >
                         <div>
-                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                            <h3
+                                class="font-outfit font-black text-lg text-slate-800"
+                            >
                                 Main Hero Banners
                             </h3>
                             <p class="text-xs text-slate-500 font-medium">
-                                Banner slide besar utama di halaman teratas (Rasio 16:9 atau 21:9 disarankan)
+                                Banner slide besar utama di halaman teratas
+                                (Rasio 16:9 atau 21:9 disarankan)
                             </p>
                         </div>
                         <button
@@ -169,7 +211,9 @@
 
                     <div class="space-y-6">
                         {#each form.hero_banners as banner, index}
-                            <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4">
+                            <div
+                                class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4"
+                            >
                                 <button
                                     type="button"
                                     onclick={() => removeHeroBanner(index)}
@@ -179,22 +223,58 @@
                                     <i class="ti ti-trash text-sm"></i>
                                 </button>
 
-                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center"
+                                >
                                     <!-- Image Preview / File Dropzone -->
                                     <div class="md:col-span-4">
                                         {#if banner.image}
-                                            <div class="relative rounded-xl overflow-hidden aspect-[16/9] border border-slate-200 shadow-sm bg-white group/preview">
-                                                <img src={banner.image} alt="Preview" class="w-full h-full object-cover" />
-                                                <label class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5">
-                                                    <input type="file" accept="image/*" class="hidden" onchange={(e) => handleHeroFileChange(index, e)} />
-                                                    <i class="ti ti-camera"></i> Ganti Gambar
+                                            <div
+                                                class="relative rounded-xl overflow-hidden aspect-[16/9] border border-slate-200 shadow-sm bg-white group/preview"
+                                            >
+                                                <img
+                                                    src={banner.image}
+                                                    alt="Preview"
+                                                    class="w-full h-full object-cover"
+                                                />
+                                                <label
+                                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5"
+                                                >
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        class="hidden"
+                                                        onchange={(e) =>
+                                                            handleHeroFileChange(
+                                                                index,
+                                                                e,
+                                                            )}
+                                                    />
+                                                    <i class="ti ti-camera"></i> Ganti
+                                                    Gambar
                                                 </label>
                                             </div>
                                         {:else}
-                                            <label class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-[16/9] flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop">
-                                                <input type="file" accept="image/*" class="hidden" onchange={(e) => handleHeroFileChange(index, e)} />
-                                                <i class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"></i>
-                                                <span class="text-[10px] font-bold text-slate-500 mt-2 text-center">Upload Banner</span>
+                                            <label
+                                                class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-[16/9] flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop"
+                                            >
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    class="hidden"
+                                                    onchange={(e) =>
+                                                        handleHeroFileChange(
+                                                            index,
+                                                            e,
+                                                        )}
+                                                />
+                                                <i
+                                                    class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"
+                                                ></i>
+                                                <span
+                                                    class="text-[10px] font-bold text-slate-500 mt-2 text-center"
+                                                    >Upload Banner</span
+                                                >
                                             </label>
                                         {/if}
                                     </div>
@@ -202,7 +282,11 @@
                                     <!-- Fields -->
                                     <div class="md:col-span-8 space-y-3">
                                         <div>
-                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</p>
+                                            <p
+                                                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                            >
+                                                Alt Text (Deskripsi Gambar)
+                                            </p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.alt}
@@ -211,7 +295,11 @@
                                             />
                                         </div>
                                         <div>
-                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</p>
+                                            <p
+                                                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                            >
+                                                Tautan URL (Link)
+                                            </p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.link}
@@ -225,23 +313,35 @@
                         {/each}
 
                         {#if form.hero_banners.length === 0}
-                            <div class="py-12 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400">
+                            <div
+                                class="py-12 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400"
+                            >
                                 <i class="ti ti-photo text-4xl mb-2"></i>
-                                <p class="text-sm font-semibold">Tidak ada banner utama. Silakan tambahkan banner baru.</p>
+                                <p class="text-sm font-semibold">
+                                    Tidak ada banner utama. Silakan tambahkan
+                                    banner baru.
+                                </p>
                             </div>
                         {/if}
                     </div>
                 </div>
 
                 <!-- Side Banners Section -->
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6">
-                    <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6"
+                >
+                    <div
+                        class="flex justify-between items-center border-b border-slate-100 pb-4"
+                    >
                         <div>
-                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                            <h3
+                                class="font-outfit font-black text-lg text-slate-800"
+                            >
                                 Side Promos Banners
                             </h3>
                             <p class="text-xs text-slate-500 font-medium">
-                                Banner kecil di sebelah kanan banner utama (hanya tampil pada layar lebar/desktop)
+                                Banner kecil di sebelah kanan banner utama
+                                (hanya tampil pada layar lebar/desktop)
                             </p>
                         </div>
                         <button
@@ -255,7 +355,9 @@
 
                     <div class="space-y-6">
                         {#each form.side_banners as banner, index}
-                            <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4">
+                            <div
+                                class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4"
+                            >
                                 <button
                                     type="button"
                                     onclick={() => removeSideBanner(index)}
@@ -265,22 +367,58 @@
                                     <i class="ti ti-trash text-sm"></i>
                                 </button>
 
-                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center"
+                                >
                                     <!-- Image Preview / File Dropzone -->
                                     <div class="md:col-span-4">
                                         {#if banner.image}
-                                            <div class="relative rounded-xl overflow-hidden aspect-[2.1/1] border border-slate-200 shadow-sm bg-white group/preview">
-                                                <img src={banner.image} alt="Preview" class="w-full h-full object-cover" />
-                                                <label class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5">
-                                                    <input type="file" accept="image/*" class="hidden" onchange={(e) => handleSideFileChange(index, e)} />
-                                                    <i class="ti ti-camera"></i> Ganti Gambar
+                                            <div
+                                                class="relative rounded-xl overflow-hidden aspect-[2.1/1] border border-slate-200 shadow-sm bg-white group/preview"
+                                            >
+                                                <img
+                                                    src={banner.image}
+                                                    alt="Preview"
+                                                    class="w-full h-full object-cover"
+                                                />
+                                                <label
+                                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5"
+                                                >
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        class="hidden"
+                                                        onchange={(e) =>
+                                                            handleSideFileChange(
+                                                                index,
+                                                                e,
+                                                            )}
+                                                    />
+                                                    <i class="ti ti-camera"></i> Ganti
+                                                    Gambar
                                                 </label>
                                             </div>
                                         {:else}
-                                            <label class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-[2.1/1] flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop">
-                                                <input type="file" accept="image/*" class="hidden" onchange={(e) => handleSideFileChange(index, e)} />
-                                                <i class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"></i>
-                                                <span class="text-[10px] font-bold text-slate-500 mt-2 text-center">Upload Banner</span>
+                                            <label
+                                                class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-[2.1/1] flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop"
+                                            >
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    class="hidden"
+                                                    onchange={(e) =>
+                                                        handleSideFileChange(
+                                                            index,
+                                                            e,
+                                                        )}
+                                                />
+                                                <i
+                                                    class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"
+                                                ></i>
+                                                <span
+                                                    class="text-[10px] font-bold text-slate-500 mt-2 text-center"
+                                                    >Upload Banner</span
+                                                >
                                             </label>
                                         {/if}
                                     </div>
@@ -288,7 +426,11 @@
                                     <!-- Fields -->
                                     <div class="md:col-span-8 space-y-3">
                                         <div>
-                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</p>
+                                            <p
+                                                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                            >
+                                                Alt Text (Deskripsi Gambar)
+                                            </p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.alt}
@@ -297,7 +439,11 @@
                                             />
                                         </div>
                                         <div>
-                                            <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</p>
+                                            <p
+                                                class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                            >
+                                                Tautan URL (Link)
+                                            </p>
                                             <input
                                                 type="text"
                                                 bind:value={banner.link}
@@ -311,44 +457,85 @@
                         {/each}
 
                         {#if form.side_banners.length === 0}
-                            <div class="py-12 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400">
+                            <div
+                                class="py-12 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400"
+                            >
                                 <i class="ti ti-photo text-4xl mb-2"></i>
-                                <p class="text-sm font-semibold">Tidak ada banner samping. Silakan tambahkan banner baru.</p>
+                                <p class="text-sm font-semibold">
+                                    Tidak ada banner samping. Silakan tambahkan
+                                    banner baru.
+                                </p>
                             </div>
                         {/if}
                     </div>
                 </div>
 
                 <!-- Middle Wide Banner Section -->
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6">
-                    <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 shadow-soft p-6 space-y-6"
+                >
+                    <div
+                        class="flex justify-between items-center border-b border-slate-100 pb-4"
+                    >
                         <div>
-                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                            <h3
+                                class="font-outfit font-black text-lg text-slate-800"
+                            >
                                 Banner Lebar Tengah
                             </h3>
                             <p class="text-xs text-slate-500 font-medium">
-                                Banner memanjang di tengah halaman (di atas rekomendasi produk, Rasio disarankan 4.5:1)
+                                Banner memanjang di tengah halaman (di atas
+                                rekomendasi produk, Rasio disarankan 4.5:1)
                             </p>
                         </div>
                     </div>
 
-                    <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                    <div
+                        class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/60 relative group space-y-4"
+                    >
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center"
+                        >
                             <!-- Image Preview / File Dropzone -->
                             <div class="md:col-span-4">
                                 {#if form.middle_wide_banner.image}
-                                    <div class="relative rounded-xl overflow-hidden aspect-[3.5/1] border border-slate-200 shadow-sm bg-white group/preview">
-                                        <img src={form.middle_wide_banner.image} alt="Preview" class="w-full h-full object-cover" />
-                                        <label class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5">
-                                            <input type="file" accept="image/*" class="hidden" onchange={handleMiddleWideFileChange} />
+                                    <div
+                                        class="relative rounded-xl overflow-hidden aspect-[3.5/1] border border-slate-200 shadow-sm bg-white group/preview"
+                                    >
+                                        <img
+                                            src={form.middle_wide_banner.image}
+                                            alt="Preview"
+                                            class="w-full h-full object-cover"
+                                        />
+                                        <label
+                                            class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex items-center justify-center cursor-pointer text-white font-bold text-xs gap-1.5"
+                                        >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                class="hidden"
+                                                onchange={handleMiddleWideFileChange}
+                                            />
                                             <i class="ti ti-camera"></i> Ganti Gambar
                                         </label>
                                     </div>
                                 {:else}
-                                    <label class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-[3.5/1] flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop">
-                                        <input type="file" accept="image/*" class="hidden" onchange={handleMiddleWideFileChange} />
-                                        <i class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"></i>
-                                        <span class="text-[10px] font-bold text-slate-500 mt-2 text-center">Upload Banner</span>
+                                    <label
+                                        class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-[3.5/1] flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop"
+                                    >
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            class="hidden"
+                                            onchange={handleMiddleWideFileChange}
+                                        />
+                                        <i
+                                            class="ti ti-photo-up text-2xl text-slate-400 group-hover/drop:scale-110 transition"
+                                        ></i>
+                                        <span
+                                            class="text-[10px] font-bold text-slate-500 mt-2 text-center"
+                                            >Upload Banner</span
+                                        >
                                     </label>
                                 {/if}
                             </div>
@@ -356,7 +543,11 @@
                             <!-- Fields -->
                             <div class="md:col-span-8 space-y-3">
                                 <div>
-                                    <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Alt Text (Deskripsi Gambar)</p>
+                                    <p
+                                        class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                    >
+                                        Alt Text (Deskripsi Gambar)
+                                    </p>
                                     <input
                                         type="text"
                                         bind:value={form.middle_wide_banner.alt}
@@ -365,10 +556,16 @@
                                     />
                                 </div>
                                 <div>
-                                    <p class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tautan URL (Link)</p>
+                                    <p
+                                        class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                    >
+                                        Tautan URL (Link)
+                                    </p>
                                     <input
                                         type="text"
-                                        bind:value={form.middle_wide_banner.link}
+                                        bind:value={
+                                            form.middle_wide_banner.link
+                                        }
                                         placeholder="Contoh: /flash-sale atau #"
                                         class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 transition"
                                     />
@@ -382,8 +579,12 @@
             <!-- Right Panel: Live Mobile Mockup Preview (5 Cols) -->
             <div class="lg:col-span-5 sticky top-8 space-y-4">
                 <div class="flex justify-between items-center px-2">
-                    <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3
+                        class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2"
+                    >
+                        <span
+                            class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"
+                        ></span>
                         Pratinjau Mobile Live
                     </h3>
                     <button
@@ -398,17 +599,26 @@
 
                 <!-- iPhone Frame Wrapper -->
                 <div class="flex justify-center w-full">
-                    <div class="relative w-[340px] sm:w-[360px] h-[680px] bg-slate-900 rounded-[50px] border-[12px] border-slate-900 shadow-2xl overflow-hidden ring-[6px] ring-slate-800 flex flex-col items-center select-none">
-                        
+                    <div
+                        class="relative w-[340px] sm:w-[360px] h-[680px] bg-slate-900 rounded-[50px] border-[12px] border-slate-900 shadow-2xl overflow-hidden ring-[6px] ring-slate-800 flex flex-col items-center select-none"
+                    >
                         <!-- iPhone Notch / Dynamic Island -->
-                        <div class="absolute top-2 w-28 h-6 bg-black rounded-full z-50 flex items-center justify-center">
+                        <div
+                            class="absolute top-2 w-28 h-6 bg-black rounded-full z-50 flex items-center justify-center"
+                        >
                             <!-- Camera / Sensor dots -->
-                            <div class="w-2.5 h-2.5 rounded-full bg-slate-950/80 mr-3"></div>
-                            <div class="w-1.5 h-1.5 rounded-full bg-slate-950/80"></div>
+                            <div
+                                class="w-2.5 h-2.5 rounded-full bg-slate-950/80 mr-3"
+                            ></div>
+                            <div
+                                class="w-1.5 h-1.5 rounded-full bg-slate-950/80"
+                            ></div>
                         </div>
 
                         <!-- iPhone Speaker Bar -->
-                        <div class="absolute top-0 w-16 h-1 bg-black rounded-b-md z-50"></div>
+                        <div
+                            class="absolute top-0 w-16 h-1 bg-black rounded-b-md z-50"
+                        ></div>
 
                         <!-- Iframe Content -->
                         {#key previewKey}
@@ -421,18 +631,25 @@
                         {/key}
 
                         <!-- Home Indicator Bar at the bottom -->
-                        <div class="absolute bottom-1.5 w-32 h-1.5 bg-black rounded-full z-50"></div>
+                        <div
+                            class="absolute bottom-1.5 w-32 h-1.5 bg-black rounded-full z-50"
+                        ></div>
                     </div>
                 </div>
 
-                <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-blue-800 text-xs leading-normal">
-                    <h4 class="font-bold flex items-center gap-1.5 mb-1 text-[11px] uppercase tracking-wider">
+                <div
+                    class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-blue-800 text-xs leading-normal"
+                >
+                    <h4
+                        class="font-bold flex items-center gap-1.5 mb-1 text-[11px] uppercase tracking-wider"
+                    >
                         <i class="ti ti-info-circle text-sm"></i> Cara Kerja Pratinjau
                     </h4>
-                    Pratinjau ini memuat halaman depan toko Anda secara interaktif. Klik tombol <strong>Simpan Perubahan</strong> di atas untuk mempublikasikan dan melihat langsung efek banner baru Anda di mockup.
+                    Pratinjau ini memuat halaman depan toko Anda secara interaktif.
+                    Klik tombol<strong>Simpan Perubahan</strong> di atas untuk mempublikasikan
+                    dan melihat langsung efek banner baru Anda di mockup.
                 </div>
             </div>
-            
         </div>
     </main>
 </AdminLayout>

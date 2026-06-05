@@ -2,10 +2,20 @@
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { page, router, Link } from '@inertiajs/svelte';
 
-    let { refunds, statusLabels = {}, filters = {}, storeName = '', storeLogo = '' } = $props();
+    let {
+        refunds,
+        statusLabels = {},
+        filters = {},
+        storeName = '',
+        storeLogo = '',
+    } = $props();
 
-    const primary = $derived((page.props as any).theme?.primary_color ?? '#0c4cb4');
-    const secondary = $derived((page.props as any).theme?.secondary_color ?? '#fa7315');
+    const primary = $derived(
+        (page.props as any).theme?.primary_color ?? '#0c4cb4',
+    );
+    const secondary = $derived(
+        (page.props as any).theme?.secondary_color ?? '#fa7315',
+    );
 
     // svelte-ignore state_referenced_locally
     let filterStatus = $state((filters as any).status ?? '');
@@ -15,11 +25,15 @@
     let filterSearch = $state((filters as any).search ?? '');
 
     function applyFilters() {
-        router.get('/admin/refunds', {
-            status: filterStatus || undefined,
-            refund_method: filterMethod || undefined,
-            search: filterSearch || undefined,
-        }, { preserveScroll: true });
+        router.get(
+            '/admin/refunds',
+            {
+                status: filterStatus || undefined,
+                refund_method: filterMethod || undefined,
+                search: filterSearch || undefined,
+            },
+            { preserveScroll: true },
+        );
     }
 
     function resetFilters() {
@@ -56,36 +70,54 @@
     };
 </script>
 
-<style>
-    .scrollbar-none::-webkit-scrollbar { display: none; }
-    .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-</style>
-
 <AdminLayout>
     <div class="flex-grow p-4 sm:p-8 w-full max-w-full mx-auto">
         <div class="space-y-6">
             <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+            >
                 <div>
-                    <h3 class="font-outfit font-black text-2xl text-slate-800">Refund & Pembatalan</h3>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Kelola semua pengajuan pembatalan transaksi dan refund dana</p>
+                    <h3 class="font-outfit font-black text-2xl text-slate-800">
+                        Refund & Pembatalan
+                    </h3>
+                    <p
+                        class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                    >
+                        Kelola semua pengajuan pembatalan transaksi dan refund
+                        dana
+                    </p>
                 </div>
             </div>
 
             <!-- Status Tabs -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-2 overflow-x-auto scrollbar-none flex gap-2">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-2 overflow-x-auto scrollbar-none flex gap-2"
+            >
                 <button
-                    onclick={() => { filterStatus = ''; applyFilters(); }}
-                    class="px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 border {filterStatus === '' ? 'bg-slate-900 border-slate-900 text-white shadow-sm' : 'bg-transparent border-slate-100 hover:bg-slate-50 text-slate-600'}"
+                    onclick={() => {
+                        filterStatus = '';
+                        applyFilters();
+                    }}
+                    class="px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 border {filterStatus ===
+                    ''
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                        : 'bg-transparent border-slate-100 hover:bg-slate-50 text-slate-600'}"
                 >
                     <i class="ti ti-layout-grid text-sm"></i>
                     Semua Status
                 </button>
                 {#each Object.entries(statusLabels) as [key, label]}
-                    {@const color = refundStatusColors[key] ?? { bg: '#f1f5f9', text: '#475569' }}
+                    {@const color = refundStatusColors[key] ?? {
+                        bg: '#f1f5f9',
+                        text: '#475569',
+                    }}
                     {@const isActive = filterStatus === key}
                     <button
-                        onclick={() => { filterStatus = key; applyFilters(); }}
+                        onclick={() => {
+                            filterStatus = key;
+                            applyFilters();
+                        }}
                         class="px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap flex items-center gap-2 border"
                         style={isActive
                             ? `background: ${color.bg}; border-color: ${color.bg}; color: ${color.text};`
@@ -97,26 +129,39 @@
             </div>
 
             <!-- Filters -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6"
+            >
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <!-- Search -->
                     <div>
-                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5">Cari Refund</p>
+                        <p
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5"
+                        >
+                            Cari Refund
+                        </p>
                         <div class="relative">
-                            <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <i
+                                class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                            ></i>
                             <input
                                 type="text"
                                 bind:value={filterSearch}
                                 placeholder="No. refund / no. transaksi / customer..."
                                 class="w-full pl-8 pr-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
-                                onkeydown={(e: any) => e.key === 'Enter' && applyFilters()}
+                                onkeydown={(e: any) =>
+                                    e.key === 'Enter' && applyFilters()}
                             />
                         </div>
                     </div>
 
                     <!-- Method -->
                     <div>
-                        <p class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit">Metode Refund</p>
+                        <p
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
+                        >
+                            Metode Refund
+                        </p>
                         <select
                             bind:value={filterMethod}
                             class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
@@ -147,17 +192,27 @@
             </div>
 
             <!-- Table -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden"
+            >
                 {#if refunds.data.length === 0}
-                    <div class="flex flex-col items-center justify-center py-16 text-center">
-                        <i class="ti ti-receipt-refund text-5xl text-slate-200 mb-3"></i>
-                        <p class="text-slate-500 font-semibold">Tidak ada pengajuan refund</p>
+                    <div
+                        class="flex flex-col items-center justify-center py-16 text-center"
+                    >
+                        <i
+                            class="ti ti-receipt-refund text-5xl text-slate-200 mb-3"
+                        ></i>
+                        <p class="text-slate-500 font-semibold">
+                            Tidak ada pengajuan refund
+                        </p>
                     </div>
                 {:else}
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">
+                                <tr
+                                    class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                                >
                                     <th class="py-5 px-4">No. Refund</th>
                                     <th class="py-5 px-4">Customer</th>
                                     <th class="py-5 px-4">Transaksi Asal</th>
@@ -168,47 +223,89 @@
                                     <th class="py-5 px-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                            <tbody
+                                class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
+                            >
                                 {#each refunds.data as ref (ref.id)}
-                                    {@const statusStyle = refundStatusColors[ref.status] ?? { bg: '#f1f5f9', text: '#475569' }}
-                                    <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100">
+                                    {@const statusStyle = refundStatusColors[
+                                        ref.status
+                                    ] ?? { bg: '#f1f5f9', text: '#475569' }}
+                                    <tr
+                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100"
+                                    >
                                         <td class="py-5 px-4">
-                                            <p class="font-bold text-slate-800 font-mono text-xs">{ref.refund_number}</p>
+                                            <p
+                                                class="font-bold text-slate-800 font-mono text-xs"
+                                            >
+                                                {ref.refund_number}
+                                            </p>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <p class="font-bold text-slate-800 text-sm">{ref.user?.name ?? '-'}</p>
-                                            <p class="text-[11px] text-slate-400 font-bold">{ref.user?.email ?? ''}</p>
+                                            <p
+                                                class="font-bold text-slate-800 text-sm"
+                                            >
+                                                {ref.user?.name ?? '-'}
+                                            </p>
+                                            <p
+                                                class="text-[11px] text-slate-400 font-bold"
+                                            >
+                                                {ref.user?.email ?? ''}
+                                            </p>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <p class="font-mono text-xs font-bold text-slate-700">{ref.transaction?.transaction_number ?? '-'}</p>
-                                            <span class="text-[10px] text-slate-400 font-bold">Status: {ref.transaction?.status}</span>
+                                            <p
+                                                class="font-mono text-xs font-bold text-slate-700"
+                                            >
+                                                {ref.transaction
+                                                    ?.transaction_number ?? '-'}
+                                            </p>
+                                            <span
+                                                class="text-[10px] text-slate-400 font-bold"
+                                                >Status: {ref.transaction
+                                                    ?.status}</span
+                                            >
                                         </td>
                                         <td class="py-5 px-4">
                                             {#if ref.refund_method === 'poin'}
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/50">
-                                                    <i class="ti ti-coins text-xs"></i>
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200/50"
+                                                >
+                                                    <i
+                                                        class="ti ti-coins text-xs"
+                                                    ></i>
                                                     Koin Toko
                                                 </span>
                                             {:else}
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/50">
-                                                    <i class="ti ti-building-bank text-xs"></i>
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200/50"
+                                                >
+                                                    <i
+                                                        class="ti ti-building-bank text-xs"
+                                                    ></i>
                                                     Transfer Bank
                                                 </span>
                                             {/if}
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span class="font-black text-slate-800 text-sm">{fmt(ref.refund_amount)}</span>
+                                            <span
+                                                class="font-black text-slate-800 text-sm"
+                                                >{fmt(ref.refund_amount)}</span
+                                            >
                                         </td>
                                         <td class="py-5 px-4">
                                             <span
                                                 class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider"
                                                 style="background:{statusStyle.bg}; color:{statusStyle.text}"
                                             >
-                                                {statusLabels[ref.status] ?? ref.status}
+                                                {statusLabels[ref.status] ??
+                                                    ref.status}
                                             </span>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span class="text-xs text-slate-500 font-bold">{fmtDate(ref.created_at)}</span>
+                                            <span
+                                                class="text-xs text-slate-500 font-bold"
+                                                >{fmtDate(ref.created_at)}</span
+                                            >
                                         </td>
                                         <td class="py-5 px-4 text-center">
                                             <Link
@@ -217,7 +314,8 @@
                                                 style="background:{primary};"
                                                 title="Detail Refund"
                                             >
-                                                <i class="ti ti-eye text-sm"></i>
+                                                <i class="ti ti-eye text-sm"
+                                                ></i>
                                                 Detail
                                             </Link>
                                         </td>
@@ -229,18 +327,29 @@
 
                     <!-- Pagination -->
                     {#if refunds.last_page > 1}
-                        <div class="flex items-center justify-between px-6 py-5 border-t border-slate-100 bg-slate-50/20">
-                            <p class="text-xs font-bold text-slate-500 font-outfit">
-                                Menampilkan {refunds.from}–{refunds.to} dari {refunds.total} refund
+                        <div
+                            class="flex items-center justify-between px-6 py-5 border-t border-slate-100 bg-slate-50/20"
+                        >
+                            <p
+                                class="text-xs font-bold text-slate-500 font-outfit"
+                            >
+                                Menampilkan {refunds.from}–{refunds.to} dari {refunds.total}
+                                refund
                             </p>
                             <div class="flex gap-1">
                                 {#if refunds.prev_page_url}
-                                    <Link href={refunds.prev_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition">
+                                    <Link
+                                        href={refunds.prev_page_url}
+                                        class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition"
+                                    >
                                         <i class="ti ti-chevron-left"></i>
                                     </Link>
                                 {/if}
                                 {#if refunds.next_page_url}
-                                    <Link href={refunds.next_page_url} class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition">
+                                    <Link
+                                        href={refunds.next_page_url}
+                                        class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center transition"
+                                    >
                                         <i class="ti ti-chevron-right"></i>
                                     </Link>
                                 {/if}
@@ -252,3 +361,13 @@
         </div>
     </div>
 </AdminLayout>
+
+<style>
+    .scrollbar-none::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-none {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>

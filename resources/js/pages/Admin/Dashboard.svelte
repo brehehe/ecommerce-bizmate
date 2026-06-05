@@ -8,7 +8,14 @@
     import Chart from 'chart.js/auto';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
 
-    let { stats, orderStats, recentOrders, topProducts, chartData, currentFilter: initialFilter = '7_hari' } = $props();
+    let {
+        stats,
+        orderStats,
+        recentOrders,
+        topProducts,
+        chartData,
+        currentFilter: initialFilter = '7_hari',
+    } = $props();
 
     // svelte-ignore state_referenced_locally
     let selectedFilter = $state(initialFilter);
@@ -114,7 +121,11 @@
 
     function handleFilterChange(e: Event) {
         const value = (e.target as HTMLSelectElement).value;
-        router.get('/admin/dashboard', { filter: value }, { preserveState: true });
+        router.get(
+            '/admin/dashboard',
+            { filter: value },
+            { preserveState: true },
+        );
     }
 </script>
 
@@ -183,19 +194,22 @@
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-up text-sm"></i> {stats.revenueChange.value}
+                            <i class="ti ti-trending-up text-sm"></i>
+                            {stats.revenueChange.value}
                         </span>
                     {:else if stats.revenueChange.type === 'down'}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-down text-sm"></i> {stats.revenueChange.value}
+                            <i class="ti ti-trending-down text-sm"></i>
+                            {stats.revenueChange.value}
                         </span>
                     {:else}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-minus text-sm"></i> {stats.revenueChange.value}
+                            <i class="ti ti-minus text-sm"></i>
+                            {stats.revenueChange.value}
                         </span>
                     {/if}
                 </div>
@@ -226,19 +240,22 @@
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-up text-sm"></i> {stats.ordersChange.value}
+                            <i class="ti ti-trending-up text-sm"></i>
+                            {stats.ordersChange.value}
                         </span>
                     {:else if stats.ordersChange.type === 'down'}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-down text-sm"></i> {stats.ordersChange.value}
+                            <i class="ti ti-trending-down text-sm"></i>
+                            {stats.ordersChange.value}
                         </span>
                     {:else}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-minus text-sm"></i> {stats.ordersChange.value}
+                            <i class="ti ti-minus text-sm"></i>
+                            {stats.ordersChange.value}
                         </span>
                     {/if}
                 </div>
@@ -268,19 +285,22 @@
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-up text-sm"></i> {stats.productsChange.value}
+                            <i class="ti ti-trending-up text-sm"></i>
+                            {stats.productsChange.value}
                         </span>
                     {:else if stats.productsChange.type === 'down'}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-down text-sm"></i> {stats.productsChange.value}
+                            <i class="ti ti-trending-down text-sm"></i>
+                            {stats.productsChange.value}
                         </span>
                     {:else}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-minus text-sm"></i> {stats.productsChange.value}
+                            <i class="ti ti-minus text-sm"></i>
+                            {stats.productsChange.value}
                         </span>
                     {/if}
                 </div>
@@ -310,19 +330,22 @@
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-up text-sm"></i> {stats.customersChange.value}
+                            <i class="ti ti-trending-up text-sm"></i>
+                            {stats.customersChange.value}
                         </span>
                     {:else if stats.customersChange.type === 'down'}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-trending-down text-sm"></i> {stats.customersChange.value}
+                            <i class="ti ti-trending-down text-sm"></i>
+                            {stats.customersChange.value}
                         </span>
                     {:else}
                         <span
                             class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-extrabold"
                         >
-                            <i class="ti ti-minus text-sm"></i> {stats.customersChange.value}
+                            <i class="ti ti-minus text-sm"></i>
+                            {stats.customersChange.value}
                         </span>
                     {/if}
                 </div>

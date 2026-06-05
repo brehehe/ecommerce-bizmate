@@ -16,26 +16,59 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
-    const storeSettings = $derived(
-        (page.props as any).settings ?? {},
-    );
+    const storeSettings = $derived((page.props as any).settings ?? {});
 
     const deliverySteps = [
-        { key: 'dikemas', label: 'Dikemas', icon: 'ti-package', desc: 'Paket sedang dikemas' },
-        { key: 'out_for_pickup', label: 'Dijemput', icon: 'ti-building-warehouse', desc: 'Paket sudah dipick oleh kurir' },
-        { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck', desc: 'Dalam perjalanan ke tujuan' },
-        { key: 'arrived', label: 'Tiba', icon: 'ti-map-pin-check', desc: 'Paket telah tiba di tujuan' },
-        { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check', desc: 'Pesanan selesai dikonfirmasi pelanggan' },
+        {
+            key: 'dikemas',
+            label: 'Dikemas',
+            icon: 'ti-package',
+            desc: 'Paket sedang dikemas',
+        },
+        {
+            key: 'out_for_pickup',
+            label: 'Dijemput',
+            icon: 'ti-building-warehouse',
+            desc: 'Paket sudah dipick oleh kurir',
+        },
+        {
+            key: 'dikirim',
+            label: 'Dikirim',
+            icon: 'ti-truck',
+            desc: 'Dalam perjalanan ke tujuan',
+        },
+        {
+            key: 'arrived',
+            label: 'Tiba',
+            icon: 'ti-map-pin-check',
+            desc: 'Paket telah tiba di tujuan',
+        },
+        {
+            key: 'selesai',
+            label: 'Selesai',
+            icon: 'ti-circle-check',
+            desc: 'Pesanan selesai dikonfirmasi pelanggan',
+        },
     ];
 
     const storeCourierCurrentStatus = $derived(
         transaction.status === 'selesai'
             ? 'selesai'
-            : (transaction.delivery_arrived_at ? 'arrived' : transaction.status)
+            : transaction.delivery_arrived_at
+              ? 'arrived'
+              : transaction.status,
     );
 
-    function getStoreCourierStepState(stepKey: string): 'done' | 'active' | 'pending' {
-        const statusOrder = ['dikemas', 'out_for_pickup', 'dikirim', 'arrived', 'selesai'];
+    function getStoreCourierStepState(
+        stepKey: string,
+    ): 'done' | 'active' | 'pending' {
+        const statusOrder = [
+            'dikemas',
+            'out_for_pickup',
+            'dikirim',
+            'arrived',
+            'selesai',
+        ];
         const currentIdx = statusOrder.indexOf(storeCourierCurrentStatus);
         const stepIdx = statusOrder.indexOf(stepKey);
 
@@ -82,7 +115,8 @@
 
     function prevPreview() {
         if (previewItems.length > 0) {
-            previewIndex = (previewIndex - 1 + previewItems.length) % previewItems.length;
+            previewIndex =
+                (previewIndex - 1 + previewItems.length) % previewItems.length;
         }
     }
 
@@ -165,7 +199,11 @@
         { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
         { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
         { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
-        { key: 'out_for_pickup', label: 'Out for Pickup', icon: 'ti-truck-delivery' },
+        {
+            key: 'out_for_pickup',
+            label: 'Out for Pickup',
+            icon: 'ti-truck-delivery',
+        },
         { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck' },
         { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check' },
     ];
@@ -256,7 +294,11 @@
     function generateStoreBooking() {
         storeActionLoading = true;
         const autoCode = 'ST-' + transaction.transaction_number;
-        const autoResi = 'RSI-' + transaction.transaction_number.replace('TRX-', '') + '-' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const autoResi =
+            'RSI-' +
+            transaction.transaction_number.replace('TRX-', '') +
+            '-' +
+            new Date().toISOString().slice(0, 10).replace(/-/g, '');
         router.post(
             `/admin/transactions/${transaction.id}/tracking`,
             {
@@ -265,7 +307,10 @@
             },
             {
                 onSuccess: () => {
-                    showToast('Kode booking & Resi kurir toko berhasil dibuat!', 'success');
+                    showToast(
+                        'Kode booking & Resi kurir toko berhasil dibuat!',
+                        'success',
+                    );
                 },
                 onError: () => {
                     showToast('Gagal membuat kode booking.', 'error');
@@ -273,12 +318,16 @@
                 onFinish: () => {
                     storeActionLoading = false;
                 },
-            }
+            },
         );
     }
 
     function generateStoreResi() {
-        const autoResi = 'RSI-' + transaction.transaction_number.replace('TRX-', '') + '-' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const autoResi =
+            'RSI-' +
+            transaction.transaction_number.replace('TRX-', '') +
+            '-' +
+            new Date().toISOString().slice(0, 10).replace(/-/g, '');
         storeTrackingNumber = autoResi;
     }
 
@@ -295,7 +344,10 @@
             },
             {
                 onSuccess: () => {
-                    showToast('Nomor resi kurir toko berhasil disimpan!', 'success');
+                    showToast(
+                        'Nomor resi kurir toko berhasil disimpan!',
+                        'success',
+                    );
                     showStoreResiForm = false;
                 },
                 onError: () => {
@@ -304,7 +356,7 @@
                 onFinish: () => {
                     storeActionLoading = false;
                 },
-            }
+            },
         );
     }
 
@@ -321,7 +373,10 @@
             },
             {
                 onSuccess: () => {
-                    showToast('Riwayat pengiriman berhasil ditambahkan!', 'success');
+                    showToast(
+                        'Riwayat pengiriman berhasil ditambahkan!',
+                        'success',
+                    );
                     customDeliveryLog = '';
                 },
                 onError: () => {
@@ -330,7 +385,7 @@
                 onFinish: () => {
                     storeActionLoading = false;
                 },
-            }
+            },
         );
     }
 
@@ -405,7 +460,9 @@
         trackingLoading = true;
         trackingErr = '';
         try {
-            const resp = await fetch(`/admin/transactions/${transaction.id}/komerce/track`);
+            const resp = await fetch(
+                `/admin/transactions/${transaction.id}/komerce/track`,
+            );
             const data = await resp.json();
             if (resp.ok && data.success) {
                 trackingTimeline = data.history;
@@ -427,28 +484,36 @@
 
     function storeKomerceShipment() {
         bookingLoading = true;
-        router.post(`/admin/transactions/${transaction.id}/komerce/store`, {}, {
-            onError: (err) => {
-                const first = Object.values(err)[0] as string;
-                showToast(first ?? 'Gagal booking pengiriman.', 'error');
+        router.post(
+            `/admin/transactions/${transaction.id}/komerce/store`,
+            {},
+            {
+                onError: (err) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal booking pengiriman.', 'error');
+                },
+                onFinish: () => {
+                    bookingLoading = false;
+                },
             },
-            onFinish: () => {
-                bookingLoading = false;
-            }
-        });
+        );
     }
 
     function cancelKomerceShipment() {
         bookingLoading = true;
-        router.post(`/admin/transactions/${transaction.id}/komerce/cancel`, {}, {
-            onError: (err) => {
-                const first = Object.values(err)[0] as string;
-                showToast(first ?? 'Gagal membatalkan booking.', 'error');
+        router.post(
+            `/admin/transactions/${transaction.id}/komerce/cancel`,
+            {},
+            {
+                onError: (err) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal membatalkan booking.', 'error');
+                },
+                onFinish: () => {
+                    bookingLoading = false;
+                },
             },
-            onFinish: () => {
-                bookingLoading = false;
-            }
-        });
+        );
     }
 
     function requestPickupKomerce() {
@@ -457,21 +522,28 @@
             return;
         }
         bookingLoading = true;
-        router.post(`/admin/transactions/${transaction.id}/komerce/pickup`, {
-            pickup_time: pickupTime,
-            vehicle_type: vehicleType,
-        }, {
-            onSuccess: () => {
-                showPickupModal = false;
+        router.post(
+            `/admin/transactions/${transaction.id}/komerce/pickup`,
+            {
+                pickup_time: pickupTime,
+                vehicle_type: vehicleType,
             },
-            onError: (err) => {
-                const first = Object.values(err)[0] as string;
-                showToast(first ?? 'Gagal mengajukan request pickup.', 'error');
+            {
+                onSuccess: () => {
+                    showPickupModal = false;
+                },
+                onError: (err) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(
+                        first ?? 'Gagal mengajukan request pickup.',
+                        'error',
+                    );
+                },
+                onFinish: () => {
+                    bookingLoading = false;
+                },
             },
-            onFinish: () => {
-                bookingLoading = false;
-            }
-        });
+        );
     }
 </script>
 
@@ -672,7 +744,11 @@
                             <div class="flex flex-col sm:flex-row gap-5">
                                 <button
                                     type="button"
-                                    onclick={() => openPreview([latestPayment.proof_image], 0)}
+                                    onclick={() =>
+                                        openPreview(
+                                            [latestPayment.proof_image],
+                                            0,
+                                        )}
                                     class="shrink-0 group relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm block text-left p-0 focus:outline-none"
                                 >
                                     <img
@@ -833,7 +909,9 @@
                                         >
                                             {item.product_name}
                                             {#if item.product?.is_digital}
-                                                <span class="inline-flex items-center px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase tracking-wider border border-blue-200/30">
+                                                <span
+                                                    class="inline-flex items-center px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase tracking-wider border border-blue-200/30"
+                                                >
                                                     Digital
                                                 </span>
                                             {/if}
@@ -850,28 +928,60 @@
                                             SKU: {item.product_sku}
                                         </p>
                                         {#if item.note}
-                                            <div class="mt-2 p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-600 flex flex-col gap-1">
-                                                <div class="flex gap-1.5 items-center">
-                                                    <i class="ti ti-notes text-xs shrink-0 text-slate-400"></i>
-                                                    <span class="font-bold text-slate-500">Catatan:</span>
+                                            <div
+                                                class="mt-2 p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-600 flex flex-col gap-1"
+                                            >
+                                                <div
+                                                    class="flex gap-1.5 items-center"
+                                                >
+                                                    <i
+                                                        class="ti ti-notes text-xs shrink-0 text-slate-400"
+                                                    ></i>
+                                                    <span
+                                                        class="font-bold text-slate-500"
+                                                        >Catatan:</span
+                                                    >
                                                 </div>
                                                 <div class="mt-1 pl-5">
-                                                    {#if item.note.toLowerCase().startsWith('http://') || item.note.toLowerCase().startsWith('https://')}
-                                                        <a href={item.note} target="_blank" class="text-blue-600 underline hover:text-blue-800 break-all font-semibold flex items-center gap-1">
-                                                            {item.note} <i class="ti ti-external-link text-xs"></i>
+                                                    {#if item.note
+                                                        .toLowerCase()
+                                                        .startsWith('http://') || item.note
+                                                            .toLowerCase()
+                                                            .startsWith('https://')}
+                                                        <a
+                                                            href={item.note}
+                                                            target="_blank"
+                                                            class="text-blue-600 underline hover:text-blue-800 break-all font-semibold flex items-center gap-1"
+                                                        >
+                                                            {item.note}
+                                                            <i
+                                                                class="ti ti-external-link text-xs"
+                                                            ></i>
                                                         </a>
                                                     {:else}
-                                                        <div class="flex items-center justify-between gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 mt-0.5">
-                                                            <span class="font-mono font-bold text-xs text-slate-800 select-all break-all">{item.note}</span>
+                                                        <div
+                                                            class="flex items-center justify-between gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 mt-0.5"
+                                                        >
+                                                            <span
+                                                                class="font-mono font-bold text-xs text-slate-800 select-all break-all"
+                                                                >{item.note}</span
+                                                            >
                                                             <button
                                                                 onclick={() => {
-                                                                    navigator.clipboard.writeText(item.note);
-                                                                    showToast('Catatan berhasil disalin!', 'success');
+                                                                    navigator.clipboard.writeText(
+                                                                        item.note,
+                                                                    );
+                                                                    showToast(
+                                                                        'Catatan berhasil disalin!',
+                                                                        'success',
+                                                                    );
                                                                 }}
                                                                 class="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition shrink-0"
                                                                 title="Salin Catatan"
                                                             >
-                                                                <i class="ti ti-copy text-xs"></i>
+                                                                <i
+                                                                    class="ti ti-copy text-xs"
+                                                                ></i>
                                                             </button>
                                                         </div>
                                                     {/if}
@@ -955,29 +1065,51 @@
                 <div class="space-y-6">
                     {#if transaction.shipping_courier === 'store_courier'}
                         <!-- Store Courier Dashboard -->
-                        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
-                            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                                <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
-                                    <i class="ti ti-truck text-lg text-emerald-600"></i>
+                        <div
+                            class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
+                        >
+                            <div
+                                class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3"
+                            >
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2"
+                                >
+                                    <i
+                                        class="ti ti-truck text-lg text-emerald-600"
+                                    ></i>
                                     Kurir Toko (Store Courier)
                                 </h3>
                                 {#if transaction.booking_code}
-                                    <span class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                    <span
+                                        class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider"
+                                    >
                                         Booked
                                     </span>
                                 {:else}
-                                    <span class="text-[9px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wider">
+                                    <span
+                                        class="text-[9px] font-black px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wider"
+                                    >
                                         Pending
                                     </span>
                                 {/if}
                             </div>
 
                             <div class="space-y-4">
-                                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2.5">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-slate-400 font-bold uppercase text-[9px]">Kode Booking</span>
+                                <div
+                                    class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2.5"
+                                >
+                                    <div
+                                        class="flex justify-between items-center"
+                                    >
+                                        <span
+                                            class="text-slate-400 font-bold uppercase text-[9px]"
+                                            >Kode Booking</span
+                                        >
                                         {#if transaction.booking_code}
-                                            <span class="font-mono font-bold text-slate-800 select-all">{transaction.booking_code}</span>
+                                            <span
+                                                class="font-mono font-bold text-slate-800 select-all"
+                                                >{transaction.booking_code}</span
+                                            >
                                         {:else}
                                             <button
                                                 onclick={generateStoreBooking}
@@ -988,23 +1120,38 @@
                                             </button>
                                         {/if}
                                     </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-slate-400 font-bold uppercase text-[9px]">Nomor Resi / AWB</span>
+                                    <div
+                                        class="flex justify-between items-center"
+                                    >
+                                        <span
+                                            class="text-slate-400 font-bold uppercase text-[9px]"
+                                            >Nomor Resi / AWB</span
+                                        >
                                         {#if transaction.tracking_number && !showStoreResiForm}
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="font-mono font-bold text-slate-800 select-all">{transaction.tracking_number}</span>
+                                            <div
+                                                class="flex items-center gap-1.5"
+                                            >
+                                                <span
+                                                    class="font-mono font-bold text-slate-800 select-all"
+                                                    >{transaction.tracking_number}</span
+                                                >
                                                 <button
-                                                    onclick={() => (showStoreResiForm = true)}
+                                                    onclick={() =>
+                                                        (showStoreResiForm = true)}
                                                     class="text-blue-500 hover:text-blue-700 text-[10px] font-bold"
                                                 >
                                                     Ubah
                                                 </button>
                                             </div>
                                         {:else}
-                                            <div class="flex items-center gap-1.5 w-2/3">
+                                            <div
+                                                class="flex items-center gap-1.5 w-2/3"
+                                            >
                                                 <input
                                                     type="text"
-                                                    bind:value={storeTrackingNumber}
+                                                    bind:value={
+                                                        storeTrackingNumber
+                                                    }
                                                     placeholder="Input nomor resi..."
                                                     class="flex-1 px-2.5 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
                                                 />
@@ -1018,7 +1165,8 @@
                                                 </button>
                                                 <button
                                                     onclick={saveStoreTracking}
-                                                    disabled={storeActionLoading || !storeTrackingNumber.trim()}
+                                                    disabled={storeActionLoading ||
+                                                        !storeTrackingNumber.trim()}
                                                     class="px-2 py-1 bg-blue-500 text-white rounded-lg text-[10px] font-bold hover:bg-blue-600 transition disabled:opacity-50 shrink-0"
                                                 >
                                                     Simpan
@@ -1027,46 +1175,98 @@
                                         {/if}
                                     </div>
                                     {#if transaction.courier_user}
-                                        <div class="flex justify-between items-center pt-2.5 border-t border-slate-200/50">
-                                            <span class="text-slate-400 font-bold uppercase text-[9px]">Petugas Kurir</span>
-                                            <span class="font-bold text-slate-800">{transaction.courier_user.name}</span>
+                                        <div
+                                            class="flex justify-between items-center pt-2.5 border-t border-slate-200/50"
+                                        >
+                                            <span
+                                                class="text-slate-400 font-bold uppercase text-[9px]"
+                                                >Petugas Kurir</span
+                                            >
+                                            <span
+                                                class="font-bold text-slate-800"
+                                                >{transaction.courier_user
+                                                    .name}</span
+                                            >
                                         </div>
                                     {/if}
                                 </div>
 
                                 <!-- Status Pengiriman (Kurir Toko Journey) -->
-                                <div class="mt-4 pt-4 border-t border-slate-100 space-y-3.5">
-                                    <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                        <i class="ti ti-truck-delivery text-slate-400"></i>
+                                <div
+                                    class="mt-4 pt-4 border-t border-slate-100 space-y-3.5"
+                                >
+                                    <h4
+                                        class="font-bold text-slate-800 text-xs flex items-center gap-1.5"
+                                    >
+                                        <i
+                                            class="ti ti-truck-delivery text-slate-400"
+                                        ></i>
                                         Status Pengiriman (Kurir Toko)
                                     </h4>
 
                                     <!-- Steps (Responsive, no overlap) -->
                                     <div class="relative space-y-1">
                                         {#each deliverySteps as step, i}
-                                            {@const state = getStoreCourierStepState(step.key)}
-                                            <div class="flex items-start gap-3 relative pb-4 {i === deliverySteps.length - 1 ? 'pb-0' : ''}">
+                                            {@const state =
+                                                getStoreCourierStepState(
+                                                    step.key,
+                                                )}
+                                            <div
+                                                class="flex items-start gap-3 relative pb-4 {i ===
+                                                deliverySteps.length - 1
+                                                    ? 'pb-0'
+                                                    : ''}"
+                                            >
                                                 <!-- Vertical line -->
                                                 {#if i < deliverySteps.length - 1}
-                                                    <div class="absolute left-[14px] top-7 bottom-0 w-0.5 {state !== 'pending' ? 'bg-emerald-300' : 'bg-slate-100'}"></div>
+                                                    <div
+                                                        class="absolute left-[14px] top-7 bottom-0 w-0.5 {state !==
+                                                        'pending'
+                                                            ? 'bg-emerald-300'
+                                                            : 'bg-slate-100'}"
+                                                    ></div>
                                                 {/if}
 
                                                 <!-- Icon -->
-                                                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 transition-all z-10
-                                                    {state === 'done' ? 'bg-emerald-100 text-emerald-600' : state === 'active' ? 'text-white shadow-sm' : 'bg-slate-100 text-slate-400'}"
-                                                    style={state === 'active' ? `background-color: ${primary};` : ''}
+                                                <div
+                                                    class="w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 transition-all z-10
+                                                    {state === 'done'
+                                                        ? 'bg-emerald-100 text-emerald-600'
+                                                        : state === 'active'
+                                                          ? 'text-white shadow-sm'
+                                                          : 'bg-slate-100 text-slate-400'}"
+                                                    style={state === 'active'
+                                                        ? `background-color: ${primary};`
+                                                        : ''}
                                                 >
                                                     {#if state === 'done'}
-                                                        <i class="ti ti-check font-black"></i>
+                                                        <i
+                                                            class="ti ti-check font-black"
+                                                        ></i>
                                                     {:else}
-                                                        <i class="ti {step.icon}"></i>
+                                                        <i
+                                                            class="ti {step.icon}"
+                                                        ></i>
                                                     {/if}
                                                 </div>
 
                                                 <!-- Content -->
-                                                <div class="flex-1 pt-0.5 {state === 'pending' ? 'opacity-40' : ''}">
-                                                    <p class="text-xs font-bold text-slate-800 leading-none mb-1">{step.label}</p>
-                                                    <p class="text-[10px] text-slate-500 leading-normal">{step.desc}</p>
+                                                <div
+                                                    class="flex-1 pt-0.5 {state ===
+                                                    'pending'
+                                                        ? 'opacity-40'
+                                                        : ''}"
+                                                >
+                                                    <p
+                                                        class="text-xs font-bold text-slate-800 leading-none mb-1"
+                                                    >
+                                                        {step.label}
+                                                    </p>
+                                                    <p
+                                                        class="text-[10px] text-slate-500 leading-normal"
+                                                    >
+                                                        {step.desc}
+                                                    </p>
                                                 </div>
                                             </div>
                                         {/each}
@@ -1075,24 +1275,46 @@
 
                                 <!-- Foto Bukti Pengiriman -->
                                 {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
-                                    <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
-                                        <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                                            <i class="ti ti-camera text-slate-400"></i>
-                                            Foto Bukti Pengiriman ({transaction.delivery_photos.length})
+                                    <div
+                                        class="mt-4 pt-4 border-t border-slate-100 space-y-3"
+                                    >
+                                        <h4
+                                            class="font-bold text-slate-800 text-xs flex items-center gap-1.5"
+                                        >
+                                            <i
+                                                class="ti ti-camera text-slate-400"
+                                            ></i>
+                                            Foto Bukti Pengiriman ({transaction
+                                                .delivery_photos.length})
                                         </h4>
                                         <div class="grid grid-cols-2 gap-2">
                                             {#each transaction.delivery_photos as photo, idx}
                                                 <button
-                                                    onclick={() => openPreview(transaction.delivery_photos, idx)}
+                                                    onclick={() =>
+                                                        openPreview(
+                                                            transaction.delivery_photos,
+                                                            idx,
+                                                        )}
                                                     class="block relative rounded-xl overflow-hidden aspect-video bg-slate-50 border border-slate-150 hover:opacity-90 transition text-left w-full cursor-pointer"
                                                 >
                                                     {#if isVideo(photo)}
-                                                        <div class="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-white gap-1">
-                                                            <i class="ti ti-video text-2xl text-slate-300"></i>
-                                                            <span class="text-[10px] font-bold opacity-75">Video Bukti</span>
+                                                        <div
+                                                            class="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-white gap-1"
+                                                        >
+                                                            <i
+                                                                class="ti ti-video text-2xl text-slate-300"
+                                                            ></i>
+                                                            <span
+                                                                class="text-[10px] font-bold opacity-75"
+                                                                >Video Bukti</span
+                                                            >
                                                         </div>
                                                     {:else}
-                                                        <img src="/storage/{photo}" alt="Bukti Pengiriman" class="w-full h-full object-cover" />
+                                                        <img
+                                                            src="/storage/{photo}"
+                                                            alt="Bukti Pengiriman"
+                                                            class="w-full h-full object-cover"
+                                                        />
                                                     {/if}
                                                 </button>
                                             {/each}
@@ -1153,18 +1375,31 @@
                         </div>
                     {:else if transaction.shipping_courier !== 'self_pickup' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier'}
                         <!-- Komerce Shipping Delivery Dashboard -->
-                        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6">
-                            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-                                <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
-                                    <i class="ti ti-truck text-lg" style="color:{primary}"></i>
+                        <div
+                            class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
+                        >
+                            <div
+                                class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3"
+                            >
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2"
+                                >
+                                    <i
+                                        class="ti ti-truck text-lg"
+                                        style="color:{primary}"
+                                    ></i>
                                     Komerce Shipping
                                 </h3>
                                 {#if transaction.booking_code}
-                                    <span class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                    <span
+                                        class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider"
+                                    >
                                         Booked
                                     </span>
                                 {:else}
-                                    <span class="text-[9px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                                    <span
+                                        class="text-[9px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider"
+                                    >
                                         Ready
                                     </span>
                                 {/if}
@@ -1172,8 +1407,11 @@
 
                             <div class="space-y-4">
                                 {#if !transaction.booking_code}
-                                    <p class="text-xs text-slate-500 leading-relaxed">
-                                        Pesan kurir pengiriman secara otomatis melalui integrasi Komerce Delivery.
+                                    <p
+                                        class="text-xs text-slate-500 leading-relaxed"
+                                    >
+                                        Pesan kurir pengiriman secara otomatis
+                                        melalui integrasi Komerce Delivery.
                                     </p>
                                     <button
                                         onclick={storeKomerceShipment}
@@ -1181,22 +1419,46 @@
                                         class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-blueRoyal/10"
                                         style="background:{primary}"
                                     >
-                                        <i class="ti ti-package-export text-sm"></i>
-                                        {bookingLoading ? 'Memproses Booking...' : 'Pesan Pengiriman (Komerce)'}
+                                        <i class="ti ti-package-export text-sm"
+                                        ></i>
+                                        {bookingLoading
+                                            ? 'Memproses Booking...'
+                                            : 'Pesan Pengiriman (Komerce)'}
                                     </button>
                                 {:else}
-                                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2">
+                                    <div
+                                        class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2"
+                                    >
                                         <div class="flex justify-between">
-                                            <span class="text-slate-400 font-bold uppercase text-[9px]">Kode Booking</span>
-                                            <span class="font-mono font-bold text-slate-800 select-all">{transaction.booking_code}</span>
+                                            <span
+                                                class="text-slate-400 font-bold uppercase text-[9px]"
+                                                >Kode Booking</span
+                                            >
+                                            <span
+                                                class="font-mono font-bold text-slate-800 select-all"
+                                                >{transaction.booking_code}</span
+                                            >
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="text-slate-400 font-bold uppercase text-[9px]">Nomor Resi / AWB</span>
-                                            <span class="font-mono font-bold text-slate-800 select-all">{transaction.tracking_number ?? '-'}</span>
+                                            <span
+                                                class="text-slate-400 font-bold uppercase text-[9px]"
+                                                >Nomor Resi / AWB</span
+                                            >
+                                            <span
+                                                class="font-mono font-bold text-slate-800 select-all"
+                                                >{transaction.tracking_number ??
+                                                    '-'}</span
+                                            >
                                         </div>
                                         <div class="flex justify-between">
-                                            <span class="text-slate-400 font-bold uppercase text-[9px]">Kurir</span>
-                                            <span class="font-bold text-slate-800 uppercase">{transaction.shipping_courier} ({transaction.shipping_service})</span>
+                                            <span
+                                                class="text-slate-400 font-bold uppercase text-[9px]"
+                                                >Kurir</span
+                                            >
+                                            <span
+                                                class="font-bold text-slate-800 uppercase"
+                                                >{transaction.shipping_courier} ({transaction.shipping_service})</span
+                                            >
                                         </div>
                                     </div>
 
@@ -1207,17 +1469,22 @@
                                             target="_blank"
                                             class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition active:scale-95 shadow-sm"
                                         >
-                                            <i class="ti ti-printer text-sm text-slate-500"></i>
+                                            <i
+                                                class="ti ti-printer text-sm text-slate-500"
+                                            ></i>
                                             Cetak Label Pengiriman
                                         </a>
                                         <!-- Request Pickup -->
                                         {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
                                             <button
-                                                onclick={() => (showPickupModal = true)}
+                                                onclick={() =>
+                                                    (showPickupModal = true)}
                                                 class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
                                                 style="background:{secondary}"
                                             >
-                                                <i class="ti ti-calendar-event text-sm"></i>
+                                                <i
+                                                    class="ti ti-calendar-event text-sm"
+                                                ></i>
                                                 Request Courier Pickup
                                             </button>
                                         {/if}
@@ -1229,7 +1496,9 @@
                                                 disabled={bookingLoading}
                                                 class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 text-xs font-bold text-red-600 bg-white hover:bg-red-50/50 transition active:scale-[0.98]"
                                             >
-                                                <i class="ti ti-trash text-sm text-red-500"></i>
+                                                <i
+                                                    class="ti ti-trash text-sm text-red-500"
+                                                ></i>
                                                 Batalkan Booking Komerce
                                             </button>
                                         {/if}
@@ -1237,40 +1506,76 @@
 
                                     <!-- Live tracking subpanel -->
                                     {#if transaction.tracking_number}
-                                        <div class="mt-4 pt-4 border-t border-slate-100">
-                                            <h4 class="font-bold text-slate-800 text-xs mb-3 flex items-center gap-1.5">
-                                                <i class="ti ti-timeline text-slate-400"></i>
+                                        <div
+                                            class="mt-4 pt-4 border-t border-slate-100"
+                                        >
+                                            <h4
+                                                class="font-bold text-slate-800 text-xs mb-3 flex items-center gap-1.5"
+                                            >
+                                                <i
+                                                    class="ti ti-timeline text-slate-400"
+                                                ></i>
                                                 Riwayat Perjalanan Paket
                                             </h4>
-                                            
+
                                             {#if trackingLoading}
                                                 <div class="space-y-3 py-1">
                                                     {#each [1, 2] as _}
-                                                        <div class="flex gap-2.5 animate-pulse">
-                                                            <div class="w-2 h-2 rounded-full bg-slate-200 mt-1 shrink-0"></div>
-                                                            <div class="space-y-1 w-full">
-                                                                <div class="h-2.5 bg-slate-200 rounded w-1/4"></div>
-                                                                <div class="h-2.5 bg-slate-200 rounded w-5/6"></div>
+                                                        <div
+                                                            class="flex gap-2.5 animate-pulse"
+                                                        >
+                                                            <div
+                                                                class="w-2 h-2 rounded-full bg-slate-200 mt-1 shrink-0"
+                                                            ></div>
+                                                            <div
+                                                                class="space-y-1 w-full"
+                                                            >
+                                                                <div
+                                                                    class="h-2.5 bg-slate-200 rounded w-1/4"
+                                                                ></div>
+                                                                <div
+                                                                    class="h-2.5 bg-slate-200 rounded w-5/6"
+                                                                ></div>
                                                             </div>
                                                         </div>
                                                     {/each}
                                                 </div>
                                             {:else if trackingErr}
-                                                <p class="text-[10px] text-slate-400 italic">{trackingErr}</p>
+                                                <p
+                                                    class="text-[10px] text-slate-400 italic"
+                                                >
+                                                    {trackingErr}
+                                                </p>
                                             {:else if trackingTimeline && trackingTimeline.length > 0}
-                                                <div class="relative pl-3 border-l border-slate-100 space-y-3 py-1">
+                                                <div
+                                                    class="relative pl-3 border-l border-slate-100 space-y-3 py-1"
+                                                >
                                                     {#each trackingTimeline as step}
                                                         <div class="relative">
-                                                            <div class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full bg-slate-300 border border-white"></div>
+                                                            <div
+                                                                class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full bg-slate-300 border border-white"
+                                                            ></div>
                                                             <div>
-                                                                <p class="text-[9px] text-slate-400 font-bold">{step.date}</p>
-                                                                <p class="text-[11px] text-slate-600 mt-0.5 leading-snug">{step.desc}</p>
+                                                                <p
+                                                                    class="text-[9px] text-slate-400 font-bold"
+                                                                >
+                                                                    {step.date}
+                                                                </p>
+                                                                <p
+                                                                    class="text-[11px] text-slate-600 mt-0.5 leading-snug"
+                                                                >
+                                                                    {step.desc}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     {/each}
                                                 </div>
                                             {:else}
-                                                <p class="text-[10px] text-slate-400 italic">Belum ada history tracking.</p>
+                                                <p
+                                                    class="text-[10px] text-slate-400 italic"
+                                                >
+                                                    Belum ada history tracking.
+                                                </p>
                                             {/if}
                                         </div>
                                     {/if}
@@ -1317,19 +1622,27 @@
                                     <span>Pengiriman Digital</span>
                                 </div>
                                 <p class="leading-relaxed font-semibold">
-                                    Produk digital akan dikirimkan melalui email / chat catatan.
+                                    Produk digital akan dikirimkan melalui email
+                                    / chat catatan.
                                 </p>
                             </div>
                         {:else if transaction.shipping_courier === 'self_pickup'}
                             <div
                                 class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-xs space-y-3 text-emerald-800"
                             >
-                                <div class="flex items-center gap-2 font-bold text-emerald-700">
-                                    <i class="ti ti-building-store text-base"></i>
+                                <div
+                                    class="flex items-center gap-2 font-bold text-emerald-700"
+                                >
+                                    <i class="ti ti-building-store text-base"
+                                    ></i>
                                     <span>Ambil di Toko (Store Pickup)</span>
                                 </div>
-                                <div class="space-y-1 font-medium text-emerald-950">
-                                    <p class="font-bold">{storeSettings.store_name || storeName}</p>
+                                <div
+                                    class="space-y-1 font-medium text-emerald-950"
+                                >
+                                    <p class="font-bold">
+                                        {storeSettings.store_name || storeName}
+                                    </p>
                                     <p>
                                         {storeSettings.store_address}
                                         {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
@@ -1341,15 +1654,26 @@
                                     </p>
                                 </div>
                                 <div class="h-px bg-emerald-100"></div>
-                                <div class="flex flex-col items-center text-center space-y-2 py-1">
-                                    <p class="text-[9px] font-black text-emerald-600/70 uppercase tracking-wider">Scan Kode Transaksi</p>
+                                <div
+                                    class="flex flex-col items-center text-center space-y-2 py-1"
+                                >
+                                    <p
+                                        class="text-[9px] font-black text-emerald-600/70 uppercase tracking-wider"
+                                    >
+                                        Scan Kode Transaksi
+                                    </p>
                                     <img
-                                        src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(transaction.transaction_number)}"
+                                        src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(
+                                            transaction.transaction_number,
+                                        )}"
                                         alt="QR Code Transaksi"
                                         class="w-32 h-32 border border-emerald-100 rounded-xl p-1 bg-white"
                                     />
-                                    <p class="text-[10px] font-semibold text-emerald-700 leading-relaxed px-1">
-                                        Gunakan QR Code ini untuk memverifikasi pengambilan barang oleh customer.
+                                    <p
+                                        class="text-[10px] font-semibold text-emerald-700 leading-relaxed px-1"
+                                    >
+                                        Gunakan QR Code ini untuk memverifikasi
+                                        pengambilan barang oleh customer.
                                     </p>
                                 </div>
                             </div>
@@ -1858,7 +2182,10 @@
                 <h3
                     class="font-outfit font-black text-slate-800 text-sm mb-4 uppercase tracking-wider flex items-center gap-1.5"
                 >
-                    <i class="ti ti-calendar-event text-base" style="color:{primary}"></i>
+                    <i
+                        class="ti ti-calendar-event text-base"
+                        style="color:{primary}"
+                    ></i>
                     Request Pickup Kurir
                 </h3>
 
@@ -1892,7 +2219,9 @@
                         >
                             <option value="motorcycle">Motor (Regular)</option>
                             <option value="car">Mobil (Cargo/Besar)</option>
-                            <option value="truck">Truk (Sangat Besar/Berat &gt;= 10kg)</option>
+                            <option value="truck"
+                                >Truk (Sangat Besar/Berat &gt;= 10kg)</option
+                            >
                         </select>
                     </div>
                 </div>
@@ -1933,13 +2262,17 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex flex-col justify-between p-4 sm:p-6 select-none"
-        onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
+        onclick={(e) => {
+            if (e.target === e.currentTarget) closePreview();
+        }}
         role="dialog"
         aria-label="File Preview"
         tabindex="-1"
     >
         <!-- Top bar -->
-        <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
+        <div
+            class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10"
+        >
             <span class="text-sm font-bold opacity-75">
                 {previewIndex + 1} / {previewItems.length}
             </span>
@@ -1953,7 +2286,9 @@
         </div>
 
         <!-- Center Viewport -->
-        <div class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden">
+        <div
+            class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden"
+        >
             <!-- Prev Button -->
             {#if previewItems.length > 1}
                 <button
@@ -1967,7 +2302,9 @@
 
             <!-- Media Content -->
             {#key previewIndex}
-                <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
+                <div
+                    class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200"
+                >
                     {#if isVideo(previewItems[previewIndex])}
                         <video
                             src={formatImagePath(previewItems[previewIndex])}
@@ -2001,19 +2338,29 @@
 
         <!-- Bottom Thumbnails -->
         {#if previewItems.length > 1}
-            <div class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide">
+            <div
+                class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide"
+            >
                 {#each previewItems as item, idx}
                     <button
-                        onclick={() => previewIndex = idx}
+                        onclick={() => (previewIndex = idx)}
                         class="w-16 h-10 rounded-lg overflow-hidden border-2 shrink-0 transition-all active:scale-95
-                            {previewIndex === idx ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-80'}"
+                            {previewIndex === idx
+                            ? 'border-white scale-105 shadow-md'
+                            : 'border-transparent opacity-50 hover:opacity-80'}"
                     >
                         {#if isVideo(item)}
-                            <div class="w-full h-full bg-slate-800 flex items-center justify-center text-white">
+                            <div
+                                class="w-full h-full bg-slate-800 flex items-center justify-center text-white"
+                            >
                                 <i class="ti ti-video text-lg"></i>
                             </div>
                         {:else}
-                            <img src={formatImagePath(item)} alt="Thumb" class="w-full h-full object-cover" />
+                            <img
+                                src={formatImagePath(item)}
+                                alt="Thumb"
+                                class="w-full h-full object-cover"
+                            />
                         {/if}
                     </button>
                 {/each}
@@ -2025,6 +2372,11 @@
 {/if}
 
 <style>
-    .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 </style>

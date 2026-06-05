@@ -10,7 +10,7 @@
     // Import new UI components
     import Input from '@/components/ui/Input.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
-    import Textarea from '@/components/ui/Textarea.svelte';
+    import RichEditor from '@/components/ui/RichEditor.svelte';
     import SelectSearch from '@/components/ui/SelectSearch.svelte';
     import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
@@ -29,8 +29,16 @@
         _method: 'PUT',
         name: p.name,
         sku: p.sku,
-        category_ids: p.categories ? p.categories.map((c) => c.id) : (p.category_id ? [p.category_id] : []),
-        brand_ids: p.brands ? p.brands.map((b) => b.id) : (p.brand_id ? [p.brand_id] : []),
+        category_ids: p.categories
+            ? p.categories.map((c) => c.id)
+            : p.category_id
+              ? [p.category_id]
+              : [],
+        brand_ids: p.brands
+            ? p.brands.map((b) => b.id)
+            : p.brand_id
+              ? [p.brand_id]
+              : [],
         specifications: p.specifications || {},
         size_chart: p.size_chart || null,
 
@@ -126,34 +134,46 @@
         if (isSubmittingCategory) return;
         isSubmittingCategory = true;
 
-        router.post('/admin/categories', {
-            name: quickCategoryName,
-            slug: quickCategorySlug,
-            media_type: 'icon',
-            icon: 'ti-tag',
-            parent_id: quickCategoryParentId || null
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: (pageRes) => {
-                isSubmittingCategory = false;
-                const updatedCategories = pageRes.props.categories || [];
-                const newCat = updatedCategories.find(c => c.name.toLowerCase() === quickCategoryName.toLowerCase() || c.slug === quickCategorySlug);
-                if (newCat) {
-                    if (!form.category_ids.includes(newCat.id)) {
-                        form.category_ids = [...form.category_ids, newCat.id];
-                    }
-                }
-                closeQuickAddCategory();
+        router.post(
+            '/admin/categories',
+            {
+                name: quickCategoryName,
+                slug: quickCategorySlug,
+                media_type: 'icon',
+                icon: 'ti-tag',
+                parent_id: quickCategoryParentId || null,
             },
-            onError: (errs) => {
-                isSubmittingCategory = false;
-                const firstError = Object.values(errs)[0];
-                if (firstError) {
-                    alert(firstError);
-                }
-            }
-        });
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: (pageRes) => {
+                    isSubmittingCategory = false;
+                    const updatedCategories = pageRes.props.categories || [];
+                    const newCat = updatedCategories.find(
+                        (c) =>
+                            c.name.toLowerCase() ===
+                                quickCategoryName.toLowerCase() ||
+                            c.slug === quickCategorySlug,
+                    );
+                    if (newCat) {
+                        if (!form.category_ids.includes(newCat.id)) {
+                            form.category_ids = [
+                                ...form.category_ids,
+                                newCat.id,
+                            ];
+                        }
+                    }
+                    closeQuickAddCategory();
+                },
+                onError: (errs) => {
+                    isSubmittingCategory = false;
+                    const firstError = Object.values(errs)[0];
+                    if (firstError) {
+                        alert(firstError);
+                    }
+                },
+            },
+        );
     }
 
     function handleQuickAddBrand(e) {
@@ -161,41 +181,53 @@
         if (isSubmittingBrand) return;
         isSubmittingBrand = true;
 
-        router.post('/admin/master-data/brands', {
-            name: quickBrandName,
-            is_active: true
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: (pageRes) => {
-                isSubmittingBrand = false;
-                const updatedBrands = pageRes.props.brands || [];
-                const newBrand = updatedBrands.find(b => b.name.toLowerCase() === quickBrandName.toLowerCase());
-                if (newBrand) {
-                    if (!form.brand_ids.includes(newBrand.id)) {
-                        form.brand_ids = [...form.brand_ids, newBrand.id];
-                    }
-                }
-                closeQuickAddBrand();
+        router.post(
+            '/admin/master-data/brands',
+            {
+                name: quickBrandName,
+                is_active: true,
             },
-            onError: (errs) => {
-                isSubmittingBrand = false;
-                const firstError = Object.values(errs)[0];
-                if (firstError) {
-                    alert(firstError);
-                }
-            }
-        });
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onSuccess: (pageRes) => {
+                    isSubmittingBrand = false;
+                    const updatedBrands = pageRes.props.brands || [];
+                    const newBrand = updatedBrands.find(
+                        (b) =>
+                            b.name.toLowerCase() ===
+                            quickBrandName.toLowerCase(),
+                    );
+                    if (newBrand) {
+                        if (!form.brand_ids.includes(newBrand.id)) {
+                            form.brand_ids = [...form.brand_ids, newBrand.id];
+                        }
+                    }
+                    closeQuickAddBrand();
+                },
+                onError: (errs) => {
+                    isSubmittingBrand = false;
+                    const firstError = Object.values(errs)[0];
+                    if (firstError) {
+                        alert(firstError);
+                    }
+                },
+            },
+        );
     }
-    let enableVariants = $state(
-        !!(p.variations && p.variations.length > 0),
-    );
+    let enableVariants = $state(!!(p.variations && p.variations.length > 0));
     let useVariantImages = $state(false);
 
     // Interactive Media Previews & Handlers
-    let videoPreview = $state(p.video_path ? formatImagePath(p.video_path) : '');
-    let model3dFileName = $state(p.model_3d_path ? p.model_3d_path.split('/').pop() : '');
-    let model3dUsdzFileName = $state(p.model_3d_usdz_path ? p.model_3d_usdz_path.split('/').pop() : '');
+    let videoPreview = $state(
+        p.video_path ? formatImagePath(p.video_path) : '',
+    );
+    let model3dFileName = $state(
+        p.model_3d_path ? p.model_3d_path.split('/').pop() : '',
+    );
+    let model3dUsdzFileName = $state(
+        p.model_3d_usdz_path ? p.model_3d_usdz_path.split('/').pop() : '',
+    );
 
     // AI Image-to-3D Generator State
     let isImageTo3dModalOpen = $state(false);
@@ -207,7 +239,7 @@
     let customGenFileBack = $state(null);
     let generationProgress = $state(0);
     let progressMessage = $state('Menginisialisasi...');
-    
+
     // Editor settings & Volumetric Extrusion
     let depth = $state(0.3); // compatibility
     let baseThickness = $state(0.15); // silhouette/3d card thickness
@@ -218,7 +250,7 @@
     let bevelEnabled = $state(false);
     let smoothEdge = $state(true);
     let modelType = $state('plane'); // 'plane', 'shirt', 'custom', or preset IDs
-    
+
     // Logo decal positioning & transformation
     let logoScale = $state(0.3);
     let logoX = $state(0.0);
@@ -227,7 +259,7 @@
     let logoZBack = $state(-0.15);
     let logoRotation = $state(0);
     let logoOpacity = $state(1.0);
-    
+
     // Mockup 3D model positioning & transformation
     let mockupScale = $state(10);
     let mockupX = $state(0.0);
@@ -236,10 +268,10 @@
     let mockupRotationX = $state(0);
     let mockupRotationY = $state(0);
     let mockupRotationZ = $state(0);
-    
+
     let customMockupFile = $state(null);
     let customMockupUrl = $state('');
-    
+
     let cachedModels = {};
     let metalness = $state(0.1);
     let roughness = $state(0.6);
@@ -255,7 +287,7 @@
     let bgColorG = $state(255);
     let bgColorB = $state(255);
     let isFirstLoad = $state(true);
-    
+
     // Canva-like Layer System
     let designLayers = $state([]);
     let selectedLayerId = $state(null);
@@ -264,7 +296,7 @@
     let projectionMode = $state('decal');
     let activeView = $state('front');
     let activeSide = $state('front');
-    
+
     // 2D interactive canvas state
     let canvas2dEl = $state(null);
     let canvas2dZoom = $state(1.0);
@@ -275,9 +307,12 @@
     let dragOffsetY = $state(0);
     let isResizingLayer = $state(false);
     let isPanning2d = $state(false);
-    let pan2dStartX = 0, pan2dStartY = 0, pan2dStartOffsetX = 0, pan2dStartOffsetY = 0;
+    let pan2dStartX = 0,
+        pan2dStartY = 0,
+        pan2dStartOffsetX = 0,
+        pan2dStartOffsetY = 0;
     const CANVAS_VIRTUAL_SIZE = 512;
-    
+
     // Text editing properties
     let textInput = $state('');
     let fontFamily = $state('Arial');
@@ -287,25 +322,104 @@
     let isItalic = $state(false);
     let textStroke = $state(false);
     let textStrokeColor = $state('#000000');
-    
+
     // QR Code properties
     let qrInput = $state('https://');
 
     // Presets Definition
     const presets = [
-        { id: 'shirt', name: 'Kaos Polos', path: '/assets/shirt_baked.glb', meshName: 'T_Shirt_male', scale: 10, y: -1.5, z: 0 },
-        { id: 'hoodie', name: 'Hoodie Realistis', path: '/assets/hoodie.glb', meshName: '', scale: 1.0, y: -1.0, z: 0 },
-        { id: 'mug', name: 'Mug / Gelas', path: '/assets/mug.glb', meshName: '', scale: 2.0, y: -0.5, z: 0 },
-        { id: 'cap', name: 'Topi', path: '/assets/cap.glb', meshName: '', scale: 1.0, y: -0.2, z: 0 },
-        { id: 'totebag', name: 'Totebag', path: '/assets/totebag.glb', meshName: '', scale: 1.0, y: -1.0, z: 0 },
-        { id: 'tumbler', name: 'Tumbler', path: '/assets/tumbler.glb', meshName: '', scale: 1.5, y: -0.8, z: 0 },
-        { id: 'botol', name: 'Botol Sport', path: '/assets/botol.glb', meshName: '', scale: 1.5, y: -0.8, z: 0 },
-        { id: 'piring', name: 'Piring Keramik', path: '/assets/piring.glb', meshName: '', scale: 1.2, y: 0.0, z: 0 },
-        { id: 'plakat', name: 'Plakat Akrilik', path: '/assets/plakat.glb', meshName: '', scale: 1.3, y: -0.5, z: 0 }
+        {
+            id: 'shirt',
+            name: 'Kaos Polos',
+            path: '/assets/shirt_baked.glb',
+            meshName: 'T_Shirt_male',
+            scale: 10,
+            y: -1.5,
+            z: 0,
+        },
+        {
+            id: 'hoodie',
+            name: 'Hoodie Realistis',
+            path: '/assets/hoodie.glb',
+            meshName: '',
+            scale: 1.0,
+            y: -1.0,
+            z: 0,
+        },
+        {
+            id: 'mug',
+            name: 'Mug / Gelas',
+            path: '/assets/mug.glb',
+            meshName: '',
+            scale: 2.0,
+            y: -0.5,
+            z: 0,
+        },
+        {
+            id: 'cap',
+            name: 'Topi',
+            path: '/assets/cap.glb',
+            meshName: '',
+            scale: 1.0,
+            y: -0.2,
+            z: 0,
+        },
+        {
+            id: 'totebag',
+            name: 'Totebag',
+            path: '/assets/totebag.glb',
+            meshName: '',
+            scale: 1.0,
+            y: -1.0,
+            z: 0,
+        },
+        {
+            id: 'tumbler',
+            name: 'Tumbler',
+            path: '/assets/tumbler.glb',
+            meshName: '',
+            scale: 1.5,
+            y: -0.8,
+            z: 0,
+        },
+        {
+            id: 'botol',
+            name: 'Botol Sport',
+            path: '/assets/botol.glb',
+            meshName: '',
+            scale: 1.5,
+            y: -0.8,
+            z: 0,
+        },
+        {
+            id: 'piring',
+            name: 'Piring Keramik',
+            path: '/assets/piring.glb',
+            meshName: '',
+            scale: 1.2,
+            y: 0.0,
+            z: 0,
+        },
+        {
+            id: 'plakat',
+            name: 'Plakat Akrilik',
+            path: '/assets/plakat.glb',
+            meshName: '',
+            scale: 1.3,
+            y: -0.5,
+            z: 0,
+        },
     ];
 
     let canvasContainer = $state(null);
-    let threeScene, threeCamera, threeRenderer, threeMesh, threeTexture, threeGeometry, threeMaterial, resizeListener;
+    let threeScene,
+        threeCamera,
+        threeRenderer,
+        threeMesh,
+        threeTexture,
+        threeGeometry,
+        threeMaterial,
+        resizeListener;
     let frontCanvas, backCanvas;
     let animationFrameId;
 
@@ -333,7 +447,7 @@
                 rotation: 0,
                 opacity: 1.0,
                 lock: false,
-                hide: false
+                hide: false,
             };
         } else if (type === 'text') {
             newLayer = {
@@ -353,7 +467,7 @@
                 bold: isBold,
                 italic: isItalic,
                 stroke: textStroke,
-                strokeColor: textStrokeColor
+                strokeColor: textStrokeColor,
             };
             textInput = '';
         } else if (type === 'qr') {
@@ -367,10 +481,10 @@
                 rotation: 0,
                 opacity: 1.0,
                 lock: false,
-                hide: false
+                hide: false,
             };
         }
-        
+
         if (newLayer) {
             designLayers = [...designLayers, newLayer];
             selectedLayerId = id;
@@ -379,7 +493,7 @@
     }
 
     function deleteLayer(id) {
-        designLayers = designLayers.filter(l => l.id !== id);
+        designLayers = designLayers.filter((l) => l.id !== id);
         if (selectedLayerId === id) selectedLayerId = null;
         redrawCompositeCanvas();
     }
@@ -390,7 +504,7 @@
             ...layer,
             id,
             x: Math.min(480, layer.x + 20),
-            y: Math.min(480, layer.y + 20)
+            y: Math.min(480, layer.y + 20),
         };
         designLayers = [...designLayers, duplicated];
         selectedLayerId = id;
@@ -410,17 +524,24 @@
 
     /** Returns the bounding box of a layer in virtual canvas coordinates */
     function getLayerBounds(layer) {
-        let w = 0, h = 0;
+        let w = 0,
+            h = 0;
         if (layer.type === 'image') {
             const size = CANVAS_VIRTUAL_SIZE * layer.scale;
-            w = size; h = size;
+            w = size;
+            h = size;
         } else if (layer.type === 'text') {
-            const approxW = Math.max(60, (layer.text?.length || 8) * layer.fontSize * layer.scale * 0.6);
+            const approxW = Math.max(
+                60,
+                (layer.text?.length || 8) * layer.fontSize * layer.scale * 0.6,
+            );
             const approxH = layer.fontSize * layer.scale * 1.2;
-            w = approxW; h = approxH;
+            w = approxW;
+            h = approxH;
         } else if (layer.type === 'qr') {
             const size = 120 * layer.scale;
-            w = size; h = size;
+            w = size;
+            h = size;
         }
         return { x: layer.x - w / 2, y: layer.y - h / 2, w, h };
     }
@@ -448,8 +569,10 @@
             const b = getLayerBounds(layer);
             const handleSize = 14 / canvas2dZoom;
             if (
-                vx >= b.x + b.w - handleSize && vx <= b.x + b.w + handleSize &&
-                vy >= b.y + b.h - handleSize && vy <= b.y + b.h + handleSize
+                vx >= b.x + b.w - handleSize &&
+                vx <= b.x + b.w + handleSize &&
+                vy >= b.y + b.h - handleSize &&
+                vy <= b.y + b.h + handleSize
             ) {
                 return { id: layer.id, mode: 'resize' };
             }
@@ -474,7 +597,7 @@
         const hit = hitTestCanvas2d(vx, vy);
         if (hit) {
             selectedLayerId = hit.id;
-            const layer = designLayers.find(l => l.id === hit.id);
+            const layer = designLayers.find((l) => l.id === hit.id);
             if (hit.mode === 'resize') {
                 isResizingLayer = true;
                 isDraggingLayer = false;
@@ -500,7 +623,7 @@
         if (!selectedLayerId) return;
         const { vx, vy } = mouseToVirtualCoords(e);
         if (isDraggingLayer) {
-            const idx = designLayers.findIndex(l => l.id === selectedLayerId);
+            const idx = designLayers.findIndex((l) => l.id === selectedLayerId);
             if (idx !== -1) {
                 designLayers[idx].x = Math.round(vx - dragOffsetX);
                 designLayers[idx].y = Math.round(vy - dragOffsetY);
@@ -508,14 +631,17 @@
                 redrawCompositeCanvas();
             }
         } else if (isResizingLayer) {
-            const idx = designLayers.findIndex(l => l.id === selectedLayerId);
+            const idx = designLayers.findIndex((l) => l.id === selectedLayerId);
             if (idx !== -1) {
                 const layer = designLayers[idx];
                 const dx = vx - layer.x;
                 const dy = vy - layer.y;
                 const dist = Math.max(Math.abs(dx), Math.abs(dy));
                 if (layer.type === 'image') {
-                    layer.scale = Math.max(0.05, dist / CANVAS_VIRTUAL_SIZE * 2);
+                    layer.scale = Math.max(
+                        0.05,
+                        (dist / CANVAS_VIRTUAL_SIZE) * 2,
+                    );
                 } else if (layer.type === 'text') {
                     layer.scale = Math.max(0.1, dist / 60);
                 } else if (layer.type === 'qr') {
@@ -553,7 +679,12 @@
         const tileSize = 16;
         for (let ty = 0; ty < elH; ty += tileSize) {
             for (let tx = 0; tx < elW; tx += tileSize) {
-                ctx.fillStyle = ((Math.floor(tx / tileSize) + Math.floor(ty / tileSize)) % 2 === 0) ? '#e2e8f0' : '#f8fafc';
+                ctx.fillStyle =
+                    (Math.floor(tx / tileSize) + Math.floor(ty / tileSize)) %
+                        2 ===
+                    0
+                        ? '#e2e8f0'
+                        : '#f8fafc';
                 ctx.fillRect(tx, ty, tileSize, tileSize);
             }
         }
@@ -574,16 +705,25 @@
         if (selectedGenImage) {
             const cachedImg = _canvas2dImgCache[selectedGenImage];
             if (cachedImg) {
-                ctx.drawImage(cachedImg, 0, 0, CANVAS_VIRTUAL_SIZE, CANVAS_VIRTUAL_SIZE);
+                ctx.drawImage(
+                    cachedImg,
+                    0,
+                    0,
+                    CANVAS_VIRTUAL_SIZE,
+                    CANVAS_VIRTUAL_SIZE,
+                );
             } else {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
                 img.src = selectedGenImage;
-                img.onload = () => { _canvas2dImgCache[selectedGenImage] = img; drawCanvas2dPreview(); };
+                img.onload = () => {
+                    _canvas2dImgCache[selectedGenImage] = img;
+                    drawCanvas2dPreview();
+                };
             }
         }
 
-        designLayers.forEach(layer => {
+        designLayers.forEach((layer) => {
             if (layer.hide) return;
             ctx.save();
             ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
@@ -594,15 +734,18 @@
                 const size = CANVAS_VIRTUAL_SIZE * layer.scale;
                 const cachedImg = _canvas2dImgCache[layer.src];
                 if (cachedImg) {
-                    ctx.drawImage(cachedImg, -size/2, -size/2, size, size);
+                    ctx.drawImage(cachedImg, -size / 2, -size / 2, size, size);
                 } else {
                     const img = new Image();
                     img.crossOrigin = 'anonymous';
                     img.src = layer.src;
-                    img.onload = () => { _canvas2dImgCache[layer.src] = img; drawCanvas2dPreview(); };
+                    img.onload = () => {
+                        _canvas2dImgCache[layer.src] = img;
+                        drawCanvas2dPreview();
+                    };
                     ctx.strokeStyle = '#94a3b8';
                     ctx.setLineDash([6, 3]);
-                    ctx.strokeRect(-size/2, -size/2, size, size);
+                    ctx.strokeRect(-size / 2, -size / 2, size, size);
                     ctx.setLineDash([]);
                 }
             } else if (layer.type === 'text') {
@@ -622,10 +765,10 @@
             } else if (layer.type === 'qr') {
                 const size = 120 * layer.scale;
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(-size/2, -size/2, size, size);
+                ctx.fillRect(-size / 2, -size / 2, size, size);
                 ctx.strokeStyle = '#000000';
                 ctx.lineWidth = 2;
-                ctx.strokeRect(-size/2, -size/2, size, size);
+                ctx.strokeRect(-size / 2, -size / 2, size, size);
                 ctx.fillStyle = '#000000';
                 ctx.font = `bold ${size * 0.12}px monospace`;
                 ctx.textAlign = 'center';
@@ -639,7 +782,8 @@
                 ctx.translate(layer.x, layer.y);
                 ctx.rotate((layer.rotation * Math.PI) / 180);
                 const b = getLayerBounds(layer);
-                const bx = -b.w / 2, by = -b.h / 2;
+                const bx = -b.w / 2,
+                    by = -b.h / 2;
                 ctx.strokeStyle = '#3b82f6';
                 ctx.lineWidth = 2 / canvas2dZoom;
                 ctx.setLineDash([5 / canvas2dZoom, 3 / canvas2dZoom]);
@@ -651,7 +795,11 @@
                 ctx.lineWidth = 2 / canvas2dZoom;
                 ctx.fillRect(bx + b.w - hs, by + b.h - hs, hs * 2, hs * 2);
                 ctx.strokeRect(bx + b.w - hs, by + b.h - hs, hs * 2, hs * 2);
-                [[bx, by], [bx + b.w, by], [bx, by + b.h]].forEach(([cx, cy]) => {
+                [
+                    [bx, by],
+                    [bx + b.w, by],
+                    [bx, by + b.h],
+                ].forEach(([cx, cy]) => {
                     ctx.beginPath();
                     ctx.arc(cx, cy, hs * 0.7, 0, Math.PI * 2);
                     ctx.fillStyle = '#3b82f6';
@@ -666,7 +814,14 @@
     let _canvas2dImgCache = {};
 
     $effect(() => {
-        const _ = [designLayers, selectedLayerId, canvas2dZoom, canvas2dPanX, canvas2dPanY, selectedGenImage];
+        const _ = [
+            designLayers,
+            selectedLayerId,
+            canvas2dZoom,
+            canvas2dPanX,
+            canvas2dPanY,
+            selectedGenImage,
+        ];
         if (canvas2dEl) {
             drawCanvas2dPreview();
         }
@@ -779,38 +934,54 @@
         if (!window.fflate && typeof fflate !== 'undefined') {
             window.fflate = fflate;
         }
-        if (window.THREE && window.THREE.GLTFLoader && window.THREE.DecalGeometry && window.THREE.USDZExporter && window.fflate) return;
-        
+        if (
+            window.THREE &&
+            window.THREE.GLTFLoader &&
+            window.THREE.DecalGeometry &&
+            window.THREE.USDZExporter &&
+            window.fflate
+        )
+            return;
+
         return new Promise((resolve, reject) => {
             const script1 = document.createElement('script');
-            script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+            script1.src =
+                'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
             script1.onload = () => {
                 const script2 = document.createElement('script');
-                script2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js';
+                script2.src =
+                    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js';
                 script2.onload = () => {
                     const script3 = document.createElement('script');
-                    script3.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+                    script3.src =
+                        'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
                     script3.onload = () => {
                         const script4 = document.createElement('script');
-                        script4.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js';
+                        script4.src =
+                            'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/DecalGeometry.js';
                         script4.onload = () => {
                             // Load fflate first (required by USDZExporter for compression)
-                            const fflateScript = document.createElement('script');
-                            fflateScript.src = 'https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js';
-                            
+                            const fflateScript =
+                                document.createElement('script');
+                            fflateScript.src =
+                                'https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js';
+
                             // Temporarily hide AMD/CommonJS globals to prevent UMD hijacking by global context loaders
                             const oldDefine = window.define;
                             const oldExports = window.exports;
                             const oldModule = window.module;
-                            
+
                             try {
                                 window.define = undefined;
                                 window.exports = undefined;
                                 window.module = undefined;
                             } catch (e) {
-                                console.warn('Could not temporarily disable global loaders:', e);
+                                console.warn(
+                                    'Could not temporarily disable global loaders:',
+                                    e,
+                                );
                             }
-                            
+
                             fflateScript.onload = () => {
                                 // Restore AMD/CommonJS globals
                                 try {
@@ -818,22 +989,35 @@
                                     window.exports = oldExports;
                                     window.module = oldModule;
                                 } catch (e) {
-                                    console.warn('Could not restore global loaders:', e);
+                                    console.warn(
+                                        'Could not restore global loaders:',
+                                        e,
+                                    );
                                 }
-                                
+
                                 // Explicitly map fflate if loaded inside legacy formats
                                 if (!window.fflate) {
                                     if (typeof fflate !== 'undefined') {
                                         window.fflate = fflate;
-                                    } else if (oldExports && oldExports.fflate) {
+                                    } else if (
+                                        oldExports &&
+                                        oldExports.fflate
+                                    ) {
                                         window.fflate = oldExports.fflate;
-                                    } else if (oldModule && oldModule.exports && oldModule.exports.fflate) {
-                                        window.fflate = oldModule.exports.fflate;
+                                    } else if (
+                                        oldModule &&
+                                        oldModule.exports &&
+                                        oldModule.exports.fflate
+                                    ) {
+                                        window.fflate =
+                                            oldModule.exports.fflate;
                                     }
                                 }
-                                
-                                const script5 = document.createElement('script');
-                                script5.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/USDZExporter.js';
+
+                                const script5 =
+                                    document.createElement('script');
+                                script5.src =
+                                    'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/USDZExporter.js';
                                 script5.onload = resolve;
                                 script5.onerror = reject;
                                 document.head.appendChild(script5);
@@ -845,7 +1029,10 @@
                                     window.exports = oldExports;
                                     window.module = oldModule;
                                 } catch (e) {
-                                    console.warn('Could not restore global loaders:', e);
+                                    console.warn(
+                                        'Could not restore global loaders:',
+                                        e,
+                                    );
                                 }
                                 reject(err);
                             };
@@ -870,15 +1057,16 @@
         generatorStep = 2;
         generationProgress = 0;
         progressMessage = 'Menganalisis struktur gambar...';
-        
+
         const interval = setInterval(() => {
             generationProgress += 2;
-            
+
             if (activeTab === 'ai_3d') {
                 if (generationProgress < 25) {
                     progressMessage = 'Mengirim gambar ke Tripo/Meshy AI...';
                 } else if (generationProgress < 60) {
-                    progressMessage = 'Membuat model 3D awan titik (Point Cloud)...';
+                    progressMessage =
+                        'Membuat model 3D awan titik (Point Cloud)...';
                 } else if (generationProgress < 85) {
                     progressMessage = 'Merekonstruksi mesh PBR volumetric...';
                 } else {
@@ -903,7 +1091,7 @@
                     progressMessage = 'Mengoptimalkan mesh GLB (Decimation)...';
                 }
             }
-            
+
             if (generationProgress >= 100) {
                 clearInterval(interval);
                 setTimeout(async () => {
@@ -921,45 +1109,48 @@
     function initThreeJS() {
         if (!canvasContainer) return;
         cleanupThreeJS();
-        
+
         const width = canvasContainer.clientWidth;
         const height = canvasContainer.clientHeight || 550;
-        
+
         threeScene = new THREE.Scene();
         threeScene.background = new THREE.Color('#f8fafc');
-        
+
         threeCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
         threeCamera.position.set(0, 0, 5);
-        
-        threeRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+        threeRenderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+        });
         threeRenderer.setSize(width, height);
         threeRenderer.setPixelRatio(window.devicePixelRatio);
-        
+
         canvasContainer.innerHTML = '';
         canvasContainer.appendChild(threeRenderer.domElement);
-        
+
         // Studio Lighting Setup
         const ambientLight = new THREE.AmbientLight('#ffffff', 0.5);
         threeScene.add(ambientLight);
-        
+
         const dirLight1 = new THREE.DirectionalLight('#ffffff', 0.8);
         dirLight1.position.set(5, 5, 5);
         threeScene.add(dirLight1);
-        
+
         const dirLight2 = new THREE.DirectionalLight('#ffffff', 0.4);
         dirLight2.position.set(-5, 5, -5); // Rim/back lighting
         threeScene.add(dirLight2);
-        
+
         // Dynamic PointLight for glossy cursor highlight reflections
         const studioPointLight = new THREE.PointLight('#ffffff', 0.6, 15);
         studioPointLight.position.set(0, 0, 4);
         threeScene.add(studioPointLight);
-        
+
         updateThreeMesh();
-        
+
         let isDragging = false;
         let previousMousePosition = { x: 0, y: 0 };
-        
+
         threeRenderer.domElement.addEventListener('mousedown', () => {
             isDragging = true;
         });
@@ -967,15 +1158,15 @@
             const rect = threeRenderer.domElement.getBoundingClientRect();
             const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            
+
             // Posisi PointLight interaktif mengikuti kursor untuk highlight mengkilap
             studioPointLight.position.x = mouseX * 4;
             studioPointLight.position.y = mouseY * 4;
             studioPointLight.position.z = 3;
-            
+
             const deltaMove = {
                 x: e.offsetX - previousMousePosition.x,
-                y: e.offsetY - previousMousePosition.y
+                y: e.offsetY - previousMousePosition.y,
             };
             if (isDragging && threeMesh) {
                 threeMesh.rotation.y += deltaMove.x * 0.01;
@@ -983,22 +1174,24 @@
             }
             previousMousePosition = {
                 x: e.offsetX,
-                y: e.offsetY
+                y: e.offsetY,
             };
         });
         window.addEventListener('mouseup', () => {
             isDragging = false;
         });
-        
+
         threeRenderer.domElement.addEventListener('wheel', (e) => {
             const currentDistance = threeCamera.position.length();
             let newDistance = currentDistance + e.deltaY * 0.01;
             newDistance = Math.max(0.5, Math.min(newDistance, 30));
-            
+
             if (Math.abs(newDistance - currentDistance) > 0.0001) {
                 e.preventDefault();
                 if (currentDistance > 0) {
-                    threeCamera.position.multiplyScalar(newDistance / currentDistance);
+                    threeCamera.position.multiplyScalar(
+                        newDistance / currentDistance,
+                    );
                 }
             }
         });
@@ -1019,21 +1212,33 @@
         if (!threeCamera) return;
         activeView = view;
         switch (view) {
-            case 'front': threeCamera.position.set(0, 0, 5); break;
-            case 'back': threeCamera.position.set(0, 0, -5); break;
-            case 'left': threeCamera.position.set(-5, 0, 0); break;
-            case 'right': threeCamera.position.set(5, 0, 0); break;
-            case 'top': threeCamera.position.set(0, 5, 0.01); break;
-            case 'bottom': threeCamera.position.set(0, -5, 0.01); break;
+            case 'front':
+                threeCamera.position.set(0, 0, 5);
+                break;
+            case 'back':
+                threeCamera.position.set(0, 0, -5);
+                break;
+            case 'left':
+                threeCamera.position.set(-5, 0, 0);
+                break;
+            case 'right':
+                threeCamera.position.set(5, 0, 0);
+                break;
+            case 'top':
+                threeCamera.position.set(0, 5, 0.01);
+                break;
+            case 'bottom':
+                threeCamera.position.set(0, -5, 0.01);
+                break;
         }
         threeCamera.lookAt(0, 0, 0);
     }
 
     function exportPrintReady4K() {
-        const visibleLayers = designLayers.filter(l => !l.hide);
-        
+        const visibleLayers = designLayers.filter((l) => !l.hide);
+
         // Preload all images in the layers
-        const loadPromises = visibleLayers.map(layer => {
+        const loadPromises = visibleLayers.map((layer) => {
             if (layer.type === 'image' && layer.src) {
                 return new Promise((resolve) => {
                     const img = new Image();
@@ -1049,36 +1254,37 @@
             }
             return Promise.resolve({ layer, img: null });
         });
-        
-        Promise.all(loadPromises).then(loadedResults => {
+
+        Promise.all(loadPromises).then((loadedResults) => {
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = 3840;
             tempCanvas.height = 3840;
             const ctx = tempCanvas.getContext('2d');
-            
+
             // Sublimation standard: transparent background
             ctx.clearRect(0, 0, 3840, 3840);
-            
+
             ctx.save();
             // Scale dari koordinat virtual 512px ke 3840px (Rasio: 7.5x)
             ctx.scale(7.5, 7.5);
-            
+
             loadedResults.forEach(({ layer, img }) => {
                 ctx.save();
-                ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
+                ctx.globalAlpha =
+                    layer.opacity !== undefined ? layer.opacity : 1.0;
                 ctx.translate(layer.x, layer.y);
                 ctx.rotate((layer.rotation * Math.PI) / 180);
-                
+
                 if (layer.type === 'image' && img) {
                     const size = 512 * layer.scale;
-                    ctx.drawImage(img, -size/2, -size/2, size, size);
+                    ctx.drawImage(img, -size / 2, -size / 2, size, size);
                 } else if (layer.type === 'text') {
                     const fontStyle = `${layer.italic ? 'italic ' : ''}${layer.bold ? 'bold ' : ''}${layer.fontSize * layer.scale}px ${layer.fontFamily}`;
                     ctx.font = fontStyle;
                     ctx.fillStyle = layer.color;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    
+
                     if (layer.text) {
                         ctx.fillText(layer.text, 0, 0);
                         if (layer.stroke) {
@@ -1090,51 +1296,106 @@
                 } else if (layer.type === 'qr') {
                     const size = 120 * layer.scale;
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(-size/2, -size/2, size, size);
+                    ctx.fillRect(-size / 2, -size / 2, size, size);
                     ctx.strokeStyle = '#000000';
                     ctx.lineWidth = 4;
-                    ctx.strokeRect(-size/2, -size/2, size, size);
-                    
+                    ctx.strokeRect(-size / 2, -size / 2, size, size);
+
                     ctx.fillStyle = '#000000';
                     const finderSize = size * 0.25;
-                    
+
                     // Top-Left Finder
-                    ctx.fillRect(-size/2 + 4, -size/2 + 4, finderSize, finderSize);
+                    ctx.fillRect(
+                        -size / 2 + 4,
+                        -size / 2 + 4,
+                        finderSize,
+                        finderSize,
+                    );
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(-size/2 + 8, -size/2 + 8, finderSize - 8, finderSize - 8);
+                    ctx.fillRect(
+                        -size / 2 + 8,
+                        -size / 2 + 8,
+                        finderSize - 8,
+                        finderSize - 8,
+                    );
                     ctx.fillStyle = '#000000';
-                    ctx.fillRect(-size/2 + 10, -size/2 + 10, finderSize - 12, finderSize - 12);
-                    
+                    ctx.fillRect(
+                        -size / 2 + 10,
+                        -size / 2 + 10,
+                        finderSize - 12,
+                        finderSize - 12,
+                    );
+
                     // Top-Right Finder
-                    ctx.fillRect(size/2 - finderSize - 4, -size/2 + 4, finderSize, finderSize);
+                    ctx.fillRect(
+                        size / 2 - finderSize - 4,
+                        -size / 2 + 4,
+                        finderSize,
+                        finderSize,
+                    );
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(size/2 - finderSize, -size/2 + 8, finderSize - 8, finderSize - 8);
+                    ctx.fillRect(
+                        size / 2 - finderSize,
+                        -size / 2 + 8,
+                        finderSize - 8,
+                        finderSize - 8,
+                    );
                     ctx.fillStyle = '#000000';
-                    ctx.fillRect(size/2 - finderSize + 2, -size/2 + 10, finderSize - 12, finderSize - 12);
-                    
+                    ctx.fillRect(
+                        size / 2 - finderSize + 2,
+                        -size / 2 + 10,
+                        finderSize - 12,
+                        finderSize - 12,
+                    );
+
                     // Bottom-Left Finder
-                    ctx.fillRect(-size/2 + 4, size/2 - finderSize - 4, finderSize, finderSize);
+                    ctx.fillRect(
+                        -size / 2 + 4,
+                        size / 2 - finderSize - 4,
+                        finderSize,
+                        finderSize,
+                    );
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(-size/2 + 8, size/2 - finderSize, finderSize - 8, finderSize - 8);
+                    ctx.fillRect(
+                        -size / 2 + 8,
+                        size / 2 - finderSize,
+                        finderSize - 8,
+                        finderSize - 8,
+                    );
                     ctx.fillStyle = '#000000';
-                    ctx.fillRect(-size/2 + 10, size/2 - finderSize + 2, finderSize - 12, finderSize - 12);
-                    
+                    ctx.fillRect(
+                        -size / 2 + 10,
+                        size / 2 - finderSize + 2,
+                        finderSize - 12,
+                        finderSize - 12,
+                    );
+
                     ctx.fillStyle = '#000000';
                     const step = size / 10;
                     for (let i = 0; i < 6; i++) {
-                         for (let j = 0; j < 6; j++) {
-                             if ((i < 3 && j < 3) || (i > 3 && j < 3) || (i < 3 && j > 3)) continue;
-                             if ((i + j) % 2 === 0) {
-                                 ctx.fillRect(-size/2 + i*step + step, -size/2 + j*step + step, step, step);
-                             }
-                         }
+                        for (let j = 0; j < 6; j++) {
+                            if (
+                                (i < 3 && j < 3) ||
+                                (i > 3 && j < 3) ||
+                                (i < 3 && j > 3)
+                            )
+                                continue;
+                            if ((i + j) % 2 === 0) {
+                                ctx.fillRect(
+                                    -size / 2 + i * step + step,
+                                    -size / 2 + j * step + step,
+                                    step,
+                                    step,
+                                );
+                            }
+                        }
                     }
                 }
                 ctx.restore();
             });
-            
+
             ctx.restore();
-            
+
             // Unduh file cetak PNG transparan 4K
             const dataUrl = tempCanvas.toDataURL('image/png');
             const link = document.createElement('a');
@@ -1146,34 +1407,34 @@
 
     function downloadMockupSnapshot4K() {
         if (!threeRenderer || !threeScene || !threeCamera) return;
-        
+
         // Simpan ukuran asli renderer
         const originalWidth = canvasContainer.clientWidth;
         const originalHeight = 400;
         const targetSize = 3840;
-        
+
         // Atur renderer ke resolusi 4K dan perbarui aspek rasio kamera
         threeRenderer.setSize(targetSize, targetSize, false);
         threeCamera.aspect = 1;
         threeCamera.updateProjectionMatrix();
-        
+
         // Render paksa pada resolusi tinggi
         threeRenderer.render(threeScene, threeCamera);
-        
+
         // Tangkap snapshot
         const dataUrl = threeRenderer.domElement.toDataURL('image/png');
-        
+
         // Trigger download
         const link = document.createElement('a');
         link.download = `mockup_snapshot_4k.png`;
         link.href = dataUrl;
         link.click();
-        
+
         // Kembalikan ukuran asli renderer & aspek rasio
         threeRenderer.setSize(originalWidth, originalHeight);
         threeCamera.aspect = originalWidth / originalHeight;
         threeCamera.updateProjectionMatrix();
-        
+
         // Render kembali ke viewport responsif
         threeRenderer.render(threeScene, threeCamera);
     }
@@ -1190,17 +1451,17 @@
             backCanvas.width = 512;
             backCanvas.height = 512;
         }
-        
+
         const drawSide = (canvas, baseImgUrl) => {
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, 512, 512);
-            
+
             // Draw background color (base color of the product) only for plane silhouette
             if (modelType === 'plane') {
                 ctx.fillStyle = selectedColor;
                 ctx.fillRect(0, 0, 512, 512);
             }
-            
+
             // If base image exists (from photo upload), draw it first
             if (baseImgUrl) {
                 const img = new Image();
@@ -1219,30 +1480,30 @@
                 drawLayersOnCtx(ctx);
             }
         };
-        
+
         drawSide(frontCanvas, selectedGenImage);
         drawSide(backCanvas, selectedGenImageBack);
-        
+
         updateThreeTexturesFromCanvases();
     }
 
     function drawLayersOnCtx(ctx) {
-        const visibleLayers = designLayers.filter(l => !l.hide);
-        
-        visibleLayers.forEach(layer => {
+        const visibleLayers = designLayers.filter((l) => !l.hide);
+
+        visibleLayers.forEach((layer) => {
             ctx.save();
             ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 1.0;
-            
+
             ctx.translate(layer.x, layer.y);
             ctx.rotate((layer.rotation * Math.PI) / 180);
-            
+
             if (layer.type === 'image' && layer.src) {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
                 img.src = layer.src;
                 const size = 512 * layer.scale;
                 if (img.complete) {
-                    ctx.drawImage(img, -size/2, -size/2, size, size);
+                    ctx.drawImage(img, -size / 2, -size / 2, size, size);
                 } else {
                     img.onload = () => {
                         redrawCompositeCanvas(); // Redraw once loaded
@@ -1254,7 +1515,7 @@
                 ctx.fillStyle = layer.color;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                
+
                 if (layer.text) {
                     ctx.fillText(layer.text, 0, 0);
                     if (layer.stroke) {
@@ -1266,41 +1527,96 @@
             } else if (layer.type === 'qr') {
                 const size = 120 * layer.scale;
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(-size/2, -size/2, size, size);
+                ctx.fillRect(-size / 2, -size / 2, size, size);
                 ctx.strokeStyle = '#000000';
                 ctx.lineWidth = 4;
-                ctx.strokeRect(-size/2, -size/2, size, size);
-                
+                ctx.strokeRect(-size / 2, -size / 2, size, size);
+
                 ctx.fillStyle = '#000000';
                 const finderSize = size * 0.25;
                 // Top-Left Finder
-                ctx.fillRect(-size/2 + 4, -size/2 + 4, finderSize, finderSize);
+                ctx.fillRect(
+                    -size / 2 + 4,
+                    -size / 2 + 4,
+                    finderSize,
+                    finderSize,
+                );
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(-size/2 + 8, -size/2 + 8, finderSize - 8, finderSize - 8);
+                ctx.fillRect(
+                    -size / 2 + 8,
+                    -size / 2 + 8,
+                    finderSize - 8,
+                    finderSize - 8,
+                );
                 ctx.fillStyle = '#000000';
-                ctx.fillRect(-size/2 + 10, -size/2 + 10, finderSize - 12, finderSize - 12);
-                
+                ctx.fillRect(
+                    -size / 2 + 10,
+                    -size / 2 + 10,
+                    finderSize - 12,
+                    finderSize - 12,
+                );
+
                 // Top-Right Finder
-                ctx.fillRect(size/2 - finderSize - 4, -size/2 + 4, finderSize, finderSize);
+                ctx.fillRect(
+                    size / 2 - finderSize - 4,
+                    -size / 2 + 4,
+                    finderSize,
+                    finderSize,
+                );
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(size/2 - finderSize, -size/2 + 8, finderSize - 8, finderSize - 8);
+                ctx.fillRect(
+                    size / 2 - finderSize,
+                    -size / 2 + 8,
+                    finderSize - 8,
+                    finderSize - 8,
+                );
                 ctx.fillStyle = '#000000';
-                ctx.fillRect(size/2 - finderSize + 2, -size/2 + 10, finderSize - 12, finderSize - 12);
-                
+                ctx.fillRect(
+                    size / 2 - finderSize + 2,
+                    -size / 2 + 10,
+                    finderSize - 12,
+                    finderSize - 12,
+                );
+
                 // Bottom-Left Finder
-                ctx.fillRect(-size/2 + 4, size/2 - finderSize - 4, finderSize, finderSize);
+                ctx.fillRect(
+                    -size / 2 + 4,
+                    size / 2 - finderSize - 4,
+                    finderSize,
+                    finderSize,
+                );
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(-size/2 + 8, size/2 - finderSize, finderSize - 8, finderSize - 8);
+                ctx.fillRect(
+                    -size / 2 + 8,
+                    size / 2 - finderSize,
+                    finderSize - 8,
+                    finderSize - 8,
+                );
                 ctx.fillStyle = '#000000';
-                ctx.fillRect(-size/2 + 10, size/2 - finderSize + 2, finderSize - 12, finderSize - 12);
-                
+                ctx.fillRect(
+                    -size / 2 + 10,
+                    size / 2 - finderSize + 2,
+                    finderSize - 12,
+                    finderSize - 12,
+                );
+
                 ctx.fillStyle = '#000000';
                 const step = size / 10;
                 for (let i = 0; i < 6; i++) {
                     for (let j = 0; j < 6; j++) {
-                        if ((i < 3 && j < 3) || (i > 3 && j < 3) || (i < 3 && j > 3)) continue;
+                        if (
+                            (i < 3 && j < 3) ||
+                            (i > 3 && j < 3) ||
+                            (i < 3 && j > 3)
+                        )
+                            continue;
                         if ((i + j) % 2 === 0) {
-                            ctx.fillRect(-size/2 + i*step + step, -size/2 + j*step + step, step, step);
+                            ctx.fillRect(
+                                -size / 2 + i * step + step,
+                                -size / 2 + j * step + step,
+                                step,
+                                step,
+                            );
                         }
                     }
                 }
@@ -1311,7 +1627,7 @@
 
     function updateThreeTexturesFromCanvases() {
         if (!threeScene || !threeMesh) return;
-        threeMesh.traverse(child => {
+        threeMesh.traverse((child) => {
             if (child.isMesh && child.material) {
                 if (child.material.map) {
                     child.material.map.needsUpdate = true;
@@ -1324,7 +1640,7 @@
     }
 
     function onModelTypeChange() {
-        const preset = presets.find(p => p.id === modelType);
+        const preset = presets.find((p) => p.id === modelType);
         if (preset) {
             mockupScale = preset.scale;
             mockupY = preset.y;
@@ -1346,15 +1662,15 @@
 
     function updateThreeMesh() {
         if (!threeScene) return;
-        
+
         if (!frontCanvas || !backCanvas) {
             redrawCompositeCanvas();
             return;
         }
-        
+
         const w = 128;
         const h = 128;
-        
+
         const tempCanvasFront = document.createElement('canvas');
         tempCanvasFront.width = w;
         tempCanvasFront.height = h;
@@ -1362,7 +1678,7 @@
         tempCtxFront.drawImage(frontCanvas, 0, 0, w, h);
         const imgDataFront = tempCtxFront.getImageData(0, 0, w, h);
         const pixelsFront = imgDataFront.data;
-        
+
         const tempCanvasBack = document.createElement('canvas');
         tempCanvasBack.width = w;
         tempCanvasBack.height = h;
@@ -1370,11 +1686,18 @@
         tempCtxBack.drawImage(backCanvas, 0, 0, w, h);
         const imgDataBack = tempCtxBack.getImageData(0, 0, w, h);
         const pixelsBack = imgDataBack.data;
-        
+
         if (isFirstLoad && selectedGenImage) {
-            let rSum = 0, gSum = 0, bSum = 0;
+            let rSum = 0,
+                gSum = 0,
+                bSum = 0;
             let validCornerCount = 0;
-            const corners = [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]];
+            const corners = [
+                [0, 0],
+                [w - 1, 0],
+                [0, h - 1],
+                [w - 1, h - 1],
+            ];
             corners.forEach(([cx, cy]) => {
                 const idx = (cy * w + cx) * 4;
                 const alpha = pixelsFront[idx + 3];
@@ -1385,12 +1708,14 @@
                     validCornerCount++;
                 }
             });
-            
+
             if (validCornerCount > 0) {
                 bgColorR = Math.round(rSum / validCornerCount);
                 bgColorG = Math.round(gSum / validCornerCount);
                 bgColorB = Math.round(bSum / validCornerCount);
-                const bgBrightness = (0.299 * bgColorR + 0.587 * bgColorG + 0.114 * bgColorB) / 255;
+                const bgBrightness =
+                    (0.299 * bgColorR + 0.587 * bgColorG + 0.114 * bgColorB) /
+                    255;
                 invertHeight = bgBrightness > 0.5;
                 removeBg = true;
             } else {
@@ -1403,17 +1728,19 @@
                         const r = pixelsFront[i];
                         const g = pixelsFront[i + 1];
                         const b = pixelsFront[i + 2];
-                        const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                        const brightness =
+                            (0.299 * r + 0.587 * g + 0.114 * b) / 255;
                         fgBrightnessSum += brightness;
                         fgPixelCount++;
                     }
                 }
-                const avgFgBrightness = fgPixelCount > 0 ? (fgBrightnessSum / fgPixelCount) : 0.5;
+                const avgFgBrightness =
+                    fgPixelCount > 0 ? fgBrightnessSum / fgPixelCount : 0.5;
                 invertHeight = avgFgBrightness < 0.5;
             }
             isFirstLoad = false;
         }
-        
+
         if (removeBg && selectedGenImage) {
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
@@ -1422,12 +1749,12 @@
                     const g = pixelsFront[idx + 1];
                     const b = pixelsFront[idx + 2];
                     const a = pixelsFront[idx + 3];
-                    
+
                     if (a > 0) {
                         const dist = Math.sqrt(
                             Math.pow((r - bgColorR) / 255, 2) +
-                            Math.pow((g - bgColorG) / 255, 2) +
-                            Math.pow((b - bgColorB) / 255, 2)
+                                Math.pow((g - bgColorG) / 255, 2) +
+                                Math.pow((b - bgColorB) / 255, 2),
                         );
                         if (dist < bgTolerance) {
                             pixelsFront[idx + 3] = 0;
@@ -1436,7 +1763,7 @@
                 }
             }
             tempCtxFront.putImageData(imgDataFront, 0, 0);
-            
+
             for (let i = 0; i < pixelsFront.length; i += 4) {
                 if (pixelsFront[i + 3] === 0) {
                     pixelsBack[i + 3] = 0;
@@ -1444,11 +1771,25 @@
             }
             tempCtxBack.putImageData(imgDataBack, 0, 0);
         }
-        
+
         if (modelType === 'plane') {
-            buildThreeMeshes(tempCanvasFront, tempCanvasBack, pixelsFront, pixelsBack, w, h);
+            buildThreeMeshes(
+                tempCanvasFront,
+                tempCanvasBack,
+                pixelsFront,
+                pixelsBack,
+                w,
+                h,
+            );
         } else {
-            loadAndProcessMockupModel(frontCanvas, backCanvas, pixelsFront, pixelsBack, w, h);
+            loadAndProcessMockupModel(
+                frontCanvas,
+                backCanvas,
+                pixelsFront,
+                pixelsBack,
+                w,
+                h,
+            );
         }
     }
 
@@ -1477,7 +1818,10 @@
             const imgData = ctx.getImageData(0, 0, w, h);
             const pixels = imgData.data;
 
-            let fgR = 0, fgG = 0, fgB = 0, fgCount = 0;
+            let fgR = 0,
+                fgG = 0,
+                fgB = 0,
+                fgCount = 0;
             for (let y = 0; y < h; y++) {
                 for (let x = 0; x < w; x++) {
                     const idx = (y * w + x) * 4;
@@ -1485,19 +1829,19 @@
                     const g = pixels[idx + 1];
                     const b = pixels[idx + 2];
                     const a = pixels[idx + 3];
-                    
+
                     let isBg = false;
                     if (removeBg) {
                         const dist = Math.sqrt(
                             Math.pow((r - bgColorR) / 255, 2) +
-                            Math.pow((g - bgColorG) / 255, 2) +
-                            Math.pow((b - bgColorB) / 255, 2)
+                                Math.pow((g - bgColorG) / 255, 2) +
+                                Math.pow((b - bgColorB) / 255, 2),
                         );
                         if (dist < bgTolerance) {
                             isBg = true;
                         }
                     }
-                    
+
                     if (a > 50 && !isBg) {
                         fgR += r;
                         fgG += g;
@@ -1509,82 +1853,141 @@
             const avgR = fgCount > 0 ? Math.round(fgR / fgCount) : 0;
             const avgG = fgCount > 0 ? Math.round(fgG / fgCount) : 0;
             const avgB = fgCount > 0 ? Math.round(fgB / fgCount) : 0;
-            
-            const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
-                const hex = x.toString(16);
-                return hex.length === 1 ? '0' + hex : hex;
-            }).join('');
-            
+
+            const rgbToHex = (r, g, b) =>
+                '#' +
+                [r, g, b]
+                    .map((x) => {
+                        const hex = x.toString(16);
+                        return hex.length === 1 ? '0' + hex : hex;
+                    })
+                    .join('');
+
             selectedColor = rgbToHex(avgR, avgG, avgB);
             updateThreeMesh();
         };
         img.src = selectedGenImage;
     }
 
-    function loadAndProcessMockupModel(canvasFront, canvasBack, pixelsFront, pixelsBack, w, h) {
+    function loadAndProcessMockupModel(
+        canvasFront,
+        canvasBack,
+        pixelsFront,
+        pixelsBack,
+        w,
+        h,
+    ) {
         let modelPath = '';
         if (modelType === 'shirt') {
             modelPath = '/assets/shirt_baked.glb';
         } else if (modelType === 'custom') {
             modelPath = customMockupUrl;
         } else {
-            const preset = presets.find(p => p.id === modelType);
+            const preset = presets.find((p) => p.id === modelType);
             modelPath = preset ? preset.path : '/assets/shirt_baked.glb';
         }
-        
+
         if (!modelPath) {
-            buildProceduralModel(modelType, canvasFront, canvasBack, pixelsFront, pixelsBack, w, h);
+            buildProceduralModel(
+                modelType,
+                canvasFront,
+                canvasBack,
+                pixelsFront,
+                pixelsBack,
+                w,
+                h,
+            );
             return;
         }
-        
+
         if (cachedModels[modelPath]) {
-            processMockupModel(cachedModels[modelPath], canvasFront, canvasBack, pixelsFront, pixelsBack, w, h);
+            processMockupModel(
+                cachedModels[modelPath],
+                canvasFront,
+                canvasBack,
+                pixelsFront,
+                pixelsBack,
+                w,
+                h,
+            );
         } else {
             const loader = new THREE.GLTFLoader();
-            loader.load(modelPath, (gltf) => {
-                cachedModels[modelPath] = gltf;
-                processMockupModel(gltf, canvasFront, canvasBack, pixelsFront, pixelsBack, w, h);
-            }, undefined, (err) => {
-                // Seamless fallback to procedural model if GLB is missing or fails to load
-                console.warn(`Could not load GLB model at ${modelPath}, falling back to procedural mesh:`, err);
-                buildProceduralModel(modelType, canvasFront, canvasBack, pixelsFront, pixelsBack, w, h);
-            });
+            loader.load(
+                modelPath,
+                (gltf) => {
+                    cachedModels[modelPath] = gltf;
+                    processMockupModel(
+                        gltf,
+                        canvasFront,
+                        canvasBack,
+                        pixelsFront,
+                        pixelsBack,
+                        w,
+                        h,
+                    );
+                },
+                undefined,
+                (err) => {
+                    // Seamless fallback to procedural model if GLB is missing or fails to load
+                    console.warn(
+                        `Could not load GLB model at ${modelPath}, falling back to procedural mesh:`,
+                        err,
+                    );
+                    buildProceduralModel(
+                        modelType,
+                        canvasFront,
+                        canvasBack,
+                        pixelsFront,
+                        pixelsBack,
+                        w,
+                        h,
+                    );
+                },
+            );
         }
     }
 
-    function processMockupModel(gltf, canvasFront, canvasBack, pixelsFront, pixelsBack, w, h) {
+    function processMockupModel(
+        gltf,
+        canvasFront,
+        canvasBack,
+        pixelsFront,
+        pixelsBack,
+        w,
+        h,
+    ) {
         cleanupThreeJS();
-        
+
         threeMesh = new THREE.Group();
-        
+
         const clonedScene = gltf.scene.clone();
-        
+
         clonedScene.position.set(mockupX, mockupY, mockupZ);
         clonedScene.rotation.set(
             (mockupRotationX * Math.PI) / 180,
             (mockupRotationY * Math.PI) / 180,
-            (mockupRotationZ * Math.PI) / 180
+            (mockupRotationZ * Math.PI) / 180,
         );
         clonedScene.scale.set(mockupScale, mockupScale, mockupScale);
-        
+
         let targetMesh = null;
         clonedScene.traverse((child) => {
             if (child.isMesh && !targetMesh) {
                 targetMesh = child;
             }
         });
-        
+
         if (!targetMesh) {
             console.error('No mesh found in GLTF model');
             return;
         }
-        
+
         const newMaterial = targetMesh.material.clone();
         newMaterial.color = new THREE.Color(selectedColor);
         newMaterial.roughness = roughness;
         newMaterial.metalness = metalness;
         newMaterial.side = THREE.DoubleSide;
-        
+
         if (selectedMaterial === 'cotton') {
             newMaterial.roughness = 0.8;
             newMaterial.metalness = 0.05;
@@ -1606,22 +2009,22 @@
             newMaterial.roughness = 0.4;
             newMaterial.metalness = 0.0;
         }
-        
+
         targetMesh.material = newMaterial;
         threeMesh.add(clonedScene);
-        
+
         const aspect = h / w;
-        
+
         if (canvasFront) {
             const textureFront = new THREE.CanvasTexture(canvasFront);
             textureFront.colorSpace = THREE.SRGBColorSpace;
-            
+
             const rotationRad = (logoRotation * Math.PI) / 180;
             const decalGeoFront = new THREE.DecalGeometry(
                 targetMesh,
                 new THREE.Vector3(logoX, logoY, logoZ),
                 new THREE.Euler(0, 0, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2),
             );
             const decalMatFront = new THREE.MeshStandardMaterial({
                 map: textureFront,
@@ -1630,22 +2033,22 @@
                 roughness: roughness,
                 metalness: metalness,
                 polygonOffset: true,
-                polygonOffsetFactor: -4
+                polygonOffsetFactor: -4,
             });
             const decalFront = new THREE.Mesh(decalGeoFront, decalMatFront);
             targetMesh.add(decalFront);
         }
-        
+
         if (canvasBack) {
             const textureBack = new THREE.CanvasTexture(canvasBack);
             textureBack.colorSpace = THREE.SRGBColorSpace;
-            
+
             const rotationRad = (logoRotation * Math.PI) / 180;
             const decalGeoBack = new THREE.DecalGeometry(
                 targetMesh,
                 new THREE.Vector3(-logoX, logoY, logoZBack),
                 new THREE.Euler(0, Math.PI, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2),
             );
             const decalMatBack = new THREE.MeshStandardMaterial({
                 map: textureBack,
@@ -1654,36 +2057,44 @@
                 roughness: roughness,
                 metalness: metalness,
                 polygonOffset: true,
-                polygonOffsetFactor: -4
+                polygonOffsetFactor: -4,
             });
             const decalBack = new THREE.Mesh(decalGeoBack, decalMatBack);
             targetMesh.add(decalBack);
         }
-        
+
         threeScene.add(threeMesh);
         threeGeometry = targetMesh.geometry;
-        
+
         if (threeRenderer && threeCamera) {
             animate();
         }
     }
 
-    function buildProceduralModel(type, canvasFront, canvasBack, pixelsFront, pixelsBack, w, h) {
+    function buildProceduralModel(
+        type,
+        canvasFront,
+        canvasBack,
+        pixelsFront,
+        pixelsBack,
+        w,
+        h,
+    ) {
         cleanupThreeJS();
-        
+
         threeMesh = new THREE.Group();
-        
+
         let targetMesh = null;
         let proceduralGroup = new THREE.Group();
-        
+
         const matColor = new THREE.Color(selectedColor);
         const material = new THREE.MeshStandardMaterial({
             color: matColor,
             roughness: roughness,
             metalness: metalness,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
         });
-        
+
         if (selectedMaterial === 'cotton') {
             material.roughness = 0.8;
             material.metalness = 0.05;
@@ -1705,183 +2116,238 @@
             material.roughness = 0.35;
             material.metalness = 0.0;
         }
-        
+
         if (type === 'shirt') {
             // Body of the shirt: Cylinder
             const bodyGeo = new THREE.CylinderGeometry(0.7, 0.7, 1.8, 32);
             const body = new THREE.Mesh(bodyGeo, material);
             proceduralGroup.add(body);
-            
+
             // Left Sleeve: Cylinder rotated
-            const leftSleeveGeo = new THREE.CylinderGeometry(0.24, 0.2, 0.6, 16);
+            const leftSleeveGeo = new THREE.CylinderGeometry(
+                0.24,
+                0.2,
+                0.6,
+                16,
+            );
             const leftSleeve = new THREE.Mesh(leftSleeveGeo, material);
             leftSleeve.position.set(0.75, 0.6, 0);
             leftSleeve.rotation.z = -Math.PI / 4;
             proceduralGroup.add(leftSleeve);
-            
+
             // Right Sleeve: Cylinder rotated
-            const rightSleeveGeo = new THREE.CylinderGeometry(0.24, 0.2, 0.6, 16);
+            const rightSleeveGeo = new THREE.CylinderGeometry(
+                0.24,
+                0.2,
+                0.6,
+                16,
+            );
             const rightSleeve = new THREE.Mesh(rightSleeveGeo, material);
             rightSleeve.position.set(-0.75, 0.6, 0);
             rightSleeve.rotation.z = Math.PI / 4;
             proceduralGroup.add(rightSleeve);
-            
+
             // Collar/Neck: Torus representing collar rim
             const collarMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color(selectedColor),
                 roughness: Math.min(1.0, roughness + 0.15),
-                metalness: metalness
+                metalness: metalness,
             });
             const collarGeo = new THREE.TorusGeometry(0.3, 0.06, 8, 32);
             const collar = new THREE.Mesh(collarGeo, collarMat);
             collar.position.set(0, 0.9, 0);
             collar.rotation.x = Math.PI / 2;
             proceduralGroup.add(collar);
-            
+
             targetMesh = body;
         } else if (type === 'hoodie') {
             // Body of the hoodie
             const bodyGeo = new THREE.CylinderGeometry(0.75, 0.72, 1.8, 32);
             const body = new THREE.Mesh(bodyGeo, material);
             proceduralGroup.add(body);
-            
+
             // Left Sleeve
-            const leftSleeveGeo = new THREE.CylinderGeometry(0.25, 0.18, 0.75, 16);
+            const leftSleeveGeo = new THREE.CylinderGeometry(
+                0.25,
+                0.18,
+                0.75,
+                16,
+            );
             const leftSleeve = new THREE.Mesh(leftSleeveGeo, material);
             leftSleeve.position.set(0.85, 0.45, 0);
             leftSleeve.rotation.z = -Math.PI / 3;
             proceduralGroup.add(leftSleeve);
-            
+
             // Right Sleeve
-            const rightSleeveGeo = new THREE.CylinderGeometry(0.25, 0.18, 0.75, 16);
+            const rightSleeveGeo = new THREE.CylinderGeometry(
+                0.25,
+                0.18,
+                0.75,
+                16,
+            );
             const rightSleeve = new THREE.Mesh(rightSleeveGeo, material);
             rightSleeve.position.set(-0.85, 0.45, 0);
             rightSleeve.rotation.z = Math.PI / 3;
             proceduralGroup.add(rightSleeve);
-            
+
             // Hoodie Cap (Hood)
             const hoodGeo = new THREE.SphereGeometry(0.48, 32, 32);
             const hood = new THREE.Mesh(hoodGeo, material);
             hood.position.set(0, 1.25, -0.15);
             proceduralGroup.add(hood);
-            
+
             // Front pocket
             const pocketGeo = new THREE.BoxGeometry(0.6, 0.35, 0.15);
             const pocket = new THREE.Mesh(pocketGeo, material);
             pocket.position.set(0, -0.4, 0.65);
             proceduralGroup.add(pocket);
-            
+
             targetMesh = body;
         } else if (type === 'mug') {
-            const cupGeo = new THREE.CylinderGeometry(0.8, 0.8, 1.8, 32, 1, true);
+            const cupGeo = new THREE.CylinderGeometry(
+                0.8,
+                0.8,
+                1.8,
+                32,
+                1,
+                true,
+            );
             const cupOuter = new THREE.Mesh(cupGeo, material);
             proceduralGroup.add(cupOuter);
-            
-            const cupInnerGeo = new THREE.CylinderGeometry(0.76, 0.76, 1.76, 32, 1, true);
+
+            const cupInnerGeo = new THREE.CylinderGeometry(
+                0.76,
+                0.76,
+                1.76,
+                32,
+                1,
+                true,
+            );
             const cupInner = new THREE.Mesh(cupInnerGeo, material);
             cupInner.scale.set(1, 1, -1);
             proceduralGroup.add(cupInner);
-            
+
             const bottomGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.04, 32);
             const bottom = new THREE.Mesh(bottomGeo, material);
             bottom.position.y = -0.9;
             proceduralGroup.add(bottom);
-            
-            const handleGeo = new THREE.TorusGeometry(0.5, 0.12, 16, 64, Math.PI * 1.3);
+
+            const handleGeo = new THREE.TorusGeometry(
+                0.5,
+                0.12,
+                16,
+                64,
+                Math.PI * 1.3,
+            );
             const handle = new THREE.Mesh(handleGeo, material);
             handle.position.set(-0.72, 0, 0);
             handle.rotation.z = Math.PI * 0.35;
             proceduralGroup.add(handle);
-            
+
             targetMesh = cupOuter;
         } else if (type === 'tumbler') {
             const bodyGeo = new THREE.CylinderGeometry(0.65, 0.55, 2.2, 32);
             const body = new THREE.Mesh(bodyGeo, material);
             proceduralGroup.add(body);
-            
+
             const steelMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color('#d1d5db'),
                 roughness: 0.2,
-                metalness: 0.85
+                metalness: 0.85,
             });
             const collarGeo = new THREE.CylinderGeometry(0.55, 0.65, 0.2, 32);
             const collar = new THREE.Mesh(collarGeo, steelMat);
             collar.position.y = 1.15;
             proceduralGroup.add(collar);
-            
+
             const capGeo = new THREE.CylinderGeometry(0.48, 0.52, 0.35, 32);
             const cap = new THREE.Mesh(capGeo, material);
             cap.position.y = 1.4;
             proceduralGroup.add(cap);
-            
+
             targetMesh = body;
         } else if (type === 'botol') {
             const bodyGeo = new THREE.CylinderGeometry(0.6, 0.6, 2.0, 32);
             const body = new THREE.Mesh(bodyGeo, material);
             proceduralGroup.add(body);
-            
+
             const neckGeo = new THREE.CylinderGeometry(0.35, 0.6, 0.4, 32);
             const neck = new THREE.Mesh(neckGeo, material);
             neck.position.y = 1.1;
             proceduralGroup.add(neck);
-            
+
             const lidMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color('#1e293b'),
                 roughness: 0.4,
-                metalness: 0.1
+                metalness: 0.1,
             });
             const capGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.3, 32);
             const cap = new THREE.Mesh(capGeo, lidMat);
             cap.position.y = 1.35;
             proceduralGroup.add(cap);
-            
+
             targetMesh = body;
         } else if (type === 'cap') {
-            const domeGeo = new THREE.SphereGeometry(0.85, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const domeGeo = new THREE.SphereGeometry(
+                0.85,
+                32,
+                16,
+                0,
+                Math.PI * 2,
+                0,
+                Math.PI / 2,
+            );
             const dome = new THREE.Mesh(domeGeo, material);
             dome.rotation.x = -Math.PI / 2;
             proceduralGroup.add(dome);
-            
+
             const visorGeo = new THREE.BoxGeometry(1.0, 0.04, 0.65);
             const visor = new THREE.Mesh(visorGeo, material);
             visor.position.set(0, -0.4, 0.7);
             visor.rotation.x = Math.PI * 0.04;
             proceduralGroup.add(visor);
-            
+
             targetMesh = dome;
         } else if (type === 'totebag') {
             const bagGeo = new THREE.BoxGeometry(1.5, 1.7, 0.15, 4, 4, 1);
             const bag = new THREE.Mesh(bagGeo, material);
             proceduralGroup.add(bag);
-            
+
             const strapMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color('#e2e8f0'),
                 roughness: 0.9,
                 metalness: 0.0,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
             });
             const strapGeo = new THREE.TorusGeometry(0.4, 0.05, 8, 32, Math.PI);
             const strap1 = new THREE.Mesh(strapGeo, strapMat);
             strap1.position.set(0, 0.85, 0.06);
             proceduralGroup.add(strap1);
-            
+
             const strap2 = new THREE.Mesh(strapGeo, strapMat);
             strap2.position.set(0, 0.85, -0.06);
             proceduralGroup.add(strap2);
-            
+
             targetMesh = bag;
         } else if (type === 'piring') {
-            const plateGeo = new THREE.CylinderGeometry(1.4, 1.1, 0.16, 64, 1, true);
+            const plateGeo = new THREE.CylinderGeometry(
+                1.4,
+                1.1,
+                0.16,
+                64,
+                1,
+                true,
+            );
             const plate = new THREE.Mesh(plateGeo, material);
             plate.rotation.x = Math.PI / 2;
             proceduralGroup.add(plate);
-            
+
             const baseGeo = new THREE.CylinderGeometry(1.1, 1.1, 0.02, 64);
             const base = new THREE.Mesh(baseGeo, material);
             base.position.z = -0.07;
             base.rotation.x = Math.PI / 2;
             proceduralGroup.add(base);
-            
+
             targetMesh = base;
         } else if (type === 'plakat') {
             const plaqueGeo = new THREE.BoxGeometry(1.4, 1.9, 0.08);
@@ -1891,21 +2357,21 @@
                 metalness: 0.1,
                 transparent: true,
                 opacity: 0.6,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
             });
             const plaque = new THREE.Mesh(plaqueGeo, glassMat);
             proceduralGroup.add(plaque);
-            
+
             const baseMat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color('#5c4033'),
                 roughness: 0.7,
-                metalness: 0.1
+                metalness: 0.1,
             });
             const baseGeo = new THREE.BoxGeometry(1.6, 0.15, 0.6);
             const base = new THREE.Mesh(baseGeo, baseMat);
             base.position.y = -1.0;
             proceduralGroup.add(base);
-            
+
             targetMesh = plaque;
         } else {
             const genericGeo = new THREE.BoxGeometry(1.5, 2.0, 0.2);
@@ -1913,29 +2379,29 @@
             proceduralGroup.add(generic);
             targetMesh = generic;
         }
-        
+
         threeMesh.add(proceduralGroup);
-        
+
         proceduralGroup.position.set(mockupX, mockupY, mockupZ);
         proceduralGroup.rotation.set(
             (mockupRotationX * Math.PI) / 180,
             (mockupRotationY * Math.PI) / 180,
-            (mockupRotationZ * Math.PI) / 180
+            (mockupRotationZ * Math.PI) / 180,
         );
         proceduralGroup.scale.set(mockupScale, mockupScale, mockupScale);
-        
+
         const aspect = h / w;
-        
+
         if (canvasFront) {
             const textureFront = new THREE.CanvasTexture(canvasFront);
             textureFront.colorSpace = THREE.SRGBColorSpace;
-            
+
             const rotationRad = (logoRotation * Math.PI) / 180;
             const decalGeoFront = new THREE.DecalGeometry(
                 targetMesh,
                 new THREE.Vector3(logoX, logoY, logoZ),
                 new THREE.Euler(0, 0, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2),
             );
             const decalMatFront = new THREE.MeshStandardMaterial({
                 map: textureFront,
@@ -1944,22 +2410,22 @@
                 roughness: roughness,
                 metalness: metalness,
                 polygonOffset: true,
-                polygonOffsetFactor: -4
+                polygonOffsetFactor: -4,
             });
             const decalFront = new THREE.Mesh(decalGeoFront, decalMatFront);
             targetMesh.add(decalFront);
         }
-        
+
         if (canvasBack) {
             const textureBack = new THREE.CanvasTexture(canvasBack);
             textureBack.colorSpace = THREE.SRGBColorSpace;
-            
+
             const rotationRad = (logoRotation * Math.PI) / 180;
             const decalGeoBack = new THREE.DecalGeometry(
                 targetMesh,
                 new THREE.Vector3(-logoX, logoY, logoZBack),
                 new THREE.Euler(0, Math.PI, rotationRad),
-                new THREE.Vector3(logoScale, logoScale * aspect, 0.2)
+                new THREE.Vector3(logoScale, logoScale * aspect, 0.2),
             );
             const decalMatBack = new THREE.MeshStandardMaterial({
                 map: textureBack,
@@ -1968,61 +2434,68 @@
                 roughness: roughness,
                 metalness: metalness,
                 polygonOffset: true,
-                polygonOffsetFactor: -4
+                polygonOffsetFactor: -4,
             });
             const decalBack = new THREE.Mesh(decalGeoBack, decalMatBack);
             targetMesh.add(decalBack);
         }
-        
+
         threeScene.add(threeMesh);
         threeGeometry = targetMesh.geometry;
-        
+
         if (threeRenderer && threeCamera) {
             animate();
         }
     }
 
-    function buildThreeMeshes(canvasFront, canvasBack, pixelsFront, pixelsBack, w, h) {
+    function buildThreeMeshes(
+        canvasFront,
+        canvasBack,
+        pixelsFront,
+        pixelsBack,
+        w,
+        h,
+    ) {
         cleanupThreeJS();
-        
+
         threeMesh = new THREE.Group();
-        
+
         const frontPositions = [];
         const frontNormals = [];
         const frontUvs = [];
         const frontIndices = [];
         let frontVertexIndex = 0;
-        
+
         const backPositions = [];
         const backNormals = [];
         const backUvs = [];
         const backIndices = [];
         let backVertexIndex = 0;
-        
+
         const sidePositions = [];
         const sideNormals = [];
         const sideUvs = [];
         const sideIndices = [];
         let sideVertexIndex = 0;
-        
+
         const dx = 3 / w;
         const dy = 3 / h;
         const halfThick = baseThickness / 2;
-        
+
         const isOpaque = (px, py) => {
             if (px < 0 || px >= w || py < 0 || py >= h) return false;
             const idx = (py * w + px) * 4;
             return pixelsFront[idx + 3] > 50;
         };
-        
+
         const getZHeight = (px, py, side) => {
             const idx = (py * w + px) * 4;
             const r = pixelsFront[idx] || 0;
-            const g = pixelsFront[idx+1] || 0;
-            const b = pixelsFront[idx+2] || 0;
+            const g = pixelsFront[idx + 1] || 0;
+            const b = pixelsFront[idx + 2] || 0;
             let brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
             if (invertHeight) brightness = 1 - brightness;
-            
+
             if (side === 'front') {
                 return halfThick + (flatMesh ? 0 : brightness * reliefDepth);
             } else {
@@ -2030,136 +2503,228 @@
                 if (pixelsBack) {
                     const bIdx = (py * w + px) * 4;
                     const br = pixelsBack[bIdx] || 0;
-                    const bg = pixelsBack[bIdx+1] || 0;
-                    const bb = pixelsBack[bIdx+2] || 0;
-                    backBrightness = (0.299 * br + 0.587 * bg + 0.114 * bb) / 255;
+                    const bg = pixelsBack[bIdx + 1] || 0;
+                    const bb = pixelsBack[bIdx + 2] || 0;
+                    backBrightness =
+                        (0.299 * br + 0.587 * bg + 0.114 * bb) / 255;
                     if (invertHeight) backBrightness = 1 - backBrightness;
                 }
-                return -halfThick - (flatMesh ? 0 : backBrightness * reliefDepth);
+                return (
+                    -halfThick - (flatMesh ? 0 : backBrightness * reliefDepth)
+                );
             }
         };
-        
+
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
                 if (!isOpaque(x, y)) continue;
-                
+
                 const X = (x / (w - 1) - 0.5) * 3;
                 const Y = (0.5 - y / (h - 1)) * 3;
-                
+
                 const zF = getZHeight(x, y, 'front');
                 const zB = getZHeight(x, y, 'back');
-                
+
                 // Front Quad
                 frontPositions.push(
-                    X - dx/2, Y - dy/2, zF,
-                    X + dx/2, Y - dy/2, zF,
-                    X + dx/2, Y + dy/2, zF,
-                    X - dx/2, Y + dy/2, zF
+                    X - dx / 2,
+                    Y - dy / 2,
+                    zF,
+                    X + dx / 2,
+                    Y - dy / 2,
+                    zF,
+                    X + dx / 2,
+                    Y + dy / 2,
+                    zF,
+                    X - dx / 2,
+                    Y + dy / 2,
+                    zF,
                 );
                 frontNormals.push(0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1);
                 frontUvs.push(
-                    x/w, 1 - y/h,
-                    (x+1)/w, 1 - y/h,
-                    (x+1)/w, 1 - (y+1)/h,
-                    x/w, 1 - (y+1)/h
+                    x / w,
+                    1 - y / h,
+                    (x + 1) / w,
+                    1 - y / h,
+                    (x + 1) / w,
+                    1 - (y + 1) / h,
+                    x / w,
+                    1 - (y + 1) / h,
                 );
                 frontIndices.push(
-                    frontVertexIndex, frontVertexIndex + 1, frontVertexIndex + 2,
-                    frontVertexIndex, frontVertexIndex + 2, frontVertexIndex + 3
+                    frontVertexIndex,
+                    frontVertexIndex + 1,
+                    frontVertexIndex + 2,
+                    frontVertexIndex,
+                    frontVertexIndex + 2,
+                    frontVertexIndex + 3,
                 );
                 frontVertexIndex += 4;
-                
+
                 // Back Quad
                 backPositions.push(
-                    X + dx/2, Y - dy/2, zB,
-                    X - dx/2, Y - dy/2, zB,
-                    X - dx/2, Y + dy/2, zB,
-                    X + dx/2, Y + dy/2, zB
+                    X + dx / 2,
+                    Y - dy / 2,
+                    zB,
+                    X - dx / 2,
+                    Y - dy / 2,
+                    zB,
+                    X - dx / 2,
+                    Y + dy / 2,
+                    zB,
+                    X + dx / 2,
+                    Y + dy / 2,
+                    zB,
                 );
                 backNormals.push(0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1);
                 backUvs.push(
-                    1 - (x+1)/w, 1 - y/h,
-                    1 - x/w, 1 - y/h,
-                    1 - x/w, 1 - (y+1)/h,
-                    1 - (x+1)/w, 1 - (y+1)/h
+                    1 - (x + 1) / w,
+                    1 - y / h,
+                    1 - x / w,
+                    1 - y / h,
+                    1 - x / w,
+                    1 - (y + 1) / h,
+                    1 - (x + 1) / w,
+                    1 - (y + 1) / h,
                 );
                 backIndices.push(
-                    backVertexIndex, backVertexIndex + 1, backVertexIndex + 2,
-                    backVertexIndex, backVertexIndex + 2, backVertexIndex + 3
+                    backVertexIndex,
+                    backVertexIndex + 1,
+                    backVertexIndex + 2,
+                    backVertexIndex,
+                    backVertexIndex + 2,
+                    backVertexIndex + 3,
                 );
                 backVertexIndex += 4;
-                
+
                 // Sides (connecting quads)
                 if (!isOpaque(x + 1, y)) {
                     sidePositions.push(
-                        X + dx/2, Y - dy/2, zB,
-                        X + dx/2, Y + dy/2, zB,
-                        X + dx/2, Y + dy/2, zF,
-                        X + dx/2, Y - dy/2, zF
+                        X + dx / 2,
+                        Y - dy / 2,
+                        zB,
+                        X + dx / 2,
+                        Y + dy / 2,
+                        zB,
+                        X + dx / 2,
+                        Y + dy / 2,
+                        zF,
+                        X + dx / 2,
+                        Y - dy / 2,
+                        zF,
                     );
                     sideNormals.push(1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0);
-                    sideUvs.push(0,0, 0,0, 0,0, 0,0);
+                    sideUvs.push(0, 0, 0, 0, 0, 0, 0, 0);
                     sideIndices.push(
-                        sideVertexIndex, sideVertexIndex + 1, sideVertexIndex + 2,
-                        sideVertexIndex, sideVertexIndex + 2, sideVertexIndex + 3
+                        sideVertexIndex,
+                        sideVertexIndex + 1,
+                        sideVertexIndex + 2,
+                        sideVertexIndex,
+                        sideVertexIndex + 2,
+                        sideVertexIndex + 3,
                     );
                     sideVertexIndex += 4;
                 }
                 if (!isOpaque(x - 1, y)) {
                     sidePositions.push(
-                        X - dx/2, Y - dy/2, zF,
-                        X - dx/2, Y + dy/2, zF,
-                        X - dx/2, Y + dy/2, zB,
-                        X - dx/2, Y - dy/2, zB
+                        X - dx / 2,
+                        Y - dy / 2,
+                        zF,
+                        X - dx / 2,
+                        Y + dy / 2,
+                        zF,
+                        X - dx / 2,
+                        Y + dy / 2,
+                        zB,
+                        X - dx / 2,
+                        Y - dy / 2,
+                        zB,
                     );
                     sideNormals.push(-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0);
-                    sideUvs.push(0,0, 0,0, 0,0, 0,0);
+                    sideUvs.push(0, 0, 0, 0, 0, 0, 0, 0);
                     sideIndices.push(
-                        sideVertexIndex, sideVertexIndex + 1, sideVertexIndex + 2,
-                        sideVertexIndex, sideVertexIndex + 2, sideVertexIndex + 3
+                        sideVertexIndex,
+                        sideVertexIndex + 1,
+                        sideVertexIndex + 2,
+                        sideVertexIndex,
+                        sideVertexIndex + 2,
+                        sideVertexIndex + 3,
                     );
                     sideVertexIndex += 4;
                 }
                 if (!isOpaque(x, y - 1)) {
                     sidePositions.push(
-                        X - dx/2, Y + dy/2, zB,
-                        X - dx/2, Y + dy/2, zF,
-                        X + dx/2, Y + dy/2, zF,
-                        X + dx/2, Y + dy/2, zB
+                        X - dx / 2,
+                        Y + dy / 2,
+                        zB,
+                        X - dx / 2,
+                        Y + dy / 2,
+                        zF,
+                        X + dx / 2,
+                        Y + dy / 2,
+                        zF,
+                        X + dx / 2,
+                        Y + dy / 2,
+                        zB,
                     );
                     sideNormals.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
-                    sideUvs.push(0,0, 0,0, 0,0, 0,0);
+                    sideUvs.push(0, 0, 0, 0, 0, 0, 0, 0);
                     sideIndices.push(
-                        sideVertexIndex, sideVertexIndex + 1, sideVertexIndex + 2,
-                        sideVertexIndex, sideVertexIndex + 2, sideVertexIndex + 3
+                        sideVertexIndex,
+                        sideVertexIndex + 1,
+                        sideVertexIndex + 2,
+                        sideVertexIndex,
+                        sideVertexIndex + 2,
+                        sideVertexIndex + 3,
                     );
                     sideVertexIndex += 4;
                 }
                 if (!isOpaque(x, y + 1)) {
                     sidePositions.push(
-                        X - dx/2, Y - dy/2, zF,
-                        X - dx/2, Y - dy/2, zB,
-                        X + dx/2, Y - dy/2, zB,
-                        X + dx/2, Y - dy/2, zF
+                        X - dx / 2,
+                        Y - dy / 2,
+                        zF,
+                        X - dx / 2,
+                        Y - dy / 2,
+                        zB,
+                        X + dx / 2,
+                        Y - dy / 2,
+                        zB,
+                        X + dx / 2,
+                        Y - dy / 2,
+                        zF,
                     );
                     sideNormals.push(0, -1, 0, 0, -1, 0, 0, -1, 0, -1, 0, 0);
-                    sideUvs.push(0,0, 0,0, 0,0, 0,0);
+                    sideUvs.push(0, 0, 0, 0, 0, 0, 0, 0);
                     sideIndices.push(
-                        sideVertexIndex, sideVertexIndex + 1, sideVertexIndex + 2,
-                        sideVertexIndex, sideVertexIndex + 2, sideVertexIndex + 3
+                        sideVertexIndex,
+                        sideVertexIndex + 1,
+                        sideVertexIndex + 2,
+                        sideVertexIndex,
+                        sideVertexIndex + 2,
+                        sideVertexIndex + 3,
                     );
                     sideVertexIndex += 4;
                 }
             }
         }
-        
+
         if (frontPositions.length > 0) {
             const geoFront = new THREE.BufferGeometry();
-            geoFront.setAttribute('position', new THREE.Float32BufferAttribute(frontPositions, 3));
-            geoFront.setAttribute('normal', new THREE.Float32BufferAttribute(frontNormals, 3));
-            geoFront.setAttribute('uv', new THREE.Float32BufferAttribute(frontUvs, 2));
+            geoFront.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(frontPositions, 3),
+            );
+            geoFront.setAttribute(
+                'normal',
+                new THREE.Float32BufferAttribute(frontNormals, 3),
+            );
+            geoFront.setAttribute(
+                'uv',
+                new THREE.Float32BufferAttribute(frontUvs, 2),
+            );
             geoFront.setIndex(frontIndices);
-            
+
             threeTexture = new THREE.CanvasTexture(frontCanvas);
             threeTexture.colorSpace = THREE.SRGBColorSpace;
             threeMaterial = new THREE.MeshStandardMaterial({
@@ -2169,20 +2734,29 @@
                 color: new THREE.Color(tintColor),
                 side: THREE.DoubleSide,
                 transparent: true,
-                alphaTest: 0.05
+                alphaTest: 0.05,
             });
             const meshFront = new THREE.Mesh(geoFront, threeMaterial);
             threeMesh.add(meshFront);
             threeGeometry = geoFront;
         }
-        
+
         if (backPositions.length > 0) {
             const geoBack = new THREE.BufferGeometry();
-            geoBack.setAttribute('position', new THREE.Float32BufferAttribute(backPositions, 3));
-            geoBack.setAttribute('normal', new THREE.Float32BufferAttribute(backNormals, 3));
-            geoBack.setAttribute('uv', new THREE.Float32BufferAttribute(backUvs, 2));
+            geoBack.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(backPositions, 3),
+            );
+            geoBack.setAttribute(
+                'normal',
+                new THREE.Float32BufferAttribute(backNormals, 3),
+            );
+            geoBack.setAttribute(
+                'uv',
+                new THREE.Float32BufferAttribute(backUvs, 2),
+            );
             geoBack.setIndex(backIndices);
-            
+
             const texBack = new THREE.CanvasTexture(backCanvas);
             texBack.colorSpace = THREE.SRGBColorSpace;
             const matBack = new THREE.MeshStandardMaterial({
@@ -2192,31 +2766,40 @@
                 color: new THREE.Color(tintColor),
                 side: THREE.DoubleSide,
                 transparent: true,
-                alphaTest: 0.05
+                alphaTest: 0.05,
             });
             const meshBack = new THREE.Mesh(geoBack, matBack);
             threeMesh.add(meshBack);
         }
-        
+
         if (sidePositions.length > 0) {
             const geoSide = new THREE.BufferGeometry();
-            geoSide.setAttribute('position', new THREE.Float32BufferAttribute(sidePositions, 3));
-            geoSide.setAttribute('normal', new THREE.Float32BufferAttribute(sideNormals, 3));
-            geoSide.setAttribute('uv', new THREE.Float32BufferAttribute(sideUvs, 2));
+            geoSide.setAttribute(
+                'position',
+                new THREE.Float32BufferAttribute(sidePositions, 3),
+            );
+            geoSide.setAttribute(
+                'normal',
+                new THREE.Float32BufferAttribute(sideNormals, 3),
+            );
+            geoSide.setAttribute(
+                'uv',
+                new THREE.Float32BufferAttribute(sideUvs, 2),
+            );
             geoSide.setIndex(sideIndices);
-            
+
             const matSide = new THREE.MeshStandardMaterial({
                 color: new THREE.Color(sideColor),
                 roughness: roughness,
                 metalness: metalness,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
             });
             const meshSide = new THREE.Mesh(geoSide, matSide);
             threeMesh.add(meshSide);
         }
-        
+
         threeScene.add(threeMesh);
-        
+
         if (threeRenderer && threeCamera) {
             animate();
         }
@@ -2230,7 +2813,7 @@
         }
         threeRenderer.render(threeScene, threeCamera);
     }
-    
+
     function cleanupThreeJS() {
         if (resizeListener) {
             window.removeEventListener('resize', resizeListener);
@@ -2261,64 +2844,90 @@
 
     function applyGeneratedModel() {
         if (!threeMesh) return;
-        
+
         // Ensure fflate is defined globally right before USDZExporter runs
         if (!window.fflate && typeof fflate !== 'undefined') {
             window.fflate = fflate;
         }
-        
+
         const prevAutoRotate = autoRotate;
         autoRotate = false;
         threeMesh.rotation.set(0, 0, 0);
-        
+
         // 1. Export GLB format via GLTFExporter
         // NOTE: Three.js r128 GLTFExporter.parse() takes 3 args: (scene, onDone, options)
         // The 4-arg variant (with error callback) was added in r137+.
         const gltfExporter = new THREE.GLTFExporter();
-        gltfExporter.parse(threeMesh, (glbResult) => {
-            // glbResult is an ArrayBuffer when binary: true
-            const glbBlob = new Blob([glbResult], { type: 'model/gltf-binary' });
-            const glbFile = new File([glbBlob], 'ai_generated_product.glb', { type: 'model/gltf-binary' });
-            
-            form.model_3d_file = glbFile;
-            model3dFileName = 'ai_generated_product.glb';
-            
-            // 2. Export USDZ format via USDZExporter (for iOS Augmented Reality support)
-            try {
-                const usdzExporter = new THREE.USDZExporter();
-                const usdzPromise = usdzExporter.parse(threeMesh, (usdzResult) => {
-                    if (usdzResult) {
-                        const usdzBlob = new Blob([usdzResult], { type: 'model/vnd.usdz+zip' });
-                        const usdzFile = new File([usdzBlob], 'ai_generated_product.usdz', { type: 'model/vnd.usdz+zip' });
-                        
-                        form.model_3d_usdz_file = usdzFile;
-                        model3dUsdzFileName = 'ai_generated_product.usdz';
+        gltfExporter.parse(
+            threeMesh,
+            (glbResult) => {
+                // glbResult is an ArrayBuffer when binary: true
+                const glbBlob = new Blob([glbResult], {
+                    type: 'model/gltf-binary',
+                });
+                const glbFile = new File(
+                    [glbBlob],
+                    'ai_generated_product.glb',
+                    { type: 'model/gltf-binary' },
+                );
+
+                form.model_3d_file = glbFile;
+                model3dFileName = 'ai_generated_product.glb';
+
+                // 2. Export USDZ format via USDZExporter (for iOS Augmented Reality support)
+                try {
+                    const usdzExporter = new THREE.USDZExporter();
+                    const usdzPromise = usdzExporter.parse(
+                        threeMesh,
+                        (usdzResult) => {
+                            if (usdzResult) {
+                                const usdzBlob = new Blob([usdzResult], {
+                                    type: 'model/vnd.usdz+zip',
+                                });
+                                const usdzFile = new File(
+                                    [usdzBlob],
+                                    'ai_generated_product.usdz',
+                                    { type: 'model/vnd.usdz+zip' },
+                                );
+
+                                form.model_3d_usdz_file = usdzFile;
+                                model3dUsdzFileName =
+                                    'ai_generated_product.usdz';
+                            }
+
+                            cleanupThreeJS();
+                            isImageTo3dModalOpen = false;
+                        },
+                    );
+
+                    // Fallback: USDZExporter may return a Promise instead of calling callback
+                    if (usdzPromise && typeof usdzPromise.then === 'function') {
+                        usdzPromise.then((usdzResult) => {
+                            const usdzBlob = new Blob([usdzResult], {
+                                type: 'model/vnd.usdz+zip',
+                            });
+                            const usdzFile = new File(
+                                [usdzBlob],
+                                'ai_generated_product.usdz',
+                                { type: 'model/vnd.usdz+zip' },
+                            );
+
+                            form.model_3d_usdz_file = usdzFile;
+                            model3dUsdzFileName = 'ai_generated_product.usdz';
+
+                            cleanupThreeJS();
+                            isImageTo3dModalOpen = false;
+                        });
                     }
-                    
+                } catch (usdzErr) {
+                    console.error('Error exporting USDZ:', usdzErr);
+                    // Fallback: close modal even if USDZ fails
                     cleanupThreeJS();
                     isImageTo3dModalOpen = false;
-                });
-                
-                // Fallback: USDZExporter may return a Promise instead of calling callback
-                if (usdzPromise && typeof usdzPromise.then === 'function') {
-                    usdzPromise.then((usdzResult) => {
-                        const usdzBlob = new Blob([usdzResult], { type: 'model/vnd.usdz+zip' });
-                        const usdzFile = new File([usdzBlob], 'ai_generated_product.usdz', { type: 'model/vnd.usdz+zip' });
-                        
-                        form.model_3d_usdz_file = usdzFile;
-                        model3dUsdzFileName = 'ai_generated_product.usdz';
-                        
-                        cleanupThreeJS();
-                        isImageTo3dModalOpen = false;
-                    });
                 }
-            } catch (usdzErr) {
-                console.error('Error exporting USDZ:', usdzErr);
-                // Fallback: close modal even if USDZ fails
-                cleanupThreeJS();
-                isImageTo3dModalOpen = false;
-            }
-        }, { binary: true }); // r128 API: 3rd arg is options, NOT error callback
+            },
+            { binary: true },
+        ); // r128 API: 3rd arg is options, NOT error callback
     }
 
     function handleVideoFile(e) {
@@ -2425,19 +3034,13 @@
     );
 
     let globalCustomPrice = $state(
-        p.variants
-            ? p.variants.some((v) => v.product_price !== null)
-            : false,
+        p.variants ? p.variants.some((v) => v.product_price !== null) : false,
     );
     let globalCustomStock = $state(
-        p.variants
-            ? p.variants.some((v) => v.product_stock !== null)
-            : false,
+        p.variants ? p.variants.some((v) => v.product_stock !== null) : false,
     );
     let globalCustomWeight = $state(
-        p.variants
-            ? p.variants.some((v) => v.weight !== null)
-            : false,
+        p.variants ? p.variants.some((v) => v.weight !== null) : false,
     );
 
     // Track last product ID for SPA/Inertia hydration sync
@@ -2454,31 +3057,64 @@
 
     let showSizeChart = $state(!!(p.size_chart && p.size_chart.enabled));
     let sizeChartHeaders = $state(
-        p.size_chart?.headers || ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)']
+        p.size_chart?.headers || [
+            'Ukuran',
+            'Lebar Dada (cm)',
+            'Panjang (cm)',
+            'Panjang Lengan (cm)',
+        ],
     );
     let sizeChartRows = $state(
         p.size_chart?.rows || [
-            { size: 'S', values: ['48', '68', '21'], min_height: 150, max_height: 160, min_weight: 45, max_weight: 55 },
-            { size: 'M', values: ['50', '70', '22'], min_height: 160, max_height: 170, min_weight: 55, max_weight: 65 },
-            { size: 'L', values: ['52', '72', '23'], min_height: 170, max_height: 180, min_weight: 65, max_weight: 75 },
-            { size: 'XL', values: ['54', '74', '24'], min_height: 180, max_height: 190, min_weight: 75, max_weight: 85 }
-        ]
+            {
+                size: 'S',
+                values: ['48', '68', '21'],
+                min_height: 150,
+                max_height: 160,
+                min_weight: 45,
+                max_weight: 55,
+            },
+            {
+                size: 'M',
+                values: ['50', '70', '22'],
+                min_height: 160,
+                max_height: 170,
+                min_weight: 55,
+                max_weight: 65,
+            },
+            {
+                size: 'L',
+                values: ['52', '72', '23'],
+                min_height: 170,
+                max_height: 180,
+                min_weight: 65,
+                max_weight: 75,
+            },
+            {
+                size: 'XL',
+                values: ['54', '74', '24'],
+                min_height: 180,
+                max_height: 190,
+                min_weight: 75,
+                max_weight: 85,
+            },
+        ],
     );
 
     function addSizeChartHeader() {
         sizeChartHeaders = [...sizeChartHeaders, 'Kolom Baru'];
-        sizeChartRows = sizeChartRows.map(row => ({
+        sizeChartRows = sizeChartRows.map((row) => ({
             ...row,
-            values: [...row.values, '']
+            values: [...row.values, ''],
         }));
     }
 
     function removeSizeChartHeader(index) {
         if (index === 0) return;
         sizeChartHeaders = sizeChartHeaders.filter((_, i) => i !== index);
-        sizeChartRows = sizeChartRows.map(row => ({
+        sizeChartRows = sizeChartRows.map((row) => ({
             ...row,
-            values: row.values.filter((_, i) => i !== (index - 1))
+            values: row.values.filter((_, i) => i !== index - 1),
         }));
     }
 
@@ -2487,7 +3123,14 @@
         const emptyVals = Array(valCount).fill('');
         sizeChartRows = [
             ...sizeChartRows,
-            { size: '', values: emptyVals, min_height: '', max_height: '', min_weight: '', max_weight: '' }
+            {
+                size: '',
+                values: emptyVals,
+                min_height: '',
+                max_height: '',
+                min_weight: '',
+                max_weight: '',
+            },
         ];
     }
 
@@ -2592,24 +3235,69 @@
             // Sync form properties
             form.name = product.name;
             form.sku = product.sku;
-            form.category_ids = product.categories ? product.categories.map((c) => c.id) : (product.category_id ? [product.category_id] : []);
-            form.brand_ids = product.brands ? product.brands.map((b) => b.id) : (product.brand_id ? [product.brand_id] : []);
+            form.category_ids = product.categories
+                ? product.categories.map((c) => c.id)
+                : product.category_id
+                  ? [product.category_id]
+                  : [];
+            form.brand_ids = product.brands
+                ? product.brands.map((b) => b.id)
+                : product.brand_id
+                  ? [product.brand_id]
+                  : [];
             form.brand = product.brand || '';
             form.specifications = product.specifications || {};
             specifications = product.specifications
-                ? Object.entries(product.specifications).map(([label, value]) => ({
-                      label,
-                      value: String(value),
-                  }))
+                ? Object.entries(product.specifications).map(
+                      ([label, value]) => ({
+                          label,
+                          value: String(value),
+                      }),
+                  )
                 : [];
             form.size_chart = product.size_chart || null;
-            showSizeChart = !!(product.size_chart && product.size_chart.enabled);
-            sizeChartHeaders = product.size_chart?.headers || ['Ukuran', 'Lebar Dada (cm)', 'Panjang (cm)', 'Panjang Lengan (cm)'];
+            showSizeChart = !!(
+                product.size_chart && product.size_chart.enabled
+            );
+            sizeChartHeaders = product.size_chart?.headers || [
+                'Ukuran',
+                'Lebar Dada (cm)',
+                'Panjang (cm)',
+                'Panjang Lengan (cm)',
+            ];
             sizeChartRows = product.size_chart?.rows || [
-                { size: 'S', values: ['48', '68', '21'], min_height: 150, max_height: 160, min_weight: 45, max_weight: 55 },
-                { size: 'M', values: ['50', '70', '22'], min_height: 160, max_height: 170, min_weight: 55, max_weight: 65 },
-                { size: 'L', values: ['52', '72', '23'], min_height: 170, max_height: 180, min_weight: 65, max_weight: 75 },
-                { size: 'XL', values: ['54', '74', '24'], min_height: 180, max_height: 190, min_weight: 75, max_weight: 85 }
+                {
+                    size: 'S',
+                    values: ['48', '68', '21'],
+                    min_height: 150,
+                    max_height: 160,
+                    min_weight: 45,
+                    max_weight: 55,
+                },
+                {
+                    size: 'M',
+                    values: ['50', '70', '22'],
+                    min_height: 160,
+                    max_height: 170,
+                    min_weight: 55,
+                    max_weight: 65,
+                },
+                {
+                    size: 'L',
+                    values: ['52', '72', '23'],
+                    min_height: 170,
+                    max_height: 180,
+                    min_weight: 65,
+                    max_weight: 75,
+                },
+                {
+                    size: 'XL',
+                    values: ['54', '74', '24'],
+                    min_height: 180,
+                    max_height: 190,
+                    min_weight: 75,
+                    max_weight: 85,
+                },
             ];
             form.price = product.product_price?.price || '';
             form.cost = product.product_price?.cost || '';
@@ -2879,11 +3567,13 @@
         });
         form.specifications = specObj;
 
-        form.size_chart = showSizeChart ? {
-            enabled: true,
-            headers: $state.snapshot(sizeChartHeaders),
-            rows: $state.snapshot(sizeChartRows)
-        } : null;
+        form.size_chart = showSizeChart
+            ? {
+                  enabled: true,
+                  headers: $state.snapshot(sizeChartHeaders),
+                  rows: $state.snapshot(sizeChartRows),
+              }
+            : null;
 
         form.variations = enableVariants ? rawVariations : [];
         // Only submit active variants, and clear hidden properties if toggle is off
@@ -2961,11 +3651,13 @@
         });
         form.specifications = specObj;
 
-        form.size_chart = showSizeChart ? {
-            enabled: true,
-            headers: $state.snapshot(sizeChartHeaders),
-            rows: $state.snapshot(sizeChartRows)
-        } : null;
+        form.size_chart = showSizeChart
+            ? {
+                  enabled: true,
+                  headers: $state.snapshot(sizeChartHeaders),
+                  rows: $state.snapshot(sizeChartRows),
+              }
+            : null;
 
         form.variations = enableVariants ? rawVariations : [];
         form.variants = enableVariants
@@ -3140,7 +3832,9 @@
                             error={form.errors.sku}
                         />
                     </div>
-                    <div class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <div
+                        class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl"
+                    >
                         <Toggle
                             bind:checked={form.is_digital}
                             label="Produk Digital"
@@ -3151,12 +3845,17 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-slate-600 block">
-                                    Kategori Produk <span class="text-rose-500">*</span>
+                                <span
+                                    class="text-xs font-bold text-slate-600 block"
+                                >
+                                    Kategori Produk <span class="text-rose-500"
+                                        >*</span
+                                    >
                                 </span>
                                 <button
                                     type="button"
-                                    onclick={() => showQuickAddCategoryModal = true}
+                                    onclick={() =>
+                                        (showQuickAddCategoryModal = true)}
                                     class="text-xs text-brand-blueRoyal hover:text-brand-blueRoyal/85 font-black flex items-center gap-1 transition cursor-pointer"
                                 >
                                     <i class="ti ti-plus"></i> Tambah Kategori
@@ -3173,12 +3872,15 @@
 
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-slate-600 block">
+                                <span
+                                    class="text-xs font-bold text-slate-600 block"
+                                >
                                     Merek (Brand)
                                 </span>
                                 <button
                                     type="button"
-                                    onclick={() => showQuickAddBrandModal = true}
+                                    onclick={() =>
+                                        (showQuickAddBrandModal = true)}
                                     class="text-xs text-brand-blueRoyal hover:text-brand-blueRoyal/85 font-black flex items-center gap-1 transition cursor-pointer"
                                 >
                                     <i class="ti ti-plus"></i> Tambah Merek
@@ -3201,7 +3903,7 @@
                             placeholder="Satu kalimat tentang produk..."
                             error={form.errors.summary}
                         />
-                        <Textarea
+                        <RichEditor
                             bind:value={form.description}
                             id="description"
                             label="Deskripsi Lengkap"
@@ -3372,7 +4074,9 @@
                                                 <span>Harga Asli (DPP):</span>
                                                 <span
                                                     class="font-bold text-slate-800"
-                                                    >Rp {Number(form.price).toLocaleString(
+                                                    >Rp {Number(
+                                                        form.price,
+                                                    ).toLocaleString(
                                                         'id-ID',
                                                     )}</span
                                                 >
@@ -3411,7 +4115,9 @@
                                                 >
                                                 <span
                                                     class="font-bold text-slate-800"
-                                                    >Rp {Number(form.price).toLocaleString(
+                                                    >Rp {Number(
+                                                        form.price,
+                                                    ).toLocaleString(
                                                         'id-ID',
                                                     )}</span
                                                 >
@@ -3520,14 +4226,23 @@
                 {/if}
 
                 <!-- Card: Spesifikasi Produk -->
-                <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">
-                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft"
+                >
+                    <div
+                        class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4"
+                    >
                         <div>
-                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                            <h3
+                                class="font-outfit font-black text-lg text-slate-800"
+                            >
                                 Spesifikasi Produk
                             </h3>
-                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                                Tambahkan detail spesifikasi produk (misal: Bahan, Warna, Garansi)
+                            <p
+                                class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                            >
+                                Tambahkan detail spesifikasi produk (misal:
+                                Bahan, Warna, Garansi)
                             </p>
                         </div>
                         <button
@@ -3540,11 +4255,17 @@
                     </div>
 
                     {#if specifications.length === 0}
-                        <div class="text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-slate-50/30 flex flex-col items-center justify-center">
-                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                        <div
+                            class="text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-slate-50/30 flex flex-col items-center justify-center"
+                        >
+                            <div
+                                class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2"
+                            >
                                 <i class="ti ti-list text-lg"></i>
                             </div>
-                            <p class="text-xs text-slate-500 font-medium">Belum ada spesifikasi produk yang ditambahkan.</p>
+                            <p class="text-xs text-slate-500 font-medium">
+                                Belum ada spesifikasi produk yang ditambahkan.
+                            </p>
                             <button
                                 type="button"
                                 onclick={addSpecification}
@@ -3556,8 +4277,12 @@
                     {:else}
                         <div class="space-y-4">
                             {#each specifications as spec, idx (idx)}
-                                <div class="flex items-center gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative group animate-in fade-in zoom-in-95 duration-150">
-                                    <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div
+                                    class="flex items-center gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative group animate-in fade-in zoom-in-95 duration-150"
+                                >
+                                    <div
+                                        class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4"
+                                    >
                                         <Input
                                             type="text"
                                             bind:value={spec.label}
@@ -3590,14 +4315,24 @@
                 </div>
 
                 <!-- Card: Panduan Ukuran & Rekomendasi (Size Guide) -->
-                <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">
-                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4">
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft"
+                >
+                    <div
+                        class="flex items-center justify-between mb-4 border-b border-slate-100 pb-4"
+                    >
                         <div>
-                            <h3 class="font-outfit font-black text-lg text-slate-800">
+                            <h3
+                                class="font-outfit font-black text-lg text-slate-800"
+                            >
                                 Panduan Ukuran & Kalkulator Rekomendasi
                             </h3>
-                            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                                Aktifkan untuk menampilkan tabel panduan ukuran pakaian dan kalkulator rekomendasi tinggi/berat badan otomatis
+                            <p
+                                class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                            >
+                                Aktifkan untuk menampilkan tabel panduan ukuran
+                                pakaian dan kalkulator rekomendasi tinggi/berat
+                                badan otomatis
                             </p>
                         </div>
                         <Toggle
@@ -3609,9 +4344,15 @@
                     {#if showSizeChart}
                         <div class="space-y-6">
                             <!-- Kolom / Headers Builder -->
-                            <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                                <div class="flex items-center justify-between mb-3">
-                                    <span class="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            <div
+                                class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
+                            >
+                                <div
+                                    class="flex items-center justify-between mb-3"
+                                >
+                                    <span
+                                        class="text-xs font-bold text-slate-600 uppercase tracking-wider"
+                                    >
                                         Kolom Tabel Ukuran
                                     </span>
                                     <button
@@ -3624,22 +4365,33 @@
                                 </div>
                                 <div class="flex flex-wrap gap-2">
                                     {#each sizeChartHeaders as header, hIdx}
-                                        <div class="flex items-center bg-white border border-slate-200 rounded-lg p-1 text-xs pl-2.5 shadow-sm">
+                                        <div
+                                            class="flex items-center bg-white border border-slate-200 rounded-lg p-1 text-xs pl-2.5 shadow-sm"
+                                        >
                                             {#if hIdx === 0}
-                                                <span class="font-bold text-slate-600 pr-2">{header}</span>
+                                                <span
+                                                    class="font-bold text-slate-600 pr-2"
+                                                    >{header}</span
+                                                >
                                             {:else}
                                                 <input
                                                     type="text"
-                                                    bind:value={sizeChartHeaders[hIdx]}
+                                                    bind:value={
+                                                        sizeChartHeaders[hIdx]
+                                                    }
                                                     class="w-28 focus:outline-none font-bold text-slate-700 bg-transparent"
                                                 />
                                                 <button
                                                     type="button"
-                                                    onclick={() => removeSizeChartHeader(hIdx)}
+                                                    onclick={() =>
+                                                        removeSizeChartHeader(
+                                                            hIdx,
+                                                        )}
                                                     class="text-slate-400 hover:text-rose-500 pl-1.5 pr-0.5"
                                                     title="Hapus Kolom"
                                                 >
-                                                    <i class="ti ti-x text-xs"></i>
+                                                    <i class="ti ti-x text-xs"
+                                                    ></i>
                                                 </button>
                                             {/if}
                                         </div>
@@ -3648,17 +4400,38 @@
                             </div>
 
                             <!-- Baris / Rows Builder -->
-                            <div class="overflow-x-auto border border-slate-100 rounded-2xl">
-                                <table class="w-full text-left text-xs border-collapse">
+                            <div
+                                class="overflow-x-auto border border-slate-100 rounded-2xl"
+                            >
+                                <table
+                                    class="w-full text-left text-xs border-collapse"
+                                >
                                     <thead>
-                                        <tr class="bg-slate-50 border-b border-slate-100">
-                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-16">Opsi</th>
-                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-24 text-center">{sizeChartHeaders[0]}</th>
+                                        <tr
+                                            class="bg-slate-50 border-b border-slate-100"
+                                        >
+                                            <th
+                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-16"
+                                                >Opsi</th
+                                            >
+                                            <th
+                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-24 text-center"
+                                                >{sizeChartHeaders[0]}</th
+                                            >
                                             {#each sizeChartHeaders.slice(1) as header}
-                                                <th class="p-3 font-bold text-slate-500 uppercase tracking-wider min-w-[80px] text-center">{header}</th>
+                                                <th
+                                                    class="p-3 font-bold text-slate-500 uppercase tracking-wider min-w-[80px] text-center"
+                                                    >{header}</th
+                                                >
                                             {/each}
-                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center">Tinggi (cm)</th>
-                                            <th class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center">Berat (kg)</th>
+                                            <th
+                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center"
+                                                >Tinggi (cm)</th
+                                            >
+                                            <th
+                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center"
+                                                >Berat (kg)</th
+                                            >
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
@@ -3667,11 +4440,15 @@
                                                 <td class="p-2 text-center">
                                                     <button
                                                         type="button"
-                                                        onclick={() => removeSizeChartRow(rIdx)}
+                                                        onclick={() =>
+                                                            removeSizeChartRow(
+                                                                rIdx,
+                                                            )}
                                                         class="w-6 h-6 rounded-md hover:bg-rose-50 hover:text-rose-600 text-slate-400 flex items-center justify-center transition mx-auto cursor-pointer"
                                                         title="Hapus Baris"
                                                     >
-                                                        <i class="ti ti-trash"></i>
+                                                        <i class="ti ti-trash"
+                                                        ></i>
                                                     </button>
                                                 </td>
                                                 <td class="p-2">
@@ -3686,7 +4463,9 @@
                                                     <td class="p-2">
                                                         <input
                                                             type="text"
-                                                            bind:value={row.values[hIdx]}
+                                                            bind:value={
+                                                                row.values[hIdx]
+                                                            }
                                                             class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal/20 focus:outline-none text-slate-600 text-center font-medium"
                                                             placeholder="Cth: 50"
                                                         />
@@ -3694,17 +4473,26 @@
                                                 {/each}
                                                 <!-- Tinggi range -->
                                                 <td class="p-2">
-                                                    <div class="flex items-center gap-1.5 justify-center">
+                                                    <div
+                                                        class="flex items-center gap-1.5 justify-center"
+                                                    >
                                                         <input
                                                             type="number"
-                                                            bind:value={row.min_height}
+                                                            bind:value={
+                                                                row.min_height
+                                                            }
                                                             class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
                                                             placeholder="Min"
                                                         />
-                                                        <span class="text-slate-400">-</span>
+                                                        <span
+                                                            class="text-slate-400"
+                                                            >-</span
+                                                        >
                                                         <input
                                                             type="number"
-                                                            bind:value={row.max_height}
+                                                            bind:value={
+                                                                row.max_height
+                                                            }
                                                             class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
                                                             placeholder="Max"
                                                         />
@@ -3712,17 +4500,26 @@
                                                 </td>
                                                 <!-- Berat range -->
                                                 <td class="p-2">
-                                                    <div class="flex items-center gap-1.5 justify-center">
+                                                    <div
+                                                        class="flex items-center gap-1.5 justify-center"
+                                                    >
                                                         <input
                                                             type="number"
-                                                            bind:value={row.min_weight}
+                                                            bind:value={
+                                                                row.min_weight
+                                                            }
                                                             class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
                                                             placeholder="Min"
                                                         />
-                                                        <span class="text-slate-400">-</span>
+                                                        <span
+                                                            class="text-slate-400"
+                                                            >-</span
+                                                        >
                                                         <input
                                                             type="number"
-                                                            bind:value={row.max_weight}
+                                                            bind:value={
+                                                                row.max_weight
+                                                            }
                                                             class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
                                                             placeholder="Max"
                                                         />
@@ -3746,28 +4543,49 @@
                 </div>
 
                 <!-- Card: Media Interaktif (Video & 3D Augmented Reality) -->
-                <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft">
+                <div
+                    class="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft"
+                >
                     <div class="border-b border-slate-100 pb-4 mb-5">
-                        <h3 class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2">
-                            <i class="ti ti-video text-brand-blueRoyal"></i> Media Interaktif (Video & 3D AR)
+                        <h3
+                            class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2"
+                        >
+                            <i class="ti ti-video text-brand-blueRoyal"></i> Media
+                            Interaktif (Video & 3D AR)
                         </h3>
-                        <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                            Tambahkan video demonstrasi dan model 3D (format GLB/USDZ) untuk visual Augmented Reality di mobile.
+                        <p
+                            class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                        >
+                            Tambahkan video demonstrasi dan model 3D (format
+                            GLB/USDZ) untuk visual Augmented Reality di mobile.
                         </p>
                     </div>
 
                     <div class="space-y-6">
                         <!-- 1. Video Section -->
-                        <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                                <i class="ti ti-movie text-base text-slate-400"></i> Video Produk
+                        <div
+                            class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
+                        >
+                            <h4
+                                class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"
+                            >
+                                <i class="ti ti-movie text-base text-slate-400"
+                                ></i> Video Produk
                             </h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- Upload Video -->
-                                <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
+                                <div
+                                    class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
+                                >
                                     {#if videoPreview}
-                                        <div class="w-full relative rounded-lg overflow-hidden border border-slate-100 bg-black aspect-video max-h-40">
-                                            <video src={videoPreview} class="w-full h-full object-contain" controls>
+                                        <div
+                                            class="w-full relative rounded-lg overflow-hidden border border-slate-100 bg-black aspect-video max-h-40"
+                                        >
+                                            <video
+                                                src={videoPreview}
+                                                class="w-full h-full object-contain"
+                                                controls
+                                            >
                                                 <track kind="captions" />
                                             </video>
                                             <button
@@ -3776,59 +4594,109 @@
                                                 class="absolute top-1.5 right-1.5 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition"
                                                 title="Hapus Video"
                                             >
-                                                <i class="ti ti-trash text-sm"></i>
+                                                <i class="ti ti-trash text-sm"
+                                                ></i>
                                             </button>
                                         </div>
                                     {:else}
-                                        <i class="ti ti-video-plus text-3xl text-slate-350 mb-1.5"></i>
-                                        <span class="text-xs font-bold text-slate-600 mb-0.5">Upload File Video</span>
-                                        <span class="text-[10px] text-slate-400 font-medium mb-3">MP4, WEBM, atau MOV (Maks. 50MB)</span>
+                                        <i
+                                            class="ti ti-video-plus text-3xl text-slate-350 mb-1.5"
+                                        ></i>
+                                        <span
+                                            class="text-xs font-bold text-slate-600 mb-0.5"
+                                            >Upload File Video</span
+                                        >
+                                        <span
+                                            class="text-[10px] text-slate-400 font-medium mb-3"
+                                            >MP4, WEBM, atau MOV (Maks. 50MB)</span
+                                        >
                                         <input
                                             type="file"
                                             accept="video/mp4,video/quicktime,video/webm"
                                             onchange={handleVideoFile}
                                             class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                                         />
-                                        <button type="button" class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition">Pilih File</button>
+                                        <button
+                                            type="button"
+                                            class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                            >Pilih File</button
+                                        >
                                     {/if}
                                 </div>
                                 <!-- Video URL -->
                                 <div class="flex flex-col justify-center">
-                                    <label for="video_url" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau Masukkan URL / Path Video</label>
+                                    <label
+                                        for="video_url"
+                                        class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                        >Atau Masukkan URL / Path Video</label
+                                    >
                                     <Input
                                         id="video_url"
                                         placeholder="Cth: storage/products/videos/demo.mp4"
                                         bind:value={form.video_url}
                                     />
-                                    <p class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed">
-                                        *Catatan: Jika Anda mengunggah file video sekaligus memasukkan URL, file unggahan akan diprioritaskan.
+                                    <p
+                                        class="text-[10px] text-slate-400 font-medium mt-2 leading-relaxed"
+                                    >
+                                        *Catatan: Jika Anda mengunggah file
+                                        video sekaligus memasukkan URL, file
+                                        unggahan akan diprioritaskan.
                                     </p>
                                 </div>
                             </div>
                         </div>
 
                         <!-- 2. Model 3D Section -->
-                        <div class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                        <div
+                            class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
+                        >
                             <div class="flex items-center justify-between mb-3">
-                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                                    <i class="ti ti-cube text-base text-slate-400"></i> Model 3D & Augmented Reality
+                                <h4
+                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
+                                >
+                                    <i
+                                        class="ti ti-cube text-base text-slate-400"
+                                    ></i> Model 3D & Augmented Reality
                                 </h4>
-                                <button type="button" onclick={openImageTo3dModal} class="px-2.5 py-1.5 bg-brand-blueRoyal/10 hover:bg-brand-blueRoyal/20 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer">
-                                    <i class="ti ti-wand text-xs"></i> AI Gambar ke 3D
+                                <button
+                                    type="button"
+                                    onclick={openImageTo3dModal}
+                                    class="px-2.5 py-1.5 bg-brand-blueRoyal/10 hover:bg-brand-blueRoyal/20 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <i class="ti ti-wand text-xs"></i> AI Gambar ke
+                                    3D
                                 </button>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <!-- GLB File -->
                                 <div class="space-y-4">
-                                    <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
+                                    <div
+                                        class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
+                                    >
                                         {#if model3dFileName}
-                                            <div class="w-full flex items-center gap-2 bg-green-50/30 p-2.5 rounded-lg border border-green-100">
-                                                <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                                                    <i class="ti ti-cube-send text-base"></i>
+                                            <div
+                                                class="w-full flex items-center gap-2 bg-green-50/30 p-2.5 rounded-lg border border-green-100"
+                                            >
+                                                <div
+                                                    class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-cube-send text-base"
+                                                    ></i>
                                                 </div>
-                                                <div class="min-w-0 flex-1 text-left">
-                                                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-wider">GLB Model Siap</p>
-                                                    <p class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5">{model3dFileName}</p>
+                                                <div
+                                                    class="min-w-0 flex-1 text-left"
+                                                >
+                                                    <p
+                                                        class="text-[10px] text-green-600 font-bold uppercase tracking-wider"
+                                                    >
+                                                        GLB Model Siap
+                                                    </p>
+                                                    <p
+                                                        class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5"
+                                                    >
+                                                        {model3dFileName}
+                                                    </p>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -3836,24 +4704,43 @@
                                                     class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
                                                     title="Hapus Model"
                                                 >
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         {:else}
-                                            <i class="ti ti-box-margin text-3xl text-slate-350 mb-1.5"></i>
-                                            <span class="text-xs font-bold text-slate-600 mb-0.5">Model 3D (format GLB)</span>
-                                            <span class="text-[10px] text-slate-400 font-medium mb-3">Format GLB Standar Web (Maks. 50MB)</span>
+                                            <i
+                                                class="ti ti-box-margin text-3xl text-slate-350 mb-1.5"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-bold text-slate-600 mb-0.5"
+                                                >Model 3D (format GLB)</span
+                                            >
+                                            <span
+                                                class="text-[10px] text-slate-400 font-medium mb-3"
+                                                >Format GLB Standar Web (Maks.
+                                                50MB)</span
+                                            >
                                             <input
                                                 type="file"
                                                 accept=".glb"
                                                 onchange={handleModel3dFile}
                                                 class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                                             />
-                                            <button type="button" class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition">Pilih File GLB</button>
+                                            <button
+                                                type="button"
+                                                class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                                >Pilih File GLB</button
+                                            >
                                         {/if}
                                     </div>
                                     <div>
-                                        <label for="model_3d_url" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model GLB</label>
+                                        <label
+                                            for="model_3d_url"
+                                            class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                            >Atau URL Model GLB</label
+                                        >
                                         <Input
                                             id="model_3d_url"
                                             placeholder="Cth: storage/products/models/item.glb"
@@ -3864,15 +4751,33 @@
 
                                 <!-- USDZ File (iOS AR) -->
                                 <div class="space-y-4">
-                                    <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative">
+                                    <div
+                                        class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
+                                    >
                                         {#if model3dUsdzFileName}
-                                            <div class="w-full flex items-center gap-2 bg-brand-blueRoyal/5 p-2.5 rounded-lg border border-brand-blueRoyal/10">
-                                                <div class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0">
-                                                    <i class="ti ti-brand-apple text-base"></i>
+                                            <div
+                                                class="w-full flex items-center gap-2 bg-brand-blueRoyal/5 p-2.5 rounded-lg border border-brand-blueRoyal/10"
+                                            >
+                                                <div
+                                                    class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-brand-apple text-base"
+                                                    ></i>
                                                 </div>
-                                                <div class="min-w-0 flex-1 text-left">
-                                                    <p class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider">iOS USDZ Model Siap</p>
-                                                    <p class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5">{model3dUsdzFileName}</p>
+                                                <div
+                                                    class="min-w-0 flex-1 text-left"
+                                                >
+                                                    <p
+                                                        class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider"
+                                                    >
+                                                        iOS USDZ Model Siap
+                                                    </p>
+                                                    <p
+                                                        class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5"
+                                                    >
+                                                        {model3dUsdzFileName}
+                                                    </p>
                                                 </div>
                                                 <button
                                                     type="button"
@@ -3880,24 +4785,43 @@
                                                     class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
                                                     title="Hapus Model iOS"
                                                 >
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         {:else}
-                                            <i class="ti ti-brand-apple text-3xl text-slate-350 mb-1.5"></i>
-                                            <span class="text-xs font-bold text-slate-600 mb-0.5">Model iOS (format USDZ)</span>
-                                            <span class="text-[10px] text-slate-400 font-medium mb-3">Untuk Augmented Reality di Safari iOS (Maks. 50MB)</span>
+                                            <i
+                                                class="ti ti-brand-apple text-3xl text-slate-350 mb-1.5"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-bold text-slate-600 mb-0.5"
+                                                >Model iOS (format USDZ)</span
+                                            >
+                                            <span
+                                                class="text-[10px] text-slate-400 font-medium mb-3"
+                                                >Untuk Augmented Reality di
+                                                Safari iOS (Maks. 50MB)</span
+                                            >
                                             <input
                                                 type="file"
                                                 accept=".usdz"
                                                 onchange={handleModel3dUsdzFile}
                                                 class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                                             />
-                                            <button type="button" class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition">Pilih File USDZ</button>
+                                            <button
+                                                type="button"
+                                                class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                                >Pilih File USDZ</button
+                                            >
                                         {/if}
                                     </div>
                                     <div>
-                                        <label for="model_3d_usdz_url" class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider">Atau URL Model USDZ</label>
+                                        <label
+                                            for="model_3d_usdz_url"
+                                            class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                            >Atau URL Model USDZ</label
+                                        >
                                         <Input
                                             id="model_3d_usdz_url"
                                             placeholder="Cth: storage/products/models/item.usdz"
@@ -4431,8 +5355,8 @@
                                                                         <i
                                                                             class="ti ti-tags text-sm text-slate-400"
                                                                         ></i>
-                                                                        Harga
-                                                                        Grosir ({variant.name})
+                                                                        Harga Grosir
+                                                                        ({variant.name})
                                                                     </span>
                                                                     <button
                                                                         type="button"
@@ -4708,7 +5632,9 @@
                         class="px-6 py-3.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition flex items-center gap-2"
                     >
                         <i class="ti ti-circle-plus text-base"></i>
-                        {form.processing ? 'Menyimpan...' : 'Simpan & Tambah Baru'}
+                        {form.processing
+                            ? 'Menyimpan...'
+                            : 'Simpan & Tambah Baru'}
                     </button>
                     <button
                         type="submit"
@@ -4724,20 +5650,40 @@
     </div>
 
     {#if isImageTo3dModalOpen}
-        <div class="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-200 w-screen h-screen">
+        <div
+            class="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden animate-in fade-in duration-200 w-screen h-screen"
+        >
             <div class="w-full h-full flex flex-col overflow-hidden">
                 <!-- Header -->
-                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white shadow-md">
+                <div
+                    class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white shadow-md"
+                >
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal"
+                        >
                             <i class="ti ti-wand text-lg"></i>
                         </div>
                         <div>
-                            <h3 class="font-outfit font-black text-white text-base leading-tight">AI Gambar-ke-3D Generator</h3>
-                            <p class="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-0.5">Konversi gambar produk Anda menjadi model 3D interaktif</p>
+                            <h3
+                                class="font-outfit font-black text-white text-base leading-tight"
+                            >
+                                AI Gambar-ke-3D Generator
+                            </h3>
+                            <p
+                                class="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-0.5"
+                            >
+                                Konversi gambar produk Anda menjadi model 3D
+                                interaktif
+                            </p>
                         </div>
                     </div>
-                    <button aria-label="Close" type="button" onclick={closeImageTo3dModal} class="w-8 h-8 rounded-full bg-slate-800 hover:bg-rose-600 hover:text-white flex items-center justify-center text-slate-300 transition cursor-pointer">
+                    <button
+                        aria-label="Close"
+                        type="button"
+                        onclick={closeImageTo3dModal}
+                        class="w-8 h-8 rounded-full bg-slate-800 hover:bg-rose-600 hover:text-white flex items-center justify-center text-slate-300 transition cursor-pointer"
+                    >
                         <i class="ti ti-x text-sm"></i>
                     </button>
                 </div>
@@ -4746,17 +5692,60 @@
                 <div class="flex-grow overflow-y-auto p-6 bg-slate-50/20">
                     {#if generatorStep === 1}
                         <!-- Step 1 Wizard Tabs -->
-                        <div class="mb-6 flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-                            <button type="button" onclick={() => { activeTab = 'image_to_3d'; }} class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab === 'image_to_3d' ? 'bg-brand-blueRoyal text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}">
-                                <i class="ti ti-photo text-sm"></i> Gambar 2D ke 3D (Solid)
+                        <div
+                            class="mb-6 flex flex-wrap gap-2 border-b border-slate-100 pb-4"
+                        >
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    activeTab = 'image_to_3d';
+                                }}
+                                class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab ===
+                                'image_to_3d'
+                                    ? 'bg-brand-blueRoyal text-white'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}"
+                            >
+                                <i class="ti ti-photo text-sm"></i> Gambar 2D ke 3D
+                                (Solid)
                             </button>
-                            <button type="button" onclick={() => { activeTab = 'glb_logo'; modelType = 'custom'; }} class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab === 'glb_logo' ? 'bg-brand-blueRoyal text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}">
-                                <i class="ti ti-box text-sm"></i> Upload Mockup 3D (.glb)
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    activeTab = 'glb_logo';
+                                    modelType = 'custom';
+                                }}
+                                class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab ===
+                                'glb_logo'
+                                    ? 'bg-brand-blueRoyal text-white'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}"
+                            >
+                                <i class="ti ti-box text-sm"></i> Upload Mockup 3D
+                                (.glb)
                             </button>
-                            <button type="button" onclick={() => { activeTab = 'scratch'; modelType = 'shirt'; }} class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab === 'scratch' ? 'bg-brand-blueRoyal text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}">
-                                <i class="ti ti-circle-plus text-sm"></i> Mulai dari Kosong
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    activeTab = 'scratch';
+                                    modelType = 'shirt';
+                                }}
+                                class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab ===
+                                'scratch'
+                                    ? 'bg-brand-blueRoyal text-white'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}"
+                            >
+                                <i class="ti ti-circle-plus text-sm"></i> Mulai dari
+                                Kosong
                             </button>
-                            <button type="button" onclick={() => { activeTab = 'ai_3d'; }} class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab === 'ai_3d' ? 'bg-brand-blueRoyal text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}">
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    activeTab = 'ai_3d';
+                                }}
+                                class="px-4 py-2.5 text-xs font-bold rounded-xl flex items-center gap-1.5 transition {activeTab ===
+                                'ai_3d'
+                                    ? 'bg-brand-blueRoyal text-white'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}"
+                            >
                                 <i class="ti ti-cpu text-sm"></i> AI Generate 3D
                             </button>
                         </div>
@@ -4764,46 +5753,149 @@
                         {#if activeTab === 'image_to_3d'}
                             <!-- Tab 1: Image Silhouette -->
                             <div class="space-y-6">
-                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Upload Gambar Desain (PNG Transparan Disarankan)</span>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]">
+                                <span
+                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1"
+                                    >Upload Gambar Desain (PNG Transparan
+                                    Disarankan)</span
+                                >
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                >
+                                    <div
+                                        class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]"
+                                    >
                                         {#if selectedGenImage}
-                                            <div class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full">
-                                                <img src={selectedGenImage} class="w-12 h-12 rounded object-cover border" alt="preview" />
-                                                <div class="min-w-0 flex-1 text-left">
-                                                    <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFile ? customGenFile.name : 'Gambar Galeri'}</p>
-                                                    <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Tampak Depan (Wajib)</p>
+                                            <div
+                                                class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full"
+                                            >
+                                                <img
+                                                    src={selectedGenImage}
+                                                    class="w-12 h-12 rounded object-cover border"
+                                                    alt="preview"
+                                                />
+                                                <div
+                                                    class="min-w-0 flex-1 text-left"
+                                                >
+                                                    <p
+                                                        class="text-[11px] text-slate-700 font-bold truncate leading-tight"
+                                                    >
+                                                        {customGenFile
+                                                            ? customGenFile.name
+                                                            : 'Gambar Galeri'}
+                                                    </p>
+                                                    <p
+                                                        class="text-[9px] text-slate-400 font-semibold mt-0.5"
+                                                    >
+                                                        Tampak Depan (Wajib)
+                                                    </p>
                                                 </div>
-                                                <button aria-label="Remove image" type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                <button
+                                                    aria-label="Remove image"
+                                                    type="button"
+                                                    onclick={() => {
+                                                        selectedGenImage = '';
+                                                        customGenFile = null;
+                                                    }}
+                                                    class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         {:else}
-                                            <i class="ti ti-photo-plus text-2xl text-slate-350 mb-1.5"></i>
-                                            <span class="text-xs font-bold text-slate-650 mb-0.5">Pilih Tampak Depan</span>
-                                            <span class="text-[9px] text-slate-400 font-medium mb-3">Format JPG/PNG (Maks. 5MB)</span>
-                                            <input type="file" accept="image/*" onchange={handleGenImageUpload} class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                                            <button type="button" class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition">Pilih File</button>
+                                            <i
+                                                class="ti ti-photo-plus text-2xl text-slate-350 mb-1.5"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-bold text-slate-650 mb-0.5"
+                                                >Pilih Tampak Depan</span
+                                            >
+                                            <span
+                                                class="text-[9px] text-slate-400 font-medium mb-3"
+                                                >Format JPG/PNG (Maks. 5MB)</span
+                                            >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onchange={handleGenImageUpload}
+                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            />
+                                            <button
+                                                type="button"
+                                                class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition"
+                                                >Pilih File</button
+                                            >
                                         {/if}
                                     </div>
-                                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]">
+                                    <div
+                                        class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]"
+                                    >
                                         {#if selectedGenImageBack}
-                                            <div class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full">
-                                                <img src={selectedGenImageBack} class="w-12 h-12 rounded object-cover border" alt="preview" />
-                                                <div class="min-w-0 flex-1 text-left">
-                                                    <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFileBack ? customGenFileBack.name : 'Gambar Belakang'}</p>
-                                                    <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Tampak Belakang (Opsional)</p>
+                                            <div
+                                                class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full"
+                                            >
+                                                <img
+                                                    src={selectedGenImageBack}
+                                                    class="w-12 h-12 rounded object-cover border"
+                                                    alt="preview"
+                                                />
+                                                <div
+                                                    class="min-w-0 flex-1 text-left"
+                                                >
+                                                    <p
+                                                        class="text-[11px] text-slate-700 font-bold truncate leading-tight"
+                                                    >
+                                                        {customGenFileBack
+                                                            ? customGenFileBack.name
+                                                            : 'Gambar Belakang'}
+                                                    </p>
+                                                    <p
+                                                        class="text-[9px] text-slate-400 font-semibold mt-0.5"
+                                                    >
+                                                        Tampak Belakang
+                                                        (Opsional)
+                                                    </p>
                                                 </div>
-                                                <button aria-label="Remove image" type="button" onclick={() => { selectedGenImageBack = ''; customGenFileBack = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                <button
+                                                    aria-label="Remove image"
+                                                    type="button"
+                                                    onclick={() => {
+                                                        selectedGenImageBack =
+                                                            '';
+                                                        customGenFileBack =
+                                                            null;
+                                                    }}
+                                                    class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         {:else}
-                                            <i class="ti ti-photo-plus text-2xl text-slate-350 mb-1.5"></i>
-                                            <span class="text-xs font-bold text-slate-650 mb-0.5">Pilih Tampak Belakang</span>
-                                            <span class="text-[9px] text-slate-400 font-medium mb-3">Kosongkan untuk warna solid</span>
-                                            <input type="file" accept="image/*" onchange={handleGenImageUploadBack} class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                                            <button type="button" class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition">Pilih File</button>
+                                            <i
+                                                class="ti ti-photo-plus text-2xl text-slate-350 mb-1.5"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-bold text-slate-650 mb-0.5"
+                                                >Pilih Tampak Belakang</span
+                                            >
+                                            <span
+                                                class="text-[9px] text-slate-400 font-medium mb-3"
+                                                >Kosongkan untuk warna solid</span
+                                            >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onchange={handleGenImageUploadBack}
+                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            />
+                                            <button
+                                                type="button"
+                                                class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition"
+                                                >Pilih File</button
+                                            >
                                         {/if}
                                     </div>
                                 </div>
@@ -4811,46 +5903,144 @@
                         {:else if activeTab === 'glb_logo'}
                             <!-- Tab 2: GLB Mockup + Logo -->
                             <div class="space-y-6">
-                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Unggah Model Mockup 3D (.glb) & Desain Logo Anda</span>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]">
+                                <span
+                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1"
+                                    >Unggah Model Mockup 3D (.glb) & Desain Logo
+                                    Anda</span
+                                >
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                >
+                                    <div
+                                        class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]"
+                                    >
                                         {#if customMockupFile}
-                                            <div class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full">
-                                                <div class="w-12 h-12 rounded bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal text-lg border"><i class="ti ti-box"></i></div>
-                                                <div class="min-w-0 flex-1 text-left">
-                                                    <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customMockupFile.name}</p>
-                                                    <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Mockup 3D (.GLB)</p>
+                                            <div
+                                                class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full"
+                                            >
+                                                <div
+                                                    class="w-12 h-12 rounded bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal text-lg border"
+                                                >
+                                                    <i class="ti ti-box"></i>
                                                 </div>
-                                                <button aria-label="Remove image" type="button" onclick={() => { customMockupFile = null; customMockupUrl = ''; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                <div
+                                                    class="min-w-0 flex-1 text-left"
+                                                >
+                                                    <p
+                                                        class="text-[11px] text-slate-700 font-bold truncate leading-tight"
+                                                    >
+                                                        {customMockupFile.name}
+                                                    </p>
+                                                    <p
+                                                        class="text-[9px] text-slate-400 font-semibold mt-0.5"
+                                                    >
+                                                        Mockup 3D (.GLB)
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    aria-label="Remove image"
+                                                    type="button"
+                                                    onclick={() => {
+                                                        customMockupFile = null;
+                                                        customMockupUrl = '';
+                                                    }}
+                                                    class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         {:else}
-                                            <i class="ti ti-box-margin text-2xl text-slate-350 mb-1.5"></i>
-                                            <span class="text-xs font-bold text-slate-650 mb-0.5">Upload Mockup 3D (.glb)</span>
-                                            <span class="text-[9px] text-slate-400 font-medium mb-3">Model 3D Gelas, Kaos, Topi dll</span>
-                                            <input type="file" accept=".glb,.gltf" onchange={handleCustomMockupUpload} class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                                            <button type="button" class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition">Pilih File</button>
+                                            <i
+                                                class="ti ti-box-margin text-2xl text-slate-350 mb-1.5"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-bold text-slate-650 mb-0.5"
+                                                >Upload Mockup 3D (.glb)</span
+                                            >
+                                            <span
+                                                class="text-[9px] text-slate-400 font-medium mb-3"
+                                                >Model 3D Gelas, Kaos, Topi dll</span
+                                            >
+                                            <input
+                                                type="file"
+                                                accept=".glb,.gltf"
+                                                onchange={handleCustomMockupUpload}
+                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            />
+                                            <button
+                                                type="button"
+                                                class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition"
+                                                >Pilih File</button
+                                            >
                                         {/if}
                                     </div>
-                                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]">
+                                    <div
+                                        class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[140px]"
+                                    >
                                         {#if selectedGenImage}
-                                            <div class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full">
-                                                <img src={selectedGenImage} class="w-12 h-12 rounded object-cover border" alt="preview" />
-                                                <div class="min-w-0 flex-1 text-left">
-                                                    <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFile ? customGenFile.name : 'Gambar Logo'}</p>
-                                                    <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Gambar Logo / Sablon</p>
+                                            <div
+                                                class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full"
+                                            >
+                                                <img
+                                                    src={selectedGenImage}
+                                                    class="w-12 h-12 rounded object-cover border"
+                                                    alt="preview"
+                                                />
+                                                <div
+                                                    class="min-w-0 flex-1 text-left"
+                                                >
+                                                    <p
+                                                        class="text-[11px] text-slate-700 font-bold truncate leading-tight"
+                                                    >
+                                                        {customGenFile
+                                                            ? customGenFile.name
+                                                            : 'Gambar Logo'}
+                                                    </p>
+                                                    <p
+                                                        class="text-[9px] text-slate-400 font-semibold mt-0.5"
+                                                    >
+                                                        Gambar Logo / Sablon
+                                                    </p>
                                                 </div>
-                                                <button aria-label="Remove image" type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                <button
+                                                    aria-label="Remove image"
+                                                    type="button"
+                                                    onclick={() => {
+                                                        selectedGenImage = '';
+                                                        customGenFile = null;
+                                                    }}
+                                                    class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         {:else}
-                                            <i class="ti ti-photo-plus text-2xl text-slate-350 mb-1.5"></i>
-                                            <span class="text-xs font-bold text-slate-650 mb-0.5">Upload Logo / Desain</span>
-                                            <span class="text-[9px] text-slate-400 font-medium mb-3">Format JPG/PNG (Maks. 5MB)</span>
-                                            <input type="file" accept="image/*" onchange={handleGenImageUpload} class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                                            <button type="button" class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition">Pilih File</button>
+                                            <i
+                                                class="ti ti-photo-plus text-2xl text-slate-350 mb-1.5"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-bold text-slate-650 mb-0.5"
+                                                >Upload Logo / Desain</span
+                                            >
+                                            <span
+                                                class="text-[9px] text-slate-400 font-medium mb-3"
+                                                >Format JPG/PNG (Maks. 5MB)</span
+                                            >
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onchange={handleGenImageUpload}
+                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            />
+                                            <button
+                                                type="button"
+                                                class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition"
+                                                >Pilih File</button
+                                            >
                                         {/if}
                                     </div>
                                 </div>
@@ -4858,12 +6048,55 @@
                         {:else if activeTab === 'scratch'}
                             <!-- Tab 3: Blank Canvas -->
                             <div class="space-y-4">
-                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Pilih Preset Objek Awal</span>
-                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <span
+                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1"
+                                    >Pilih Preset Objek Awal</span
+                                >
+                                <div
+                                    class="grid grid-cols-2 sm:grid-cols-3 gap-3"
+                                >
                                     {#each presets as pr}
-                                        <button type="button" onclick={() => { modelType = pr.id; mockupScale = pr.scale; mockupY = pr.y; }} class="p-4 rounded-2xl border-2 transition text-left flex flex-col justify-between aspect-[1.3] {modelType === pr.id ? 'border-brand-blueRoyal bg-brand-blueRoyal/5 text-brand-blueRoyal shadow-sm' : 'border-slate-200 hover:border-slate-350 text-slate-650 bg-white hover:bg-slate-50'} shadow-sm">
-                                            <i class="ti {pr.id === 'shirt' ? 'ti-shirt' : pr.id === 'hoodie' ? 'ti-jacket' : pr.id === 'mug' ? 'ti-cup' : pr.id === 'cap' ? 'ti-crown' : pr.id === 'totebag' ? 'ti-briefcase' : pr.id === 'tumbler' ? 'ti-bottle' : pr.id === 'botol' ? 'ti-bottle-nfc' : pr.id === 'piring' ? 'ti-disc' : pr.id === 'plakat' ? 'ti-award' : 'ti-box'} text-2xl mb-2"></i>
-                                            <span class="text-xs font-black font-outfit truncate w-full">{pr.name}</span>
+                                        <button
+                                            type="button"
+                                            onclick={() => {
+                                                modelType = pr.id;
+                                                mockupScale = pr.scale;
+                                                mockupY = pr.y;
+                                            }}
+                                            class="p-4 rounded-2xl border-2 transition text-left flex flex-col justify-between aspect-[1.3] {modelType ===
+                                            pr.id
+                                                ? 'border-brand-blueRoyal bg-brand-blueRoyal/5 text-brand-blueRoyal shadow-sm'
+                                                : 'border-slate-200 hover:border-slate-350 text-slate-650 bg-white hover:bg-slate-50'} shadow-sm"
+                                        >
+                                            <i
+                                                class="ti {pr.id === 'shirt'
+                                                    ? 'ti-shirt'
+                                                    : pr.id === 'hoodie'
+                                                      ? 'ti-jacket'
+                                                      : pr.id === 'mug'
+                                                        ? 'ti-cup'
+                                                        : pr.id === 'cap'
+                                                          ? 'ti-crown'
+                                                          : pr.id === 'totebag'
+                                                            ? 'ti-briefcase'
+                                                            : pr.id ===
+                                                                'tumbler'
+                                                              ? 'ti-bottle'
+                                                              : pr.id ===
+                                                                  'botol'
+                                                                ? 'ti-bottle-nfc'
+                                                                : pr.id ===
+                                                                    'piring'
+                                                                  ? 'ti-disc'
+                                                                  : pr.id ===
+                                                                      'plakat'
+                                                                    ? 'ti-award'
+                                                                    : 'ti-box'} text-2xl mb-2"
+                                            ></i>
+                                            <span
+                                                class="text-xs font-black font-outfit truncate w-full"
+                                                >{pr.name}</span
+                                            >
                                         </button>
                                     {/each}
                                 </div>
@@ -4871,64 +6104,190 @@
                         {:else if activeTab === 'ai_3d'}
                             <!-- Tab 4: AI Generate 3D -->
                             <div class="space-y-6">
-                                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">Generate Model 3D dari Foto Tunggal (Meshy/Tripo AI)</span>
-                                <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[160px]">
+                                <span
+                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1"
+                                    >Generate Model 3D dari Foto Tunggal
+                                    (Meshy/Tripo AI)</span
+                                >
+                                <div
+                                    class="border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-white flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative min-h-[160px]"
+                                >
                                     {#if selectedGenImage}
-                                        <div class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full max-w-md">
-                                            <img src={selectedGenImage} class="w-12 h-12 rounded object-cover border" alt="preview" />
-                                            <div class="min-w-0 flex-1 text-left">
-                                                <p class="text-[11px] text-slate-700 font-bold truncate leading-tight">{customGenFile ? customGenFile.name : 'Gambar Input'}</p>
-                                                <p class="text-[9px] text-slate-400 font-semibold mt-0.5">Input Foto AI</p>
+                                        <div
+                                            class="flex items-center gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 w-full max-w-md"
+                                        >
+                                            <img
+                                                src={selectedGenImage}
+                                                class="w-12 h-12 rounded object-cover border"
+                                                alt="preview"
+                                            />
+                                            <div
+                                                class="min-w-0 flex-1 text-left"
+                                            >
+                                                <p
+                                                    class="text-[11px] text-slate-700 font-bold truncate leading-tight"
+                                                >
+                                                    {customGenFile
+                                                        ? customGenFile.name
+                                                        : 'Gambar Input'}
+                                                </p>
+                                                <p
+                                                    class="text-[9px] text-slate-400 font-semibold mt-0.5"
+                                                >
+                                                    Input Foto AI
+                                                </p>
                                             </div>
-                                            <button aria-label="Hapus Foto" type="button" onclick={() => { selectedGenImage = ''; customGenFile = null; }} class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0">
-                                                <i class="ti ti-trash text-sm"></i>
+                                            <button
+                                                aria-label="Hapus Foto"
+                                                type="button"
+                                                onclick={() => {
+                                                    selectedGenImage = '';
+                                                    customGenFile = null;
+                                                }}
+                                                class="p-1 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                            >
+                                                <i class="ti ti-trash text-sm"
+                                                ></i>
                                             </button>
                                         </div>
                                     {:else}
-                                        <i class="ti ti-cpu text-2xl text-slate-350 mb-1.5"></i>
-                                        <span class="text-xs font-bold text-slate-650 mb-0.5">Upload Foto Produk</span>
-                                        <span class="text-[9px] text-slate-400 font-medium mb-3">AI akan merekonstruksi model 3D utuh</span>
-                                        <input type="file" accept="image/*" onchange={handleGenImageUpload} class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
-                                        <button type="button" class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition">Pilih Foto</button>
+                                        <i
+                                            class="ti ti-cpu text-2xl text-slate-350 mb-1.5"
+                                        ></i>
+                                        <span
+                                            class="text-xs font-bold text-slate-650 mb-0.5"
+                                            >Upload Foto Produk</span
+                                        >
+                                        <span
+                                            class="text-[9px] text-slate-400 font-medium mb-3"
+                                            >AI akan merekonstruksi model 3D
+                                            utuh</span
+                                        >
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onchange={handleGenImageUpload}
+                                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                        />
+                                        <button
+                                            type="button"
+                                            class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[9px] font-black rounded-lg uppercase tracking-wider transition"
+                                            >Pilih Foto</button
+                                        >
                                     {/if}
                                 </div>
                             </div>
                         {/if}
                     {:else}
                         <!-- Step 2: Loading State and Step 3: Editor -->
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch h-[calc(100vh-170px)] overflow-hidden">
+                        <div
+                            class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch h-[calc(100vh-170px)] overflow-hidden"
+                        >
                             <!-- Left Panel: 2D Interactive Canvas Design Editor -->
-                            <div class="lg:col-span-4 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col h-full relative">
+                            <div
+                                class="lg:col-span-4 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col h-full relative"
+                            >
                                 {#if generatorStep === 2}
-                                    <div class="flex flex-col items-center justify-center p-6 text-center h-full max-w-sm mx-auto">
-                                        <div class="relative w-16 h-16 mb-3 flex items-center justify-center">
-                                            <div class="absolute inset-0 rounded-full border-4 border-slate-200"></div>
-                                            <div class="absolute inset-0 rounded-full border-4 border-brand-blueRoyal border-t-transparent animate-spin"></div>
-                                            <div class="text-xs font-black text-slate-700">{generationProgress}%</div>
+                                    <div
+                                        class="flex flex-col items-center justify-center p-6 text-center h-full max-w-sm mx-auto"
+                                    >
+                                        <div
+                                            class="relative w-16 h-16 mb-3 flex items-center justify-center"
+                                        >
+                                            <div
+                                                class="absolute inset-0 rounded-full border-4 border-slate-200"
+                                            ></div>
+                                            <div
+                                                class="absolute inset-0 rounded-full border-4 border-brand-blueRoyal border-t-transparent animate-spin"
+                                            ></div>
+                                            <div
+                                                class="text-xs font-black text-slate-700"
+                                            >
+                                                {generationProgress}%
+                                            </div>
                                         </div>
-                                        <h4 class="text-sm font-bold text-slate-700">{progressMessage}</h4>
+                                        <h4
+                                            class="text-sm font-bold text-slate-700"
+                                        >
+                                            {progressMessage}
+                                        </h4>
                                     </div>
                                 {:else if generatorStep === 3}
                                     <!-- 2D Canvas Header -->
-                                    <div class="px-3 py-2 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
+                                    <div
+                                        class="px-3 py-2 border-b border-slate-200 bg-white flex items-center justify-between shrink-0"
+                                    >
                                         <div class="flex items-center gap-2">
-                                            <i class="ti ti-vector-bezier-2 text-brand-blueRoyal text-sm"></i>
-                                            <span class="text-[11px] font-black text-slate-700 uppercase tracking-wider">Kanvas Desain 2D</span>
+                                            <i
+                                                class="ti ti-vector-bezier-2 text-brand-blueRoyal text-sm"
+                                            ></i>
+                                            <span
+                                                class="text-[11px] font-black text-slate-700 uppercase tracking-wider"
+                                                >Kanvas Desain 2D</span
+                                            >
                                         </div>
                                         <div class="flex items-center gap-1">
-                                            <button type="button" onclick={() => { canvas2dZoom = Math.max(0.2, canvas2dZoom - 0.2); }} class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs transition" title="Zoom Out"><i class="ti ti-minus text-[10px]"></i></button>
-                                            <span class="text-[10px] font-bold text-slate-500 w-10 text-center">{Math.round(canvas2dZoom * 100)}%</span>
-                                            <button type="button" onclick={() => { canvas2dZoom = Math.min(5.0, canvas2dZoom + 0.2); }} class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs transition" title="Zoom In"><i class="ti ti-plus text-[10px]"></i></button>
-                                            <button type="button" onclick={() => { canvas2dZoom = 1.0; canvas2dPanX = 0; canvas2dPanY = 0; }} class="px-2 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-[9px] font-black text-slate-500 transition ml-1">Reset</button>
+                                            <button
+                                                type="button"
+                                                onclick={() => {
+                                                    canvas2dZoom = Math.max(
+                                                        0.2,
+                                                        canvas2dZoom - 0.2,
+                                                    );
+                                                }}
+                                                class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs transition"
+                                                title="Zoom Out"
+                                                ><i
+                                                    class="ti ti-minus text-[10px]"
+                                                ></i></button
+                                            >
+                                            <span
+                                                class="text-[10px] font-bold text-slate-500 w-10 text-center"
+                                                >{Math.round(
+                                                    canvas2dZoom * 100,
+                                                )}%</span
+                                            >
+                                            <button
+                                                type="button"
+                                                onclick={() => {
+                                                    canvas2dZoom = Math.min(
+                                                        5.0,
+                                                        canvas2dZoom + 0.2,
+                                                    );
+                                                }}
+                                                class="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs transition"
+                                                title="Zoom In"
+                                                ><i
+                                                    class="ti ti-plus text-[10px]"
+                                                ></i></button
+                                            >
+                                            <button
+                                                type="button"
+                                                onclick={() => {
+                                                    canvas2dZoom = 1.0;
+                                                    canvas2dPanX = 0;
+                                                    canvas2dPanY = 0;
+                                                }}
+                                                class="px-2 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 text-[9px] font-black text-slate-500 transition ml-1"
+                                                >Reset</button
+                                            >
                                         </div>
                                     </div>
                                     <!-- 2D Canvas Container -->
-                                    <div class="flex-1 overflow-hidden relative">
+                                    <div
+                                        class="flex-1 overflow-hidden relative"
+                                    >
                                         <canvas
                                             bind:this={canvas2dEl}
                                             width="600"
                                             height="600"
-                                            class="w-full h-full block {isDraggingLayer ? 'cursor-grabbing' : isPanning2d ? 'cursor-all-scroll' : isResizingLayer ? 'cursor-se-resize' : 'cursor-default'}"
+                                            class="w-full h-full block {isDraggingLayer
+                                                ? 'cursor-grabbing'
+                                                : isPanning2d
+                                                  ? 'cursor-all-scroll'
+                                                  : isResizingLayer
+                                                    ? 'cursor-se-resize'
+                                                    : 'cursor-default'}"
                                             onmousedown={onCanvas2dMouseDown}
                                             onmousemove={onCanvas2dMouseMove}
                                             onmouseup={onCanvas2dMouseUp}
@@ -4936,64 +6295,158 @@
                                             onwheel={onCanvas2dWheel}
                                             oncontextmenu={onCanvas2dContextMenu}
                                         ></canvas>
-                                        <div class="absolute bottom-2 left-2 bg-slate-900/60 text-white text-[9px] font-black rounded px-2 py-1 uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm pointer-events-none">
-                                            <i class="ti ti-hand-click text-xs"></i> Klik & Geser Layer · Scroll Zoom · Klik Kanan Pan
+                                        <div
+                                            class="absolute bottom-2 left-2 bg-slate-900/60 text-white text-[9px] font-black rounded px-2 py-1 uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm pointer-events-none"
+                                        >
+                                            <i class="ti ti-hand-click text-xs"
+                                            ></i> Klik & Geser Layer · Scroll Zoom
+                                            · Klik Kanan Pan
                                         </div>
                                     </div>
                                 {/if}
                             </div>
 
                             <!-- Center Panel: 3D Viewport -->
-                            <div class="lg:col-span-5 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col justify-between relative h-full">
+                            <div
+                                class="lg:col-span-5 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 flex flex-col justify-between relative h-full"
+                            >
                                 {#if generatorStep === 2}
-                                    <div class="flex flex-col items-center justify-center p-6 text-center h-full max-w-sm mx-auto">
-                                        <h4 class="text-sm font-bold text-slate-700">{progressMessage}</h4>
-                                        <p class="text-[10px] text-slate-400 font-medium mt-1">Menggunakan WebGL untuk merender model 3D interaktif.</p>
+                                    <div
+                                        class="flex flex-col items-center justify-center p-6 text-center h-full max-w-sm mx-auto"
+                                    >
+                                        <h4
+                                            class="text-sm font-bold text-slate-700"
+                                        >
+                                            {progressMessage}
+                                        </h4>
+                                        <p
+                                            class="text-[10px] text-slate-400 font-medium mt-1"
+                                        >
+                                            Menggunakan WebGL untuk merender
+                                            model 3D interaktif.
+                                        </p>
                                     </div>
                                 {:else if generatorStep === 3}
                                     <!-- Three.js Viewport -->
-                                    <div bind:this={canvasContainer} class="w-full h-full min-h-[400px] lg:h-full cursor-grab active:cursor-grabbing"></div>
-                                    
-                                     <!-- Viewpoint selector buttons -->
-                                     <div class="absolute top-3 left-3 flex gap-1 bg-white/90 p-1.5 rounded-xl shadow-md border border-slate-200/60 backdrop-blur-sm">
-                                         <button type="button" onclick={() => setCameraView('front')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'front' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Depan">Depan</button>
-                                         <button type="button" onclick={() => setCameraView('back')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'back' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Tampak Belakang">Belakang</button>
-                                         <button type="button" onclick={() => setCameraView('left')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'left' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Samping">Samping</button>
-                                         <button type="button" onclick={() => setCameraView('top')} class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView === 'top' ? 'bg-brand-blueRoyal text-white' : 'hover:bg-slate-100 text-slate-600'}" title="Atas">Atas</button>
-                                     </div>
+                                    <div
+                                        bind:this={canvasContainer}
+                                        class="w-full h-full min-h-[400px] lg:h-full cursor-grab active:cursor-grabbing"
+                                    ></div>
+
+                                    <!-- Viewpoint selector buttons -->
+                                    <div
+                                        class="absolute top-3 left-3 flex gap-1 bg-white/90 p-1.5 rounded-xl shadow-md border border-slate-200/60 backdrop-blur-sm"
+                                    >
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setCameraView('front')}
+                                            class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView ===
+                                            'front'
+                                                ? 'bg-brand-blueRoyal text-white'
+                                                : 'hover:bg-slate-100 text-slate-600'}"
+                                            title="Tampak Depan">Depan</button
+                                        >
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setCameraView('back')}
+                                            class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView ===
+                                            'back'
+                                                ? 'bg-brand-blueRoyal text-white'
+                                                : 'hover:bg-slate-100 text-slate-600'}"
+                                            title="Tampak Belakang"
+                                            >Belakang</button
+                                        >
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                setCameraView('left')}
+                                            class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView ===
+                                            'left'
+                                                ? 'bg-brand-blueRoyal text-white'
+                                                : 'hover:bg-slate-100 text-slate-600'}"
+                                            title="Samping">Samping</button
+                                        >
+                                        <button
+                                            type="button"
+                                            onclick={() => setCameraView('top')}
+                                            class="px-2 py-1 text-[9px] font-black uppercase rounded-lg transition-all {activeView ===
+                                            'top'
+                                                ? 'bg-brand-blueRoyal text-white'
+                                                : 'hover:bg-slate-100 text-slate-600'}"
+                                            title="Atas">Atas</button
+                                        >
+                                    </div>
 
                                     <!-- Rotate toggle -->
-                                    <button type="button" onclick={() => autoRotate = !autoRotate} class="absolute top-3 right-3 w-8 h-8 rounded-xl bg-white/85 border border-slate-200/55 flex items-center justify-center text-slate-600 shadow backdrop-blur-sm hover:bg-slate-50 transition" title="Putar Otomatis">
-                                        <i class="ti {autoRotate ? 'ti-rotate-dot text-brand-blueRoyal' : 'ti-rotate-2d'} text-sm"></i>
+                                    <button
+                                        type="button"
+                                        onclick={() =>
+                                            (autoRotate = !autoRotate)}
+                                        class="absolute top-3 right-3 w-8 h-8 rounded-xl bg-white/85 border border-slate-200/55 flex items-center justify-center text-slate-600 shadow backdrop-blur-sm hover:bg-slate-50 transition"
+                                        title="Putar Otomatis"
+                                    >
+                                        <i
+                                            class="ti {autoRotate
+                                                ? 'ti-rotate-dot text-brand-blueRoyal'
+                                                : 'ti-rotate-2d'} text-sm"
+                                        ></i>
                                     </button>
 
                                     <!-- Gesture/Interaction hints -->
-                                    <div class="absolute bottom-3 left-3 bg-slate-900/60 text-white text-[9px] font-black rounded px-2 py-1 uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm pointer-events-none">
-                                        <i class="ti ti-rotate-2d text-xs animate-spin-slow"></i> Geser & Scroll untuk melihat 3D
+                                    <div
+                                        class="absolute bottom-3 left-3 bg-slate-900/60 text-white text-[9px] font-black rounded px-2 py-1 uppercase tracking-wider flex items-center gap-1 backdrop-blur-sm pointer-events-none"
+                                    >
+                                        <i
+                                            class="ti ti-rotate-2d text-xs animate-spin-slow"
+                                        ></i> Geser & Scroll untuk melihat 3D
                                     </div>
                                 {/if}
                             </div>
 
                             <!-- Right Side: Editor Panel -->
-                            <div class="lg:col-span-3 flex flex-col justify-between h-full overflow-y-auto pr-1 pb-4">
+                            <div
+                                class="lg:col-span-3 flex flex-col justify-between h-full overflow-y-auto pr-1 pb-4"
+                            >
                                 {#if generatorStep === 2}
-                                    <div class="flex items-center justify-center h-full border border-dashed border-slate-200 rounded-2xl p-6 bg-white text-center text-xs text-slate-400 font-medium">
+                                    <div
+                                        class="flex items-center justify-center h-full border border-dashed border-slate-200 rounded-2xl p-6 bg-white text-center text-xs text-slate-400 font-medium"
+                                    >
                                         Menunggu pembuatan model 3D selesai...
                                     </div>
                                 {:else if generatorStep === 3}
                                     <!-- Dynamic Tabs inside steps -->
-                                    <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 flex-grow">
-
+                                    <div
+                                        class="bg-white border border-slate-200 rounded-2xl p-4 space-y-4 flex-grow"
+                                    >
                                         <!-- Model Type & presets selector -->
                                         <div class="space-y-1">
-                                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Tipe Mockup Objek</p>
-                                            <select bind:value={modelType} onchange={onModelTypeChange} class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white font-bold text-slate-700 focus:outline-none focus:border-brand-blueRoyal cursor-pointer">
-                                                <option value="plane">Siluet Gambar Asli (3D Card Solid)</option>
-                                                <option value="shirt">Kaos Polos (T-Shirt)</option>
-                                                <option value="custom">Model 3D Kustom (.glb)</option>
+                                            <p
+                                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block"
+                                            >
+                                                Tipe Mockup Objek
+                                            </p>
+                                            <select
+                                                bind:value={modelType}
+                                                onchange={onModelTypeChange}
+                                                class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white font-bold text-slate-700 focus:outline-none focus:border-brand-blueRoyal cursor-pointer"
+                                            >
+                                                <option value="plane"
+                                                    >Siluet Gambar Asli (3D Card
+                                                    Solid)</option
+                                                >
+                                                <option value="shirt"
+                                                    >Kaos Polos (T-Shirt)</option
+                                                >
+                                                <option value="custom"
+                                                    >Model 3D Kustom (.glb)</option
+                                                >
                                                 {#each presets as pr}
                                                     {#if pr.id !== 'shirt'}
-                                                        <option value={pr.id}>{pr.name}</option>
+                                                        <option value={pr.id}
+                                                            >{pr.name}</option
+                                                        >
                                                     {/if}
                                                 {/each}
                                             </select>
@@ -5001,56 +6454,173 @@
 
                                         <!-- Custom mockup upload file input -->
                                         {#if modelType === 'custom'}
-                                            <div class="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Ganti Mockup Kustom (.glb)</span>
-                                                <input type="file" accept=".glb,.gltf" onchange={handleCustomMockupUpload} class="w-full text-xs" />
+                                            <div
+                                                class="space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200"
+                                            >
+                                                <span
+                                                    class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block"
+                                                    >Ganti Mockup Kustom (.glb)</span
+                                                >
+                                                <input
+                                                    type="file"
+                                                    accept=".glb,.gltf"
+                                                    onchange={handleCustomMockupUpload}
+                                                    class="w-full text-xs"
+                                                />
                                             </div>
                                         {/if}
 
                                         <!-- Layer Creator Section -->
                                         <div class="space-y-2 border-t pt-3">
-                                            <span class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1"><i class="ti ti-layers-intersect text-brand-blueRoyal text-sm"></i> Tambah Elemen Desain</span>
-                                            
+                                            <span
+                                                class="text-[10px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1"
+                                                ><i
+                                                    class="ti ti-layers-intersect text-brand-blueRoyal text-sm"
+                                                ></i> Tambah Elemen Desain</span
+                                            >
+
                                             <div class="flex flex-wrap gap-1.5">
                                                 <!-- Text adder -->
                                                 <div class="flex gap-1 w-full">
-                                                    <input type="text" bind:value={textInput} placeholder="Ketik teks..." class="flex-grow border rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-brand-blueRoyal" />
-                                                    <button type="button" onclick={() => addLayer('text')} class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border">Teks</button>
+                                                    <input
+                                                        type="text"
+                                                        bind:value={textInput}
+                                                        placeholder="Ketik teks..."
+                                                        class="flex-grow border rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-brand-blueRoyal"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onclick={() =>
+                                                            addLayer('text')}
+                                                        class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border"
+                                                        >Teks</button
+                                                    >
                                                 </div>
 
                                                 <!-- Image layer upload -->
-                                                <label class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border flex items-center gap-1 cursor-pointer">
-                                                    <i class="ti ti-photo text-xs"></i> Logo / Gambar
-                                                    <input type="file" accept="image/*" onchange={handleLayerImageUpload} class="hidden" />
+                                                <label
+                                                    class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <i
+                                                        class="ti ti-photo text-xs"
+                                                    ></i>
+                                                    Logo / Gambar
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onchange={handleLayerImageUpload}
+                                                        class="hidden"
+                                                    />
                                                 </label>
 
                                                 <!-- QR code layer -->
-                                                <button type="button" onclick={() => addLayer('qr')} class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border flex items-center gap-1">
-                                                    <i class="ti ti-qrcode text-xs"></i> QR Code
+                                                <button
+                                                    type="button"
+                                                    onclick={() =>
+                                                        addLayer('qr')}
+                                                    class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border flex items-center gap-1"
+                                                >
+                                                    <i
+                                                        class="ti ti-qrcode text-xs"
+                                                    ></i> QR Code
                                                 </button>
                                             </div>
                                         </div>
 
                                         <!-- Active Layers List -->
                                         {#if designLayers.length > 0}
-                                            <div class="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-150">
-                                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Daftar Layer ({designLayers.length})</span>
-                                                <div class="space-y-1 max-h-[140px] overflow-y-auto">
+                                            <div
+                                                class="space-y-1.5 bg-slate-50/50 p-2.5 rounded-xl border border-slate-150"
+                                            >
+                                                <span
+                                                    class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block"
+                                                    >Daftar Layer ({designLayers.length})</span
+                                                >
+                                                <div
+                                                    class="space-y-1 max-h-[140px] overflow-y-auto"
+                                                >
                                                     {#each [...designLayers].reverse() as layer, idx}
-                                                        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg border bg-white {selectedLayerId === layer.id ? 'border-brand-blueRoyal ring-1 ring-brand-blueRoyal/10' : 'border-slate-100'}">
-                                                            <button type="button" onclick={() => selectedLayerId = layer.id} class="flex-grow text-left font-semibold text-xs truncate text-slate-700">
+                                                        <div
+                                                            class="flex items-center justify-between gap-2 p-1.5 rounded-lg border bg-white {selectedLayerId ===
+                                                            layer.id
+                                                                ? 'border-brand-blueRoyal ring-1 ring-brand-blueRoyal/10'
+                                                                : 'border-slate-100'}"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onclick={() =>
+                                                                    (selectedLayerId =
+                                                                        layer.id)}
+                                                                class="flex-grow text-left font-semibold text-xs truncate text-slate-700"
+                                                            >
                                                                 {#if layer.type === 'text'}
-                                                                    <i class="ti ti-typography text-brand-blueRoyal mr-1"></i> {layer.text}
+                                                                    <i
+                                                                        class="ti ti-typography text-brand-blueRoyal mr-1"
+                                                                    ></i>
+                                                                    {layer.text}
                                                                 {:else if layer.type === 'qr'}
-                                                                    <i class="ti ti-qrcode text-emerald-600 mr-1"></i> QR Code
+                                                                    <i
+                                                                        class="ti ti-qrcode text-emerald-600 mr-1"
+                                                                    ></i> QR Code
                                                                 {:else}
-                                                                    <i class="ti ti-photo text-rose-500 mr-1"></i> {layer.name || 'Gambar'}
+                                                                    <i
+                                                                        class="ti ti-photo text-rose-500 mr-1"
+                                                                    ></i>
+                                                                    {layer.name ||
+                                                                        'Gambar'}
                                                                 {/if}
                                                             </button>
-                                                            <div class="flex items-center gap-1">
-                                                                <button type="button" onclick={() => { layer.hide = !layer.hide; designLayers = [...designLayers]; redrawCompositeCanvas(); }} class="p-1 hover:bg-slate-100 rounded text-slate-400 {layer.hide ? 'text-rose-500' : 'text-slate-400'}" title="Sembunyikan"><i class="ti {layer.hide ? 'ti-eye-off' : 'ti-eye'} text-xs"></i></button>
-                                                                <button type="button" onclick={() => duplicateLayer(layer)} class="p-1 hover:bg-slate-100 rounded text-slate-400" title="Duplikat"><i class="ti ti-copy text-xs"></i></button>
-                                                                <button type="button" onclick={() => deleteLayer(layer.id)} class="p-1 hover:bg-slate-100 rounded text-rose-500" title="Hapus"><i class="ti ti-trash text-xs"></i></button>
+                                                            <div
+                                                                class="flex items-center gap-1"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() => {
+                                                                        layer.hide =
+                                                                            !layer.hide;
+                                                                        designLayers =
+                                                                            [
+                                                                                ...designLayers,
+                                                                            ];
+                                                                        redrawCompositeCanvas();
+                                                                    }}
+                                                                    class="p-1 hover:bg-slate-100 rounded text-slate-400 {layer.hide
+                                                                        ? 'text-rose-500'
+                                                                        : 'text-slate-400'}"
+                                                                    title="Sembunyikan"
+                                                                    ><i
+                                                                        class="ti {layer.hide
+                                                                            ? 'ti-eye-off'
+                                                                            : 'ti-eye'} text-xs"
+
+                                                                    ></i></button
+                                                                >
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        duplicateLayer(
+                                                                            layer,
+                                                                        )}
+                                                                    class="p-1 hover:bg-slate-100 rounded text-slate-400"
+                                                                    title="Duplikat"
+                                                                    ><i
+                                                                        class="ti ti-copy text-xs"
+
+                                                                    ></i></button
+                                                                >
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        deleteLayer(
+                                                                            layer.id,
+                                                                        )}
+                                                                    class="p-1 hover:bg-slate-100 rounded text-rose-500"
+                                                                    title="Hapus"
+                                                                    ><i
+                                                                        class="ti ti-trash text-xs"
+
+                                                                    ></i></button
+                                                                >
                                                             </div>
                                                         </div>
                                                     {/each}
@@ -5058,76 +6628,263 @@
                                             </div>
 
                                             <!-- Selected Layer Transform Sliders -->
-                                            {#if selectedLayerId && designLayers.find(l => l.id === selectedLayerId)}
-                                                {@const selLayer = designLayers.find(l => l.id === selectedLayerId)}
-                                                <div class="bg-brand-blueRoyal/5 border border-brand-blueRoyal/10 rounded-xl p-3 space-y-2">
-                                                    <span class="text-[9px] font-bold text-brand-blueRoyal uppercase tracking-wider block border-b pb-1">Edit Layer Terpilih</span>
-                                                    
+                                            {#if selectedLayerId && designLayers.find((l) => l.id === selectedLayerId)}
+                                                {@const selLayer =
+                                                    designLayers.find(
+                                                        (l) =>
+                                                            l.id ===
+                                                            selectedLayerId,
+                                                    )}
+                                                <div
+                                                    class="bg-brand-blueRoyal/5 border border-brand-blueRoyal/10 rounded-xl p-3 space-y-2"
+                                                >
+                                                    <span
+                                                        class="text-[9px] font-bold text-brand-blueRoyal uppercase tracking-wider block border-b pb-1"
+                                                        >Edit Layer Terpilih</span
+                                                    >
+
                                                     <!-- Text specific properties -->
                                                     {#if selLayer.type === 'text'}
-                                                        <div class="space-y-1 pb-1">
-                                                            <input type="text" bind:value={selLayer.text} oninput={redrawCompositeCanvas} class="w-full text-xs border rounded-lg px-2 py-1 focus:outline-none" />
-                                                            <div class="flex gap-2 items-center">
-                                                                <input type="color" bind:value={selLayer.color} oninput={redrawCompositeCanvas} class="w-6 h-6 rounded border cursor-pointer p-0" />
-                                                                <select bind:value={selLayer.fontFamily} onchange={redrawCompositeCanvas} class="text-xs border rounded p-1 bg-white flex-grow">
-                                                                    <option value="Arial">Arial</option>
-                                                                    <option value="Courier New">Courier New</option>
-                                                                    <option value="Times New Roman">Times New Roman</option>
-                                                                    <option value="Georgia">Georgia</option>
-                                                                    <option value="Impact">Impact</option>
+                                                        <div
+                                                            class="space-y-1 pb-1"
+                                                        >
+                                                            <input
+                                                                type="text"
+                                                                bind:value={
+                                                                    selLayer.text
+                                                                }
+                                                                oninput={redrawCompositeCanvas}
+                                                                class="w-full text-xs border rounded-lg px-2 py-1 focus:outline-none"
+                                                            />
+                                                            <div
+                                                                class="flex gap-2 items-center"
+                                                            >
+                                                                <input
+                                                                    type="color"
+                                                                    bind:value={
+                                                                        selLayer.color
+                                                                    }
+                                                                    oninput={redrawCompositeCanvas}
+                                                                    class="w-6 h-6 rounded border cursor-pointer p-0"
+                                                                />
+                                                                <select
+                                                                    bind:value={
+                                                                        selLayer.fontFamily
+                                                                    }
+                                                                    onchange={redrawCompositeCanvas}
+                                                                    class="text-xs border rounded p-1 bg-white flex-grow"
+                                                                >
+                                                                    <option
+                                                                        value="Arial"
+                                                                        >Arial</option
+                                                                    >
+                                                                    <option
+                                                                        value="Courier New"
+                                                                        >Courier
+                                                                        New</option
+                                                                    >
+                                                                    <option
+                                                                        value="Times New Roman"
+                                                                        >Times
+                                                                        New
+                                                                        Roman</option
+                                                                    >
+                                                                    <option
+                                                                        value="Georgia"
+                                                                        >Georgia</option
+                                                                    >
+                                                                    <option
+                                                                        value="Impact"
+                                                                        >Impact</option
+                                                                    >
                                                                 </select>
                                                             </div>
-                                                            <div class="flex gap-2">
-                                                                <button type="button" onclick={() => { selLayer.bold = !selLayer.bold; redrawCompositeCanvas(); }} class="flex-1 py-0.5 text-xs border rounded font-black {selLayer.bold ? 'bg-slate-200 border-slate-300' : 'bg-white'}">B</button>
-                                                                <button type="button" onclick={() => { selLayer.italic = !selLayer.italic; redrawCompositeCanvas(); }} class="flex-1 py-0.5 text-xs border rounded italic {selLayer.italic ? 'bg-slate-200 border-slate-300' : 'bg-white'}">I</button>
-                                                                <button type="button" onclick={() => { selLayer.stroke = !selLayer.stroke; redrawCompositeCanvas(); }} class="flex-grow py-0.5 text-[10px] border rounded {selLayer.stroke ? 'bg-slate-200 border-slate-300' : 'bg-white'}">Stroke</button>
+                                                            <div
+                                                                class="flex gap-2"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() => {
+                                                                        selLayer.bold =
+                                                                            !selLayer.bold;
+                                                                        redrawCompositeCanvas();
+                                                                    }}
+                                                                    class="flex-1 py-0.5 text-xs border rounded font-black {selLayer.bold
+                                                                        ? 'bg-slate-200 border-slate-300'
+                                                                        : 'bg-white'}"
+                                                                    >B</button
+                                                                >
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() => {
+                                                                        selLayer.italic =
+                                                                            !selLayer.italic;
+                                                                        redrawCompositeCanvas();
+                                                                    }}
+                                                                    class="flex-1 py-0.5 text-xs border rounded italic {selLayer.italic
+                                                                        ? 'bg-slate-200 border-slate-300'
+                                                                        : 'bg-white'}"
+                                                                    >I</button
+                                                                >
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() => {
+                                                                        selLayer.stroke =
+                                                                            !selLayer.stroke;
+                                                                        redrawCompositeCanvas();
+                                                                    }}
+                                                                    class="flex-grow py-0.5 text-[10px] border rounded {selLayer.stroke
+                                                                        ? 'bg-slate-200 border-slate-300'
+                                                                        : 'bg-white'}"
+                                                                    >Stroke</button
+                                                                >
                                                             </div>
                                                         </div>
                                                     {/if}
 
                                                     <!-- Position X -->
                                                     <div class="space-y-1">
-                                                        <div class="flex justify-between text-[10px] font-bold">
-                                                            <span class="text-slate-500">Posisi X</span>
-                                                            <span class="text-brand-blueRoyal">{Math.round(selLayer.x)}</span>
+                                                        <div
+                                                            class="flex justify-between text-[10px] font-bold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500"
+                                                                >Posisi X</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal"
+                                                                >{Math.round(
+                                                                    selLayer.x,
+                                                                )}</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0" max="512" step="2" bind:value={selLayer.x} oninput={redrawCompositeCanvas} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="512"
+                                                            step="2"
+                                                            bind:value={
+                                                                selLayer.x
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
 
                                                     <!-- Position Y -->
                                                     <div class="space-y-1">
-                                                        <div class="flex justify-between text-[10px] font-bold">
-                                                            <span class="text-slate-500">Posisi Y</span>
-                                                            <span class="text-brand-blueRoyal">{Math.round(selLayer.y)}</span>
+                                                        <div
+                                                            class="flex justify-between text-[10px] font-bold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500"
+                                                                >Posisi Y</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal"
+                                                                >{Math.round(
+                                                                    selLayer.y,
+                                                                )}</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0" max="512" step="2" bind:value={selLayer.y} oninput={redrawCompositeCanvas} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="512"
+                                                            step="2"
+                                                            bind:value={
+                                                                selLayer.y
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
 
                                                     <!-- Layer Scale -->
                                                     <div class="space-y-1">
-                                                        <div class="flex justify-between text-[10px] font-bold">
-                                                            <span class="text-slate-500">Ukuran (Skala)</span>
-                                                            <span class="text-brand-blueRoyal">{selLayer.scale.toFixed(2)}</span>
+                                                        <div
+                                                            class="flex justify-between text-[10px] font-bold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500"
+                                                                >Ukuran (Skala)</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal"
+                                                                >{selLayer.scale.toFixed(
+                                                                    2,
+                                                                )}</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0.05" max="3.0" step="0.05" bind:value={selLayer.scale} oninput={redrawCompositeCanvas} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0.05"
+                                                            max="3.0"
+                                                            step="0.05"
+                                                            bind:value={
+                                                                selLayer.scale
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
 
                                                     <!-- Layer Rotation -->
                                                     <div class="space-y-1">
-                                                        <div class="flex justify-between text-[10px] font-bold">
-                                                            <span class="text-slate-500">Rotasi</span>
-                                                            <span class="text-brand-blueRoyal">{selLayer.rotation}°</span>
+                                                        <div
+                                                            class="flex justify-between text-[10px] font-bold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500"
+                                                                >Rotasi</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal"
+                                                                >{selLayer.rotation}°</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0" max="360" step="5" bind:value={selLayer.rotation} oninput={redrawCompositeCanvas} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="360"
+                                                            step="5"
+                                                            bind:value={
+                                                                selLayer.rotation
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
 
                                                     <!-- Layer Opacity -->
                                                     <div class="space-y-1">
-                                                        <div class="flex justify-between text-[10px] font-bold">
-                                                            <span class="text-slate-500">Transparansi</span>
-                                                            <span class="text-brand-blueRoyal">{Math.round((selLayer.opacity || 1.0)*100)}%</span>
+                                                        <div
+                                                            class="flex justify-between text-[10px] font-bold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500"
+                                                                >Transparansi</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal"
+                                                                >{Math.round(
+                                                                    (selLayer.opacity ||
+                                                                        1.0) *
+                                                                        100,
+                                                                )}%</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0.0" max="1.0" step="0.05" bind:value={selLayer.opacity} oninput={redrawCompositeCanvas} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0.0"
+                                                            max="1.0"
+                                                            step="0.05"
+                                                            bind:value={
+                                                                selLayer.opacity
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
                                                 </div>
                                             {/if}
@@ -5135,117 +6892,331 @@
 
                                         <!-- Projection Sliders -->
                                         <div class="space-y-2 border-t pt-3">
-                                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Pengaturan Penempatan Logo 3D (Decal)</span>
-                                            
+                                            <span
+                                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1"
+                                                >Pengaturan Penempatan Logo 3D
+                                                (Decal)</span
+                                            >
+
                                             <!-- Logo scale -->
                                             <div class="space-y-1">
-                                                <div class="flex justify-between text-xs font-semibold">
-                                                    <span class="text-slate-500">Skala Proyeksi Decal</span>
-                                                    <span class="text-brand-blueRoyal font-bold">{logoScale.toFixed(2)}</span>
+                                                <div
+                                                    class="flex justify-between text-xs font-semibold"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Skala Proyeksi Decal</span
+                                                    >
+                                                    <span
+                                                        class="text-brand-blueRoyal font-bold"
+                                                        >{logoScale.toFixed(
+                                                            2,
+                                                        )}</span
+                                                    >
                                                 </div>
-                                                <input type="range" min="0.05" max="2.0" step="0.05" bind:value={logoScale} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                <input
+                                                    type="range"
+                                                    min="0.05"
+                                                    max="2.0"
+                                                    step="0.05"
+                                                    bind:value={logoScale}
+                                                    oninput={updateThreeMesh}
+                                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                />
                                             </div>
 
                                             <!-- Logo X -->
                                             <div class="space-y-1">
-                                                <div class="flex justify-between text-xs font-semibold">
-                                                    <span class="text-slate-500">Geser Sablon (X)</span>
-                                                    <span class="text-brand-blueRoyal font-bold">{logoX.toFixed(2)}</span>
+                                                <div
+                                                    class="flex justify-between text-xs font-semibold"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Geser Sablon (X)</span
+                                                    >
+                                                    <span
+                                                        class="text-brand-blueRoyal font-bold"
+                                                        >{logoX.toFixed(
+                                                            2,
+                                                        )}</span
+                                                    >
                                                 </div>
-                                                <input type="range" min="-2.0" max="2.0" step="0.02" bind:value={logoX} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                <input
+                                                    type="range"
+                                                    min="-2.0"
+                                                    max="2.0"
+                                                    step="0.02"
+                                                    bind:value={logoX}
+                                                    oninput={updateThreeMesh}
+                                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                />
                                             </div>
 
                                             <!-- Logo Y -->
                                             <div class="space-y-1">
-                                                <div class="flex justify-between text-xs font-semibold">
-                                                    <span class="text-slate-500">Geser Sablon (Y)</span>
-                                                    <span class="text-brand-blueRoyal font-bold">{logoY.toFixed(2)}</span>
+                                                <div
+                                                    class="flex justify-between text-xs font-semibold"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Geser Sablon (Y)</span
+                                                    >
+                                                    <span
+                                                        class="text-brand-blueRoyal font-bold"
+                                                        >{logoY.toFixed(
+                                                            2,
+                                                        )}</span
+                                                    >
                                                 </div>
-                                                <input type="range" min="-2.0" max="2.0" step="0.02" bind:value={logoY} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                <input
+                                                    type="range"
+                                                    min="-2.0"
+                                                    max="2.0"
+                                                    step="0.02"
+                                                    bind:value={logoY}
+                                                    oninput={updateThreeMesh}
+                                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                />
                                             </div>
 
                                             <!-- Logo Depth Z (Front/Back) -->
                                             <div class="grid grid-cols-2 gap-3">
                                                 <div class="space-y-1">
-                                                    <span class="text-[10px] font-semibold text-slate-500">Kedalaman Depan (Z)</span>
-                                                    <input type="range" min="-2.0" max="2.0" step="0.02" bind:value={logoZ} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                    <span
+                                                        class="text-[10px] font-semibold text-slate-500"
+                                                        >Kedalaman Depan (Z)</span
+                                                    >
+                                                    <input
+                                                        type="range"
+                                                        min="-2.0"
+                                                        max="2.0"
+                                                        step="0.02"
+                                                        bind:value={logoZ}
+                                                        oninput={updateThreeMesh}
+                                                        class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                    />
                                                 </div>
                                                 <div class="space-y-1">
-                                                    <span class="text-[10px] font-semibold text-slate-500">Kedalaman Belakang (Z)</span>
-                                                    <input type="range" min="-2.0" max="2.0" step="0.02" bind:value={logoZBack} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                    <span
+                                                        class="text-[10px] font-semibold text-slate-500"
+                                                        >Kedalaman Belakang (Z)</span
+                                                    >
+                                                    <input
+                                                        type="range"
+                                                        min="-2.0"
+                                                        max="2.0"
+                                                        step="0.02"
+                                                        bind:value={logoZBack}
+                                                        oninput={updateThreeMesh}
+                                                        class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Model adjustments (mockup positioning) -->
                                         <div class="space-y-2 border-t pt-3">
-                                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Penyesuaian Model Mockup 3D</span>
-                                            
+                                            <span
+                                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1"
+                                                >Penyesuaian Model Mockup 3D</span
+                                            >
+
                                             <!-- Model scale -->
                                             <div class="space-y-1">
-                                                <div class="flex justify-between text-xs font-semibold">
-                                                    <span class="text-slate-500">Skala Model</span>
-                                                    <span class="text-brand-blueRoyal font-bold">{mockupScale.toFixed(1)}</span>
+                                                <div
+                                                    class="flex justify-between text-xs font-semibold"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Skala Model</span
+                                                    >
+                                                    <span
+                                                        class="text-brand-blueRoyal font-bold"
+                                                        >{mockupScale.toFixed(
+                                                            1,
+                                                        )}</span
+                                                    >
                                                 </div>
-                                                <input type="range" min="0.1" max="30.0" step="0.1" bind:value={mockupScale} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                <input
+                                                    type="range"
+                                                    min="0.1"
+                                                    max="30.0"
+                                                    step="0.1"
+                                                    bind:value={mockupScale}
+                                                    oninput={updateThreeMesh}
+                                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                />
                                             </div>
 
                                             <!-- Model Y offset -->
                                             <div class="space-y-1">
-                                                <div class="flex justify-between text-xs font-semibold">
-                                                    <span class="text-slate-500">Posisi Vertikal (Y)</span>
-                                                    <span class="text-brand-blueRoyal font-bold">{mockupY.toFixed(2)}</span>
+                                                <div
+                                                    class="flex justify-between text-xs font-semibold"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Posisi Vertikal (Y)</span
+                                                    >
+                                                    <span
+                                                        class="text-brand-blueRoyal font-bold"
+                                                        >{mockupY.toFixed(
+                                                            2,
+                                                        )}</span
+                                                    >
                                                 </div>
-                                                <input type="range" min="-5.0" max="5.0" step="0.05" bind:value={mockupY} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                <input
+                                                    type="range"
+                                                    min="-5.0"
+                                                    max="5.0"
+                                                    step="0.05"
+                                                    bind:value={mockupY}
+                                                    oninput={updateThreeMesh}
+                                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                />
                                             </div>
 
                                             <!-- Model X offset -->
                                             <div class="space-y-1">
-                                                <div class="flex justify-between text-xs font-semibold">
-                                                    <span class="text-slate-500">Posisi Horizontal (X)</span>
-                                                    <span class="text-brand-blueRoyal font-bold">{mockupX.toFixed(2)}</span>
+                                                <div
+                                                    class="flex justify-between text-xs font-semibold"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Posisi Horizontal (X)</span
+                                                    >
+                                                    <span
+                                                        class="text-brand-blueRoyal font-bold"
+                                                        >{mockupX.toFixed(
+                                                            2,
+                                                        )}</span
+                                                    >
                                                 </div>
-                                                <input type="range" min="-5.0" max="5.0" step="0.05" bind:value={mockupX} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                <input
+                                                    type="range"
+                                                    min="-5.0"
+                                                    max="5.0"
+                                                    step="0.05"
+                                                    bind:value={mockupX}
+                                                    oninput={updateThreeMesh}
+                                                    class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                />
                                             </div>
 
                                             <!-- Model Rotations (X, Y, Z) -->
                                             <div class="grid grid-cols-3 gap-2">
                                                 <div class="space-y-1">
-                                                    <span class="text-[9px] font-bold text-slate-500">Rotasi X ({mockupRotationX}°)</span>
-                                                    <input type="range" min="0" max="360" step="5" bind:value={mockupRotationX} oninput={updateThreeMesh} class="w-full h-1 accent-brand-blueRoyal" />
+                                                    <span
+                                                        class="text-[9px] font-bold text-slate-500"
+                                                        >Rotasi X ({mockupRotationX}°)</span
+                                                    >
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="360"
+                                                        step="5"
+                                                        bind:value={
+                                                            mockupRotationX
+                                                        }
+                                                        oninput={updateThreeMesh}
+                                                        class="w-full h-1 accent-brand-blueRoyal"
+                                                    />
                                                 </div>
                                                 <div class="space-y-1">
-                                                    <span class="text-[9px] font-bold text-slate-500">Rotasi Y ({mockupRotationY}°)</span>
-                                                    <input type="range" min="0" max="360" step="5" bind:value={mockupRotationY} oninput={updateThreeMesh} class="w-full h-1 accent-brand-blueRoyal" />
+                                                    <span
+                                                        class="text-[9px] font-bold text-slate-500"
+                                                        >Rotasi Y ({mockupRotationY}°)</span
+                                                    >
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="360"
+                                                        step="5"
+                                                        bind:value={
+                                                            mockupRotationY
+                                                        }
+                                                        oninput={updateThreeMesh}
+                                                        class="w-full h-1 accent-brand-blueRoyal"
+                                                    />
                                                 </div>
                                                 <div class="space-y-1">
-                                                    <span class="text-[9px] font-bold text-slate-500">Rotasi Z ({mockupRotationZ}°)</span>
-                                                    <input type="range" min="0" max="360" step="5" bind:value={mockupRotationZ} oninput={updateThreeMesh} class="w-full h-1 accent-brand-blueRoyal" />
+                                                    <span
+                                                        class="text-[9px] font-bold text-slate-500"
+                                                        >Rotasi Z ({mockupRotationZ}°)</span
+                                                    >
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="360"
+                                                        step="5"
+                                                        bind:value={
+                                                            mockupRotationZ
+                                                        }
+                                                        oninput={updateThreeMesh}
+                                                        class="w-full h-1 accent-brand-blueRoyal"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
 
                                         <!-- Material and Base Color selection -->
                                         <div class="space-y-2 border-t pt-3">
-                                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Material & Warna Dasar Produk</span>
-                                            
+                                            <span
+                                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block"
+                                                >Material & Warna Dasar Produk</span
+                                            >
+
                                             <div class="grid grid-cols-2 gap-3">
                                                 <div class="space-y-1">
-                                                    <span class="text-[10px] font-semibold text-slate-500">Pilih Material</span>
-                                                    <select bind:value={selectedMaterial} onchange={updateThreeMesh} class="w-full text-xs border border-slate-200 rounded-lg p-2 bg-white font-bold text-slate-700">
-                                                        <option value="cotton">Katun (Cotton)</option>
-                                                        <option value="polyester">Polyester</option>
-                                                        <option value="metal">Logam (Metal)</option>
-                                                        <option value="ceramic">Keramik (Ceramic)</option>
-                                                        <option value="glass">Kaca (Glass)</option>
-                                                        <option value="plastic">Plastik (Plastic)</option>
+                                                    <span
+                                                        class="text-[10px] font-semibold text-slate-500"
+                                                        >Pilih Material</span
+                                                    >
+                                                    <select
+                                                        bind:value={
+                                                            selectedMaterial
+                                                        }
+                                                        onchange={updateThreeMesh}
+                                                        class="w-full text-xs border border-slate-200 rounded-lg p-2 bg-white font-bold text-slate-700"
+                                                    >
+                                                        <option value="cotton"
+                                                            >Katun (Cotton)</option
+                                                        >
+                                                        <option
+                                                            value="polyester"
+                                                            >Polyester</option
+                                                        >
+                                                        <option value="metal"
+                                                            >Logam (Metal)</option
+                                                        >
+                                                        <option value="ceramic"
+                                                            >Keramik (Ceramic)</option
+                                                        >
+                                                        <option value="glass"
+                                                            >Kaca (Glass)</option
+                                                        >
+                                                        <option value="plastic"
+                                                            >Plastik (Plastic)</option
+                                                        >
                                                     </select>
                                                 </div>
                                                 <div class="space-y-1">
-                                                    <span class="text-[10px] font-semibold text-slate-500">Warna Dasar</span>
-                                                    <div class="flex gap-2 items-center">
-                                                        <input type="color" bind:value={selectedColor} oninput={redrawCompositeCanvas} class="w-7 h-7 rounded border cursor-pointer p-0" />
-                                                        <input type="text" bind:value={selectedColor} oninput={redrawCompositeCanvas} class="border border-slate-200 rounded-lg px-1.5 py-1 text-[11px] w-20 uppercase font-bold focus:outline-none" />
+                                                    <span
+                                                        class="text-[10px] font-semibold text-slate-500"
+                                                        >Warna Dasar</span
+                                                    >
+                                                    <div
+                                                        class="flex gap-2 items-center"
+                                                    >
+                                                        <input
+                                                            type="color"
+                                                            bind:value={
+                                                                selectedColor
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="w-7 h-7 rounded border cursor-pointer p-0"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            bind:value={
+                                                                selectedColor
+                                                            }
+                                                            oninput={redrawCompositeCanvas}
+                                                            class="border border-slate-200 rounded-lg px-1.5 py-1 text-[11px] w-20 uppercase font-bold focus:outline-none"
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
@@ -5253,67 +7224,198 @@
 
                                         <!-- Silhouette-specific settings (thickness, removebg, side color) -->
                                         {#if modelType === 'plane'}
-                                            <div class="space-y-2 border-t pt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-150">
-                                                <span class="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">Pengaturan Ketebalan Siluet Solid</span>
-                                                
+                                            <div
+                                                class="space-y-2 border-t pt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-150"
+                                            >
+                                                <span
+                                                    class="text-[10px] font-bold text-slate-700 uppercase tracking-wider block"
+                                                    >Pengaturan Ketebalan Siluet
+                                                    Solid</span
+                                                >
+
                                                 <!-- Silhouette Base Thickness -->
                                                 <div class="space-y-1">
-                                                    <div class="flex justify-between text-xs font-semibold">
-                                                        <span class="text-slate-500">Ketebalan Sisi Siluet</span>
-                                                        <span class="text-brand-blueRoyal font-bold">{baseThickness.toFixed(2)}</span>
+                                                    <div
+                                                        class="flex justify-between text-xs font-semibold"
+                                                    >
+                                                        <span
+                                                            class="text-slate-500"
+                                                            >Ketebalan Sisi
+                                                            Siluet</span
+                                                        >
+                                                        <span
+                                                            class="text-brand-blueRoyal font-bold"
+                                                            >{baseThickness.toFixed(
+                                                                2,
+                                                            )}</span
+                                                        >
                                                     </div>
-                                                    <input type="range" min="0.02" max="0.80" step="0.01" bind:value={baseThickness} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                    <input
+                                                        type="range"
+                                                        min="0.02"
+                                                        max="0.80"
+                                                        step="0.01"
+                                                        bind:value={
+                                                            baseThickness
+                                                        }
+                                                        oninput={updateThreeMesh}
+                                                        class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                    />
                                                 </div>
 
                                                 <!-- Silhouette Side Wall Color -->
                                                 <div class="space-y-1">
-                                                    <div class="flex justify-between text-xs font-semibold">
-                                                        <span class="text-slate-500">Warna Sisi Samping</span>
-                                                        <span class="text-brand-blueRoyal font-bold uppercase">{sideColor}</span>
+                                                    <div
+                                                        class="flex justify-between text-xs font-semibold"
+                                                    >
+                                                        <span
+                                                            class="text-slate-500"
+                                                            >Warna Sisi Samping</span
+                                                        >
+                                                        <span
+                                                            class="text-brand-blueRoyal font-bold uppercase"
+                                                            >{sideColor}</span
+                                                        >
                                                     </div>
-                                                    <div class="flex gap-2 items-center">
-                                                        <input type="color" bind:value={sideColor} oninput={updateThreeMesh} class="w-7 h-7 rounded border cursor-pointer p-0" />
-                                                        <input type="text" bind:value={sideColor} oninput={updateThreeMesh} class="border border-slate-200 rounded-lg px-1.5 py-1 text-[11px] w-20 uppercase font-bold focus:outline-none" />
+                                                    <div
+                                                        class="flex gap-2 items-center"
+                                                    >
+                                                        <input
+                                                            type="color"
+                                                            bind:value={
+                                                                sideColor
+                                                            }
+                                                            oninput={updateThreeMesh}
+                                                            class="w-7 h-7 rounded border cursor-pointer p-0"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            bind:value={
+                                                                sideColor
+                                                            }
+                                                            oninput={updateThreeMesh}
+                                                            class="border border-slate-200 rounded-lg px-1.5 py-1 text-[11px] w-20 uppercase font-bold focus:outline-none"
+                                                        />
                                                     </div>
                                                 </div>
 
                                                 <!-- Flat mesh toggle -->
-                                                <div class="flex items-center justify-between pt-1">
-                                                    <span class="text-xs font-semibold text-slate-500">Tampilan Rata (Mesh Spikes Rata)</span>
-                                                    <label class="relative inline-flex items-center cursor-pointer">
-                                                        <input type="checkbox" bind:checked={flatMesh} onchange={updateThreeMesh} class="sr-only peer" />
-                                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:height-4 after:width-4 after:transition-all peer-checked:bg-brand-blueRoyal"></div>
+                                                <div
+                                                    class="flex items-center justify-between pt-1"
+                                                >
+                                                    <span
+                                                        class="text-xs font-semibold text-slate-500"
+                                                        >Tampilan Rata (Mesh
+                                                        Spikes Rata)</span
+                                                    >
+                                                    <label
+                                                        class="relative inline-flex items-center cursor-pointer"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            bind:checked={
+                                                                flatMesh
+                                                            }
+                                                            onchange={updateThreeMesh}
+                                                            class="sr-only peer"
+                                                        />
+                                                        <div
+                                                            class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:height-4 after:width-4 after:transition-all peer-checked:bg-brand-blueRoyal"
+                                                        ></div>
                                                     </label>
                                                 </div>
 
                                                 {#if !flatMesh}
                                                     <!-- Relief Depth Slider -->
-                                                    <div class="space-y-1 pl-3 border-l-2 border-slate-200">
-                                                        <div class="flex justify-between text-xs font-semibold">
-                                                            <span class="text-slate-500 text-[11px]">Tebal Relief Detail</span>
-                                                            <span class="text-brand-blueRoyal font-bold text-[11px]">{reliefDepth.toFixed(3)}</span>
+                                                    <div
+                                                        class="space-y-1 pl-3 border-l-2 border-slate-200"
+                                                    >
+                                                        <div
+                                                            class="flex justify-between text-xs font-semibold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500 text-[11px]"
+                                                                >Tebal Relief
+                                                                Detail</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal font-bold text-[11px]"
+                                                                >{reliefDepth.toFixed(
+                                                                    3,
+                                                                )}</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0.0" max="0.20" step="0.005" bind:value={reliefDepth} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0.0"
+                                                            max="0.20"
+                                                            step="0.005"
+                                                            bind:value={
+                                                                reliefDepth
+                                                            }
+                                                            oninput={updateThreeMesh}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
                                                 {/if}
 
                                                 <!-- Hapus Background Option -->
-                                                <div class="flex items-center justify-between pt-1">
-                                                    <span class="text-xs font-semibold text-slate-500">Hapus Background Asli (Auto-Detect)</span>
-                                                    <label class="relative inline-flex items-center cursor-pointer">
-                                                        <input type="checkbox" bind:checked={removeBg} onchange={updateThreeMesh} class="sr-only peer" />
-                                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:height-4 after:width-4 after:transition-all peer-checked:bg-brand-blueRoyal"></div>
+                                                <div
+                                                    class="flex items-center justify-between pt-1"
+                                                >
+                                                    <span
+                                                        class="text-xs font-semibold text-slate-500"
+                                                        >Hapus Background Asli
+                                                        (Auto-Detect)</span
+                                                    >
+                                                    <label
+                                                        class="relative inline-flex items-center cursor-pointer"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            bind:checked={
+                                                                removeBg
+                                                            }
+                                                            onchange={updateThreeMesh}
+                                                            class="sr-only peer"
+                                                        />
+                                                        <div
+                                                            class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:height-4 after:width-4 after:transition-all peer-checked:bg-brand-blueRoyal"
+                                                        ></div>
                                                     </label>
                                                 </div>
 
                                                 {#if removeBg}
                                                     <!-- Background Tolerance Slider -->
-                                                    <div class="space-y-1 pl-3 border-l-2 border-slate-200">
-                                                        <div class="flex justify-between text-xs font-semibold">
-                                                            <span class="text-slate-500 text-[11px]">Toleransi Warna BG</span>
-                                                            <span class="text-brand-blueRoyal font-bold text-[11px]">{bgTolerance.toFixed(2)}</span>
+                                                    <div
+                                                        class="space-y-1 pl-3 border-l-2 border-slate-200"
+                                                    >
+                                                        <div
+                                                            class="flex justify-between text-xs font-semibold"
+                                                        >
+                                                            <span
+                                                                class="text-slate-500 text-[11px]"
+                                                                >Toleransi Warna
+                                                                BG</span
+                                                            >
+                                                            <span
+                                                                class="text-brand-blueRoyal font-bold text-[11px]"
+                                                                >{bgTolerance.toFixed(
+                                                                    2,
+                                                                )}</span
+                                                            >
                                                         </div>
-                                                        <input type="range" min="0.02" max="0.50" step="0.01" bind:value={bgTolerance} oninput={updateThreeMesh} class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal" />
+                                                        <input
+                                                            type="range"
+                                                            min="0.02"
+                                                            max="0.50"
+                                                            step="0.01"
+                                                            bind:value={
+                                                                bgTolerance
+                                                            }
+                                                            oninput={updateThreeMesh}
+                                                            class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-blueRoyal"
+                                                        />
                                                     </div>
                                                 {/if}
                                             </div>
@@ -5326,33 +7428,73 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="px-6 py-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div
+                    class="px-6 py-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/50"
+                >
                     {#if generatorStep === 1}
                         <div></div>
-                        <button type="button" onclick={startGeneration} disabled={activeTab !== 'scratch' && !selectedGenImage && !customMockupFile} class="px-5 py-2.5 bg-brand-blueRoyal text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md cursor-pointer uppercase tracking-wider font-outfit">
-                            Mulai Kustomisasi 3D <i class="ti ti-arrow-right"></i>
+                        <button
+                            type="button"
+                            onclick={startGeneration}
+                            disabled={activeTab !== 'scratch' &&
+                                !selectedGenImage &&
+                                !customMockupFile}
+                            class="px-5 py-2.5 bg-brand-blueRoyal text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md cursor-pointer uppercase tracking-wider font-outfit"
+                        >
+                            Mulai Kustomisasi 3D <i class="ti ti-arrow-right"
+                            ></i>
                         </button>
                     {:else if generatorStep === 2}
                         <div></div>
-                        <button type="button" disabled class="px-5 py-2.5 bg-slate-200 text-slate-400 text-xs font-bold rounded-xl flex items-center gap-1.5 disabled:cursor-not-allowed uppercase tracking-wider font-outfit">
+                        <button
+                            type="button"
+                            disabled
+                            class="px-5 py-2.5 bg-slate-200 text-slate-400 text-xs font-bold rounded-xl flex items-center gap-1.5 disabled:cursor-not-allowed uppercase tracking-wider font-outfit"
+                        >
                             Sedang Memproses...
                         </button>
                     {:else if generatorStep === 3}
                         <div class="flex flex-wrap gap-2 items-center">
-                            <button type="button" onclick={() => { generatorStep = 1; cleanupThreeJS(); }} class="px-4 py-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition uppercase tracking-wider font-outfit cursor-pointer">
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    generatorStep = 1;
+                                    cleanupThreeJS();
+                                }}
+                                class="px-4 py-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition uppercase tracking-wider font-outfit cursor-pointer"
+                            >
                                 Kembali
                             </button>
-                            <button type="button" onclick={() => exportPrintReady4K('front')} class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer uppercase tracking-wider font-outfit">
-                                <i class="ti ti-download text-sm"></i> Cetak Depan 4K
+                            <button
+                                type="button"
+                                onclick={() => exportPrintReady4K('front')}
+                                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer uppercase tracking-wider font-outfit"
+                            >
+                                <i class="ti ti-download text-sm"></i> Cetak Depan
+                                4K
                             </button>
-                            <button type="button" onclick={() => exportPrintReady4K('back')} class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer uppercase tracking-wider font-outfit">
-                                <i class="ti ti-download text-sm"></i> Cetak Belakang 4K
+                            <button
+                                type="button"
+                                onclick={() => exportPrintReady4K('back')}
+                                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer uppercase tracking-wider font-outfit"
+                            >
+                                <i class="ti ti-download text-sm"></i> Cetak Belakang
+                                4K
                             </button>
-                            <button type="button" onclick={downloadMockupSnapshot4K} class="px-4 py-2.5 bg-indigo-650 hover:bg-indigo-750 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer uppercase tracking-wider font-outfit">
-                                <i class="ti ti-camera text-sm"></i> Snapshot Mockup 4K
+                            <button
+                                type="button"
+                                onclick={downloadMockupSnapshot4K}
+                                class="px-4 py-2.5 bg-indigo-650 hover:bg-indigo-750 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer uppercase tracking-wider font-outfit"
+                            >
+                                <i class="ti ti-camera text-sm"></i> Snapshot Mockup
+                                4K
                             </button>
                         </div>
-                        <button type="button" onclick={applyGeneratedModel} class="px-5 py-2.5 bg-brand-blueRoyal text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md transition uppercase tracking-wider font-outfit cursor-pointer">
+                        <button
+                            type="button"
+                            onclick={applyGeneratedModel}
+                            class="px-5 py-2.5 bg-brand-blueRoyal text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md transition uppercase tracking-wider font-outfit cursor-pointer"
+                        >
                             Gunakan Model 3D <i class="ti ti-check"></i>
                         </button>
                     {/if}
@@ -5362,16 +7504,29 @@
     {/if}
 
     {#if showQuickAddCategoryModal}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true">
-            <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl max-w-md w-full animate-in zoom-in-95 duration-200">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div
+                class="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl max-w-md w-full animate-in zoom-in-95 duration-200"
+            >
                 <!-- Header -->
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-outfit font-black text-slate-800 text-lg">Tambah Kategori Baru</h3>
-                    <button type="button" aria-label="Tutup" onclick={closeQuickAddCategory} class="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                    <h3 class="font-outfit font-black text-slate-800 text-lg">
+                        Tambah Kategori Baru
+                    </h3>
+                    <button
+                        type="button"
+                        aria-label="Tutup"
+                        onclick={closeQuickAddCategory}
+                        class="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-slate-400 transition cursor-pointer"
+                    >
                         <i class="ti ti-x text-sm"></i>
                     </button>
                 </div>
-                
+
                 <!-- Form -->
                 <form onsubmit={handleQuickAddCategory} class="space-y-4">
                     <Input
@@ -5381,7 +7536,7 @@
                         placeholder="Cth: Sepatu Pria"
                         required={true}
                     />
-                    
+
                     <Input
                         bind:value={quickCategorySlug}
                         id="quick_category_slug"
@@ -5389,9 +7544,12 @@
                         placeholder="cth: sepatu-pria"
                         required={true}
                     />
-                    
+
                     <div class="space-y-2">
-                        <label class="text-xs font-bold text-slate-600 block" for="quick_category_parent">
+                        <label
+                            class="text-xs font-bold text-slate-600 block"
+                            for="quick_category_parent"
+                        >
                             Kategori Induk
                         </label>
                         <select
@@ -5405,15 +7563,26 @@
                             {/each}
                         </select>
                     </div>
-                    
+
                     <!-- Footer Buttons -->
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" onclick={closeQuickAddCategory} class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition">
+                    <div
+                        class="flex justify-end gap-3 pt-4 border-t border-slate-100"
+                    >
+                        <button
+                            type="button"
+                            onclick={closeQuickAddCategory}
+                            class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition"
+                        >
                             Batal
                         </button>
-                        <button type="submit" disabled={isSubmittingCategory} class="px-4 py-2 bg-brand-blueRoyal hover:bg-brand-blueRoyal/95 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                        <button
+                            type="submit"
+                            disabled={isSubmittingCategory}
+                            class="px-4 py-2 bg-brand-blueRoyal hover:bg-brand-blueRoyal/95 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                        >
                             {#if isSubmittingCategory}
-                                <i class="ti ti-loader animate-spin text-sm"></i> Menyimpan...
+                                <i class="ti ti-loader animate-spin text-sm"
+                                ></i> Menyimpan...
                             {:else}
                                 Simpan Kategori
                             {/if}
@@ -5425,16 +7594,29 @@
     {/if}
 
     {#if showQuickAddBrandModal}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true">
-            <div class="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl max-w-md w-full animate-in zoom-in-95 duration-200">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div
+                class="bg-white rounded-3xl border border-slate-100 p-6 shadow-xl max-w-md w-full animate-in zoom-in-95 duration-200"
+            >
                 <!-- Header -->
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-outfit font-black text-slate-800 text-lg">Tambah Merek Baru</h3>
-                    <button type="button" aria-label="Tutup" onclick={closeQuickAddBrand} class="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-slate-400 transition cursor-pointer">
+                    <h3 class="font-outfit font-black text-slate-800 text-lg">
+                        Tambah Merek Baru
+                    </h3>
+                    <button
+                        type="button"
+                        aria-label="Tutup"
+                        onclick={closeQuickAddBrand}
+                        class="w-8 h-8 rounded-full bg-slate-50 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center text-slate-400 transition cursor-pointer"
+                    >
                         <i class="ti ti-x text-sm"></i>
                     </button>
                 </div>
-                
+
                 <!-- Form -->
                 <form onsubmit={handleQuickAddBrand} class="space-y-4">
                     <Input
@@ -5444,15 +7626,26 @@
                         placeholder="Cth: Nike"
                         required={true}
                     />
-                    
+
                     <!-- Footer Buttons -->
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                        <button type="button" onclick={closeQuickAddBrand} class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition">
+                    <div
+                        class="flex justify-end gap-3 pt-4 border-t border-slate-100"
+                    >
+                        <button
+                            type="button"
+                            onclick={closeQuickAddBrand}
+                            class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-xl transition"
+                        >
                             Batal
                         </button>
-                        <button type="submit" disabled={isSubmittingBrand} class="px-4 py-2 bg-brand-blueRoyal hover:bg-brand-blueRoyal/95 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                        <button
+                            type="submit"
+                            disabled={isSubmittingBrand}
+                            class="px-4 py-2 bg-brand-blueRoyal hover:bg-brand-blueRoyal/95 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                        >
                             {#if isSubmittingBrand}
-                                <i class="ti ti-loader animate-spin text-sm"></i> Menyimpan...
+                                <i class="ti ti-loader animate-spin text-sm"
+                                ></i> Menyimpan...
                             {:else}
                                 Simpan Merek
                             {/if}

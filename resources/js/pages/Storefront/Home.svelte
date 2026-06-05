@@ -2,6 +2,7 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import { onMount, onDestroy } from 'svelte';
+    import { fade, scale } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
     import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
 
@@ -17,6 +18,12 @@
         middleWideBanner = null,
         recentReviews = [] as any[],
     } = $props();
+
+    let showIntro = $state(false);
+    const storeLogo = $derived(
+        (page.props as any).storeLogo ||
+            (page.props as any).settings?.store_logo,
+    );
 
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
@@ -214,6 +221,16 @@
         countdownTimer = setInterval(updateCountdown, 1000);
     });
     onDestroy(() => clearInterval(countdownTimer));
+
+    onMount(() => {
+        if (!sessionStorage.getItem('storefront_intro_played')) {
+            showIntro = true;
+            sessionStorage.setItem('storefront_intro_played', 'true');
+            setTimeout(() => {
+                showIntro = false;
+            }, 1800);
+        }
+    });
 
     // ──────────────────────────────────────────────────
     // HELPERS
@@ -637,11 +654,10 @@
      SECTION 3: KATEGORI
 ═══════════════════════════════════════════════════ -->
     {#if categories.length > 0}
-        <section
-            id="categories-section"
-            class="mt-2 px-3 sm:px-5 lg:px-8"
-        >
-            <div class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm">
+        <section id="categories-section" class="mt-2 px-3 sm:px-5 lg:px-8">
+            <div
+                class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm"
+            >
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-4">
                     <h2
@@ -1498,9 +1514,68 @@
         {secondary}
         user={auth}
     />
+
+    {#if showIntro}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div
+            transition:fade={{ duration: 600 }}
+            class="fixed inset-0 z-[99999] flex flex-col items-center justify-center text-white cursor-pointer"
+            style="background: radial-gradient(circle at center, {withOpacity(primary, 0.95)} 0%, #030712 100%);"
+            onclick={() => (showIntro = false)}
+            role="dialog"
+            aria-modal="true"
+        >
+            <div
+                class="flex flex-col items-center gap-6 text-center select-none"
+                transition:scale={{ duration: 600, delay: 100, start: 0.9 }}
+            >
+                {#if storeLogo}
+                    <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center bg-white/10 backdrop-blur-md rounded-3xl p-4 shadow-2xl border border-white/20 animate-pulse">
+                        <img
+                            src={storeLogo}
+                            alt={storeName}
+                            class="w-full h-full object-contain filter drop-shadow-md"
+                        />
+                    </div>
+                {:else}
+                    <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-white/10 to-white/5 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 animate-pulse">
+                        <i class="ti ti-shopping-bag text-5xl sm:text-6xl text-white"></i>
+                    </div>
+                {/if}
+
+                <div class="space-y-2">
+                    <h1 class="font-outfit font-black text-2xl sm:text-3xl tracking-wide bg-gradient-to-r from-white via-white/95 to-white/80 bg-clip-text text-transparent">
+                        {storeName}
+                    </h1>
+                    <p class="text-xs sm:text-sm text-white/50 tracking-wider uppercase font-medium">
+                        Belanja Mudah &amp; Terpercaya
+                    </p>
+                </div>
+
+                <div class="w-32 h-1 bg-white/10 rounded-full overflow-hidden relative mt-4">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/40 via-white to-white/40 rounded-full animate-loadingBar"></div>
+                </div>
+            </div>
+        </div>
+    {/if}
 </StorefrontLayout>
 
 <style>
+    @keyframes loadingBar {
+        0% {
+            transform: translateX(-100%);
+        }
+        50% {
+            transform: translateX(0);
+        }
+        100% {
+            transform: translateX(100%);
+        }
+    }
+    .animate-loadingBar {
+        animation: loadingBar 1.5s infinite ease-in-out;
+    }
     @keyframes zoomIn {
         from {
             transform: scale(0.96);

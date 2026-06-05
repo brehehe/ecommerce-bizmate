@@ -4,14 +4,22 @@
     import { showToast } from '@/utils/toast';
 
     // Fallback colors if settings aren't loaded yet globally
-    const primaryColor = $derived((page.props as any).theme?.primary_color || '#0c4cb4');
+    const primaryColor = $derived(
+        (page.props as any).theme?.primary_color || '#0c4cb4',
+    );
     const secondaryColor = $derived(
         (page.props as any).theme?.secondary_color || '#fa7315',
     );
 
-    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
-    const storeIcon = $derived((page.props as any).settings?.store_icon || null);
-    const storeLogo = $derived((page.props as any).settings?.store_logo || null);
+    const storeName = $derived(
+        (page.props as any).settings?.store_name || 'Bizmate',
+    );
+    const storeIcon = $derived(
+        (page.props as any).settings?.store_icon || null,
+    );
+    const storeLogo = $derived(
+        (page.props as any).settings?.store_logo || null,
+    );
 
     const form = useForm({
         email: '',
@@ -91,10 +99,12 @@
             >
                 Kelola bisnis Anda dengan lebih mudah.
             </h1>
-            <p class="text-base text-slate-200 font-medium leading-relaxed mb-10">
-                {storeName} memberikan Anda kendali penuh atas toko online,
-                manajemen inventaris, laporan keuangan, dan pelanggan—semuanya
-                dalam satu dashboard elegan yang terpusat.
+            <p
+                class="text-base text-slate-200 font-medium leading-relaxed mb-10"
+            >
+                {storeName} memberikan Anda kendali penuh atas toko online, manajemen
+                inventaris, laporan keuangan, dan pelanggan—semuanya dalam satu dashboard
+                elegan yang terpusat.
             </p>
 
             <div
@@ -156,7 +166,11 @@
             <!-- Logo (Hanya muncul di Mobile) -->
             <div class="flex lg:hidden items-center gap-3 mb-10">
                 {#if storeIcon}
-                    <img src={storeIcon} alt="Store Icon" class="w-12 h-12 object-contain" />
+                    <img
+                        src={storeIcon}
+                        alt="Store Icon"
+                        class="w-12 h-12 object-contain"
+                    />
                 {:else}
                     <div
                         class="w-12 h-12 rounded-2xl shadow-md flex items-center justify-center text-white text-2xl"
@@ -261,10 +275,16 @@
                         <button
                             type="button"
                             class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                            onclick={() => showPassword = !showPassword}
-                            aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                            onclick={() => (showPassword = !showPassword)}
+                            aria-label={showPassword
+                                ? 'Sembunyikan kata sandi'
+                                : 'Tampilkan kata sandi'}
                         >
-                            <i class={showPassword ? "ti ti-eye-off text-lg" : "ti ti-eye text-lg"}></i>
+                            <i
+                                class={showPassword
+                                    ? 'ti ti-eye-off text-lg'
+                                    : 'ti ti-eye text-lg'}
+                            ></i>
                         </button>
                     </div>
                 </div>

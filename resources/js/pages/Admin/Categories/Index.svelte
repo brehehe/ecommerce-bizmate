@@ -555,10 +555,11 @@
                         <div>
                             <p
                                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                >Tipe Media Visual <span class="text-rose-500"
-                                    >*</span
-                                ></p
                             >
+                                Tipe Media Visual <span class="text-rose-500"
+                                    >*</span
+                                >
+                            </p>
                             <div class="flex bg-slate-100 p-1 rounded-xl">
                                 <button
                                     type="button"
@@ -587,8 +588,9 @@
                             <div class="relative">
                                 <p
                                     class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                    >Cari & Pilih Icon</p
                                 >
+                                    Cari & Pilih Icon
+                                </p>
                                 <div class="relative relative-z">
                                     <span
                                         class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"
@@ -655,8 +657,9 @@
                             <div>
                                 <p
                                     class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                    >Upload Gambar</p
                                 >
+                                    Upload Gambar
+                                </p>
                                 <div class="flex items-center gap-4">
                                     {#if imagePreview}
                                         <div
@@ -696,8 +699,9 @@
                         <div>
                             <p
                                 class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
-                                >Kategori Induk (Parent)</p
                             >
+                                Kategori Induk (Parent)
+                            </p>
                             <select
                                 bind:value={form.parent_id}
                                 class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal focus:bg-white bg-slate-50 transition"

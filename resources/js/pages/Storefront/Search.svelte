@@ -91,7 +91,7 @@
             minPrice: f.min_price || '',
             maxPrice: f.max_price || '',
             promoOnly: f.promo || false,
-            initialPromoOnly: f.promo || false
+            initialPromoOnly: f.promo || false,
         };
     }
     // svelte-ignore state_referenced_locally
@@ -226,7 +226,7 @@
         return {
             data: p.data || [],
             currentPage: p.current_page || 1,
-            nextPageUrl: p.next_page_url || null
+            nextPageUrl: p.next_page_url || null,
         };
     }
     // svelte-ignore state_referenced_locally
@@ -820,7 +820,8 @@
                     <div
                         role="button"
                         tabindex="0"
-                        onkeydown={(e) => e.key === 'Enter' && setTimeout(applyFilters, 0)}
+                        onkeydown={(e) =>
+                            e.key === 'Enter' && setTimeout(applyFilters, 0)}
                         onclick={() => {
                             setTimeout(applyFilters, 0);
                         }}

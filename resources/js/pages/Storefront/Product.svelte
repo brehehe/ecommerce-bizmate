@@ -166,7 +166,11 @@
                 },
                 onError: (errors: any) => {
                     const msg = Object.values(errors)[0] as string;
-                    showToast(msg ?? 'Gagal melaporkan ulasan.', 'error', 'top');
+                    showToast(
+                        msg ?? 'Gagal melaporkan ulasan.',
+                        'error',
+                        'top',
+                    );
                 },
                 onFinish: () => {
                     submittingReport = false;
@@ -2946,7 +2950,9 @@
                                         type="number"
                                         value={qty}
                                         min={currentMinPurchase}
-                                        max={currentIsUnlimited ? undefined : currentStock}
+                                        max={currentIsUnlimited
+                                            ? undefined
+                                            : currentStock}
                                         class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         oninput={handleQtyInput}
                                         onblur={handleQtyBlur}
@@ -3616,11 +3622,16 @@
                                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                                     <div class="flex justify-end mt-2">
                                         {#if review.is_reported}
-                                            <span class="text-[10px] text-orange-400 flex items-center gap-1"><i class="ti ti-flag-filled"></i> Dilaporkan</span>
+                                            <span
+                                                class="text-[10px] text-orange-400 flex items-center gap-1"
+                                                ><i class="ti ti-flag-filled"
+                                                ></i> Dilaporkan</span
+                                            >
                                         {:else}
                                             <button
                                                 aria-label="Laporkan ulasan"
-                                                onclick={() => openReportModal(review)}
+                                                onclick={() =>
+                                                    openReportModal(review)}
                                                 class="text-[10px] text-slate-400 hover:text-red-400 flex items-center gap-1 transition"
                                             >
                                                 <i class="ti ti-flag"></i> Laporkan
@@ -4347,7 +4358,9 @@
                                 type="number"
                                 value={qty}
                                 min={currentMinPurchase}
-                                max={currentIsUnlimited ? undefined : currentStock}
+                                max={currentIsUnlimited
+                                    ? undefined
+                                    : currentStock}
                                 class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 oninput={handleQtyInput}
                                 onblur={handleQtyBlur}
@@ -4575,7 +4588,9 @@
                                 <button
                                     type="button"
                                     aria-label="Lihat gambar"
-                                    onclick={() => chatPreviewUrl = msg.attachment_data.url}
+                                    onclick={() =>
+                                        (chatPreviewUrl =
+                                            msg.attachment_data.url)}
                                     class="block w-full text-left p-0 border-0 bg-transparent cursor-pointer"
                                 >
                                     <img
@@ -4909,18 +4924,28 @@
     {#if chatPreviewUrl}
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4" onclick={() => chatPreviewUrl = null}>
+        <div
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            onclick={() => (chatPreviewUrl = null)}
+        >
             <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div class="relative z-10 max-w-5xl w-full flex flex-col items-center justify-center" onclick={(e) => e.stopPropagation()}>
+            <div
+                class="relative z-10 max-w-5xl w-full flex flex-col items-center justify-center"
+                onclick={(e) => e.stopPropagation()}
+            >
                 <button
-                    onclick={() => chatPreviewUrl = null}
+                    onclick={() => (chatPreviewUrl = null)}
                     class="absolute -top-12 right-0 text-white hover:text-slate-300 transition flex items-center gap-1 text-xs font-bold bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-full"
                 >
                     <i class="ti ti-x text-sm"></i> Tutup
                 </button>
-                <img src={chatPreviewUrl} alt="Preview Attachment" class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10" />
+                <img
+                    src={chatPreviewUrl}
+                    alt="Preview Attachment"
+                    class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+                />
             </div>
         </div>
     {/if}
@@ -5070,13 +5095,19 @@
                 class="relative z-10 bg-white w-full max-w-md rounded-2xl shadow-2xl"
                 onclick={(e: any) => e.stopPropagation()}
             >
-                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+                <div
+                    class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100"
+                >
                     <div>
-                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                        <h3
+                            class="font-bold text-slate-800 text-base flex items-center gap-2"
+                        >
                             <i class="ti ti-flag text-red-500"></i>
                             Laporkan Ulasan
                         </h3>
-                        <p class="text-xs text-slate-500 mt-0.5">Bantu kami menjaga kualitas ulasan</p>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            Bantu kami menjaga kualitas ulasan
+                        </p>
                     </div>
                     <button
                         aria-label="Tutup"
@@ -5088,7 +5119,8 @@
                 </div>
                 <div class="p-5 space-y-4">
                     <p class="text-xs text-slate-500 leading-relaxed">
-                        Pilih alasan pelaporan ulasan ini. Laporan Anda akan ditinjau oleh tim kami.
+                        Pilih alasan pelaporan ulasan ini. Laporan Anda akan
+                        ditinjau oleh tim kami.
                     </p>
                     <div class="space-y-2">
                         {#each ['Konten tidak pantas / kasar', 'Spam atau promosi', 'Ulasan tidak relevan', 'Informasi palsu', 'Lainnya'] as reason}
@@ -5097,19 +5129,34 @@
                                 role="button"
                                 tabindex="0"
                                 class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition"
-                                style="border-color:{reportReason === reason ? primary + '60' : '#e2e8f0'}; background:{reportReason === reason ? primary + '08' : 'transparent'};"
+                                style="border-color:{reportReason === reason
+                                    ? primary + '60'
+                                    : '#e2e8f0'}; background:{reportReason ===
+                                reason
+                                    ? primary + '08'
+                                    : 'transparent'};"
                                 onclick={() => (reportReason = reason)}
-                                onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') reportReason = reason; }}
+                                onkeydown={(e: KeyboardEvent) => {
+                                    if (e.key === 'Enter' || e.key === ' ')
+                                        reportReason = reason;
+                                }}
                             >
                                 <div
                                     class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition"
-                                    style="border-color:{reportReason === reason ? primary : '#cbd5e1'};"
+                                    style="border-color:{reportReason === reason
+                                        ? primary
+                                        : '#cbd5e1'};"
                                 >
                                     {#if reportReason === reason}
-                                        <div class="w-2 h-2 rounded-full" style="background:{primary};"></div>
+                                        <div
+                                            class="w-2 h-2 rounded-full"
+                                            style="background:{primary};"
+                                        ></div>
                                     {/if}
                                 </div>
-                                <span class="text-sm text-slate-700">{reason}</span>
+                                <span class="text-sm text-slate-700"
+                                    >{reason}</span
+                                >
                             </div>
                         {/each}
                     </div>

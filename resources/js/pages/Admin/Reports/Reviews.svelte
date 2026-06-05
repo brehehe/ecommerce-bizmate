@@ -140,15 +140,19 @@
 
 <AdminLayout>
     <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6">
-
         <!-- ── Page Header ─────────────────────────────────────── -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+        >
             <div>
-                <h1 class="font-outfit font-black text-2xl sm:text-3xl text-slate-800 tracking-tight">
+                <h1
+                    class="font-outfit font-black text-2xl sm:text-3xl text-slate-800 tracking-tight"
+                >
                     Laporan Ulasan Produk
                 </h1>
                 <p class="text-sm text-slate-500 font-medium mt-1">
-                    Pantau ulasan pelanggan, ulasan anonim, dan laporan pelanggaran konten.
+                    Pantau ulasan pelanggan, ulasan anonim, dan laporan
+                    pelanggaran konten.
                 </p>
             </div>
             <button
@@ -161,10 +165,15 @@
         </div>
 
         <!-- ── Filter Card ─────────────────────────────────────── -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div
+            class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5"
+        >
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="space-y-1.5">
-                    <label for="date_from" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <label
+                        for="date_from"
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                    >
                         Tanggal Mulai
                     </label>
                     <input
@@ -175,7 +184,10 @@
                     />
                 </div>
                 <div class="space-y-1.5">
-                    <label for="date_to" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <label
+                        for="date_to"
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                    >
                         Tanggal Selesai
                     </label>
                     <input
@@ -186,11 +198,16 @@
                     />
                 </div>
                 <div class="space-y-1.5">
-                    <label for="search" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <label
+                        for="search"
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                    >
                         Pencarian
                     </label>
                     <div class="relative">
-                        <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <i
+                            class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                        ></i>
                         <input
                             type="text"
                             id="search"
@@ -201,7 +218,10 @@
                     </div>
                 </div>
                 <div class="space-y-1.5">
-                    <label for="rating" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <label
+                        for="rating"
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"
+                    >
                         Rating
                     </label>
                     <select
@@ -220,20 +240,33 @@
             </div>
 
             <!-- Quick toggles + action buttons -->
-            <div class="flex flex-wrap items-center gap-3 pt-1 border-t border-slate-100">
+            <div
+                class="flex flex-wrap items-center gap-3 pt-1 border-t border-slate-100"
+            >
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <div
                     role="button"
                     tabindex="0"
                     class="flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-pointer select-none transition"
-                    style="border-color:{reportedOnly ? '#fca5a5' : '#e2e8f0'}; background:{reportedOnly ? '#fef2f2' : 'transparent'};"
+                    style="border-color:{reportedOnly
+                        ? '#fca5a5'
+                        : '#e2e8f0'}; background:{reportedOnly
+                        ? '#fef2f2'
+                        : 'transparent'};"
                     onclick={() => (reportedOnly = !reportedOnly)}
                     onkeydown={(e: KeyboardEvent) => {
-                        if (e.key === 'Enter' || e.key === ' ') reportedOnly = !reportedOnly;
+                        if (e.key === 'Enter' || e.key === ' ')
+                            reportedOnly = !reportedOnly;
                     }}
                 >
-                    <i class="ti ti-flag text-xs" style="color:{reportedOnly ? '#ef4444' : '#94a3b8'};"></i>
-                    <span class="text-xs font-semibold" style="color:{reportedOnly ? '#ef4444' : '#64748b'};">
+                    <i
+                        class="ti ti-flag text-xs"
+                        style="color:{reportedOnly ? '#ef4444' : '#94a3b8'};"
+                    ></i>
+                    <span
+                        class="text-xs font-semibold"
+                        style="color:{reportedOnly ? '#ef4444' : '#64748b'};"
+                    >
                         Hanya Dilaporkan
                     </span>
                     {#if reportedOnly}
@@ -246,18 +279,30 @@
                     role="button"
                     tabindex="0"
                     class="flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-pointer select-none transition"
-                    style="border-color:{anonymousOnly ? '#a5b4fc' : '#e2e8f0'}; background:{anonymousOnly ? '#eef2ff' : 'transparent'};"
+                    style="border-color:{anonymousOnly
+                        ? '#a5b4fc'
+                        : '#e2e8f0'}; background:{anonymousOnly
+                        ? '#eef2ff'
+                        : 'transparent'};"
                     onclick={() => (anonymousOnly = !anonymousOnly)}
                     onkeydown={(e: KeyboardEvent) => {
-                        if (e.key === 'Enter' || e.key === ' ') anonymousOnly = !anonymousOnly;
+                        if (e.key === 'Enter' || e.key === ' ')
+                            anonymousOnly = !anonymousOnly;
                     }}
                 >
-                    <i class="ti ti-user-off text-xs" style="color:{anonymousOnly ? '#6366f1' : '#94a3b8'};"></i>
-                    <span class="text-xs font-semibold" style="color:{anonymousOnly ? '#6366f1' : '#64748b'};">
+                    <i
+                        class="ti ti-user-off text-xs"
+                        style="color:{anonymousOnly ? '#6366f1' : '#94a3b8'};"
+                    ></i>
+                    <span
+                        class="text-xs font-semibold"
+                        style="color:{anonymousOnly ? '#6366f1' : '#64748b'};"
+                    >
                         Hanya Anonim
                     </span>
                     {#if anonymousOnly}
-                        <i class="ti ti-circle-check text-xs text-indigo-400"></i>
+                        <i class="ti ti-circle-check text-xs text-indigo-400"
+                        ></i>
                     {/if}
                 </div>
 
@@ -280,29 +325,36 @@
 
         <!-- ── KPI Cards ────────────────────────────────────────── -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {#each [
-                { label: 'Total Ulasan', value: summary.total, sub: 'Dalam periode ini', icon: 'ti-message-star', color: 'amber' },
-                { label: 'Rata-rata Rating', value: `${summary.avg_rating.toFixed(1)}/5`, sub: 'Keseluruhan produk', icon: 'ti-star-filled', color: 'yellow' },
-                { label: 'Dilaporkan', value: summary.reported, sub: 'Perlu ditinjau admin', icon: 'ti-flag', color: 'red' },
-                { label: 'Anonim', value: summary.anonymous, sub: 'Nama disembunyikan', icon: 'ti-user-off', color: 'indigo' },
-            ] as card}
+            {#each [{ label: 'Total Ulasan', value: summary.total, sub: 'Dalam periode ini', icon: 'ti-message-star', color: 'amber' }, { label: 'Rata-rata Rating', value: `${summary.avg_rating.toFixed(1)}/5`, sub: 'Keseluruhan produk', icon: 'ti-star-filled', color: 'yellow' }, { label: 'Dilaporkan', value: summary.reported, sub: 'Perlu ditinjau admin', icon: 'ti-flag', color: 'red' }, { label: 'Anonim', value: summary.anonymous, sub: 'Nama disembunyikan', icon: 'ti-user-off', color: 'indigo' }] as card}
                 {@const colorMap: Record<string, string> = {
                     amber: 'text-amber-600 bg-amber-50',
                     yellow: 'text-yellow-500 bg-yellow-50',
                     red: 'text-red-500 bg-red-50',
                     indigo: 'text-indigo-500 bg-indigo-50',
                 }}
-                <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
+                <div
+                    class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex items-center justify-between gap-3"
+                >
                     <div class="min-w-0">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit truncate">
+                        <p
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit truncate"
+                        >
                             {card.label}
                         </p>
-                        <p class="font-outfit font-black text-2xl text-slate-800 mt-1 leading-none">
+                        <p
+                            class="font-outfit font-black text-2xl text-slate-800 mt-1 leading-none"
+                        >
                             {card.value}
                         </p>
-                        <p class="text-[11px] text-slate-400 mt-1 truncate">{card.sub}</p>
+                        <p class="text-[11px] text-slate-400 mt-1 truncate">
+                            {card.sub}
+                        </p>
                     </div>
-                    <span class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 {colorMap[card.color]}">
+                    <span
+                        class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 {colorMap[
+                            card.color
+                        ]}"
+                    >
                         <i class="ti {card.icon}"></i>
                     </span>
                 </div>
@@ -313,25 +365,42 @@
         <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
             <div class="flex items-center justify-between mb-5">
                 <div>
-                    <h2 class="font-outfit font-black text-lg text-slate-800">Distribusi Rating</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">Sebaran penilaian produk dari semua ulasan dalam periode ini.</p>
+                    <h2 class="font-outfit font-black text-lg text-slate-800">
+                        Distribusi Rating
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Sebaran penilaian produk dari semua ulasan dalam periode
+                        ini.
+                    </p>
                 </div>
-                <span class="text-xs font-bold text-slate-400">{totalInDist} total</span>
+                <span class="text-xs font-bold text-slate-400"
+                    >{totalInDist} total</span
+                >
             </div>
             <div class="space-y-3">
                 {#each [5, 4, 3, 2, 1] as star}
                     {@const count = ratingDistribution[star] ?? 0}
-                    {@const pct = totalInDist > 0 ? (count / totalInDist) * 100 : 0}
+                    {@const pct =
+                        totalInDist > 0 ? (count / totalInDist) * 100 : 0}
                     {@const color = RATING_COLORS[star]}
                     <div class="flex items-center gap-3">
                         <!-- Star label -->
                         <div class="w-24 shrink-0 flex items-center gap-1.5">
-                            <i class="ti ti-star-filled text-xs" style="color:{color};"></i>
-                            <span class="text-xs font-bold text-slate-700">{star}</span>
-                            <span class="text-[10px] text-slate-400">— {RATING_LABELS[star]}</span>
+                            <i
+                                class="ti ti-star-filled text-xs"
+                                style="color:{color};"
+                            ></i>
+                            <span class="text-xs font-bold text-slate-700"
+                                >{star}</span
+                            >
+                            <span class="text-[10px] text-slate-400"
+                                >— {RATING_LABELS[star]}</span
+                            >
                         </div>
                         <!-- Bar -->
-                        <div class="flex-grow h-3 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            class="flex-grow h-3 bg-slate-100 rounded-full overflow-hidden"
+                        >
                             <div
                                 class="h-full rounded-full transition-all duration-500"
                                 style="width:{pct}%; background:{color};"
@@ -339,10 +408,16 @@
                         </div>
                         <!-- Count -->
                         <div class="w-20 shrink-0 text-right">
-                            <span class="text-xs font-bold text-slate-600">{count}</span>
-                            <span class="text-[10px] text-slate-400 ml-1">ulasan</span>
+                            <span class="text-xs font-bold text-slate-600"
+                                >{count}</span
+                            >
+                            <span class="text-[10px] text-slate-400 ml-1"
+                                >ulasan</span
+                            >
                             {#if pct > 0}
-                                <span class="text-[9px] text-slate-400 ml-1">({pct.toFixed(0)}%)</span>
+                                <span class="text-[9px] text-slate-400 ml-1"
+                                    >({pct.toFixed(0)}%)</span
+                                >
                             {/if}
                         </div>
                     </div>
@@ -351,10 +426,16 @@
         </div>
 
         <!-- ── Reviews Table ────────────────────────────────────── -->
-        <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <div
+            class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm"
+        >
+            <div
+                class="p-6 border-b border-slate-100 flex items-center justify-between"
+            >
                 <div>
-                    <h2 class="font-outfit font-black text-lg text-slate-800">Daftar Ulasan</h2>
+                    <h2 class="font-outfit font-black text-lg text-slate-800">
+                        Daftar Ulasan
+                    </h2>
                     <p class="text-xs text-slate-500 font-medium mt-0.5">
                         {reviews.total ?? 0} ulasan ditemukan
                     </p>
@@ -364,7 +445,9 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-[920px]">
                     <thead>
-                        <tr class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-200">
+                        <tr
+                            class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-200"
+                        >
                             <th class="py-3.5 px-5">Pelanggan</th>
                             <th class="py-3.5 px-5">Produk</th>
                             <th class="py-3.5 px-5 text-center w-36">Rating</th>
@@ -377,37 +460,78 @@
                         {#if (reviews.data as any[]).length === 0}
                             <tr>
                                 <td colspan="6" class="py-16 text-center">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <span class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center">
-                                            <i class="ti ti-star text-2xl text-slate-300"></i>
+                                    <div
+                                        class="flex flex-col items-center gap-2"
+                                    >
+                                        <span
+                                            class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center"
+                                        >
+                                            <i
+                                                class="ti ti-star text-2xl text-slate-300"
+                                            ></i>
                                         </span>
-                                        <p class="font-bold text-slate-400 font-outfit">Tidak ada ulasan</p>
-                                        <p class="text-xs text-slate-400">Coba ubah rentang tanggal atau filter yang digunakan.</p>
+                                        <p
+                                            class="font-bold text-slate-400 font-outfit"
+                                        >
+                                            Tidak ada ulasan
+                                        </p>
+                                        <p class="text-xs text-slate-400">
+                                            Coba ubah rentang tanggal atau
+                                            filter yang digunakan.
+                                        </p>
                                     </div>
                                 </td>
                             </tr>
                         {:else}
                             {#each reviews.data as review}
-                                <tr class="hover:bg-slate-50/60 transition group">
-
+                                <tr
+                                    class="hover:bg-slate-50/60 transition group"
+                                >
                                     <!-- Pelanggan -->
                                     <td class="py-4 px-5">
                                         <div class="flex items-center gap-2.5">
                                             {#if review.is_anonymous}
-                                                <span class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                                                    <i class="ti ti-user-off text-indigo-400 text-xs"></i>
+                                                <span
+                                                    class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-user-off text-indigo-400 text-xs"
+                                                    ></i>
                                                 </span>
                                                 <div class="min-w-0">
-                                                    <p class="text-xs font-bold text-slate-500 italic">Anonim</p>
-                                                    <p class="text-[10px] text-slate-400 truncate">{review.user?.name ?? '-'}</p>
+                                                    <p
+                                                        class="text-xs font-bold text-slate-500 italic"
+                                                    >
+                                                        Anonim
+                                                    </p>
+                                                    <p
+                                                        class="text-[10px] text-slate-400 truncate"
+                                                    >
+                                                        {review.user?.name ??
+                                                            '-'}
+                                                    </p>
                                                 </div>
                                             {:else}
-                                                <span class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-black text-slate-500 text-xs uppercase">
-                                                    {(review.user?.name ?? 'A').charAt(0)}
+                                                <span
+                                                    class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-black text-slate-500 text-xs uppercase"
+                                                >
+                                                    {(
+                                                        review.user?.name ?? 'A'
+                                                    ).charAt(0)}
                                                 </span>
                                                 <div class="min-w-0">
-                                                    <p class="text-xs font-bold text-slate-800 truncate">{review.user?.name ?? '-'}</p>
-                                                    <p class="text-[10px] text-slate-400 truncate">{review.user?.email ?? '-'}</p>
+                                                    <p
+                                                        class="text-xs font-bold text-slate-800 truncate"
+                                                    >
+                                                        {review.user?.name ??
+                                                            '-'}
+                                                    </p>
+                                                    <p
+                                                        class="text-[10px] text-slate-400 truncate"
+                                                    >
+                                                        {review.user?.email ??
+                                                            '-'}
+                                                    </p>
                                                 </div>
                                             {/if}
                                         </div>
@@ -415,37 +539,63 @@
 
                                     <!-- Produk -->
                                     <td class="py-4 px-5 max-w-[180px]">
-                                        <p class="text-xs font-semibold text-slate-700 line-clamp-1">{review.product?.name ?? '-'}</p>
+                                        <p
+                                            class="text-xs font-semibold text-slate-700 line-clamp-1"
+                                        >
+                                            {review.product?.name ?? '-'}
+                                        </p>
                                         {#if review.product_variant?.options?.length > 0}
-                                            <p class="text-[10px] text-slate-400 mt-0.5">
-                                                {review.product_variant.options.map((o: any) => o.value).join(', ')}
+                                            <p
+                                                class="text-[10px] text-slate-400 mt-0.5"
+                                            >
+                                                {review.product_variant.options
+                                                    .map((o: any) => o.value)
+                                                    .join(', ')}
                                             </p>
                                         {/if}
                                     </td>
 
                                     <!-- Rating -->
                                     <td class="py-4 px-5 text-center">
-                                        <div class="inline-flex items-center gap-0.5 mb-0.5">
+                                        <div
+                                            class="inline-flex items-center gap-0.5 mb-0.5"
+                                        >
                                             {#each [1, 2, 3, 4, 5] as s}
                                                 <i
                                                     class="ti ti-star-filled text-xs"
-                                                    style="color:{s <= review.rating ? RATING_COLORS[review.rating] : '#e2e8f0'};"
+                                                    style="color:{s <=
+                                                    review.rating
+                                                        ? RATING_COLORS[
+                                                              review.rating
+                                                          ]
+                                                        : '#e2e8f0'};"
                                                 ></i>
                                             {/each}
                                         </div>
-                                        <p class="text-[10px] font-semibold" style="color:{RATING_COLORS[review.rating]};">
+                                        <p
+                                            class="text-[10px] font-semibold"
+                                            style="color:{RATING_COLORS[
+                                                review.rating
+                                            ]};"
+                                        >
                                             {ratingLabel(review.rating)}
                                         </p>
                                     </td>
 
                                     <!-- Komentar -->
                                     <td class="py-4 px-5 max-w-xs">
-                                        <p class="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                                        <p
+                                            class="text-xs text-slate-600 leading-relaxed line-clamp-2"
+                                        >
                                             {review.comment || '—'}
                                         </p>
                                         {#if review.media?.length > 0}
-                                            <span class="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                                <i class="ti ti-photo text-[10px]"></i>
+                                            <span
+                                                class="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full"
+                                            >
+                                                <i
+                                                    class="ti ti-photo text-[10px]"
+                                                ></i>
                                                 {review.media.length} media
                                             </span>
                                         {/if}
@@ -454,20 +604,30 @@
                                     <!-- Status -->
                                     <td class="py-4 px-5 text-center">
                                         {#if review.is_reported}
-                                            <div class="flex flex-col items-center gap-1">
-                                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-500 border border-red-100">
-                                                    <i class="ti ti-flag-filled"></i>
+                                            <div
+                                                class="flex flex-col items-center gap-1"
+                                            >
+                                                <span
+                                                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-500 border border-red-100"
+                                                >
+                                                    <i class="ti ti-flag-filled"
+                                                    ></i>
                                                     Dilaporkan
                                                 </span>
                                                 {#if review.report_reason}
-                                                    <p class="text-[10px] text-slate-400 text-center line-clamp-2 max-w-[110px]">
+                                                    <p
+                                                        class="text-[10px] text-slate-400 text-center line-clamp-2 max-w-[110px]"
+                                                    >
                                                         {review.report_reason}
                                                     </p>
                                                 {/if}
                                             </div>
                                         {:else}
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                                <i class="ti ti-circle-check"></i>
+                                            <span
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                            >
+                                                <i class="ti ti-circle-check"
+                                                ></i>
                                                 Aman
                                             </span>
                                         {/if}
@@ -475,7 +635,12 @@
 
                                     <!-- Tanggal -->
                                     <td class="py-4 px-5 text-right">
-                                        <span class="text-xs text-slate-500 font-medium">{formatDate(review.created_at)}</span>
+                                        <span
+                                            class="text-xs text-slate-500 font-medium"
+                                            >{formatDate(
+                                                review.created_at,
+                                            )}</span
+                                        >
                                     </td>
                                 </tr>
                             {/each}
@@ -486,6 +651,5 @@
 
             <Pagination paginator={reviews} />
         </div>
-
     </main>
 </AdminLayout>

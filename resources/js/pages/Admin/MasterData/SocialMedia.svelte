@@ -9,12 +9,12 @@
     import Toggle from '@/components/ui/Toggle.svelte';
 
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
-    const secondaryColor = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const secondaryColor = $derived(
+        page.props.theme?.secondary_color || '#fa7315',
+    );
 
-    let {
-        socialMediaLinks = { data: [], links: [], total: 0 },
-        filters = {},
-    } = $props();
+    let { socialMediaLinks = { data: [], links: [], total: 0 }, filters = {} } =
+        $props();
 
     // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
@@ -31,22 +31,79 @@
 
     // Platform options with icons
     const platformOptions = [
-        { id: 'instagram',  name: 'Instagram',  icon: 'ti-brand-instagram',  color: '#E1306C' },
-        { id: 'tiktok',     name: 'TikTok',     icon: 'ti-brand-tiktok',     color: '#010101' },
-        { id: 'facebook',   name: 'Facebook',   icon: 'ti-brand-facebook',   color: '#1877F2' },
-        { id: 'twitter',    name: 'Twitter / X', icon: 'ti-brand-x',          color: '#000000' },
-        { id: 'youtube',    name: 'YouTube',     icon: 'ti-brand-youtube',    color: '#FF0000' },
-        { id: 'whatsapp',   name: 'WhatsApp',   icon: 'ti-brand-whatsapp',   color: '#25D366' },
-        { id: 'telegram',   name: 'Telegram',   icon: 'ti-brand-telegram',   color: '#2CA5E0' },
-        { id: 'linkedin',   name: 'LinkedIn',   icon: 'ti-brand-linkedin',   color: '#0A66C2' },
-        { id: 'shopee',     name: 'Shopee',     icon: 'ti-shopping-bag',     color: '#EE4D2D' },
-        { id: 'tokopedia',  name: 'Tokopedia',  icon: 'ti-shopping-cart',    color: '#03AC0E' },
-        { id: 'lazada',     name: 'Lazada',     icon: 'ti-shopping-bag',     color: '#0F146D' },
-        { id: 'website',    name: 'Website',    icon: 'ti-world',            color: '#6366F1' },
-        { id: 'other',      name: 'Lainnya',    icon: 'ti-link',             color: '#64748B' },
+        {
+            id: 'instagram',
+            name: 'Instagram',
+            icon: 'ti-brand-instagram',
+            color: '#E1306C',
+        },
+        {
+            id: 'tiktok',
+            name: 'TikTok',
+            icon: 'ti-brand-tiktok',
+            color: '#010101',
+        },
+        {
+            id: 'facebook',
+            name: 'Facebook',
+            icon: 'ti-brand-facebook',
+            color: '#1877F2',
+        },
+        {
+            id: 'twitter',
+            name: 'Twitter / X',
+            icon: 'ti-brand-x',
+            color: '#000000',
+        },
+        {
+            id: 'youtube',
+            name: 'YouTube',
+            icon: 'ti-brand-youtube',
+            color: '#FF0000',
+        },
+        {
+            id: 'whatsapp',
+            name: 'WhatsApp',
+            icon: 'ti-brand-whatsapp',
+            color: '#25D366',
+        },
+        {
+            id: 'telegram',
+            name: 'Telegram',
+            icon: 'ti-brand-telegram',
+            color: '#2CA5E0',
+        },
+        {
+            id: 'linkedin',
+            name: 'LinkedIn',
+            icon: 'ti-brand-linkedin',
+            color: '#0A66C2',
+        },
+        {
+            id: 'shopee',
+            name: 'Shopee',
+            icon: 'ti-shopping-bag',
+            color: '#EE4D2D',
+        },
+        {
+            id: 'tokopedia',
+            name: 'Tokopedia',
+            icon: 'ti-shopping-cart',
+            color: '#03AC0E',
+        },
+        {
+            id: 'lazada',
+            name: 'Lazada',
+            icon: 'ti-shopping-bag',
+            color: '#0F146D',
+        },
+        { id: 'website', name: 'Website', icon: 'ti-world', color: '#6366F1' },
+        { id: 'other', name: 'Lainnya', icon: 'ti-link', color: '#64748B' },
     ];
 
-    const platformMap = Object.fromEntries(platformOptions.map((p) => [p.id, p]));
+    const platformMap = Object.fromEntries(
+        platformOptions.map((p) => [p.id, p]),
+    );
 
     function getPlatformIcon(platform: string): string {
         return platformMap[platform]?.icon || 'ti-link';
@@ -242,7 +299,8 @@
             { items: reorderPayload },
             {
                 preserveScroll: true,
-                onSuccess: () => showToast('Urutan berhasil disimpan', 'success'),
+                onSuccess: () =>
+                    showToast('Urutan berhasil disimpan', 'success'),
                 onError: () => showToast('Gagal menyimpan urutan', 'error'),
             },
         );
@@ -311,12 +369,16 @@
     <div class="flex-grow flex flex-col min-h-screen">
         <main class="flex-grow p-4 sm:p-8 w-full max-w-full mx-auto space-y-6">
             <!-- Page Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+            >
                 <div>
                     <h1 class="font-outfit font-black text-2xl text-slate-800">
                         Master Media Sosial
                     </h1>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                    <p
+                        class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                    >
                         Kelola akun media sosial toko yang tampil di storefront
                     </p>
                 </div>
@@ -331,25 +393,43 @@
             </div>
 
             <!-- Info Banner -->
-            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 items-start">
-                <div class="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+            <div
+                class="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 items-start"
+            >
+                <div
+                    class="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 mt-0.5"
+                >
                     <i class="ti ti-info-circle text-base"></i>
                 </div>
                 <div>
-                    <p class="text-xs font-bold text-blue-800">Tips Penggunaan</p>
+                    <p class="text-xs font-bold text-blue-800">
+                        Tips Penggunaan
+                    </p>
                     <p class="text-xs text-blue-600 mt-0.5 leading-relaxed">
-                        Akun sosmed yang aktif akan otomatis tampil di <strong>footer storefront</strong>.
-                        Untuk Instagram/TikTok, isi kolom URL dengan username (contoh: <code class="bg-blue-100 px-1 rounded">bizmate.official</code>).
-                        Untuk WhatsApp, isi nomor lengkap dengan kode negara (contoh: <code class="bg-blue-100 px-1 rounded">6281234567890</code>).
-                        Anda bisa <strong>drag & drop</strong> baris untuk mengatur urutan tampilan.
+                        Akun sosmed yang aktif akan otomatis tampil di <strong
+                            >footer storefront</strong
+                        >. Untuk Instagram/TikTok, isi kolom URL dengan username
+                        (contoh:
+                        <code class="bg-blue-100 px-1 rounded"
+                            >bizmate.official</code
+                        >). Untuk WhatsApp, isi nomor lengkap dengan kode negara
+                        (contoh:
+                        <code class="bg-blue-100 px-1 rounded"
+                            >6281234567890</code
+                        >). Anda bisa <strong>drag & drop</strong> baris untuk mengatur
+                        urutan tampilan.
                     </p>
                 </div>
             </div>
 
             <!-- Main Table Card -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden"
+            >
                 <!-- Header, PerPage & Search -->
-                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50/20">
+                <div
+                    class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50/20"
+                >
                     <div class="shrink-0 w-full sm:w-32">
                         <Select
                             bind:value={perPage}
@@ -373,17 +453,29 @@
                 </div>
 
                 {#if socialMediaLinks.data.length === 0}
-                    <div class="py-16 text-center text-slate-400 font-bold font-outfit">
-                        <i class="ti ti-share text-5xl block mb-3 text-slate-200"></i>
-                        <p class="text-slate-500 font-black">Belum ada akun media sosial.</p>
-                        <p class="text-xs mt-1 text-slate-400 font-medium">Klik "Tambah Akun Sosmed" untuk memulai.</p>
+                    <div
+                        class="py-16 text-center text-slate-400 font-bold font-outfit"
+                    >
+                        <i
+                            class="ti ti-share text-5xl block mb-3 text-slate-200"
+                        ></i>
+                        <p class="text-slate-500 font-black">
+                            Belum ada akun media sosial.
+                        </p>
+                        <p class="text-xs mt-1 text-slate-400 font-medium">
+                            Klik "Tambah Akun Sosmed" untuk memulai.
+                        </p>
                     </div>
                 {:else}
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">
-                                    <th class="py-4 px-4 w-10 text-center">Urut</th>
+                                <tr
+                                    class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                                >
+                                    <th class="py-4 px-4 w-10 text-center"
+                                        >Urut</th
+                                    >
                                     <th class="py-4 px-6">Platform</th>
                                     <th class="py-4 px-6">Label</th>
                                     <th class="py-4 px-6">URL / Handle</th>
@@ -391,7 +483,9 @@
                                     <th class="py-4 px-6 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                            <tbody
+                                class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
+                            >
                                 {#each socialMediaLinks.data as item (item.id)}
                                     {@const isActive = item.is_active ?? true}
                                     {@const isDragging = draggingId === item.id}
@@ -399,33 +493,59 @@
 
                                     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                                     <tr
-                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 cursor-grab active:cursor-grabbing {isDragging ? 'opacity-40 bg-slate-50' : ''} {isDragOver ? 'bg-blue-50/40 border-t-2 border-t-blue-200' : ''}"
+                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 cursor-grab active:cursor-grabbing {isDragging
+                                            ? 'opacity-40 bg-slate-50'
+                                            : ''} {isDragOver
+                                            ? 'bg-blue-50/40 border-t-2 border-t-blue-200'
+                                            : ''}"
                                         draggable={true}
-                                        ondragstart={(e) => handleDragStart(e, item.id)}
-                                        ondragover={(e) => handleDragOver(e, item.id)}
+                                        ondragstart={(e) =>
+                                            handleDragStart(e, item.id)}
+                                        ondragover={(e) =>
+                                            handleDragOver(e, item.id)}
                                         ondrop={(e) => handleDrop(e, item.id)}
                                         ondragend={handleDragEnd}
                                     >
                                         <td class="py-5 px-4 text-center">
-                                            <div class="flex items-center justify-center">
-                                                <i class="ti ti-grip-vertical text-slate-300 text-lg"></i>
+                                            <div
+                                                class="flex items-center justify-center"
+                                            >
+                                                <i
+                                                    class="ti ti-grip-vertical text-slate-300 text-lg"
+                                                ></i>
                                             </div>
                                         </td>
                                         <td class="py-5 px-6">
-                                            <div class="flex items-center gap-3">
+                                            <div
+                                                class="flex items-center gap-3"
+                                            >
                                                 <div
                                                     class="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
-                                                    style="background-color: {getPlatformColor(item.platform)};"
+                                                    style="background-color: {getPlatformColor(
+                                                        item.platform,
+                                                    )};"
                                                 >
-                                                    <i class="ti {item.icon || getPlatformIcon(item.platform)} text-lg"></i>
+                                                    <i
+                                                        class="ti {item.icon ||
+                                                            getPlatformIcon(
+                                                                item.platform,
+                                                            )} text-lg"
+                                                    ></i>
                                                 </div>
-                                                <span class="font-bold text-slate-800 text-sm">
-                                                    {getPlatformName(item.platform)}
+                                                <span
+                                                    class="font-bold text-slate-800 text-sm"
+                                                >
+                                                    {getPlatformName(
+                                                        item.platform,
+                                                    )}
                                                 </span>
                                             </div>
                                         </td>
                                         <td class="py-5 px-6">
-                                            <span class="font-semibold text-slate-700">{item.label}</span>
+                                            <span
+                                                class="font-semibold text-slate-700"
+                                                >{item.label}</span
+                                            >
                                         </td>
                                         <td class="py-5 px-6">
                                             <a
@@ -435,38 +555,63 @@
                                                 class="text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 max-w-[220px] truncate"
                                                 title={item.url}
                                             >
-                                                <i class="ti ti-external-link text-xs shrink-0"></i>
+                                                <i
+                                                    class="ti ti-external-link text-xs shrink-0"
+                                                ></i>
                                                 {getDisplayUrl(item)}
                                             </a>
                                         </td>
                                         <td class="py-5 px-6">
-                                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50' : 'bg-slate-50 text-slate-500 border border-slate-200/50'}">
-                                                {isActive ? 'Aktif' : 'Nonaktif'}
+                                            <span
+                                                class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {isActive
+                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
+                                                    : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
+                                            >
+                                                {isActive
+                                                    ? 'Aktif'
+                                                    : 'Nonaktif'}
                                             </span>
                                         </td>
                                         <td class="py-5 px-6 text-center">
-                                            <div class="flex items-center justify-center gap-2">
+                                            <div
+                                                class="flex items-center justify-center gap-2"
+                                            >
                                                 <button
                                                     aria-label="Edit"
-                                                    onclick={() => openEditModal(item)}
+                                                    onclick={() =>
+                                                        openEditModal(item)}
                                                     class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-blue-50 hover:text-blue-600 text-slate-500 flex items-center justify-center transition"
                                                     title="Ubah Data"
                                                 >
-                                                    <i class="ti ti-pencil text-sm"></i>
+                                                    <i
+                                                        class="ti ti-pencil text-sm"
+                                                    ></i>
                                                 </button>
                                                 <button
-                                                    onclick={() => toggleStatus(item)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 {isActive ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500' : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition"
-                                                    title={isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                                                    onclick={() =>
+                                                        toggleStatus(item)}
+                                                    class="w-8 h-8 rounded-lg border border-slate-200 {isActive
+                                                        ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500'
+                                                        : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition"
+                                                    title={isActive
+                                                        ? 'Nonaktifkan'
+                                                        : 'Aktifkan'}
                                                 >
-                                                    <i class="ti {isActive ? 'ti-eye-off' : 'ti-eye'} text-sm"></i>
+                                                    <i
+                                                        class="ti {isActive
+                                                            ? 'ti-eye-off'
+                                                            : 'ti-eye'} text-sm"
+                                                    ></i>
                                                 </button>
                                                 <button
-                                                    onclick={() => confirmDelete(item)}
+                                                    onclick={() =>
+                                                        confirmDelete(item)}
                                                     class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center transition"
                                                     title="Hapus"
                                                 >
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -492,15 +637,24 @@
             class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
             onclick={closeModal}
         ></div>
-        <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg relative z-10 transform transition-all duration-300 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div
+            class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg relative z-10 transform transition-all duration-300 overflow-hidden animate-in fade-in zoom-in duration-200"
+        >
             <!-- Modal Header -->
-            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+            >
                 <div class="flex items-center gap-3">
                     <div
                         class="w-9 h-9 rounded-xl flex items-center justify-center text-white"
-                        style="background-color: {getPlatformColor(form.platform)};"
+                        style="background-color: {getPlatformColor(
+                            form.platform,
+                        )};"
                     >
-                        <i class="ti {form.icon || getPlatformIcon(form.platform)} text-lg"></i>
+                        <i
+                            class="ti {form.icon ||
+                                getPlatformIcon(form.platform)} text-lg"
+                        ></i>
                     </div>
                     <h3 class="font-outfit font-black text-lg text-slate-800">
                         {isEditing ? 'Ubah Akun Sosmed' : 'Tambah Akun Sosmed'}
@@ -520,7 +674,9 @@
             <form onsubmit={saveSocialMedia} class="p-6 space-y-4">
                 <!-- Platform Selector -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
+                    <label
+                        class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
+                    >
                         Platform <span class="text-red-500">*</span>
                     </label>
                     <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -528,16 +684,26 @@
                             <button
                                 type="button"
                                 onclick={() => (form.platform = opt.id)}
-                                class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition text-xs font-bold {form.platform === opt.id ? 'border-transparent text-white shadow-lg scale-105' : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-slate-50'}"
-                                style={form.platform === opt.id ? `background-color: ${opt.color}; border-color: ${opt.color};` : ''}
+                                class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition text-xs font-bold {form.platform ===
+                                opt.id
+                                    ? 'border-transparent text-white shadow-lg scale-105'
+                                    : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-slate-50'}"
+                                style={form.platform === opt.id
+                                    ? `background-color: ${opt.color}; border-color: ${opt.color};`
+                                    : ''}
                             >
                                 <i class="ti {opt.icon} text-xl"></i>
-                                <span class="text-[10px] leading-tight text-center">{opt.name}</span>
+                                <span
+                                    class="text-[10px] leading-tight text-center"
+                                    >{opt.name}</span
+                                >
                             </button>
                         {/each}
                     </div>
                     {#if form.errors.platform}
-                        <p class="text-xs text-red-500 mt-1">{form.errors.platform}</p>
+                        <p class="text-xs text-red-500 mt-1">
+                            {form.errors.platform}
+                        </p>
                     {/if}
                 </div>
 
@@ -553,29 +719,46 @@
 
                 <!-- URL / Handle -->
                 <div>
-                    <label for="input-social-url" class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
-                        URL / Username / Nomor <span class="text-red-500">*</span>
+                    <label
+                        for="input-social-url"
+                        class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
+                    >
+                        URL / Username / Nomor <span class="text-red-500"
+                            >*</span
+                        >
                     </label>
                     {#if form.platform === 'instagram' || form.platform === 'tiktok' || form.platform === 'twitter' || form.platform === 'youtube'}
                         <div class="flex">
-                            <span class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl">@</span>
+                            <span
+                                class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl"
+                                >@</span
+                            >
                             <input
                                 id="input-social-url"
                                 bind:value={form.url}
                                 type="text"
                                 placeholder="username_toko"
-                                class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form.errors.url ? 'border-red-400' : ''}"
+                                class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
+                                    .errors.url
+                                    ? 'border-red-400'
+                                    : ''}"
                             />
                         </div>
                     {:else if form.platform === 'whatsapp'}
                         <div class="flex">
-                            <span class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl">+</span>
+                            <span
+                                class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl"
+                                >+</span
+                            >
                             <input
                                 id="input-social-url"
                                 bind:value={form.url}
                                 type="text"
                                 placeholder="6281234567890"
-                                class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form.errors.url ? 'border-red-400' : ''}"
+                                class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
+                                    .errors.url
+                                    ? 'border-red-400'
+                                    : ''}"
                             />
                         </div>
                     {:else}
@@ -584,25 +767,41 @@
                             bind:value={form.url}
                             type="text"
                             placeholder="https://..."
-                            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form.errors.url ? 'border-red-400' : ''}"
+                            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
+                                .errors.url
+                                ? 'border-red-400'
+                                : ''}"
                         />
                     {/if}
                     {#if form.errors.url}
-                        <p class="text-xs text-red-500 mt-1">{form.errors.url}</p>
+                        <p class="text-xs text-red-500 mt-1">
+                            {form.errors.url}
+                        </p>
                     {:else}
                         <p class="text-[10px] text-slate-400 mt-1">
                             {#if form.platform === 'instagram' || form.platform === 'tiktok'}
-                                Masukkan username tanpa @ (contoh: <code>bizmate.official</code>)
+                                Masukkan username tanpa @ (contoh: <code
+                                    >bizmate.official</code
+                                >)
                             {:else if form.platform === 'whatsapp'}
-                                Nomor lengkap dengan kode negara, tanpa + (contoh: <code>6281234567890</code>)
+                                Nomor lengkap dengan kode negara, tanpa +
+                                (contoh: <code>6281234567890</code>)
                             {:else if form.platform === 'twitter'}
-                                Username Twitter/X tanpa @ (contoh: <code>bizmate_id</code>)
+                                Username Twitter/X tanpa @ (contoh: <code
+                                    >bizmate_id</code
+                                >)
                             {:else if form.platform === 'youtube'}
-                                Username channel YouTube (contoh: <code>BizmateOfficial</code>)
+                                Username channel YouTube (contoh: <code
+                                    >BizmateOfficial</code
+                                >)
                             {:else if form.platform === 'telegram'}
-                                Username Telegram tanpa @ (contoh: <code>bizmatechannel</code>)
+                                Username Telegram tanpa @ (contoh: <code
+                                    >bizmatechannel</code
+                                >)
                             {:else}
-                                URL lengkap (contoh: <code>https://shopee.co.id/bizmate</code>)
+                                URL lengkap (contoh: <code
+                                    >https://shopee.co.id/bizmate</code
+                                >)
                             {/if}
                         </p>
                     {/if}
@@ -629,12 +828,15 @@
                 </div>
 
                 <!-- Buttons -->
-                <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-4">
+                <div
+                    class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-4"
+                >
                     <button
                         type="button"
                         onclick={closeModal}
                         class="px-5 py-3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-2xl text-xs transition duration-200 uppercase tracking-wider font-outfit"
-                    >Batal</button>
+                        >Batal</button
+                    >
                     <button
                         type="submit"
                         disabled={form.processing}
@@ -662,15 +864,23 @@
             onclick={() => (deleteModalOpen = false)}
         ></div>
 
-        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto">
+        <div
+            class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+        >
+            <div
+                class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+            >
                 <i class="ti ti-alert-triangle"></i>
             </div>
-            <h4 class="font-outfit font-black text-xl text-center text-slate-800 mb-2">
+            <h4
+                class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+            >
                 Hapus Akun Sosmed?
             </h4>
             <p class="text-sm text-center text-slate-500 font-medium mb-8">
-                Akun <strong>{itemToDelete?.label}</strong> ({getPlatformName(itemToDelete?.platform)}) akan dihapus secara permanen.
+                Akun <strong>{itemToDelete?.label}</strong> ({getPlatformName(
+                    itemToDelete?.platform,
+                )}) akan dihapus secara permanen.
             </p>
             <div class="flex items-center gap-3">
                 <button

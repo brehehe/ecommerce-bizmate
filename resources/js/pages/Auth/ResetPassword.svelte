@@ -4,11 +4,7 @@
     import { showToast } from '@/utils/toast';
     import { untrack } from 'svelte';
 
-    let {
-        token = '',
-        email = '',
-        storeName: initialStoreName = '',
-    } = $props();
+    let { token = '', email = '', storeName: initialStoreName = '' } = $props();
 
     const primaryColor = $derived(
         (page.props as any).theme?.primary_color || '#0c4cb4',

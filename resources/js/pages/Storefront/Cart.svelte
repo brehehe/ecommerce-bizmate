@@ -15,7 +15,7 @@
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
 
     const storeSettings = $derived((page.props as any).settings || {});
-    
+
     // Store Open Logic
     const isStoreOpen = $derived.by(() => {
         if (storeSettings.holiday_mode) return false;
@@ -23,19 +23,28 @@
         if (!storeSettings.operational_hours) return true;
 
         const now = new Date();
-        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const days = [
+            'sunday',
+            'monday',
+            'tuesday',
+            'wednesday',
+            'thursday',
+            'friday',
+            'saturday',
+        ];
         const currentDay = days[now.getDay()];
         const currentHours = storeSettings.operational_hours[currentDay];
 
         if (!currentHours || !currentHours.active) return false;
 
         const currentTime = now.getHours() * 60 + now.getMinutes();
-        
+
         const openParts = currentHours.open.split(':');
         const openTime = parseInt(openParts[0]) * 60 + parseInt(openParts[1]);
 
         const closeParts = currentHours.close.split(':');
-        const closeTime = parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
+        const closeTime =
+            parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
 
         return currentTime >= openTime && currentTime <= closeTime;
     });
@@ -631,7 +640,10 @@
 
     function handleCheckout() {
         if (!isStoreOpen) {
-            showToast('Toko sedang tutup. Checkout tidak tersedia saat ini.', 'error');
+            showToast(
+                'Toko sedang tutup. Checkout tidak tersedia saat ini.',
+                'error',
+            );
             return;
         }
         if (selectedItems.length === 0) return;
@@ -1580,13 +1592,29 @@
                         </div>
 
                         {#if !isStoreOpen}
-                            <div class="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-4 flex gap-3 items-start mb-4 text-left">
-                                <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                                    <i class="ti ti-clock-pause text-amber-600 text-lg"></i>
+                            <div
+                                class="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-4 flex gap-3 items-start mb-4 text-left"
+                            >
+                                <div
+                                    class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5"
+                                >
+                                    <i
+                                        class="ti ti-clock-pause text-amber-600 text-lg"
+                                    ></i>
                                 </div>
                                 <div class="min-w-0">
-                                    <h4 class="font-bold text-amber-800 text-xs uppercase tracking-tight">Toko Sedang Tutup</h4>
-                                    <p class="text-[10px] text-amber-700 font-semibold mt-1 leading-snug">Mohon maaf, Anda tidak dapat melakukan checkout saat ini karena toko sedang tutup</p>
+                                    <h4
+                                        class="font-bold text-amber-800 text-xs uppercase tracking-tight"
+                                    >
+                                        Toko Sedang Tutup
+                                    </h4>
+                                    <p
+                                        class="text-[10px] text-amber-700 font-semibold mt-1 leading-snug"
+                                    >
+                                        Mohon maaf, Anda tidak dapat melakukan
+                                        checkout saat ini karena toko sedang
+                                        tutup
+                                    </p>
                                 </div>
                             </div>
                         {/if}
@@ -1594,7 +1622,8 @@
                         <!-- Checkout Button (Image 1 Style) -->
                         <button
                             onclick={handleCheckout}
-                            disabled={selectedItems.length === 0 || !isStoreOpen}
+                            disabled={selectedItems.length === 0 ||
+                                !isStoreOpen}
                             style="background-color: {primary}; border-radius: 12px;"
                             class="w-full py-3.5 font-bold text-sm text-white flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition duration-200 cursor-pointer border-0"
                         >

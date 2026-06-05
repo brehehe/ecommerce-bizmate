@@ -11,7 +11,7 @@
         onAdded = () => {},
         primary = '#0c4cb4',
         secondary = '#fa7315',
-        user = null as any
+        user = null as any,
     } = $props();
 
     let selectedOptions: Record<string, number> = $state({});
@@ -29,8 +29,8 @@
 
     const hasVariations = $derived(
         product &&
-        (product.variations?.length ?? 0) > 0 &&
-        (product.variants?.length ?? 0) > 0,
+            (product.variations?.length ?? 0) > 0 &&
+            (product.variants?.length ?? 0) > 0,
     );
 
     const variationCount = $derived(product?.variations?.length ?? 0);
@@ -161,7 +161,9 @@
             ? matchingVariant.product_stock.min_purchase
             : baseMinPurchase,
     );
-    const isInStock = $derived(product && (currentIsUnlimited || currentStock > 0));
+    const isInStock = $derived(
+        product && (currentIsUnlimited || currentStock > 0),
+    );
 
     // ═══════════════════════════════════════
     //  PRICE
@@ -217,7 +219,9 @@
         }
         for (const key of Object.keys(selectedOptions)) {
             const optId = selectedOptions[key];
-            const variation = product.variations?.find((v: any) => String(v.id) === key);
+            const variation = product.variations?.find(
+                (v: any) => String(v.id) === key,
+            );
             const optImg = getOptionImage(optId, variation?.name || '');
             if (optImg) return optImg;
         }
@@ -258,7 +262,11 @@
         if (currentIsUnlimited || qty < currentStock) {
             qty++;
         } else {
-            showToast(`Maksimal pembelian ${currentStock} pcs sesuai stok tersedia.`, 'info', 'top');
+            showToast(
+                `Maksimal pembelian ${currentStock} pcs sesuai stok tersedia.`,
+                'info',
+                'top',
+            );
         }
     }
 
@@ -270,7 +278,11 @@
         }
 
         if (hasVariations && !fullySelected) {
-            showToast('Silakan pilih variasi produk terlebih dahulu.', 'error', 'top');
+            showToast(
+                'Silakan pilih variasi produk terlebih dahulu.',
+                'error',
+                'top',
+            );
             return;
         }
 
@@ -281,22 +293,30 @@
 
         processing = true;
 
-        router.post('/cart', {
-            product_id: product.id,
-            product_variant_id: matchingVariant ? matchingVariant.id : null,
-            quantity: qty,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                processing = false;
-                onAdded();
-                onClose();
+        router.post(
+            '/cart',
+            {
+                product_id: product.id,
+                product_variant_id: matchingVariant ? matchingVariant.id : null,
+                quantity: qty,
             },
-            onError: () => {
-                showToast('Gagal menambahkan produk ke keranjang.', 'error', 'top');
-                processing = false;
-            }
-        });
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    processing = false;
+                    onAdded();
+                    onClose();
+                },
+                onError: () => {
+                    showToast(
+                        'Gagal menambahkan produk ke keranjang.',
+                        'error',
+                        'top',
+                    );
+                    processing = false;
+                },
+            },
+        );
     }
 </script>
 
@@ -322,7 +342,9 @@
         </div>
 
         <!-- Header Title + Close -->
-        <div class="px-5 pt-2 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div
+            class="px-5 pt-2 pb-4 border-b border-slate-100 flex items-center justify-between shrink-0"
+        >
             <h3 class="text-base font-black text-slate-800">Varian produk</h3>
             <button
                 onclick={onClose}
@@ -334,8 +356,12 @@
         </div>
 
         <!-- Product Info -->
-        <div class="px-5 py-4 border-b border-slate-100 flex gap-4 items-center shrink-0">
-            <div class="w-20 h-20 rounded-2xl overflow-hidden border border-slate-200 shrink-0 bg-white shadow-sm">
+        <div
+            class="px-5 py-4 border-b border-slate-100 flex gap-4 items-center shrink-0"
+        >
+            <div
+                class="w-20 h-20 rounded-2xl overflow-hidden border border-slate-200 shrink-0 bg-white shadow-sm"
+            >
                 <img
                     src={displayImage}
                     alt={product.name}
@@ -352,7 +378,9 @@
                     </p>
                 {/if}
                 <p class="text-xs text-slate-500 mt-1">
-                    {hasVariations && !fullySelected ? 'Pilih variasi terlebih dahulu' : product.name}
+                    {hasVariations && !fullySelected
+                        ? 'Pilih variasi terlebih dahulu'
+                        : product.name}
                 </p>
             </div>
         </div>
@@ -370,22 +398,44 @@
                                     Pilih {variation.name}:
                                 </span>
                                 {#if selLabel}
-                                    <span class="text-sm font-bold" style="color: {primary};">
+                                    <span
+                                        class="text-sm font-bold"
+                                        style="color: {primary};"
+                                    >
                                         {selLabel}
                                     </span>
                                 {/if}
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 {#each variation.options as opt}
-                                    {@const optImg = getOptionImage(opt.id, variation.name)}
-                                    {@const available = isOptionAvailable(opt.id)}
-                                    {@const sel = isSelected(String(variation.id), opt.id)}
+                                    {@const optImg = getOptionImage(
+                                        opt.id,
+                                        variation.name,
+                                    )}
+                                    {@const available = isOptionAvailable(
+                                        opt.id,
+                                    )}
+                                    {@const sel = isSelected(
+                                        String(variation.id),
+                                        opt.id,
+                                    )}
                                     <button
-                                        onclick={() => available && selectOption(String(variation.id), opt.id)}
+                                        onclick={() =>
+                                            available &&
+                                            selectOption(
+                                                String(variation.id),
+                                                opt.id,
+                                            )}
                                         class="relative flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 text-sm font-bold transition duration-150
-                                        {sel ? 'shadow-sm' : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
-                                        {!available ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}"
-                                        style={sel ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};` : ''}
+                                        {sel
+                                            ? 'shadow-sm'
+                                            : 'border-slate-200 text-slate-700 bg-white hover:border-slate-300'}
+                                        {!available
+                                            ? 'opacity-40 cursor-not-allowed'
+                                            : 'cursor-pointer'}"
+                                        style={sel
+                                            ? `border-color: ${secondary}; background: ${withOpacity(secondary, 0.03)}; color: ${secondary};`
+                                            : ''}
                                         disabled={!available}
                                         aria-label={opt.name}
                                     >
@@ -406,9 +456,13 @@
             {/if}
 
             <!-- Quantity Selector -->
-            <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div
+                class="flex items-center justify-between pt-4 border-t border-slate-100"
+            >
                 <div>
-                    <span class="text-sm font-black text-slate-700 block">Jumlah</span>
+                    <span class="text-sm font-black text-slate-700 block"
+                        >Jumlah</span
+                    >
                     <span class="text-xs text-slate-400 font-medium">
                         {#if hasVariations && !fullySelected}
                             Pilih variasi terlebih dahulu
@@ -418,7 +472,9 @@
                     </span>
                 </div>
 
-                <div class="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-0.5">
+                <div
+                    class="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-slate-50 p-0.5"
+                >
                     <button
                         onclick={decreaseQty}
                         disabled={qty <= currentMinPurchase}
@@ -427,7 +483,9 @@
                     >
                         <i class="ti ti-minus text-sm"></i>
                     </button>
-                    <span class="w-12 text-center text-sm font-black text-slate-800">
+                    <span
+                        class="w-12 text-center text-sm font-black text-slate-800"
+                    >
                         {qty}
                     </span>
                     <button
@@ -449,15 +507,35 @@
         >
             <button
                 onclick={submitAddToCart}
-                disabled={processing || (hasVariations && !fullySelected) || !isInStock}
+                disabled={processing ||
+                    (hasVariations && !fullySelected) ||
+                    !isInStock}
                 aria-label="Tambah ke Keranjang"
                 class="w-full py-4 px-4 rounded-2xl text-white font-black text-sm uppercase tracking-wider transition duration-200 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                style="background-color: {primary}; box-shadow: 0 4px 14px {withOpacity(primary, 0.35)};"
+                style="background-color: {primary}; box-shadow: 0 4px 14px {withOpacity(
+                    primary,
+                    0.35,
+                )};"
             >
                 {#if processing}
-                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                        class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                     </svg>
                     Memproses...
                 {:else}

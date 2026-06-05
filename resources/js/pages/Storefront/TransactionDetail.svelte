@@ -53,7 +53,8 @@
 
     function prevPreview() {
         if (previewItems.length > 0) {
-            previewIndex = (previewIndex - 1 + previewItems.length) % previewItems.length;
+            previewIndex =
+                (previewIndex - 1 + previewItems.length) % previewItems.length;
         }
     }
 
@@ -77,7 +78,9 @@
 
     $effect(() => {
         if (userBankAccounts && userBankAccounts.length > 0) {
-            const primaryAcc = userBankAccounts.find((acc: any) => acc.is_primary) || userBankAccounts[0];
+            const primaryAcc =
+                userBankAccounts.find((acc: any) => acc.is_primary) ||
+                userBankAccounts[0];
             if (primaryAcc) {
                 bankName = primaryAcc.bank_name || '';
                 accountNumber = primaryAcc.account_number || '';
@@ -87,12 +90,15 @@
     });
 
     const activeRefundRequest = $derived(
-        transaction.active_refund_request ?? transaction.refund_requests?.[0] ?? null
+        transaction.active_refund_request ??
+            transaction.refund_requests?.[0] ??
+            null,
     );
 
     const canCancelDirectly = $derived(transaction.status === 'belum_bayar');
     const canRequestCancel = $derived(
-        ['menunggu', 'diproses'].includes(transaction.status) && !activeRefundRequest
+        ['menunggu', 'diproses'].includes(transaction.status) &&
+            !activeRefundRequest,
     );
     const canCancel = $derived(canCancelDirectly || canRequestCancel);
     const canChangePayment = $derived(transaction.status === 'belum_bayar');
@@ -110,21 +116,56 @@
     let changingPayment = $state(false);
 
     const deliverySteps = [
-        { key: 'dikemas', label: 'Dikemas', icon: 'ti-package', desc: 'Paket sedang dikemas' },
-        { key: 'out_for_pickup', label: 'Dijemput', icon: 'ti-building-warehouse', desc: 'Paket sudah dipick oleh kurir' },
-        { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck', desc: 'Dalam perjalanan ke tujuan' },
-        { key: 'arrived', label: 'Tiba', icon: 'ti-map-pin-check', desc: 'Paket telah tiba di tujuan' },
-        { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check', desc: 'Pesanan selesai dikonfirmasi pelanggan' },
+        {
+            key: 'dikemas',
+            label: 'Dikemas',
+            icon: 'ti-package',
+            desc: 'Paket sedang dikemas',
+        },
+        {
+            key: 'out_for_pickup',
+            label: 'Dijemput',
+            icon: 'ti-building-warehouse',
+            desc: 'Paket sudah dipick oleh kurir',
+        },
+        {
+            key: 'dikirim',
+            label: 'Dikirim',
+            icon: 'ti-truck',
+            desc: 'Dalam perjalanan ke tujuan',
+        },
+        {
+            key: 'arrived',
+            label: 'Tiba',
+            icon: 'ti-map-pin-check',
+            desc: 'Paket telah tiba di tujuan',
+        },
+        {
+            key: 'selesai',
+            label: 'Selesai',
+            icon: 'ti-circle-check',
+            desc: 'Pesanan selesai dikonfirmasi pelanggan',
+        },
     ];
 
     const storeCourierCurrentStatus = $derived(
         transaction.status === 'selesai'
             ? 'selesai'
-            : (transaction.delivery_arrived_at ? 'arrived' : transaction.status)
+            : transaction.delivery_arrived_at
+              ? 'arrived'
+              : transaction.status,
     );
 
-    function getStoreCourierStepState(stepKey: string): 'done' | 'active' | 'pending' {
-        const statusOrder = ['dikemas', 'out_for_pickup', 'dikirim', 'arrived', 'selesai'];
+    function getStoreCourierStepState(
+        stepKey: string,
+    ): 'done' | 'active' | 'pending' {
+        const statusOrder = [
+            'dikemas',
+            'out_for_pickup',
+            'dikirim',
+            'arrived',
+            'selesai',
+        ];
         const currentIdx = statusOrder.indexOf(storeCourierCurrentStatus);
         const stepIdx = statusOrder.indexOf(stepKey);
 
@@ -150,17 +191,22 @@
     let reviewPreviews: { url: string; type: string }[] = $state([]);
     let submittingReview = $state(false);
     let reviewIsAnonymous = $state(false);
-    
+
     // Countdown and Auto-complete Extension
     let countdownText = $state('');
     let isExpired = $state(false);
     let extending = $state(false);
 
     $effect(() => {
-        if (transaction.status === 'belum_bayar' && transaction.payment_expires_at) {
+        if (
+            transaction.status === 'belum_bayar' &&
+            transaction.payment_expires_at
+        ) {
             const updateCountdown = () => {
                 const now = new Date().getTime();
-                const expiry = new Date(transaction.payment_expires_at).getTime();
+                const expiry = new Date(
+                    transaction.payment_expires_at,
+                ).getTime();
                 const distance = expiry - now;
 
                 if (distance <= 0) {
@@ -171,7 +217,9 @@
                 }
 
                 const hours = Math.floor(distance / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const minutes = Math.floor(
+                    (distance % (1000 * 60 * 60)) / (1000 * 60),
+                );
                 const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
                 countdownText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -185,24 +233,34 @@
 
     function extendConfirmation() {
         if (extending) return;
-        if (!confirm('Apakah Anda yakin ingin memperpanjang jangka waktu penerimaan pesanan ini?')) return;
-        
+        if (
+            !confirm(
+                'Apakah Anda yakin ingin memperpanjang jangka waktu penerimaan pesanan ini?',
+            )
+        )
+            return;
+
         extending = true;
         router.post(
             `/transactions/${transaction.id}/extend-auto-complete`,
             {},
             {
                 onSuccess: () => {
-                    showToast('Jangka waktu penerimaan pesanan berhasil diperpanjang.', 'success');
+                    showToast(
+                        'Jangka waktu penerimaan pesanan berhasil diperpanjang.',
+                        'success',
+                    );
                 },
                 onError: (errors) => {
-                    const errMsg = Object.values(errors)[0] || 'Gagal memperpanjang jangka waktu.';
+                    const errMsg =
+                        Object.values(errors)[0] ||
+                        'Gagal memperpanjang jangka waktu.';
                     showToast(errMsg, 'error');
                 },
                 onFinish: () => {
                     extending = false;
-                }
-            }
+                },
+            },
         );
     }
 
@@ -259,17 +317,28 @@
     };
 
     const isUnderMinLimit = $derived(
-        !canCancelDirectly && (
-            (refundMethod === 'transfer' && Number(transaction.grand_total) < Number((page.props as any).refund_min_amount_transfer ?? 0)) ||
-            (refundMethod === 'poin' && Number(transaction.grand_total) < Number((page.props as any).refund_min_amount_points ?? 0))
-        )
+        !canCancelDirectly &&
+            ((refundMethod === 'transfer' &&
+                Number(transaction.grand_total) <
+                    Number(
+                        (page.props as any).refund_min_amount_transfer ?? 0,
+                    )) ||
+                (refundMethod === 'poin' &&
+                    Number(transaction.grand_total) <
+                        Number(
+                            (page.props as any).refund_min_amount_points ?? 0,
+                        ))),
     );
 
     const isSubmitCancelDisabled = $derived(
-        cancellingOrder || 
-        !cancelReason.trim() || 
-        isUnderMinLimit || 
-        (!canCancelDirectly && refundMethod === 'transfer' && (!bankName.trim() || !accountNumber.trim() || !accountName.trim()))
+        cancellingOrder ||
+            !cancelReason.trim() ||
+            isUnderMinLimit ||
+            (!canCancelDirectly &&
+                refundMethod === 'transfer' &&
+                (!bankName.trim() ||
+                    !accountNumber.trim() ||
+                    !accountName.trim())),
     );
 
     // Check if mobile action bar should show
@@ -312,8 +381,15 @@
             };
 
             if (refundMethod === 'transfer') {
-                if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
-                    showToast('Data rekening bank harus diisi lengkap.', 'error');
+                if (
+                    !bankName.trim() ||
+                    !accountNumber.trim() ||
+                    !accountName.trim()
+                ) {
+                    showToast(
+                        'Data rekening bank harus diisi lengkap.',
+                        'error',
+                    );
                     cancellingOrder = false;
                     return;
                 }
@@ -330,7 +406,9 @@
                         showCancelModal = false;
                     },
                     onError: (errors) => {
-                        const errMsg = Object.values(errors)[0] || 'Gagal mengajukan pembatalan.';
+                        const errMsg =
+                            Object.values(errors)[0] ||
+                            'Gagal mengajukan pembatalan.';
                         showToast(errMsg, 'error');
                     },
                     onFinish: () => {
@@ -375,8 +453,7 @@
             `/transactions/${transaction.id}/complete`,
             {},
             {
-                onSuccess: () => {
-                },
+                onSuccess: () => {},
                 onError: () => {
                     showToast(
                         'Gagal mengonfirmasi penerimaan pesanan.',
@@ -556,14 +633,16 @@
 
     const isGateway = $derived(paymentMethod?.type === 'gateway');
     const isQris = $derived(
-        paymentMethod?.name?.toLowerCase().includes('qris')
+        paymentMethod?.name?.toLowerCase().includes('qris'),
     );
     const qrisData = $derived.by(() => {
-        if (!isQris || !latestPayment || !latestPayment.gateway_response) return null;
+        if (!isQris || !latestPayment || !latestPayment.gateway_response)
+            return null;
         try {
-            const resp = typeof latestPayment.gateway_response === 'string'
-                ? JSON.parse(latestPayment.gateway_response)
-                : latestPayment.gateway_response;
+            const resp =
+                typeof latestPayment.gateway_response === 'string'
+                    ? JSON.parse(latestPayment.gateway_response)
+                    : latestPayment.gateway_response;
             return {
                 image: resp?.qris_image ?? '',
                 string: resp?.qris_string ?? '',
@@ -615,7 +694,7 @@
                 y: number,
                 width: number,
                 height: number,
-                radius: number
+                radius: number,
             ): void => {
                 if (typeof (c as any).roundRect === 'function') {
                     (c as any).roundRect(x, y, width, height, radius);
@@ -625,7 +704,12 @@
                     c.lineTo(x + width - radius, y);
                     c.quadraticCurveTo(x + width, y, x + width, y + radius);
                     c.lineTo(x + width, y + height - radius);
-                    c.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                    c.quadraticCurveTo(
+                        x + width,
+                        y + height,
+                        x + width - radius,
+                        y + height,
+                    );
                     c.lineTo(x + radius, y + height);
                     c.quadraticCurveTo(x, y + height, x, y + height - radius);
                     c.lineTo(x, y + radius);
@@ -641,7 +725,7 @@
                 x: number,
                 y: number,
                 maxWidth: number,
-                lineHeight: number
+                lineHeight: number,
             ): number => {
                 const words = text.split(' ');
                 let line = '';
@@ -684,7 +768,7 @@
             // 4. Draw QRIS Image inside Viewport
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            
+
             // Wait for image to load before drawing and exporting
             await new Promise<void>((resolve, reject) => {
                 img.onload = () => resolve();
@@ -724,12 +808,43 @@
             // Draw Steps
             ctx.font = '500 12px system-ui, -apple-system, sans-serif';
             ctx.fillStyle = '#64748b';
-            
+
             let nextY = 512;
-            nextY = drawWrappedText(ctx, '1. Buka e-wallet (GoPay, OVO, Dana, LinkAja) atau m-Banking Anda.', 70, nextY, 360, 18) + 20;
-            nextY = drawWrappedText(ctx, '2. Scan QR Code di atas.', 70, nextY, 360, 18) + 20;
-            nextY = drawWrappedText(ctx, `3. Pastikan nama merchant adalah ${storeName || 'Aplikasi'}.`, 70, nextY, 360, 18) + 20;
-            drawWrappedText(ctx, '4. Masukkan nominal yang sesuai & selesaikan pembayaran.', 70, nextY, 360, 18);
+            nextY =
+                drawWrappedText(
+                    ctx,
+                    '1. Buka e-wallet (GoPay, OVO, Dana, LinkAja) atau m-Banking Anda.',
+                    70,
+                    nextY,
+                    360,
+                    18,
+                ) + 20;
+            nextY =
+                drawWrappedText(
+                    ctx,
+                    '2. Scan QR Code di atas.',
+                    70,
+                    nextY,
+                    360,
+                    18,
+                ) + 20;
+            nextY =
+                drawWrappedText(
+                    ctx,
+                    `3. Pastikan nama merchant adalah ${storeName || 'Aplikasi'}.`,
+                    70,
+                    nextY,
+                    360,
+                    18,
+                ) + 20;
+            drawWrappedText(
+                ctx,
+                '4. Masukkan nominal yang sesuai & selesaikan pembayaran.',
+                70,
+                nextY,
+                360,
+                18,
+            );
 
             // 6. Payment Detail Footer
             ctx.strokeStyle = '#f1f5f9';
@@ -761,7 +876,13 @@
             ctx.font = 'bold 12px monospace, Courier, monospace';
             ctx.fillStyle = '#94a3b8';
             ctx.textAlign = 'right';
-            ctx.fillText(transaction.transaction_number || transaction.invoice_number || '-', 450, 740);
+            ctx.fillText(
+                transaction.transaction_number ||
+                    transaction.invoice_number ||
+                    '-',
+                450,
+                740,
+            );
 
             // 7. Export and download
             const url = canvas.toDataURL('image/png');
@@ -769,9 +890,11 @@
             a.href = url;
             a.download = `QRIS-${transaction.transaction_number || transaction.invoice_number || 'Payment'}.png`;
             a.click();
-
         } catch (error) {
-            console.error('Failed to generate receipt QRIS image, falling back to raw download:', error);
+            console.error(
+                'Failed to generate receipt QRIS image, falling back to raw download:',
+                error,
+            );
             // Fallback to simple image download
             try {
                 const res = await fetch(qrisData.image);
@@ -839,7 +962,9 @@
         loadingTracking = true;
         trackingError = '';
         try {
-            const resp = await fetch(`/transactions/${transaction.id}/komerce/track`);
+            const resp = await fetch(
+                `/transactions/${transaction.id}/komerce/track`,
+            );
             const data = await resp.json();
             if (resp.ok && data.success) {
                 trackingHistory = data.history;
@@ -1101,52 +1226,135 @@
                 <div class="lg:col-span-2 space-y-4">
                     <!-- Refund Status Banner -->
                     {#if activeRefundRequest}
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4"
+                        >
                             <div class="h-1 w-full"></div>
                             <div class="p-5">
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold w-fit"
-                                          style="background-color: {refundStatusColors[activeRefundRequest.status]?.bg || '#f1f5f9'}; color: {refundStatusColors[activeRefundRequest.status]?.text || '#64748b'};">
-                                        <i class="ti ti-info-circle text-xs"></i>
-                                        Pengajuan Pembatalan: {refundStatusLabels[activeRefundRequest.status] ?? activeRefundRequest.status}
+                                <div
+                                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4"
+                                >
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold w-fit"
+                                        style="background-color: {refundStatusColors[
+                                            activeRefundRequest.status
+                                        ]?.bg ||
+                                            '#f1f5f9'}; color: {refundStatusColors[
+                                            activeRefundRequest.status
+                                        ]?.text || '#64748b'};"
+                                    >
+                                        <i class="ti ti-info-circle text-xs"
+                                        ></i>
+                                        Pengajuan Pembatalan: {refundStatusLabels[
+                                            activeRefundRequest.status
+                                        ] ?? activeRefundRequest.status}
                                     </span>
-                                    <span class="text-xs text-slate-400 self-start sm:self-auto font-medium">{fmtDate(activeRefundRequest.created_at)}</span>
+                                    <span
+                                        class="text-xs text-slate-400 self-start sm:self-auto font-medium"
+                                        >{fmtDate(
+                                            activeRefundRequest.created_at,
+                                        )}</span
+                                    >
                                 </div>
                                 <div class="flex items-start gap-4">
-                                    <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                                         style="background-color: {primary}15; color: {primary};">
-                                        <i class="ti ti-receipt-refund text-xl"></i>
+                                    <div
+                                        class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+                                        style="background-color: {primary}15; color: {primary};"
+                                    >
+                                        <i class="ti ti-receipt-refund text-xl"
+                                        ></i>
                                     </div>
                                     <div class="flex-grow min-w-0">
-                                        <p class="font-bold text-slate-800 text-sm">Pengajuan Pembatalan & Refund</p>
-                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                            Anda telah mengajukan pembatalan untuk pesanan ini dengan alasan: <strong>"{activeRefundRequest.reason}"</strong>.
+                                        <p
+                                            class="font-bold text-slate-800 text-sm"
+                                        >
+                                            Pengajuan Pembatalan & Refund
                                         </p>
-                                        <div class="mt-3 bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs text-slate-600 space-y-2">
-                                            <div class="grid grid-cols-[100px_1fr] gap-2">
-                                                <span class="text-slate-400 font-medium">Metode Refund</span>
-                                                <span class="text-slate-700 font-semibold">: {activeRefundRequest.refund_method === 'poin' ? 'Poin Toko (Koin)' : 'Transfer Bank'}</span>
+                                        <p
+                                            class="text-xs text-slate-500 mt-1 leading-relaxed"
+                                        >
+                                            Anda telah mengajukan pembatalan
+                                            untuk pesanan ini dengan alasan: <strong
+                                                >"{activeRefundRequest.reason}"</strong
+                                            >.
+                                        </p>
+                                        <div
+                                            class="mt-3 bg-slate-50 rounded-xl p-3.5 border border-slate-100 text-xs text-slate-600 space-y-2"
+                                        >
+                                            <div
+                                                class="grid grid-cols-[100px_1fr] gap-2"
+                                            >
+                                                <span
+                                                    class="text-slate-400 font-medium"
+                                                    >Metode Refund</span
+                                                >
+                                                <span
+                                                    class="text-slate-700 font-semibold"
+                                                    >: {activeRefundRequest.refund_method ===
+                                                    'poin'
+                                                        ? 'Poin Toko (Koin)'
+                                                        : 'Transfer Bank'}</span
+                                                >
                                             </div>
-                                            <div class="grid grid-cols-[100px_1fr] gap-2">
-                                                <span class="text-slate-400 font-medium">Nominal Refund</span>
-                                                <span class="text-slate-700 font-bold" style="color: {primary}">: {fmt(activeRefundRequest.refund_amount)}</span>
+                                            <div
+                                                class="grid grid-cols-[100px_1fr] gap-2"
+                                            >
+                                                <span
+                                                    class="text-slate-400 font-medium"
+                                                    >Nominal Refund</span
+                                                >
+                                                <span
+                                                    class="text-slate-700 font-bold"
+                                                    style="color: {primary}"
+                                                    >: {fmt(
+                                                        activeRefundRequest.refund_amount,
+                                                    )}</span
+                                                >
                                             </div>
                                             {#if activeRefundRequest.refund_method === 'transfer'}
-                                                <div class="grid grid-cols-[100px_1fr] gap-2">
-                                                    <span class="text-slate-400 font-medium">Rekening</span>
-                                                    <span class="text-slate-750 font-semibold">: {activeRefundRequest.bank_name} - {activeRefundRequest.account_number} <br class="sm:hidden" /><span class="hidden sm:inline"> </span>a.n {activeRefundRequest.account_name}</span>
+                                                <div
+                                                    class="grid grid-cols-[100px_1fr] gap-2"
+                                                >
+                                                    <span
+                                                        class="text-slate-400 font-medium"
+                                                        >Rekening</span
+                                                    >
+                                                    <span
+                                                        class="text-slate-750 font-semibold"
+                                                        >: {activeRefundRequest.bank_name}
+                                                        - {activeRefundRequest.account_number}
+                                                        <br
+                                                            class="sm:hidden"
+                                                        /><span
+                                                            class="hidden sm:inline"
+                                                        >
+                                                        </span>a.n {activeRefundRequest.account_name}</span
+                                                    >
                                                 </div>
                                             {/if}
                                             {#if activeRefundRequest.notes_admin}
-                                                <div class="pt-2 border-t border-slate-200 mt-2 grid grid-cols-[100px_1fr] gap-2 text-slate-700">
-                                                    <span class="text-slate-400 font-medium">Catatan Admin</span>
-                                                    <span class="font-semibold">: {activeRefundRequest.notes_admin}</span>
+                                                <div
+                                                    class="pt-2 border-t border-slate-200 mt-2 grid grid-cols-[100px_1fr] gap-2 text-slate-700"
+                                                >
+                                                    <span
+                                                        class="text-slate-400 font-medium"
+                                                        >Catatan Admin</span
+                                                    >
+                                                    <span class="font-semibold"
+                                                        >: {activeRefundRequest.notes_admin}</span
+                                                    >
                                                 </div>
                                             {/if}
                                         </div>
                                         <div class="mt-4 flex gap-2">
-                                            <Link href={`/refunds/${activeRefundRequest.id}`} class="text-xs font-bold transition flex items-center gap-1 hover:underline" style="color: {primary};">
-                                                Detail Refund Saya <i class="ti ti-chevron-right text-xs"></i>
+                                            <Link
+                                                href={`/refunds/${activeRefundRequest.id}`}
+                                                class="text-xs font-bold transition flex items-center gap-1 hover:underline"
+                                                style="color: {primary};"
+                                            >
+                                                Detail Refund Saya <i
+                                                    class="ti ti-chevron-right text-xs"
+                                                ></i>
                                             </Link>
                                         </div>
                                     </div>
@@ -1232,24 +1440,39 @@
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
                         >
-                             <div class="flex items-center mb-4">
-                                    <div
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold font-outfit"
-                                        style="background-color:{currentStatusColor}"
-                                    >
-                                        <i class="ti {
-                                            transaction.status === 'belum_bayar' ? 'ti-cash' :
-                                            transaction.status === 'menunggu' ? 'ti-clock' :
-                                            transaction.status === 'diproses' ? 'ti-settings' :
-                                            transaction.status === 'dikemas' ? 'ti-package' :
-                                            transaction.status === 'out_for_pickup' ? 'ti-truck-delivery' :
-                                            transaction.status === 'dikirim' ? 'ti-truck' :
-                                            transaction.status === 'selesai' ? 'ti-circle-check' : 'ti-alert-circle'
-                                        } text-sm"></i>
-                                        {statusLabels[transaction.status] ??
-                                            transaction.status}
-                                    </div>
-                                <span class="ml-auto text-xs text-slate-400 font-medium"
+                            <div class="flex items-center mb-4">
+                                <div
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold font-outfit"
+                                    style="background-color:{currentStatusColor}"
+                                >
+                                    <i
+                                        class="ti {transaction.status ===
+                                        'belum_bayar'
+                                            ? 'ti-cash'
+                                            : transaction.status === 'menunggu'
+                                              ? 'ti-clock'
+                                              : transaction.status ===
+                                                  'diproses'
+                                                ? 'ti-settings'
+                                                : transaction.status ===
+                                                    'dikemas'
+                                                  ? 'ti-package'
+                                                  : transaction.status ===
+                                                      'out_for_pickup'
+                                                    ? 'ti-truck-delivery'
+                                                    : transaction.status ===
+                                                        'dikirim'
+                                                      ? 'ti-truck'
+                                                      : transaction.status ===
+                                                          'selesai'
+                                                        ? 'ti-circle-check'
+                                                        : 'ti-alert-circle'} text-sm"
+                                    ></i>
+                                    {statusLabels[transaction.status] ??
+                                        transaction.status}
+                                </div>
+                                <span
+                                    class="ml-auto text-xs text-slate-400 font-medium"
                                     >{fmtDate(transaction.created_at)}</span
                                 >
                             </div>
@@ -1265,7 +1488,12 @@
                                 {#if statusIndex >= 0}
                                     <div
                                         class="absolute left-[7.14%] top-6 sm:top-7 h-[3px] rounded-full z-0 transition-all duration-1000 ease-out"
-                                        style="background: linear-gradient(to right, {primary}, {secondary}); width: calc({statusIndex > 0 ? (statusIndex / (statusSteps.length - 1)) * 85.71 : 0}%);"
+                                        style="background: linear-gradient(to right, {primary}, {secondary}); width: calc({statusIndex >
+                                        0
+                                            ? (statusIndex /
+                                                  (statusSteps.length - 1)) *
+                                              85.71
+                                            : 0}%);"
                                     ></div>
                                 {/if}
 
@@ -1286,7 +1514,10 @@
                                         >
                                             {#if isCurrent}
                                                 <!-- Pulse ring for current active step -->
-                                                <div class="absolute inset-0 rounded-full animate-ping opacity-25" style="background-color: {primary}"></div>
+                                                <div
+                                                    class="absolute inset-0 rounded-full animate-ping opacity-25"
+                                                    style="background-color: {primary}"
+                                                ></div>
                                             {/if}
                                             <i
                                                 class="ti {step.icon} text-xs sm:text-sm transition-colors duration-500"
@@ -1297,9 +1528,11 @@
                                                       : 'color: #94a3b8'}
                                             ></i>
                                         </div>
-                                        
+
                                         <!-- Step Label -->
-                                        <div class="h-6 sm:h-8 flex items-start justify-center">
+                                        <div
+                                            class="h-6 sm:h-8 flex items-start justify-center"
+                                        >
                                             <span
                                                 class="text-[8px] sm:text-[10px] font-black text-center leading-tight max-w-[50px] sm:max-w-[76px] transition-colors duration-500 font-outfit"
                                                 style={isCurrent
@@ -1317,21 +1550,34 @@
 
                             <!-- Batas Waktu Pembayaran (Countdown) -->
                             {#if transaction.status === 'belum_bayar' && countdownText}
-                                <div class="mt-4 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-between gap-3">
+                                <div
+                                    class="mt-4 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-between gap-3"
+                                >
                                     <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                                            <i class="ti ti-clock-hour-4 text-rose-650 text-base"></i>
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0"
+                                        >
+                                            <i
+                                                class="ti ti-clock-hour-4 text-rose-650 text-base"
+                                            ></i>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-bold text-slate-800 leading-tight">
+                                            <p
+                                                class="text-xs font-bold text-slate-800 leading-tight"
+                                            >
                                                 Batas Waktu Pembayaran
                                             </p>
-                                            <p class="text-[10px] text-slate-500 mt-0.5">
-                                                Selesaikan pembayaran sebelum waktu habis.
+                                            <p
+                                                class="text-[10px] text-slate-500 mt-0.5"
+                                            >
+                                                Selesaikan pembayaran sebelum
+                                                waktu habis.
                                             </p>
                                         </div>
                                     </div>
-                                    <div class="px-3 py-1 bg-rose-100 border border-rose-200 rounded-lg text-rose-700 font-mono text-sm font-black tracking-wider animate-pulse">
+                                    <div
+                                        class="px-3 py-1 bg-rose-100 border border-rose-200 rounded-lg text-rose-700 font-mono text-sm font-black tracking-wider animate-pulse"
+                                    >
                                         {countdownText}
                                     </div>
                                 </div>
@@ -1339,17 +1585,30 @@
 
                             <!-- Auto Complete Deadline & Extend Extension Button -->
                             {#if transaction.status === 'dikirim' && transaction.auto_complete_at}
-                                <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div
+                                    class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3"
+                                >
                                     <div class="flex items-center gap-2 flex-1">
-                                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                            <i class="ti ti-calendar-time text-blue-600 text-base"></i>
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0"
+                                        >
+                                            <i
+                                                class="ti ti-calendar-time text-blue-600 text-base"
+                                            ></i>
                                         </div>
                                         <div>
-                                            <p class="text-xs font-bold text-slate-800 leading-tight">
+                                            <p
+                                                class="text-xs font-bold text-slate-800 leading-tight"
+                                            >
                                                 Konfirmasi Penerimaan Otomatis
                                             </p>
-                                            <p class="text-[10px] text-slate-500 mt-0.5">
-                                                Pesanan akan selesai otomatis pada {fmtDate(transaction.auto_complete_at)}.
+                                            <p
+                                                class="text-[10px] text-slate-500 mt-0.5"
+                                            >
+                                                Pesanan akan selesai otomatis
+                                                pada {fmtDate(
+                                                    transaction.auto_complete_at,
+                                                )}.
                                             </p>
                                         </div>
                                     </div>
@@ -1359,10 +1618,14 @@
                                             disabled={extending}
                                             class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
                                         >
-                                            {extending ? 'Memproses...' : 'Tambah Jangka Waktu'}
+                                            {extending
+                                                ? 'Memproses...'
+                                                : 'Tambah Jangka Waktu'}
                                         </button>
                                     {:else}
-                                        <span class="text-[10px] bg-slate-100 border border-slate-200 text-slate-500 px-2 py-1 rounded-md font-bold self-start md:self-auto whitespace-nowrap">
+                                        <span
+                                            class="text-[10px] bg-slate-100 border border-slate-200 text-slate-500 px-2 py-1 rounded-md font-bold self-start md:self-auto whitespace-nowrap"
+                                        >
                                             Jangka Waktu Telah Diperpanjang
                                         </span>
                                     {/if}
@@ -1535,7 +1798,14 @@
                                                 {#each activeReturn.media as media, idx}
                                                     <button
                                                         type="button"
-                                                        onclick={() => openPreview(activeReturn.media.map(m => m.file_path), idx)}
+                                                        onclick={() =>
+                                                            openPreview(
+                                                                activeReturn.media.map(
+                                                                    (m) =>
+                                                                        m.file_path,
+                                                                ),
+                                                                idx,
+                                                            )}
                                                         class="relative w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 hover:opacity-85 transition group p-0 focus:outline-none"
                                                     >
                                                         {#if media.file_type === 'video'}
@@ -1707,6 +1977,291 @@
                             </div>
                         {/if}
 
+ <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
+                    {#if canUploadProof}
+                        <div
+                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
+                        >
+                            <div
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
+                            >
+                                <i
+                                    class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
+                                ></i>
+                                <span class="font-bold text-rose-700 text-sm"
+                                    >Upload Bukti Pembayaran</span
+                                >
+                            </div>
+                            <div class="p-4">
+                                <div
+                                    class="bg-slate-50 rounded-xl p-3 border border-red-300 mb-3"
+                                >
+                                    <p class="text-xs text-slate-500 mb-0.5">
+                                        Transfer ke:
+                                    </p>
+                                    <p class="text-sm font-bold text-slate-800">
+                                        {paymentMethod?.bank_name}
+                                    </p>
+                                    <p
+                                        class="text-xl font-black text-slate-900"
+                                    >
+                                        {paymentMethod?.account_number}
+                                    </p>
+                                    <p class="text-xs text-slate-500">
+                                        a.n. {paymentMethod?.account_name}
+                                    </p>
+                                    <div
+                                        class="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between"
+                                    >
+                                        <p class="text-xs text-rose-500">
+                                            Jumlah transfer:
+                                        </p>
+                                        <p
+                                            class="text-base font-black text-rose-600"
+                                        >
+                                            {fmt(transaction.grand_total)}
+                                        </p>
+                                    </div>
+                                </div>
+                                {#if latestPayment?.proof_image}
+                                    <div class="mb-3">
+                                        <p class="text-xs text-slate-500 mb-1">
+                                            Bukti bayar yang diunggah:
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                openPreview(
+                                                    [latestPayment.proof_image],
+                                                    0,
+                                                )}
+                                            class="group relative overflow-hidden rounded-xl border border-slate-200 block text-left p-0 focus:outline-none"
+                                        >
+                                            <img
+                                                src={formatImagePath(
+                                                    latestPayment.proof_image,
+                                                )}
+                                                alt="Bukti Pembayaran"
+                                                class="w-28 h-28 object-cover hover:scale-105 transition duration-300"
+                                            />
+                                            <div
+                                                class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none"
+                                            >
+                                                <i
+                                                    class="ti ti-zoom-in text-base"
+                                                ></i>
+                                            </div>
+                                        </button>
+                                        <p class="text-xs text-slate-400 mt-1">
+                                            Diunggah {fmtDate(
+                                                latestPayment.proof_uploaded_at,
+                                            )}
+                                            {#if latestPayment.status === 'rejected' && latestPayment.notes}
+                                                <span
+                                                    class="text-rose-500 font-semibold"
+                                                >
+                                                    · Ditolak: {latestPayment.notes}</span
+                                                >
+                                            {/if}
+                                        </p>
+                                    </div>
+                                {/if}
+                                <button
+                                    onclick={() => (showUploadModal = true)}
+                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
+                                >
+                                    <i class="ti ti-upload text-sm"></i>
+                                    {latestPayment?.proof_image
+                                        ? 'Ganti Bukti Bayar'
+                                        : 'Upload Bukti Bayar'}
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
+
+                    <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
+                    {#if isGateway && transaction.status === 'belum_bayar'}
+                        <div
+                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
+                        >
+                            <div
+                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
+                            >
+                                <i
+                                    class="ti ti-credit-card text-base animate-pulse text-rose-600"
+                                ></i>
+                                <span class="font-bold text-rose-700 text-sm"
+                                    >Selesaikan Pembayaran</span
+                                >
+                            </div>
+                            <div class="p-4">
+                                {#if isQris && qrisData}
+                                    <div
+                                        class="flex flex-col items-center justify-center p-5 bg-white border border-rose-100 rounded-3xl shadow-xl shadow-rose-50/30 relative overflow-hidden"
+                                    >
+                                        <!-- Merchant Info -->
+                                        <div class="text-center mb-4">
+                                            <h4
+                                                class="font-bold text-slate-800 text-sm"
+                                            >
+                                                {storeName ||
+                                                    'Merchant Pembayaran'}
+                                            </h4>
+                                            <p
+                                                class="text-[9px] text-slate-400 font-medium tracking-wide"
+                                            >
+                                                NMID: ID102030405060
+                                            </p>
+                                        </div>
+
+                                        <!-- QR Code Wrapper (No green corners, no scanner line) -->
+                                        <div
+                                            class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80"
+                                        >
+                                            {#if qrisData.image}
+                                                <img
+                                                    src={qrisData.image}
+                                                    alt="QRIS Code"
+                                                    class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
+                                                />
+                                            {:else}
+                                                <div
+                                                    class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center"
+                                                >
+                                                    <i
+                                                        class="ti ti-qrcode text-4xl text-slate-400"
+                                                    ></i>
+                                                </div>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Instructions / Tips -->
+                                        <div
+                                            class="mt-4 w-full bg-slate-50/80 rounded-2xl p-3 border border-slate-100 text-[10px] text-slate-600 leading-normal"
+                                        >
+                                            <div
+                                                class="font-bold text-slate-700 mb-1 flex items-center gap-1"
+                                            >
+                                                <i
+                                                    class="ti ti-info-circle text-xs text-blue-500"
+                                                ></i> Cara Membayar:
+                                            </div>
+                                            <ul
+                                                class="list-decimal pl-3 space-y-0.5 text-slate-500"
+                                            >
+                                                <li>
+                                                    Buka e-wallet (GoPay, OVO,
+                                                    Dana, LinkAja) atau
+                                                    m-Banking Anda.
+                                                </li>
+                                                <li>Scan QR Code di atas.</li>
+                                                <li>
+                                                    Pastikan nama merchant
+                                                    adalah <strong
+                                                        class="text-slate-700"
+                                                        >{storeName ||
+                                                            'Toko Kami'}</strong
+                                                    >.
+                                                </li>
+                                                <li>
+                                                    Masukkan nominal yang sesuai
+                                                    & selesaikan pembayaran.
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <!-- Payment Detail Footer -->
+                                        <div
+                                            class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5"
+                                        >
+                                            <div
+                                                class="flex justify-between items-center text-xs px-1"
+                                            >
+                                                <span class="text-slate-500"
+                                                    >Total Tagihan:</span
+                                                >
+                                                <span
+                                                    class="font-extrabold text-sm text-rose-600"
+                                                    >{fmt(
+                                                        transaction.grand_total,
+                                                    )}</span
+                                                >
+                                            </div>
+
+                                            <div
+                                                class="flex justify-between items-center text-[10px] px-1 text-slate-400"
+                                            >
+                                                <span>No. Invoice:</span>
+                                                <span class="font-mono"
+                                                    >{transaction.transaction_number ||
+                                                        transaction.invoice_number}</span
+                                                >
+                                            </div>
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="flex gap-2 w-full mt-4">
+                                            {#if qrisData.image}
+                                                <button
+                                                    type="button"
+                                                    onclick={downloadQrisImage}
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm"
+                                                >
+                                                    <i
+                                                        class="ti ti-download text-sm"
+                                                    ></i>
+                                                    Simpan QR Code
+                                                </button>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                {:else}
+                                    <p
+                                        class="text-xs text-slate-500 leading-relaxed mb-3"
+                                    >
+                                        Pesanan Anda menggunakan sistem
+                                        pembayaran otomatis terverifikasi.
+                                        Silakan klik tombol di bawah untuk
+                                        membuka portal pembayaran {gatewayName}.
+                                    </p>
+                                    <div
+                                        class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-red-300"
+                                    >
+                                        <div>
+                                            <p class="text-xs text-rose-600">
+                                                Total Tagihan:
+                                            </p>
+                                            <p
+                                                class="text-base font-black text-rose-600"
+                                            >
+                                                {fmt(transaction.grand_total)}
+                                            </p>
+                                        </div>
+                                        {#if gatewayInvoiceUrl}
+                                            <a
+                                                href={gatewayInvoiceUrl}
+                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
+                                            >
+                                                Bayar Sekarang
+                                                <i class="ti ti-arrow-right"
+                                                ></i>
+                                            </a>
+                                        {:else if gatewayError}
+                                            <div
+                                                class="text-xs text-rose-500 font-bold max-w-[180px] leading-relaxed text-right"
+                                            >
+                                                <i
+                                                    class="ti ti-alert-circle mr-1"
+                                                ></i>
+                                                {gatewayError}
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {/if}
+                            </div>
+                        </div>
+                    {/if}
+
                         <!-- Status History Timeline -->
                         {#if transaction.status_histories && transaction.status_histories.length > 0}
                             <div
@@ -1833,7 +2388,9 @@
                                             </div>
                                         {/if}
                                         <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                            <div
+                                                class="flex items-center gap-1.5 flex-wrap"
+                                            >
                                                 <Link
                                                     href={item.product?.slug
                                                         ? `/products/${item.product.slug}`
@@ -1843,7 +2400,9 @@
                                                     {item.product_name}
                                                 </Link>
                                                 {#if item.product?.is_digital}
-                                                    <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider">
+                                                    <span
+                                                        class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider"
+                                                    >
                                                         Digital
                                                     </span>
                                                 {/if}
@@ -1890,25 +2449,46 @@
                                     </div>
                                     {#if item.note}
                                         {#if item.product?.is_digital}
-                                            <div class="mt-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs font-semibold text-blue-700 flex flex-col gap-1 text-left">
-                                                <div class="flex items-center gap-1.5">
-                                                    <i class="ti ti-key text-sm shrink-0"></i>
-                                                    <span>Akses / Catatan Produk Digital:</span>
+                                            <div
+                                                class="mt-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs font-semibold text-blue-700 flex flex-col gap-1 text-left"
+                                            >
+                                                <div
+                                                    class="flex items-center gap-1.5"
+                                                >
+                                                    <i
+                                                        class="ti ti-key text-sm shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        >Akses / Catatan Produk
+                                                        Digital:</span
+                                                    >
                                                 </div>
                                                 {#if item.note.startsWith('http://') || item.note.startsWith('https://')}
-                                                    <a href={item.note} target="_blank" class="underline break-all text-blue-800 hover:text-blue-900 font-bold mt-0.5">
+                                                    <a
+                                                        href={item.note}
+                                                        target="_blank"
+                                                        class="underline break-all text-blue-800 hover:text-blue-900 font-bold mt-0.5"
+                                                    >
                                                         {item.note}
                                                     </a>
                                                 {:else}
-                                                    <div class="mt-1 bg-white border border-blue-200/60 rounded-lg p-2 font-mono font-bold select-all tracking-wider text-[11px] text-blue-900 break-all">
+                                                    <div
+                                                        class="mt-1 bg-white border border-blue-200/60 rounded-lg p-2 font-mono font-bold select-all tracking-wider text-[11px] text-blue-900 break-all"
+                                                    >
                                                         {item.note}
                                                     </div>
                                                 {/if}
                                             </div>
                                         {:else}
-                                            <div class="mt-2.5 p-2 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-500 flex gap-1.5 items-start">
-                                                <i class="ti ti-notes text-xs mt-0.5 shrink-0"></i>
-                                                <span class="break-words">Catatan: "{item.note}"</span>
+                                            <div
+                                                class="mt-2.5 p-2 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-500 flex gap-1.5 items-start"
+                                            >
+                                                <i
+                                                    class="ti ti-notes text-xs mt-0.5 shrink-0"
+                                                ></i>
+                                                <span class="break-words"
+                                                    >Catatan: "{item.note}"</span
+                                                >
                                             </div>
                                         {/if}
                                     {/if}
@@ -1944,225 +2524,6 @@
                             {/each}
                         </div>
                     </div>
-
-                    <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
-                    {#if canUploadProof}
-                        <div
-                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
-                        >
-                            <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
-                            >
-                                <i
-                                    class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
-                                ></i>
-                                <span class="font-bold text-rose-700 text-sm"
-                                    >Upload Bukti Pembayaran</span
-                                >
-                            </div>
-                            <div class="p-4">
-                                <div
-                                    class="bg-slate-50 rounded-xl p-3 border border-red-300 mb-3"
-                                >
-                                    <p class="text-xs text-slate-500 mb-0.5">
-                                        Transfer ke:
-                                    </p>
-                                    <p class="text-sm font-bold text-slate-800">
-                                        {paymentMethod?.bank_name}
-                                    </p>
-                                    <p
-                                        class="text-xl font-black text-slate-900"
-                                    >
-                                        {paymentMethod?.account_number}
-                                    </p>
-                                    <p class="text-xs text-slate-500">
-                                        a.n. {paymentMethod?.account_name}
-                                    </p>
-                                    <div
-                                        class="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between"
-                                    >
-                                        <p class="text-xs text-rose-500">
-                                            Jumlah transfer:
-                                        </p>
-                                        <p
-                                            class="text-base font-black text-rose-600"
-                                        >
-                                            {fmt(transaction.grand_total)}
-                                        </p>
-                                    </div>
-                                </div>
-                                {#if latestPayment?.proof_image}
-                                    <div class="mb-3">
-                                        <p class="text-xs text-slate-500 mb-1">
-                                            Bukti bayar yang diunggah:
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onclick={() => openPreview([latestPayment.proof_image], 0)}
-                                            class="group relative overflow-hidden rounded-xl border border-slate-200 block text-left p-0 focus:outline-none"
-                                        >
-                                            <img
-                                                src={formatImagePath(
-                                                    latestPayment.proof_image,
-                                                )}
-                                                alt="Bukti Pembayaran"
-                                                class="w-28 h-28 object-cover hover:scale-105 transition duration-300"
-                                            />
-                                            <div
-                                                class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none"
-                                            >
-                                                <i class="ti ti-zoom-in text-base"></i>
-                                            </div>
-                                        </button>
-                                        <p class="text-xs text-slate-400 mt-1">
-                                            Diunggah {fmtDate(
-                                                latestPayment.proof_uploaded_at,
-                                            )}
-                                            {#if latestPayment.status === 'rejected' && latestPayment.notes}
-                                                <span
-                                                    class="text-rose-500 font-semibold"
-                                                >
-                                                    · Ditolak: {latestPayment.notes}</span
-                                                >
-                                            {/if}
-                                        </p>
-                                    </div>
-                                {/if}
-                                <button
-                                    onclick={() => (showUploadModal = true)}
-                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
-                                >
-                                    <i class="ti ti-upload text-sm"></i>
-                                    {latestPayment?.proof_image
-                                        ? 'Ganti Bukti Bayar'
-                                        : 'Upload Bukti Bayar'}
-                                </button>
-                            </div>
-                        </div>
-                    {/if}
-
-                    <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
-                    {#if isGateway && transaction.status === 'belum_bayar'}
-                        <div
-                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
-                        >
-                            <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
-                            >
-                                <i
-                                    class="ti ti-credit-card text-base animate-pulse text-rose-600"
-                                ></i>
-                                <span class="font-bold text-rose-700 text-sm"
-                                    >Selesaikan Pembayaran</span
-                                >
-                            </div>
-                            <div class="p-4">
-                                {#if isQris && qrisData}
-                                    <div class="flex flex-col items-center justify-center p-5 bg-white border border-rose-100 rounded-3xl shadow-xl shadow-rose-50/30 relative overflow-hidden">
-                                        <!-- Merchant Info -->
-                                        <div class="text-center mb-4">
-                                            <h4 class="font-bold text-slate-800 text-sm">{storeName || 'Merchant Pembayaran'}</h4>
-                                            <p class="text-[9px] text-slate-400 font-medium tracking-wide">NMID: ID102030405060</p>
-                                        </div>
-
-                                        <!-- QR Code Wrapper (No green corners, no scanner line) -->
-                                        <div class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80">
-                                            {#if qrisData.image}
-                                                <img
-                                                    src={qrisData.image}
-                                                    alt="QRIS Code"
-                                                    class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
-                                                />
-                                            {:else}
-                                                <div class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center">
-                                                    <i class="ti ti-qrcode text-4xl text-slate-400"></i>
-                                                </div>
-                                            {/if}
-                                        </div>
-
-                                        <!-- Instructions / Tips -->
-                                        <div class="mt-4 w-full bg-slate-50/80 rounded-2xl p-3 border border-slate-100 text-[10px] text-slate-600 leading-normal">
-                                            <div class="font-bold text-slate-700 mb-1 flex items-center gap-1">
-                                                <i class="ti ti-info-circle text-xs text-blue-500"></i> Cara Membayar:
-                                            </div>
-                                            <ul class="list-decimal pl-3 space-y-0.5 text-slate-500">
-                                                <li>Buka e-wallet (GoPay, OVO, Dana, LinkAja) atau m-Banking Anda.</li>
-                                                <li>Scan QR Code di atas.</li>
-                                                <li>Pastikan nama merchant adalah <strong class="text-slate-700">{storeName || 'Toko Kami'}</strong>.</li>
-                                                <li>Masukkan nominal yang sesuai & selesaikan pembayaran.</li>
-                                            </ul>
-                                        </div>
-
-                                        <!-- Payment Detail Footer -->
-                                        <div class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5">
-                                            <div class="flex justify-between items-center text-xs px-1">
-                                                <span class="text-slate-500">Total Tagihan:</span>
-                                                <span class="font-extrabold text-sm text-rose-600">{fmt(transaction.grand_total)}</span>
-                                            </div>
-                                            
-                                            <div class="flex justify-between items-center text-[10px] px-1 text-slate-400">
-                                                <span>No. Invoice:</span>
-                                                <span class="font-mono">{transaction.transaction_number || transaction.invoice_number}</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Action Buttons -->
-                                        <div class="flex gap-2 w-full mt-4">
-                                            {#if qrisData.image}
-                                                <button
-                                                    type="button"
-                                                    onclick={downloadQrisImage}
-                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm"
-                                                >
-                                                    <i class="ti ti-download text-sm"></i>
-                                                    Simpan QR Code
-                                                </button>
-                                            {/if}
-                                        </div>
-                                    </div>
-                                {:else}
-                                    <p
-                                        class="text-xs text-slate-500 leading-relaxed mb-3"
-                                    >
-                                        Pesanan Anda menggunakan sistem pembayaran
-                                        otomatis terverifikasi. Silakan klik tombol
-                                        di bawah untuk membuka portal pembayaran {gatewayName}.
-                                    </p>
-                                    <div
-                                        class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-red-300"
-                                    >
-                                        <div>
-                                            <p class="text-xs text-rose-600">
-                                                Total Tagihan:
-                                            </p>
-                                            <p
-                                                class="text-base font-black text-rose-600"
-                                            >
-                                                {fmt(transaction.grand_total)}
-                                            </p>
-                                        </div>
-                                        {#if gatewayInvoiceUrl}
-                                            <a
-                                                href={gatewayInvoiceUrl}
-                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
-                                            >
-                                                Bayar Sekarang
-                                                <i class="ti ti-arrow-right"></i>
-                                            </a>
-                                        {:else if gatewayError}
-                                            <div
-                                                class="text-xs text-rose-500 font-bold max-w-[180px] leading-relaxed text-right"
-                                            >
-                                                <i class="ti ti-alert-circle mr-1"
-                                                ></i>
-                                                {gatewayError}
-                                            </div>
-                                        {/if}
-                                    </div>
-                                {/if}
-                            </div>
-                        </div>
-                    {/if}
                 </div>
 
                 <!-- Right/Sidebar Column -->
@@ -2173,16 +2534,22 @@
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-2"
                         >
                             <div class="flex items-center gap-2">
-                                <i
-                                    class="ti ti-mail text-base text-blue-600"
+                                <i class="ti ti-mail text-base text-blue-600"
                                 ></i>
                                 <span class="font-bold text-slate-800 text-sm"
                                     >Pengiriman Digital</span
                                 >
                             </div>
-                            <div class="p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-[11px] font-bold text-blue-700 flex items-start gap-2">
-                                <i class="ti ti-info-circle text-sm shrink-0 mt-0.5"></i>
-                                <span>Produk digital Anda akan dikirimkan melalui email / chat catatan.</span>
+                            <div
+                                class="p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-[11px] font-bold text-blue-700 flex items-start gap-2"
+                            >
+                                <i
+                                    class="ti ti-info-circle text-sm shrink-0 mt-0.5"
+                                ></i>
+                                <span
+                                    >Produk digital Anda akan dikirimkan melalui
+                                    email / chat catatan.</span
+                                >
                             </div>
                         </div>
                     {:else if transaction.shipping_courier === 'self_pickup'}
@@ -2198,8 +2565,12 @@
                                     >Ambil di Toko (Store Pickup)</span
                                 >
                             </div>
-                            <div class="text-xs text-slate-600 space-y-1 font-medium">
-                                <p class="font-bold text-slate-800">{storeSettings.store_name || storeName}</p>
+                            <div
+                                class="text-xs text-slate-600 space-y-1 font-medium"
+                            >
+                                <p class="font-bold text-slate-800">
+                                    {storeSettings.store_name || storeName}
+                                </p>
                                 <p>
                                     {storeSettings.store_address}
                                     {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
@@ -2211,15 +2582,26 @@
                                 </p>
                             </div>
                             <div class="h-px bg-slate-100"></div>
-                            <div class="flex flex-col items-center text-center space-y-2">
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">QR Code Transaksi</p>
+                            <div
+                                class="flex flex-col items-center text-center space-y-2"
+                            >
+                                <p
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-wider"
+                                >
+                                    QR Code Transaksi
+                                </p>
                                 <img
-                                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(transaction.transaction_number)}"
+                                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(
+                                        transaction.transaction_number,
+                                    )}"
                                     alt="QR Code Transaksi"
                                     class="w-36 h-36 border border-slate-100 rounded-xl p-1 bg-white"
                                 />
-                                <p class="text-[10.5px] font-medium text-slate-500 leading-relaxed px-2">
-                                    Tunjukkan QR Code ini kepada kasir/petugas toko untuk pengambilan barang.
+                                <p
+                                    class="text-[10.5px] font-medium text-slate-500 leading-relaxed px-2"
+                                >
+                                    Tunjukkan QR Code ini kepada kasir/petugas
+                                    toko untuk pengambilan barang.
                                 </p>
                             </div>
                         </div>
@@ -2299,7 +2681,8 @@
                                     class="font-bold text-slate-800 uppercase"
                                 >
                                     {#if transaction.shipping_courier === 'store_courier' && transaction.courier_user}
-                                        Kurir Toko ({transaction.courier_user.name})
+                                        Kurir Toko ({transaction.courier_user
+                                            .name})
                                     {:else}
                                         {transaction.courier_name ||
                                             transaction.shipping_courier ||
@@ -2358,31 +2741,48 @@
 
                     <!-- Komerce Shipment Tracking Timeline -->
                     {#if transaction.tracking_number && transaction.shipping_courier !== 'store_courier'}
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
+                        >
                             <div class="flex items-center gap-2 mb-3">
-                                <i class="ti ti-history text-base" style="color:{primary}"></i>
-                                <span class="font-bold text-slate-800 text-sm">Status Pengiriman</span>
+                                <i
+                                    class="ti ti-history text-base"
+                                    style="color:{primary}"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Status Pengiriman</span
+                                >
                             </div>
 
                             {#if loadingTracking}
                                 <div class="space-y-3 py-2">
                                     {#each [1, 2] as _}
                                         <div class="flex gap-3 animate-pulse">
-                                            <div class="w-2.5 h-2.5 rounded-full bg-slate-200 shrink-0 mt-1"></div>
+                                            <div
+                                                class="w-2.5 h-2.5 rounded-full bg-slate-200 shrink-0 mt-1"
+                                            ></div>
                                             <div class="space-y-1.5 w-full">
-                                                <div class="h-3 bg-slate-200 rounded-md w-1/3"></div>
-                                                <div class="h-3 bg-slate-200 rounded-md w-3/4"></div>
+                                                <div
+                                                    class="h-3 bg-slate-200 rounded-md w-1/3"
+                                                ></div>
+                                                <div
+                                                    class="h-3 bg-slate-200 rounded-md w-3/4"
+                                                ></div>
                                             </div>
                                         </div>
                                     {/each}
                                 </div>
                             {:else if trackingError}
-                                <div class="p-3 bg-slate-50 border border-slate-100 text-slate-500 rounded-xl text-xs flex items-center gap-2">
+                                <div
+                                    class="p-3 bg-slate-50 border border-slate-100 text-slate-500 rounded-xl text-xs flex items-center gap-2"
+                                >
                                     <i class="ti ti-info-circle text-base"></i>
                                     <span>{trackingError}</span>
                                 </div>
                             {:else if trackingHistory && trackingHistory.length > 0}
-                                <div class="relative pl-4 border-l-2 border-slate-100 space-y-4 py-1">
+                                <div
+                                    class="relative pl-4 border-l-2 border-slate-100 space-y-4 py-1"
+                                >
                                     {#each trackingHistory as step, idx}
                                         <div class="relative">
                                             <!-- Circle bullet -->
@@ -2392,19 +2792,24 @@
                                                     ? `border-color:${primary}; background-color:${primary}; box-shadow:0 0 8px ${primary}40;`
                                                     : 'border-color:#cbd5e1;'}
                                             ></div>
-                                            
+
                                             <div>
                                                 <p
                                                     class="text-[10px] font-bold text-slate-400"
-                                                    style={idx === 0 ? `color:${primary};` : ''}
+                                                    style={idx === 0
+                                                        ? `color:${primary};`
+                                                        : ''}
                                                 >
                                                     {step.date}
                                                 </p>
                                                 <p
                                                     class="text-xs mt-0.5 leading-relaxed"
-                                                    class:font-semibold={idx === 0}
-                                                    class:text-slate-800={idx === 0}
-                                                    class:text-slate-600={idx > 0}
+                                                    class:font-semibold={idx ===
+                                                        0}
+                                                    class:text-slate-800={idx ===
+                                                        0}
+                                                    class:text-slate-600={idx >
+                                                        0}
                                                 >
                                                     {step.desc}
                                                 </p>
@@ -2413,7 +2818,9 @@
                                     {/each}
                                 </div>
                             {:else}
-                                <div class="p-3 bg-slate-50 border border-slate-100 text-slate-400 rounded-xl text-xs italic text-center">
+                                <div
+                                    class="p-3 bg-slate-50 border border-slate-100 text-slate-400 rounded-xl text-xs italic text-center"
+                                >
                                     Belum ada data perjalanan paket.
                                 </div>
                             {/if}
@@ -2422,38 +2829,82 @@
 
                     <!-- Kurir Toko Shipment Tracking Timeline (Status Pengiriman) -->
                     {#if transaction.shipping_courier === 'store_courier'}
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
+                        >
                             <div class="flex items-center gap-2 mb-4">
-                                <i class="ti ti-truck-delivery text-base" style="color:{primary}"></i>
-                                <span class="font-bold text-slate-800 text-sm">Status Pengiriman (Kurir Toko)</span>
+                                <i
+                                    class="ti ti-truck-delivery text-base"
+                                    style="color:{primary}"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Status Pengiriman (Kurir Toko)</span
+                                >
                             </div>
 
                             <!-- Steps (Responsive, no overlap) -->
                             <div class="relative space-y-1">
                                 {#each deliverySteps as step, i}
-                                    {@const state = getStoreCourierStepState(step.key)}
-                                    <div class="flex items-start gap-4 relative pb-5 {i === deliverySteps.length - 1 ? 'pb-0' : ''}">
+                                    {@const state = getStoreCourierStepState(
+                                        step.key,
+                                    )}
+                                    <div
+                                        class="flex items-start gap-4 relative pb-5 {i ===
+                                        deliverySteps.length - 1
+                                            ? 'pb-0'
+                                            : ''}"
+                                    >
                                         <!-- Vertical line -->
                                         {#if i < deliverySteps.length - 1}
-                                            <div class="absolute left-[18px] top-9 bottom-0 w-0.5 {state !== 'pending' ? 'bg-emerald-300' : 'bg-slate-100'}"></div>
+                                            <div
+                                                class="absolute left-[18px] top-9 bottom-0 w-0.5 {state !==
+                                                'pending'
+                                                    ? 'bg-emerald-300'
+                                                    : 'bg-slate-100'}"
+                                            ></div>
                                         {/if}
 
                                         <!-- Icon -->
-                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 transition-all z-10
-                                            {state === 'done' ? 'bg-emerald-100 text-emerald-600' : state === 'active' ? 'text-white shadow-md' : 'bg-slate-100 text-slate-400'}"
-                                            style={state === 'active' ? `background-color: ${primary};` : ''}
+                                        <div
+                                            class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 transition-all z-10
+                                            {state === 'done'
+                                                ? 'bg-emerald-100 text-emerald-600'
+                                                : state === 'active'
+                                                  ? 'text-white shadow-md'
+                                                  : 'bg-slate-100 text-slate-400'}"
+                                            style={state === 'active'
+                                                ? `background-color: ${primary};`
+                                                : ''}
                                         >
                                             {#if state === 'done'}
-                                                <i class="ti ti-check font-black"></i>
+                                                <i
+                                                    class="ti ti-check font-black"
+                                                ></i>
                                             {:else}
                                                 <i class="ti {step.icon}"></i>
                                             {/if}
                                         </div>
 
                                         <!-- Content -->
-                                        <div class="flex-1 pt-1.5 {state === 'pending' ? 'opacity-40' : ''}">
-                                            <p class="text-sm font-black text-slate-800 leading-none mb-1 {state === 'active' ? 'font-black' : ''}">{step.label}</p>
-                                            <p class="text-xs text-slate-500 leading-normal">{step.desc}</p>
+                                        <div
+                                            class="flex-1 pt-1.5 {state ===
+                                            'pending'
+                                                ? 'opacity-40'
+                                                : ''}"
+                                        >
+                                            <p
+                                                class="text-sm font-black text-slate-800 leading-none mb-1 {state ===
+                                                'active'
+                                                    ? 'font-black'
+                                                    : ''}"
+                                            >
+                                                {step.label}
+                                            </p>
+                                            <p
+                                                class="text-xs text-slate-500 leading-normal"
+                                            >
+                                                {step.desc}
+                                            </p>
                                         </div>
                                     </div>
                                 {/each}
@@ -2463,24 +2914,47 @@
 
                     <!-- Bukti Pengiriman Kurir Toko -->
                     {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
+                        >
                             <div class="flex items-center gap-2 mb-3">
-                                <i class="ti ti-camera text-base" style="color:{primary}"></i>
-                                <span class="font-bold text-slate-800 text-sm">Foto Bukti Pengiriman ({transaction.delivery_photos.length})</span>
+                                <i
+                                    class="ti ti-camera text-base"
+                                    style="color:{primary}"
+                                ></i>
+                                <span class="font-bold text-slate-800 text-sm"
+                                    >Foto Bukti Pengiriman ({transaction
+                                        .delivery_photos.length})</span
+                                >
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 {#each transaction.delivery_photos as photo, idx}
                                     <button
-                                        onclick={() => openPreview(transaction.delivery_photos, idx)}
+                                        onclick={() =>
+                                            openPreview(
+                                                transaction.delivery_photos,
+                                                idx,
+                                            )}
                                         class="block relative rounded-xl overflow-hidden aspect-video bg-slate-50 border border-slate-150 hover:opacity-90 transition text-left w-full cursor-pointer"
                                     >
                                         {#if isVideo(photo)}
-                                            <div class="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-white gap-1">
-                                                <i class="ti ti-video text-2xl text-slate-300"></i>
-                                                <span class="text-[10px] font-bold opacity-75">Video Bukti</span>
+                                            <div
+                                                class="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-white gap-1"
+                                            >
+                                                <i
+                                                    class="ti ti-video text-2xl text-slate-300"
+                                                ></i>
+                                                <span
+                                                    class="text-[10px] font-bold opacity-75"
+                                                    >Video Bukti</span
+                                                >
                                             </div>
                                         {:else}
-                                            <img src="/storage/{photo}" alt="Bukti Pengiriman" class="w-full h-full object-cover rounded-xl" />
+                                            <img
+                                                src="/storage/{photo}"
+                                                alt="Bukti Pengiriman"
+                                                class="w-full h-full object-cover rounded-xl"
+                                            />
                                         {/if}
                                     </button>
                                 {/each}
@@ -2812,29 +3286,42 @@
                 class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
                 onclick={(e: any) => e.stopPropagation()}
             >
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4"
+                >
                     <div class="flex items-center gap-2">
-                        <i class="ti ti-alert-triangle text-2xl text-red-500"></i>
+                        <i class="ti ti-alert-triangle text-2xl text-red-500"
+                        ></i>
                         <h3 class="font-bold text-slate-800 text-lg">
-                            {canCancelDirectly ? 'Batalkan Pesanan' : 'Ajukan Pembatalan & Refund'}
+                            {canCancelDirectly
+                                ? 'Batalkan Pesanan'
+                                : 'Ajukan Pembatalan & Refund'}
                         </h3>
                     </div>
-                    <button aria-label="Tutup" onclick={() => (showCancelModal = false)} class="p-1 hover:bg-slate-100 rounded-full transition text-slate-400">
+                    <button
+                        aria-label="Tutup"
+                        onclick={() => (showCancelModal = false)}
+                        class="p-1 hover:bg-slate-100 rounded-full transition text-slate-400"
+                    >
                         <i class="ti ti-x text-lg"></i>
                     </button>
                 </div>
 
                 <p class="text-xs text-slate-500 mb-5 leading-relaxed">
-                    {canCancelDirectly 
-                        ? 'Pesanan yang dibatalkan tidak dapat dikembalikan. Silakan masukkan alasan pembatalan Anda.' 
+                    {canCancelDirectly
+                        ? 'Pesanan yang dibatalkan tidak dapat dikembalikan. Silakan masukkan alasan pembatalan Anda.'
                         : 'Pesanan Anda sudah dibayar/diproses. Anda dapat mengajukan pembatalan dan dana akan direfund setelah disetujui admin.'}
                 </p>
 
                 <div class="space-y-4">
                     <!-- Alasan Pembatalan -->
                     <div class="mb-2">
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5" for="cancel-reason">
-                            Alasan Pembatalan <span class="text-red-500">*</span>
+                        <label
+                            class="block text-xs font-bold text-slate-700 mb-1.5"
+                            for="cancel-reason"
+                        >
+                            Alasan Pembatalan <span class="text-red-500">*</span
+                            >
                         </label>
                         <textarea
                             id="cancel-reason"
@@ -2853,8 +3340,11 @@
                     <!-- Refund Methods Selection (If paid/processed) -->
                     {#if !canCancelDirectly}
                         <div>
-                            <span class="block text-xs font-bold text-slate-700 mb-2">
-                                Metode Refund <span class="text-red-500">*</span>
+                            <span
+                                class="block text-xs font-bold text-slate-700 mb-2"
+                            >
+                                Metode Refund <span class="text-red-500">*</span
+                                >
                             </span>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button
@@ -2871,18 +3361,28 @@
                                             ? `background-color:${primary}; color:white;`
                                             : 'background-color:#f1f5f9; color:#94a3b8;'}
                                     >
-                                        <i class="ti ti-building-bank text-sm"></i>
+                                        <i class="ti ti-building-bank text-sm"
+                                        ></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold text-slate-800 truncate">
+                                        <p
+                                            class="text-xs font-bold text-slate-800 truncate"
+                                        >
                                             Transfer Bank
                                         </p>
-                                        <p class="text-[9px] text-slate-400 truncate">
-                                            Proses {(page.props as any).refund_transfer_days ?? '3-5'} hari kerja
+                                        <p
+                                            class="text-[9px] text-slate-400 truncate"
+                                        >
+                                            Proses {(page.props as any)
+                                                .refund_transfer_days ?? '3-5'} hari
+                                            kerja
                                         </p>
                                     </div>
                                     {#if refundMethod === 'transfer'}
-                                        <i class="ti ti-circle-check text-base shrink-0" style="color:{primary}"></i>
+                                        <i
+                                            class="ti ti-circle-check text-base shrink-0"
+                                            style="color:{primary}"
+                                        ></i>
                                     {/if}
                                 </button>
 
@@ -2904,15 +3404,22 @@
                                             <i class="ti ti-coins text-sm"></i>
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-xs font-bold text-slate-800 truncate">
+                                            <p
+                                                class="text-xs font-bold text-slate-800 truncate"
+                                            >
                                                 Koin Toko (Poin)
                                             </p>
-                                            <p class="text-[9px] text-slate-400 truncate">
+                                            <p
+                                                class="text-[9px] text-slate-400 truncate"
+                                            >
                                                 Refund langsung masuk (instan)
                                             </p>
                                         </div>
                                         {#if refundMethod === 'poin'}
-                                            <i class="ti ti-circle-check text-base shrink-0" style="color:{primary}"></i>
+                                            <i
+                                                class="ti ti-circle-check text-base shrink-0"
+                                                style="color:{primary}"
+                                            ></i>
                                         {/if}
                                     </button>
                                 {/if}
@@ -2921,25 +3428,43 @@
 
                         <!-- Bank Details (If transfer chosen) -->
                         {#if refundMethod === 'transfer'}
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                                <h4 class="text-xs font-bold text-slate-800">Detail Rekening Bank Penerima</h4>
+                            <div
+                                class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3"
+                            >
+                                <h4 class="text-xs font-bold text-slate-800">
+                                    Detail Rekening Bank Penerima
+                                </h4>
 
                                 {#if userBankAccounts && userBankAccounts.length > 0}
                                     <div class="space-y-1">
-                                        <label class="block text-[10px] font-bold text-slate-600" for="saved-bank-account">
+                                        <label
+                                            class="block text-[10px] font-bold text-slate-600"
+                                            for="saved-bank-account"
+                                        >
                                             Pilih Rekening Tersimpan
                                         </label>
                                         <select
                                             id="saved-bank-account"
                                             class="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs bg-white text-slate-800 focus:outline-none focus:ring-1 transition"
                                             onchange={(e) => {
-                                                const val = e.currentTarget.value;
+                                                const val =
+                                                    e.currentTarget.value;
                                                 if (val) {
-                                                    const acc = userBankAccounts.find(a => String(a.id) === val);
+                                                    const acc =
+                                                        userBankAccounts.find(
+                                                            (a) =>
+                                                                String(a.id) ===
+                                                                val,
+                                                        );
                                                     if (acc) {
-                                                        bankName = acc.bank_name || '';
-                                                        accountNumber = acc.account_number || '';
-                                                        accountName = acc.account_name || '';
+                                                        bankName =
+                                                            acc.bank_name || '';
+                                                        accountNumber =
+                                                            acc.account_number ||
+                                                            '';
+                                                        accountName =
+                                                            acc.account_name ||
+                                                            '';
                                                     }
                                                 } else {
                                                     bankName = '';
@@ -2948,10 +3473,13 @@
                                                 }
                                             }}
                                         >
-                                            <option value="">-- Masukkan Rekening Baru --</option>
+                                            <option value=""
+                                                >-- Masukkan Rekening Baru --</option
+                                            >
                                             {#each userBankAccounts as acc}
                                                 <option value={acc.id}>
-                                                    {acc.bank_name} - {acc.account_number} ({acc.account_name})
+                                                    {acc.bank_name} - {acc.account_number}
+                                                    ({acc.account_name})
                                                 </option>
                                             {/each}
                                         </select>
@@ -2960,8 +3488,13 @@
 
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="space-y-1">
-                                        <label class="block text-[10px] font-bold text-slate-600" for="bank-name">
-                                            Nama Bank <span class="text-red-500">*</span>
+                                        <label
+                                            class="block text-[10px] font-bold text-slate-600"
+                                            for="bank-name"
+                                        >
+                                            Nama Bank <span class="text-red-500"
+                                                >*</span
+                                            >
                                         </label>
                                         <input
                                             id="bank-name"
@@ -2972,8 +3505,13 @@
                                         />
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="block text-[10px] font-bold text-slate-600" for="account-number">
-                                            No. Rekening <span class="text-red-500">*</span>
+                                        <label
+                                            class="block text-[10px] font-bold text-slate-600"
+                                            for="account-number"
+                                        >
+                                            No. Rekening <span
+                                                class="text-red-500">*</span
+                                            >
                                         </label>
                                         <input
                                             id="account-number"
@@ -2985,8 +3523,13 @@
                                     </div>
                                 </div>
                                 <div class="space-y-1">
-                                    <label class="block text-[10px] font-bold text-slate-600" for="account-name">
-                                        Nama Pemilik Rekening <span class="text-red-500">*</span>
+                                    <label
+                                        class="block text-[10px] font-bold text-slate-600"
+                                        for="account-name"
+                                    >
+                                        Nama Pemilik Rekening <span
+                                            class="text-red-500">*</span
+                                        >
                                     </label>
                                     <input
                                         id="account-name"
@@ -3000,42 +3543,81 @@
                         {/if}
 
                         <!-- Terms & Conditions (S&K) and Limits -->
-                        <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-100/50 space-y-2">
-                            <div class="flex items-center gap-1.5 text-amber-700 text-xs font-bold">
+                        <div
+                            class="p-4 rounded-2xl bg-amber-50/50 border border-amber-100/50 space-y-2"
+                        >
+                            <div
+                                class="flex items-center gap-1.5 text-amber-700 text-xs font-bold"
+                            >
                                 <i class="ti ti-info-circle text-sm"></i>
                                 <span>Syarat & Ketentuan Refund</span>
                             </div>
-                            
-                            <div class="text-[10px] text-slate-600 leading-relaxed whitespace-pre-line">
+
+                            <div
+                                class="text-[10px] text-slate-600 leading-relaxed whitespace-pre-line"
+                            >
                                 {#if refundMethod === 'transfer'}
-                                    {(page.props as any).refund_terms_transfer || 'Tidak ada S&K khusus untuk refund transfer bank.'}
+                                    {(page.props as any)
+                                        .refund_terms_transfer ||
+                                        'Tidak ada S&K khusus untuk refund transfer bank.'}
                                 {:else}
-                                    {(page.props as any).refund_terms_points || 'Tidak ada S&K khusus untuk refund koin toko.'}
+                                    {(page.props as any).refund_terms_points ||
+                                        'Tidak ada S&K khusus untuk refund koin toko.'}
                                 {/if}
                             </div>
 
                             <div class="h-px bg-amber-100 my-2"></div>
 
-                            <div class="flex justify-between items-center text-[10px] font-semibold">
-                                <span class="text-slate-500">Nominal Pesanan:</span>
-                                <span class="text-slate-800 font-bold">{fmt(transaction.grand_total)}</span>
+                            <div
+                                class="flex justify-between items-center text-[10px] font-semibold"
+                            >
+                                <span class="text-slate-500"
+                                    >Nominal Pesanan:</span
+                                >
+                                <span class="text-slate-800 font-bold"
+                                    >{fmt(transaction.grand_total)}</span
+                                >
                             </div>
 
-                            <div class="flex justify-between items-center text-[10px] font-semibold">
-                                <span class="text-slate-500">Minimal Batas Refund:</span>
+                            <div
+                                class="flex justify-between items-center text-[10px] font-semibold"
+                            >
+                                <span class="text-slate-500"
+                                    >Minimal Batas Refund:</span
+                                >
                                 <span class="text-slate-800 font-bold">
                                     {#if refundMethod === 'transfer'}
-                                        {fmt((page.props as any).refund_min_amount_transfer ?? 0)}
+                                        {fmt(
+                                            (page.props as any)
+                                                .refund_min_amount_transfer ??
+                                                0,
+                                        )}
                                     {:else}
-                                        {fmt((page.props as any).refund_min_amount_points ?? 0)}
+                                        {fmt(
+                                            (page.props as any)
+                                                .refund_min_amount_points ?? 0,
+                                        )}
                                     {/if}
                                 </span>
                             </div>
 
                             {#if isUnderMinLimit}
-                                <div class="bg-red-50 text-red-600 p-2 rounded-xl text-[10px] font-bold mt-2 flex items-center gap-1.5">
+                                <div
+                                    class="bg-red-50 text-red-600 p-2 rounded-xl text-[10px] font-bold mt-2 flex items-center gap-1.5"
+                                >
                                     <i class="ti ti-circle-x text-sm"></i>
-                                    <span>Nominal pesanan kurang dari minimal batas refund ({fmt(refundMethod === 'transfer' ? ((page.props as any).refund_min_amount_transfer ?? 0) : ((page.props as any).refund_min_amount_points ?? 0))}).</span>
+                                    <span
+                                        >Nominal pesanan kurang dari minimal
+                                        batas refund ({fmt(
+                                            refundMethod === 'transfer'
+                                                ? ((page.props as any)
+                                                      .refund_min_amount_transfer ??
+                                                      0)
+                                                : ((page.props as any)
+                                                      .refund_min_amount_points ??
+                                                      0),
+                                        )}).</span
+                                    >
                                 </div>
                             {/if}
                         </div>
@@ -3055,7 +3637,9 @@
                         class="flex-1 py-3 rounded-xl font-bold text-white text-sm transition disabled:opacity-50 bg-red-500 hover:bg-red-600 active:scale-95 flex items-center justify-center gap-1.5"
                     >
                         {#if cancellingOrder}
-                            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <div
+                                class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                            ></div>
                             <span>Memproses...</span>
                         {:else}
                             <span>Ya, Batalkan</span>
@@ -3395,21 +3979,40 @@
                         role="button"
                         tabindex="0"
                         class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition select-none"
-                        style="border-color:{reviewIsAnonymous ? primary + '40' : '#e2e8f0'}; background:{reviewIsAnonymous ? primary + '08' : 'transparent'};"
+                        style="border-color:{reviewIsAnonymous
+                            ? primary + '40'
+                            : '#e2e8f0'}; background:{reviewIsAnonymous
+                            ? primary + '08'
+                            : 'transparent'};"
                         onclick={() => (reviewIsAnonymous = !reviewIsAnonymous)}
-                        onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') reviewIsAnonymous = !reviewIsAnonymous; }}
+                        onkeydown={(e: KeyboardEvent) => {
+                            if (e.key === 'Enter' || e.key === ' ')
+                                reviewIsAnonymous = !reviewIsAnonymous;
+                        }}
                     >
                         <div
                             class="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition"
-                            style="border-color:{reviewIsAnonymous ? primary : '#cbd5e1'}; background:{reviewIsAnonymous ? primary : 'transparent'};"
+                            style="border-color:{reviewIsAnonymous
+                                ? primary
+                                : '#cbd5e1'}; background:{reviewIsAnonymous
+                                ? primary
+                                : 'transparent'};"
                         >
                             {#if reviewIsAnonymous}
-                                <i class="ti ti-check text-white" style="font-size:11px;"></i>
+                                <i
+                                    class="ti ti-check text-white"
+                                    style="font-size:11px;"
+                                ></i>
                             {/if}
                         </div>
                         <div class="flex-1">
-                            <p class="text-sm font-semibold text-slate-700">Sembunyikan Nama</p>
-                            <p class="text-[11px] text-slate-400 leading-snug">Nama Anda akan ditampilkan sebagai "Pengguna Anonim"</p>
+                            <p class="text-sm font-semibold text-slate-700">
+                                Sembunyikan Nama
+                            </p>
+                            <p class="text-[11px] text-slate-400 leading-snug">
+                                Nama Anda akan ditampilkan sebagai "Pengguna
+                                Anonim"
+                            </p>
                         </div>
                         <i class="ti ti-user-off text-slate-400 text-base"></i>
                     </div>
@@ -3798,13 +4401,17 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         class="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex flex-col justify-between p-4 sm:p-6 select-none"
-        onclick={(e) => { if (e.target === e.currentTarget) closePreview(); }}
+        onclick={(e) => {
+            if (e.target === e.currentTarget) closePreview();
+        }}
         role="dialog"
         aria-label="File Preview"
         tabindex="-1"
     >
         <!-- Top bar -->
-        <div class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10">
+        <div
+            class="flex items-center justify-between text-white w-full max-w-5xl mx-auto z-10"
+        >
             <span class="text-sm font-bold opacity-75">
                 {previewIndex + 1} / {previewItems.length}
             </span>
@@ -3818,7 +4425,9 @@
         </div>
 
         <!-- Center Viewport -->
-        <div class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden">
+        <div
+            class="flex-1 flex items-center justify-center relative w-full max-w-5xl mx-auto my-4 overflow-hidden"
+        >
             <!-- Prev Button -->
             {#if previewItems.length > 1}
                 <button
@@ -3832,7 +4441,9 @@
 
             <!-- Media Content -->
             {#key previewIndex}
-                <div class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200">
+                <div
+                    class="max-w-full max-h-[75vh] flex items-center justify-center p-2 animate-in fade-in zoom-in-95 duration-200"
+                >
                     {#if isVideo(previewItems[previewIndex])}
                         <video
                             src={formatImagePath(previewItems[previewIndex])}
@@ -3866,19 +4477,29 @@
 
         <!-- Bottom Thumbnails -->
         {#if previewItems.length > 1}
-            <div class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide">
+            <div
+                class="flex justify-center gap-2 overflow-x-auto py-3 w-full max-w-lg mx-auto z-10 scrollbar-hide"
+            >
                 {#each previewItems as item, idx}
                     <button
-                        onclick={() => previewIndex = idx}
+                        onclick={() => (previewIndex = idx)}
                         class="w-16 h-10 rounded-lg overflow-hidden border-2 shrink-0 transition-all active:scale-95
-                            {previewIndex === idx ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-80'}"
+                            {previewIndex === idx
+                            ? 'border-white scale-105 shadow-md'
+                            : 'border-transparent opacity-50 hover:opacity-80'}"
                     >
                         {#if isVideo(item)}
-                            <div class="w-full h-full bg-slate-800 flex items-center justify-center text-white">
+                            <div
+                                class="w-full h-full bg-slate-800 flex items-center justify-center text-white"
+                            >
                                 <i class="ti ti-video text-lg"></i>
                             </div>
                         {:else}
-                            <img src={formatImagePath(item)} alt="Thumb" class="w-full h-full object-cover" />
+                            <img
+                                src={formatImagePath(item)}
+                                alt="Thumb"
+                                class="w-full h-full object-cover"
+                            />
                         {/if}
                     </button>
                 {/each}
@@ -3890,6 +4511,11 @@
 {/if}
 
 <style>
-    .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 </style>

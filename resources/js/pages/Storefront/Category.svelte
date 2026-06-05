@@ -617,7 +617,9 @@
 
                 <!-- Jenis Produk Filter -->
                 <div class="space-y-2.5">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                    >
                         Jenis Produk
                     </span>
                     <select
@@ -902,7 +904,9 @@
 
                     <!-- Jenis Produk Filter -->
                     <div class="space-y-3 mt-6">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                        >
                             Jenis Produk
                         </span>
                         <select

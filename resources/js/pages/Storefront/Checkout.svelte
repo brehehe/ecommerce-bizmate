@@ -144,10 +144,13 @@
     });
 
     const courierLabels = $derived.by(() => {
-        const labels = couriers.reduce((acc: Record<string, string>, c: any) => {
-            acc[c.code] = c.name;
-            return acc;
-        }, {});
+        const labels = couriers.reduce(
+            (acc: Record<string, string>, c: any) => {
+                acc[c.code] = c.name;
+                return acc;
+            },
+            {},
+        );
         labels['store_courier'] = 'Kurir Toko';
         labels['self_pickup'] = 'Ambil di Toko';
         return labels;
@@ -1094,14 +1097,21 @@
                                         <i
                                             class="ti ti-building-store text-lg text-emerald-600"
                                         ></i>
-                                        <span class="font-bold text-slate-800 text-sm"
+                                        <span
+                                            class="font-bold text-slate-800 text-sm"
                                             >Lokasi Pengambilan (Ambil di Toko)</span
                                         >
                                     </div>
                                 </div>
                                 <div class="py-3 px-4">
-                                    <p class="text-xs font-bold text-slate-800 mb-1">{storeSettings.store_name || storeName}</p>
-                                    <p class="text-xs text-slate-600 leading-relaxed font-medium">
+                                    <p
+                                        class="text-xs font-bold text-slate-800 mb-1"
+                                    >
+                                        {storeSettings.store_name || storeName}
+                                    </p>
+                                    <p
+                                        class="text-xs text-slate-600 leading-relaxed font-medium"
+                                    >
                                         {storeSettings.store_address}
                                         {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
                                         {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
@@ -1110,9 +1120,17 @@
                                         {#if storeSettings.store_postal_code}
                                             {storeSettings.store_postal_code}{/if}
                                     </p>
-                                    <div class="mt-2.5 p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2 text-[11px] font-bold text-emerald-700">
-                                        <i class="ti ti-info-circle text-sm shrink-0"></i>
-                                        <span>Pesanan Anda akan disiapkan di toko. Anda dapat mengambilnya setelah status pembayaran selesai.</span>
+                                    <div
+                                        class="mt-2.5 p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2 text-[11px] font-bold text-emerald-700"
+                                    >
+                                        <i
+                                            class="ti ti-info-circle text-sm shrink-0"
+                                        ></i>
+                                        <span
+                                            >Pesanan Anda akan disiapkan di
+                                            toko. Anda dapat mengambilnya
+                                            setelah status pembayaran selesai.</span
+                                        >
                                     </div>
                                 </div>
                             {:else}
@@ -1124,12 +1142,14 @@
                                             class="ti ti-map-pin text-lg"
                                             style="color:{primary}"
                                         ></i>
-                                        <span class="font-bold text-slate-800 text-sm"
+                                        <span
+                                            class="font-bold text-slate-800 text-sm"
                                             >Alamat Pengiriman</span
                                         >
                                     </div>
                                     <button
-                                        onclick={() => (showAddressModal = true)}
+                                        onclick={() =>
+                                            (showAddressModal = true)}
                                         class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
                                         style="color:{primary}"
                                     >
@@ -1164,10 +1184,14 @@
                                                     class="text-xs text-slate-600 leading-relaxed font-medium"
                                                 >
                                                     {selectedAddress.full_address}
-                                                    {#if selectedAddress.village_name}, {selectedAddress.village_name}{/if}
-                                                    {#if selectedAddress.district_name}, {selectedAddress.district_name}{/if}
-                                                    {#if selectedAddress.regency_name}, {selectedAddress.regency_name}{/if}
-                                                    {#if selectedAddress.province_name}, {selectedAddress.province_name}{/if}
+                                                    {#if selectedAddress.village_name},
+                                                        {selectedAddress.village_name}{/if}
+                                                    {#if selectedAddress.district_name},
+                                                        {selectedAddress.district_name}{/if}
+                                                    {#if selectedAddress.regency_name},
+                                                        {selectedAddress.regency_name}{/if}
+                                                    {#if selectedAddress.province_name},
+                                                        {selectedAddress.province_name}{/if}
                                                     {#if selectedAddress.postal_code}
                                                         {selectedAddress.postal_code}{/if}
                                                 </p>
@@ -1179,7 +1203,8 @@
                                         <div
                                             class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-sm font-medium"
                                         >
-                                            <i class="ti ti-alert-triangle mr-1"></i>
+                                            <i class="ti ti-alert-triangle mr-1"
+                                            ></i>
                                             Belum ada alamat.
                                             <Link
                                                 href="/profile/addresses?from=checkout"
@@ -1220,18 +1245,23 @@
                                             alt={product?.name}
                                             class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
                                             onerror={(e: any) => {
-                                                e.target.src = '/noimage/image.png';
+                                                e.target.src =
+                                                    '/noimage/image.png';
                                             }}
                                         />
                                         <div class="flex-1 min-w-0">
-                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                            <div
+                                                class="flex items-center gap-1.5 flex-wrap"
+                                            >
                                                 <p
                                                     class="text-sm font-semibold text-slate-800 leading-tight truncate"
                                                 >
                                                     {product?.name}
                                                 </p>
                                                 {#if product?.is_digital}
-                                                    <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider">
+                                                    <span
+                                                        class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider"
+                                                    >
                                                         Digital
                                                     </span>
                                                 {/if}
@@ -1241,25 +1271,33 @@
                                                     class="text-xs text-slate-500 mt-0.5"
                                                 >
                                                     {variant.options
-                                                        ?.map((o: any) => o.name)
+                                                        ?.map(
+                                                            (o: any) => o.name,
+                                                        )
                                                         .join(' / ')}
                                                 </p>
                                             {/if}
                                             <div
                                                 class="flex items-center justify-between mt-1.5"
                                             >
-                                                <span class="text-xs text-slate-500"
+                                                <span
+                                                    class="text-xs text-slate-500"
                                                     >x{item.quantity}</span
                                                 >
                                                 <span
                                                     class="text-sm font-bold"
                                                     style="color:{primary}"
-                                                    >{fmt(item.unit_price)}</span
+                                                    >{fmt(
+                                                        item.unit_price,
+                                                    )}</span
                                                 >
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mt-2" style="padding-left: 4.25rem;">
+                                    <div
+                                        class="mt-2"
+                                        style="padding-left: 4.25rem;"
+                                    >
                                         <input
                                             type="text"
                                             bind:value={itemNotes[item.id]}
@@ -1381,19 +1419,20 @@
                                         class="ti ti-truck text-lg"
                                         style="color:{primary}"
                                     ></i>
-                                    <span class="font-bold text-slate-800 text-sm"
+                                    <span
+                                        class="font-bold text-slate-800 text-sm"
                                         >Pengiriman</span
                                     >
                                 </div>
 
                                 {#if selectedCourier !== 'self_pickup' && !selectedAddress}
                                     <p class="text-xs text-slate-400 italic">
-                                        Pilih alamat terlebih dahulu untuk mengecek
-                                        ongkir.
+                                        Pilih alamat terlebih dahulu untuk
+                                        mengecek ongkir.
                                     </p>
                                 {:else}
-                                <!-- International Shipping Option -->
-                                <!-- <div class="mb-4 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
+                                    <!-- International Shipping Option -->
+                                    <!-- <div class="mb-4 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
                                     <label class="flex items-center justify-between cursor-pointer">
                                         <div class="flex flex-col">
                                             <span class="text-xs font-bold text-slate-800">Kirim ke Luar Negeri?</span>
@@ -1438,289 +1477,314 @@
                                     {/if}
                                 </div> -->
 
-                                <!-- Courier selection -->
-                                <div
-                                    class="mb-3 relative courier-select-container"
-                                >
-                                    <p
-                                        class="text-xs font-semibold text-slate-500 mb-2"
+                                    <!-- Courier selection -->
+                                    <div
+                                        class="mb-3 relative courier-select-container"
                                     >
-                                        Pilih Kurir
-                                    </p>
-
-                                    <!-- Dropdown Trigger -->
-                                    <button
-                                        onclick={() =>
-                                            (showCourierDropdown =
-                                                !showCourierDropdown)}
-                                        class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 text-left bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 active:scale-[0.99] {showCourierDropdown
-                                            ? 'border-slate-300 bg-white ring-2 ring-slate-100'
-                                            : 'border-slate-100'}"
-                                    >
-                                        <div class="flex items-center gap-2.5">
-                                            <i
-                                                class="ti ti-truck text-base text-slate-500"
-                                            ></i>
-                                            {#if selectedCourier}
-                                                <span
-                                                    class="text-xs font-bold text-slate-800"
-                                                >
-                                                    {courierLabels[
-                                                        selectedCourier
-                                                    ] ??
-                                                        selectedCourier.toUpperCase()}
-                                                </span>
-                                            {:else}
-                                                <span
-                                                    class="text-xs font-medium text-slate-400"
-                                                >
-                                                    Pilih kurir pengiriman...
-                                                </span>
-                                            {/if}
-                                        </div>
-                                        <i
-                                            class="ti ti-chevron-down text-xs text-slate-400 transition-transform duration-200 {showCourierDropdown
-                                                ? 'rotate-180'
-                                                : ''}"
-                                        ></i>
-                                    </button>
-
-                                    <!-- Dropdown Panel -->
-                                    {#if showCourierDropdown}
-                                        <div
-                                            class="absolute z-50 left-0 right-0 mt-1.5 bg-white rounded-2xl border border-slate-100 shadow-xl overflow-hidden"
-                                            transition:fade={{ duration: 100 }}
+                                        <p
+                                            class="text-xs font-semibold text-slate-500 mb-2"
                                         >
-                                            <!-- Search input -->
+                                            Pilih Kurir
+                                        </p>
+
+                                        <!-- Dropdown Trigger -->
+                                        <button
+                                            onclick={() =>
+                                                (showCourierDropdown =
+                                                    !showCourierDropdown)}
+                                            class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 text-left bg-slate-50/50 hover:bg-slate-50 hover:border-slate-200 active:scale-[0.99] {showCourierDropdown
+                                                ? 'border-slate-300 bg-white ring-2 ring-slate-100'
+                                                : 'border-slate-100'}"
+                                        >
                                             <div
-                                                class="p-2 border-b border-slate-50 sticky top-0 bg-white z-10"
+                                                class="flex items-center gap-2.5"
                                             >
-                                                <div class="relative">
-                                                    <i
-                                                        class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
-                                                    ></i>
-                                                    <input
-                                                        type="text"
-                                                        bind:value={
-                                                            searchCourierQuery
-                                                        }
-                                                        placeholder="Cari kurir..."
-                                                        class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-100 transition-all font-medium text-slate-700"
-                                                    />
-                                                    {#if searchCourierQuery}
+                                                <i
+                                                    class="ti ti-truck text-base text-slate-500"
+                                                ></i>
+                                                {#if selectedCourier}
+                                                    <span
+                                                        class="text-xs font-bold text-slate-800"
+                                                    >
+                                                        {courierLabels[
+                                                            selectedCourier
+                                                        ] ??
+                                                            selectedCourier.toUpperCase()}
+                                                    </span>
+                                                {:else}
+                                                    <span
+                                                        class="text-xs font-medium text-slate-400"
+                                                    >
+                                                        Pilih kurir
+                                                        pengiriman...
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            <i
+                                                class="ti ti-chevron-down text-xs text-slate-400 transition-transform duration-200 {showCourierDropdown
+                                                    ? 'rotate-180'
+                                                    : ''}"
+                                            ></i>
+                                        </button>
+
+                                        <!-- Dropdown Panel -->
+                                        {#if showCourierDropdown}
+                                            <div
+                                                class="absolute z-50 left-0 right-0 mt-1.5 bg-white rounded-2xl border border-slate-100 shadow-xl overflow-hidden"
+                                                transition:fade={{
+                                                    duration: 100,
+                                                }}
+                                            >
+                                                <!-- Search input -->
+                                                <div
+                                                    class="p-2 border-b border-slate-50 sticky top-0 bg-white z-10"
+                                                >
+                                                    <div class="relative">
+                                                        <i
+                                                            class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                                                        ></i>
+                                                        <input
+                                                            type="text"
+                                                            bind:value={
+                                                                searchCourierQuery
+                                                            }
+                                                            placeholder="Cari kurir..."
+                                                            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-100 transition-all font-medium text-slate-700"
+                                                        />
+                                                        {#if searchCourierQuery}
+                                                            <button
+                                                                aria-label="Tutup pencarian"
+                                                                onclick={() =>
+                                                                    (searchCourierQuery =
+                                                                        '')}
+                                                                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-x text-xs"
+                                                                ></i>
+                                                            </button>
+                                                        {/if}
+                                                    </div>
+                                                </div>
+
+                                                <!-- Options List -->
+                                                <div
+                                                    class="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin"
+                                                >
+                                                    {#each availableCouriers.filter( (c) => courierLabels[c]
+                                                                .toLowerCase()
+                                                                .includes(searchCourierQuery.toLowerCase()), ) as courier}
                                                         <button
-                                                            aria-label="Tutup pencarian"
-                                                            onclick={() =>
-                                                                (searchCourierQuery =
-                                                                    '')}
-                                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                                                            onclick={() => {
+                                                                selectedCourier =
+                                                                    courier;
+                                                                showCourierDropdown = false;
+                                                                searchCourierQuery =
+                                                                    '';
+                                                                fetchShipping();
+                                                            }}
+                                                            class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition active:scale-[0.99] {selectedCourier ===
+                                                            courier
+                                                                ? 'text-white font-bold shadow-sm'
+                                                                : 'text-slate-700 hover:bg-slate-50'}"
+                                                            style={selectedCourier ===
+                                                            courier
+                                                                ? `background-color:${primary};`
+                                                                : ''}
+                                                        >
+                                                            <span
+                                                                >{courierLabels[
+                                                                    courier
+                                                                ]}</span
+                                                            >
+                                                            {#if selectedCourier === courier}
+                                                                <i
+                                                                    class="ti ti-check text-xs font-bold text-white"
+                                                                ></i>
+                                                            {/if}
+                                                        </button>
+                                                    {:else}
+                                                        <div
+                                                            class="py-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-1.5"
                                                         >
                                                             <i
-                                                                class="ti ti-x text-xs"
+                                                                class="ti ti-search-off text-lg text-slate-300"
                                                             ></i>
-                                                        </button>
-                                                    {/if}
+                                                            <span
+                                                                >Kurir "{searchCourierQuery}"
+                                                                tidak ditemukan</span
+                                                            >
+                                                        </div>
+                                                    {/each}
                                                 </div>
                                             </div>
+                                        {/if}
+                                    </div>
 
-                                            <!-- Options List -->
-                                            <div
-                                                class="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin"
-                                            >
-                                                {#each availableCouriers.filter( (c) => courierLabels[c]
-                                                            .toLowerCase()
-                                                            .includes(searchCourierQuery.toLowerCase()), ) as courier}
-                                                    <button
-                                                        onclick={() => {
-                                                            selectedCourier =
-                                                                courier;
-                                                            showCourierDropdown = false;
-                                                            searchCourierQuery =
-                                                                '';
-                                                            fetchShipping();
-                                                        }}
-                                                        class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition active:scale-[0.99] {selectedCourier ===
-                                                        courier
-                                                            ? 'text-white font-bold shadow-sm'
-                                                            : 'text-slate-700 hover:bg-slate-50'}"
-                                                        style={selectedCourier ===
-                                                        courier
-                                                            ? `background-color:${primary};`
-                                                            : ''}
-                                                    >
-                                                        <span>{courierLabels[courier]}</span>
-                                                        {#if selectedCourier === courier}
-                                                            <i
-                                                                class="ti ti-check text-xs font-bold text-white"
-                                                            ></i>
-                                                        {/if}
-                                                    </button>
-                                                {:else}
+                                    {#if loadingShipping}
+                                        <div class="space-y-2 mt-3">
+                                            {#each [1, 2, 3] as _}
+                                                <div
+                                                    class="h-16 bg-slate-50 border border-slate-100 rounded-2xl animate-pulse flex items-center justify-between px-4"
+                                                >
                                                     <div
-                                                        class="py-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center gap-1.5"
+                                                        class="space-y-2 w-2/3"
                                                     >
-                                                        <i
-                                                            class="ti ti-search-off text-lg text-slate-300"
-                                                        ></i>
-                                                        <span
-                                                            >Kurir "{searchCourierQuery}"
-                                                            tidak ditemukan</span
-                                                        >
+                                                        <div
+                                                            class="h-4 bg-slate-200/80 rounded-md w-1/2"
+                                                        ></div>
+                                                        <div
+                                                            class="h-3 bg-slate-200/80 rounded-md w-3/4"
+                                                        ></div>
                                                     </div>
-                                                {/each}
+                                                    <div
+                                                        class="h-5 bg-slate-200/80 rounded-md w-16"
+                                                    ></div>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    {:else if shippingError}
+                                        <div
+                                            class="mt-3 p-3 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-medium flex items-center gap-2"
+                                        >
+                                            <i
+                                                class="ti ti-alert-circle text-base"
+                                            ></i>
+                                            <span>{shippingError}</span>
+                                        </div>
+                                    {:else if shippingOptions.length > 0}
+                                        <div class="space-y-2 mt-3">
+                                            {#each shippingOptions as opt}
+                                                <button
+                                                    onclick={() =>
+                                                        (selectedShipping =
+                                                            opt)}
+                                                    class="w-full flex items-center justify-between gap-4 p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.99] {selectedShipping?.service ===
+                                                    opt.service
+                                                        ? 'shadow-sm border-transparent'
+                                                        : 'border-slate-100 hover:border-slate-200 bg-slate-50/30'}"
+                                                    style={selectedShipping?.service ===
+                                                    opt.service
+                                                        ? `border-color:${primary}; background-color:${primary}08`
+                                                        : ''}
+                                                >
+                                                    <div
+                                                        class="flex items-center gap-3 flex-grow min-w-0"
+                                                    >
+                                                        <div
+                                                            class="w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 shrink-0"
+                                                            style={selectedShipping?.service ===
+                                                            opt.service
+                                                                ? `border-color:${primary}; background-color:${primary}`
+                                                                : 'border-slate-300 bg-white'}
+                                                        >
+                                                            {#if selectedShipping?.service === opt.service}
+                                                                <i
+                                                                    class="ti ti-check text-[10px] text-white"
+                                                                ></i>
+                                                            {/if}
+                                                        </div>
+                                                        <div
+                                                            class="min-w-0 flex-grow"
+                                                        >
+                                                            <div
+                                                                class="flex items-center gap-1.5 flex-wrap"
+                                                            >
+                                                                <span
+                                                                    class="uppercase px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 tracking-wider shrink-0"
+                                                                >
+                                                                    {courierLabels[
+                                                                        selectedCourier
+                                                                    ] ||
+                                                                        selectedCourier}
+                                                                </span>
+                                                                <span
+                                                                    class="text-sm font-bold text-slate-800"
+                                                                >
+                                                                    {opt.service}
+                                                                </span>
+                                                            </div>
+                                                            <p
+                                                                class="text-xs text-slate-500 mt-1 font-medium leading-relaxed"
+                                                            >
+                                                                {opt.description}
+                                                            </p>
+                                                            <p
+                                                                class="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-medium"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-clock text-xs"
+                                                                ></i>
+                                                                <span
+                                                                    >{getEtdLabel(
+                                                                        opt
+                                                                            .cost?.[0]
+                                                                            ?.etd,
+                                                                        opt.service ||
+                                                                            opt.description,
+                                                                    )}</span
+                                                                >
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div
+                                                        class="text-right shrink-0"
+                                                    >
+                                                        <p
+                                                            class="text-sm font-bold"
+                                                            style="color:{primary}"
+                                                        >
+                                                            {fmt(
+                                                                opt.cost?.[0]
+                                                                    ?.value ??
+                                                                    0,
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {:else if selectedCourier}
+                                        <div
+                                            class="flex flex-col items-center justify-center py-6 px-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center mt-3"
+                                        >
+                                            <div
+                                                class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-2 animate-bounce"
+                                            >
+                                                <i
+                                                    class="ti ti-loader text-lg text-slate-500"
+                                                ></i>
                                             </div>
+                                            <p
+                                                class="text-xs font-medium text-slate-500"
+                                            >
+                                                Memilih kurir untuk melihat
+                                                layanan...
+                                            </p>
+                                        </div>
+                                    {:else}
+                                        <div
+                                            class="flex flex-col items-center justify-center py-6 px-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center mt-3"
+                                        >
+                                            <div
+                                                class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-2"
+                                            >
+                                                <i
+                                                    class="ti ti-truck-delivery text-lg text-slate-400"
+                                                ></i>
+                                            </div>
+                                            <p
+                                                class="text-xs font-medium text-slate-500"
+                                            >
+                                                Pilih kurir di atas untuk
+                                                melihat pilihan layanan &
+                                                ongkir.
+                                            </p>
                                         </div>
                                     {/if}
-                                </div>
-
-                                {#if loadingShipping}
-                                    <div class="space-y-2 mt-3">
-                                        {#each [1, 2, 3] as _}
-                                            <div
-                                                class="h-16 bg-slate-50 border border-slate-100 rounded-2xl animate-pulse flex items-center justify-between px-4"
-                                            >
-                                                <div class="space-y-2 w-2/3">
-                                                    <div
-                                                        class="h-4 bg-slate-200/80 rounded-md w-1/2"
-                                                    ></div>
-                                                    <div
-                                                        class="h-3 bg-slate-200/80 rounded-md w-3/4"
-                                                    ></div>
-                                                </div>
-                                                <div
-                                                    class="h-5 bg-slate-200/80 rounded-md w-16"
-                                                ></div>
-                                            </div>
-                                        {/each}
-                                    </div>
-                                {:else if shippingError}
-                                    <div
-                                        class="mt-3 p-3 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-medium flex items-center gap-2"
-                                    >
-                                        <i class="ti ti-alert-circle text-base"
-                                        ></i>
-                                        <span>{shippingError}</span>
-                                    </div>
-                                {:else if shippingOptions.length > 0}
-                                    <div class="space-y-2 mt-3">
-                                        {#each shippingOptions as opt}
-                                            <button
-                                                onclick={() =>
-                                                    (selectedShipping = opt)}
-                                                class="w-full flex items-center justify-between gap-4 p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.99] {selectedShipping?.service ===
-                                                opt.service
-                                                    ? 'shadow-sm border-transparent'
-                                                    : 'border-slate-100 hover:border-slate-200 bg-slate-50/30'}"
-                                                style={selectedShipping?.service ===
-                                                opt.service
-                                                    ? `border-color:${primary}; background-color:${primary}08`
-                                                    : ''}
-                                            >
-                                                <div
-                                                    class="flex items-center gap-3 flex-grow min-w-0"
-                                                >
-                                                    <div
-                                                        class="w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200 shrink-0"
-                                                        style={selectedShipping?.service ===
-                                                        opt.service
-                                                            ? `border-color:${primary}; background-color:${primary}`
-                                                            : 'border-slate-300 bg-white'}
-                                                    >
-                                                        {#if selectedShipping?.service === opt.service}
-                                                            <i
-                                                                class="ti ti-check text-[10px] text-white"
-                                                            ></i>
-                                                        {/if}
-                                                    </div>
-                                                    <div class="min-w-0 flex-grow">
-                                                        <div
-                                                            class="flex items-center gap-1.5 flex-wrap"
-                                                        >
-                                                            <span
-                                                                class="uppercase px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 tracking-wider shrink-0"
-                                                            >
-                                                                {courierLabels[selectedCourier] || selectedCourier}
-                                                            </span>
-                                                            <span
-                                                                class="text-sm font-bold text-slate-800"
-                                                            >
-                                                                {opt.service}
-                                                            </span>
-                                                        </div>
-                                                        <p
-                                                            class="text-xs text-slate-500 mt-1 font-medium leading-relaxed"
-                                                        >
-                                                            {opt.description}
-                                                        </p>
-                                                        <p
-                                                            class="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-medium"
-                                                        >
-                                                            <i
-                                                                class="ti ti-clock text-xs"
-                                                            ></i>
-                                                            <span
-                                                                >{getEtdLabel(
-                                                                    opt.cost?.[0]?.etd,
-                                                                    opt.service || opt.description
-                                                                )}</span
-                                                            >
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right shrink-0">
-                                                    <p
-                                                        class="text-sm font-bold"
-                                                        style="color:{primary}"
-                                                    >
-                                                        {fmt(
-                                                            opt.cost?.[0]
-                                                                ?.value ?? 0,
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            </button>
-                                        {/each}
-                                    </div>
-                                {:else if selectedCourier}
-                                    <div
-                                        class="flex flex-col items-center justify-center py-6 px-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center mt-3"
-                                    >
-                                        <div
-                                            class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-2 animate-bounce"
-                                        >
-                                            <i
-                                                class="ti ti-loader text-lg text-slate-500"
-                                            ></i>
-                                        </div>
-                                        <p
-                                            class="text-xs font-medium text-slate-500"
-                                        >
-                                            Memilih kurir untuk melihat
-                                            layanan...
-                                        </p>
-                                    </div>
-                                {:else}
-                                    <div
-                                        class="flex flex-col items-center justify-center py-6 px-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 text-center mt-3"
-                                    >
-                                        <div
-                                            class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center mb-2"
-                                        >
-                                            <i
-                                                class="ti ti-truck-delivery text-lg text-slate-400"
-                                            ></i>
-                                        </div>
-                                        <p
-                                            class="text-xs font-medium text-slate-500"
-                                        >
-                                            Pilih kurir di atas untuk melihat
-                                            pilihan layanan & ongkir.
-                                        </p>
-                                    </div>
                                 {/if}
-                            {/if}
+                            </div>
                         </div>
-                    </div>
                     {/if}
 
                     <!-- Voucher Section -->
@@ -2268,7 +2332,8 @@
                                         <span class="text-slate-600"
                                             >Ongkos Kirim</span
                                         >
-                                        <span class="font-semibold text-slate-800"
+                                        <span
+                                            class="font-semibold text-slate-800"
                                             >{selectedShipping
                                                 ? fmt(shippingFee)
                                                 : '-'}</span
@@ -2351,7 +2416,9 @@
                             <button
                                 onclick={submitCheckout}
                                 disabled={isSubmitting ||
-                                    (!isDigitalOnly && selectedCourier !== 'self_pickup' && !selectedAddressId) ||
+                                    (!isDigitalOnly &&
+                                        selectedCourier !== 'self_pickup' &&
+                                        !selectedAddressId) ||
                                     !selectedPaymentMethodId ||
                                     (!isDigitalOnly && !selectedShipping) ||
                                     !isStoreOpen}
@@ -2386,7 +2453,9 @@
                 <button
                     onclick={submitCheckout}
                     disabled={isSubmitting ||
-                        (!isDigitalOnly && selectedCourier !== 'self_pickup' && !selectedAddressId) ||
+                        (!isDigitalOnly &&
+                            selectedCourier !== 'self_pickup' &&
+                            !selectedAddressId) ||
                         !selectedPaymentMethodId ||
                         (!isDigitalOnly && !selectedShipping) ||
                         !isStoreOpen}

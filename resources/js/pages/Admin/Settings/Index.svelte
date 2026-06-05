@@ -66,10 +66,12 @@
         rajaongkir_url:
             settings.rajaongkir_url || 'https://rajaongkir.komerce.id/api/v1/',
         rajaongkir_shipping_cost:
-            settings.rajaongkir_shipping_cost || '390d25e9d86ded71cb771c363778cccf',
+            settings.rajaongkir_shipping_cost ||
+            '390d25e9d86ded71cb771c363778cccf',
 
         shipping_delivery_key:
-            settings.shipping_delivery_key || 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S',
+            settings.shipping_delivery_key ||
+            'sdfh2Qgp5a2e20929ec5ff822tkkgf6S',
         payment_api_key:
             settings.payment_api_key || 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S',
         qrisly_api_key:
@@ -90,7 +92,8 @@
             settings.qrisly_api_enabled === '1',
         qrisly_api_admin_fee: settings.qrisly_api_admin_fee || 0,
         komerce_delivery_url:
-            settings.komerce_delivery_url || 'https://api-sandbox.collaborator.komerce.id/api/v1/',
+            settings.komerce_delivery_url ||
+            'https://api-sandbox.collaborator.komerce.id/api/v1/',
 
         storefront_cart_button_style:
             settings.storefront_cart_button_style || 'button',
@@ -413,7 +416,10 @@
         cropBox = { x: 0, y: 0, w: 0, h: 0 };
     }
 
-    function getCropEventPos(e: MouseEvent | TouchEvent, el: HTMLCanvasElement) {
+    function getCropEventPos(
+        e: MouseEvent | TouchEvent,
+        el: HTMLCanvasElement,
+    ) {
         const rect = el.getBoundingClientRect();
         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -424,7 +430,9 @@
     }
 
     function onCropPointerDown(e: MouseEvent | TouchEvent) {
-        if (!isCropMode || !editorCanvas) { return; }
+        if (!isCropMode || !editorCanvas) {
+            return;
+        }
         e.preventDefault();
         const pos = getCropEventPos(e, editorCanvas);
         cropStart = pos;
@@ -433,7 +441,9 @@
     }
 
     function onCropPointerMove(e: MouseEvent | TouchEvent) {
-        if (!cropDragging || !editorCanvas) { return; }
+        if (!cropDragging || !editorCanvas) {
+            return;
+        }
         e.preventDefault();
         const pos = getCropEventPos(e, editorCanvas);
         cropBox = {
@@ -464,7 +474,9 @@
         const ch = Math.round(cropBox.h * scaleY);
 
         const ctx = editorCanvas.getContext('2d');
-        if (!ctx) { return; }
+        if (!ctx) {
+            return;
+        }
 
         const imgData = ctx.getImageData(cx, cy, cw, ch);
         editorCanvas.width = cw;
@@ -478,8 +490,12 @@
 
         // Convert cropped canvas to a new image to reload into editor
         editorCanvas.toBlob((blob) => {
-            if (!blob) { return; }
-            const croppedFile = new File([blob], editorFilename, { type: 'image/png' });
+            if (!blob) {
+                return;
+            }
+            const croppedFile = new File([blob], editorFilename, {
+                type: 'image/png',
+            });
             openEditor(croppedFile, editorTarget);
         }, 'image/png');
 
@@ -891,16 +907,17 @@
     }
 
     function removeCourierTier(index: number) {
-        form.store_courier_tiered_rates = form.store_courier_tiered_rates.filter(
-            (_, i) => i !== index,
-        );
+        form.store_courier_tiered_rates =
+            form.store_courier_tiered_rates.filter((_, i) => i !== index);
     }
 
     function submit() {
         form.transform((data) => ({
             ...data,
             coin_earning_tiers: JSON.stringify(data.coin_earning_tiers || []),
-            store_courier_tiered_rates: JSON.stringify(data.store_courier_tiered_rates || []),
+            store_courier_tiered_rates: JSON.stringify(
+                data.store_courier_tiered_rates || [],
+            ),
         })).post('/admin/settings', {
             preserveScroll: true,
             onSuccess: () => {
@@ -2008,7 +2025,10 @@
                                 <p
                                     class="text-[10px] text-amber-700 font-semibold mt-0.5 leading-relaxed"
                                 >
-                                    Logo harus <strong>lebih lebar dari tingginya</strong> (orientasi landscape).<br />
+                                    Logo harus <strong
+                                        >lebih lebar dari tingginya</strong
+                                    >
+                                    (orientasi landscape).<br />
                                     Format PNG/JPG, maks. 2MB.<br />
                                     Resolusi rekomendasi:
                                     <strong>1024 × 512 px</strong> (2:1) atau
@@ -2460,10 +2480,14 @@
                                         icon="ti-building-store"
                                     />
                                     {#if form.self_pickup_enabled}
-                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                        <div
+                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                        >
                                             <InputCurrency
                                                 id="input-self-pickup-fee"
-                                                bind:value={form.self_pickup_fee}
+                                                bind:value={
+                                                    form.self_pickup_fee
+                                                }
                                                 label="Biaya Penanganan Ambil di Toko"
                                                 placeholder="Contoh: 0"
                                                 required={true}
@@ -2477,30 +2501,51 @@
                                 <!-- Store Courier Settings -->
                                 <div class="space-y-2">
                                     <Toggle
-                                        bind:checked={form.store_courier_enabled}
+                                        bind:checked={
+                                            form.store_courier_enabled
+                                        }
                                         label="Aktifkan Kurir Toko"
                                         icon="ti-truck-delivery"
                                     />
                                     {#if form.store_courier_enabled}
-                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-3">
+                                        <div
+                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-3"
+                                        >
                                             <div class="space-y-1">
-                                                <label for="store-courier-type" class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                                <label
+                                                    for="store-courier-type"
+                                                    class="text-xs font-bold text-slate-500 uppercase tracking-wider block"
+                                                >
                                                     Metode Perhitungan Biaya
                                                 </label>
                                                 <select
                                                     id="store-courier-type"
-                                                    bind:value={form.store_courier_type}
+                                                    bind:value={
+                                                        form.store_courier_type
+                                                    }
                                                     class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
                                                 >
-                                                    <option value="flat">Tarif Flat (Sama Rata)</option>
-                                                    <option value="radius">Tarif Berdasarkan Radius (per Km)</option>
-                                                    <option value="radius_tiered">Tarif Berdasarkan Radius Bertingkat (Tiered)</option>
+                                                    <option value="flat"
+                                                        >Tarif Flat (Sama Rata)</option
+                                                    >
+                                                    <option value="radius"
+                                                        >Tarif Berdasarkan
+                                                        Radius (per Km)</option
+                                                    >
+                                                    <option
+                                                        value="radius_tiered"
+                                                        >Tarif Berdasarkan
+                                                        Radius Bertingkat
+                                                        (Tiered)</option
+                                                    >
                                                 </select>
                                             </div>
 
                                             {#if form.store_courier_type !== 'flat'}
                                                 <Toggle
-                                                    bind:checked={form.store_courier_round_up}
+                                                    bind:checked={
+                                                        form.store_courier_round_up
+                                                    }
                                                     label="Bulatkan Jarak Ke Atas"
                                                     description="Bulatkan jarak pengiriman di bawah 1 km atau kelipatan pecahan ke kilometer terdekat (misal: 0,2 km dibulatkan menjadi 1 km)."
                                                     icon="ti-arrows-sort"
@@ -2510,115 +2555,184 @@
                                             {#if form.store_courier_type === 'flat'}
                                                 <InputCurrency
                                                     id="input-store-courier-flat-fee"
-                                                    bind:value={form.store_courier_flat_fee}
+                                                    bind:value={
+                                                        form.store_courier_flat_fee
+                                                    }
                                                     label="Biaya Pengiriman Flat"
                                                     placeholder="Contoh: 15000"
                                                     required={true}
                                                 />
-                                            {:else}
-                                                {#if form.store_courier_type === 'radius'}
-                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <InputCurrency
-                                                            id="input-store-courier-per-km-fee"
-                                                            bind:value={form.store_courier_per_km_fee}
-                                                            label="Biaya per Kilometer"
-                                                            placeholder="Contoh: 3000"
-                                                            required={true}
-                                                        />
+                                            {:else if form.store_courier_type === 'radius'}
+                                                <div
+                                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                                >
+                                                    <InputCurrency
+                                                        id="input-store-courier-per-km-fee"
+                                                        bind:value={
+                                                            form.store_courier_per_km_fee
+                                                        }
+                                                        label="Biaya per Kilometer"
+                                                        placeholder="Contoh: 3000"
+                                                        required={true}
+                                                    />
+                                                    <Input
+                                                        id="input-store-courier-max-radius"
+                                                        type="number"
+                                                        bind:value={
+                                                            form.store_courier_max_radius
+                                                        }
+                                                        label="Radius Maksimal Pengiriman (Km)"
+                                                        placeholder="Contoh: 25"
+                                                        min="1"
+                                                        required={true}
+                                                    />
+                                                </div>
+                                            {:else if form.store_courier_type === 'radius_tiered'}
+                                                <div class="space-y-4">
+                                                    <div
+                                                        class="flex justify-between items-center"
+                                                    >
+                                                        <span
+                                                            class="text-xs font-bold text-slate-500 uppercase tracking-wider block"
+                                                        >
+                                                            Aturan Jarak & Biaya
+                                                            (Bertingkat)
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onclick={addCourierTier}
+                                                            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition flex items-center gap-1 cursor-pointer font-sans"
+                                                        >
+                                                            <i
+                                                                class="ti ti-plus"
+                                                            ></i> Tambah Tingkatan
+                                                        </button>
+                                                    </div>
+
+                                                    {#if form.store_courier_tiered_rates.length === 0}
+                                                        <div
+                                                            class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans"
+                                                        >
+                                                            <i
+                                                                class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"
+                                                            ></i>
+                                                            <span
+                                                                class="text-[11px] font-bold text-slate-500"
+                                                                >Belum Ada
+                                                                Aturan Tingkatan</span
+                                                            >
+                                                            <p
+                                                                class="text-[9px] text-slate-400 mt-0.5 leading-none"
+                                                            >
+                                                                Klik "+ Tambah
+                                                                Tingkatan" untuk
+                                                                membuat aturan
+                                                                baru.
+                                                            </p>
+                                                        </div>
+                                                    {:else}
+                                                        <div
+                                                            class="space-y-3 font-sans"
+                                                        >
+                                                            {#each form.store_courier_tiered_rates as tier, index}
+                                                                <div
+                                                                    class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm"
+                                                                    transition:slide
+                                                                >
+                                                                    <div
+                                                                        class="flex-grow grid grid-cols-2 gap-3.5"
+                                                                    >
+                                                                        <div
+                                                                            class="space-y-1"
+                                                                        >
+                                                                            <span
+                                                                                class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
+                                                                                >Jarak
+                                                                                Maksimal
+                                                                                (Km)</span
+                                                                            >
+                                                                            <div
+                                                                                class="relative"
+                                                                            >
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min="0.1"
+                                                                                    step="0.1"
+                                                                                    bind:value={
+                                                                                        tier.max_distance
+                                                                                    }
+                                                                                    class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
+                                                                                    placeholder="Contoh: 5"
+                                                                                    required
+                                                                                />
+                                                                                <span
+                                                                                    class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans"
+                                                                                    >Km</span
+                                                                                >
+                                                                            </div>
+                                                                        </div>
+                                                                        <div
+                                                                            class="space-y-1"
+                                                                        >
+                                                                            <span
+                                                                                class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
+                                                                                >Biaya
+                                                                                Pengiriman</span
+                                                                            >
+                                                                            <div
+                                                                                class="relative"
+                                                                            >
+                                                                                <span
+                                                                                    class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold"
+                                                                                    >Rp</span
+                                                                                >
+                                                                                <input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    bind:value={
+                                                                                        tier.fee
+                                                                                    }
+                                                                                    class="w-full pl-9 pr-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
+                                                                                    placeholder="Contoh: 10000"
+                                                                                    required
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onclick={() =>
+                                                                            removeCourierTier(
+                                                                                index,
+                                                                            )}
+                                                                        class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition self-end cursor-pointer"
+                                                                        title="Hapus Aturan"
+                                                                    >
+                                                                        <i
+                                                                            class="ti ti-trash text-sm"
+                                                                        ></i>
+                                                                    </button>
+                                                                </div>
+                                                            {/each}
+                                                        </div>
+                                                    {/if}
+
+                                                    <div
+                                                        class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"
+                                                    >
                                                         <Input
                                                             id="input-store-courier-max-radius"
                                                             type="number"
-                                                            bind:value={form.store_courier_max_radius}
+                                                            bind:value={
+                                                                form.store_courier_max_radius
+                                                            }
                                                             label="Radius Maksimal Pengiriman (Km)"
                                                             placeholder="Contoh: 25"
                                                             min="1"
                                                             required={true}
                                                         />
                                                     </div>
-                                                {:else if form.store_courier_type === 'radius_tiered'}
-                                                    <div class="space-y-4">
-                                                        <div class="flex justify-between items-center">
-                                                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                                                                Aturan Jarak & Biaya (Bertingkat)
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onclick={addCourierTier}
-                                                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition flex items-center gap-1 cursor-pointer font-sans"
-                                                            >
-                                                                <i class="ti ti-plus"></i> Tambah Tingkatan
-                                                            </button>
-                                                        </div>
-
-                                                        {#if form.store_courier_tiered_rates.length === 0}
-                                                            <div class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans">
-                                                                <i class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"></i>
-                                                                <span class="text-[11px] font-bold text-slate-500">Belum Ada Aturan Tingkatan</span>
-                                                                <p class="text-[9px] text-slate-400 mt-0.5 leading-none">
-                                                                    Klik "+ Tambah Tingkatan" untuk membuat aturan baru.
-                                                                </p>
-                                                            </div>
-                                                        {:else}
-                                                            <div class="space-y-3 font-sans">
-                                                                {#each form.store_courier_tiered_rates as tier, index}
-                                                                    <div class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm" transition:slide>
-                                                                        <div class="flex-grow grid grid-cols-2 gap-3.5">
-                                                                            <div class="space-y-1">
-                                                                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Jarak Maksimal (Km)</span>
-                                                                                <div class="relative">
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        min="0.1"
-                                                                                        step="0.1"
-                                                                                        bind:value={tier.max_distance}
-                                                                                        class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
-                                                                                        placeholder="Contoh: 5"
-                                                                                        required
-                                                                                    />
-                                                                                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans">Km</span>
-                                                                                </div>
-                                                                            </div>
-                                                                            <div class="space-y-1">
-                                                                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Biaya Pengiriman</span>
-                                                                                <div class="relative">
-                                                                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        min="0"
-                                                                                        bind:value={tier.fee}
-                                                                                        class="w-full pl-9 pr-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
-                                                                                        placeholder="Contoh: 10000"
-                                                                                        required
-                                                                                    />
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <button
-                                                                            type="button"
-                                                                            onclick={() => removeCourierTier(index)}
-                                                                            class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition self-end cursor-pointer"
-                                                                            title="Hapus Aturan"
-                                                                        >
-                                                                            <i class="ti ti-trash text-sm"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                {/each}
-                                                            </div>
-                                                        {/if}
-
-                                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                                            <Input
-                                                                id="input-store-courier-max-radius"
-                                                                type="number"
-                                                                bind:value={form.store_courier_max_radius}
-                                                                label="Radius Maksimal Pengiriman (Km)"
-                                                                placeholder="Contoh: 25"
-                                                                min="1"
-                                                                required={true}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                {/if}
+                                                </div>
                                             {/if}
                                         </div>
                                     {/if}
@@ -2629,15 +2743,21 @@
                                 <!-- Shipping Delivery Settings -->
                                 <div class="space-y-2">
                                     <Toggle
-                                        bind:checked={form.shipping_delivery_enabled}
+                                        bind:checked={
+                                            form.shipping_delivery_enabled
+                                        }
                                         label="Aktifkan Shipping Delivery API"
                                         icon="ti-truck"
                                     />
                                     {#if form.shipping_delivery_enabled}
-                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                        <div
+                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                        >
                                             <Input
                                                 id="input-shipping-delivery-key"
-                                                bind:value={form.shipping_delivery_key}
+                                                bind:value={
+                                                    form.shipping_delivery_key
+                                                }
                                                 label="Shipping Delivery API Key"
                                                 placeholder="Masukkan Shipping Delivery API Key"
                                                 required={true}
@@ -2656,17 +2776,23 @@
                                         icon="ti-credit-card"
                                     />
                                     {#if form.payment_api_enabled}
-                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                        <div
+                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                        >
                                             <Input
                                                 id="input-payment-api-key"
-                                                bind:value={form.payment_api_key}
+                                                bind:value={
+                                                    form.payment_api_key
+                                                }
                                                 label="Payment API Key"
                                                 placeholder="Masukkan Payment API Key"
                                                 required={true}
                                             />
                                             <InputCurrency
                                                 id="input-payment-api-admin-fee"
-                                                bind:value={form.payment_api_admin_fee}
+                                                bind:value={
+                                                    form.payment_api_admin_fee
+                                                }
                                                 label="Biaya Admin Payment API"
                                                 placeholder="Contoh: 2500"
                                                 required={true}
@@ -2685,7 +2811,9 @@
                                         icon="ti-qrcode"
                                     />
                                     {#if form.qrisly_api_enabled}
-                                        <div class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2">
+                                        <div
+                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                        >
                                             <Input
                                                 id="input-qrisly-api-key"
                                                 bind:value={form.qrisly_api_key}
@@ -2695,7 +2823,9 @@
                                             />
                                             <InputCurrency
                                                 id="input-qrisly-api-admin-fee"
-                                                bind:value={form.qrisly_api_admin_fee}
+                                                bind:value={
+                                                    form.qrisly_api_admin_fee
+                                                }
                                                 label="Biaya Admin QRISLY API"
                                                 placeholder="Contoh: 1000"
                                                 required={true}
@@ -2708,24 +2838,34 @@
                             <div class="h-px bg-slate-100"></div>
 
                             <div class="space-y-3.5">
-                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                <span
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                >
                                     Batas Waktu Transaksi
                                 </span>
                                 <p class="text-[11px] text-slate-400 font-bold">
-                                    Konfigurasi batas waktu pembayaran, pembatalan otomatis, dan konfirmasi penerimaan pesanan.
+                                    Konfigurasi batas waktu pembayaran,
+                                    pembatalan otomatis, dan konfirmasi
+                                    penerimaan pesanan.
                                 </p>
                                 <div class="grid grid-cols-1 gap-4 mt-2">
                                     <div>
                                         <Input
                                             id="input-payment-expiry-hours"
                                             type="number"
-                                            bind:value={form.payment_expiry_hours}
+                                            bind:value={
+                                                form.payment_expiry_hours
+                                            }
                                             label="Batas Waktu Pembayaran (Jam)"
                                             placeholder="Contoh: 24"
                                             min="1"
                                             required={true}
                                         />
-                                        <span class="text-[10px] text-slate-400 mt-1 block">Durasi (jam) sebelum pesanan belum dibayar dibatalkan otomatis.</span>
+                                        <span
+                                            class="text-[10px] text-slate-400 mt-1 block"
+                                            >Durasi (jam) sebelum pesanan belum
+                                            dibayar dibatalkan otomatis.</span
+                                        >
                                     </div>
                                     <div>
                                         <Input
@@ -2737,19 +2877,30 @@
                                             min="1"
                                             required={true}
                                         />
-                                        <span class="text-[10px] text-slate-400 mt-1 block">Durasi (hari) sebelum pesanan berstatus dikirim diselesaikan otomatis.</span>
+                                        <span
+                                            class="text-[10px] text-slate-400 mt-1 block"
+                                            >Durasi (hari) sebelum pesanan
+                                            berstatus dikirim diselesaikan
+                                            otomatis.</span
+                                        >
                                     </div>
                                     <div>
                                         <Input
                                             id="input-extend-auto-complete-days"
                                             type="number"
-                                            bind:value={form.extend_auto_complete_days}
+                                            bind:value={
+                                                form.extend_auto_complete_days
+                                            }
                                             label="Perpanjangan Jangka Waktu (Hari)"
                                             placeholder="Contoh: 3"
                                             min="1"
                                             required={true}
                                         />
-                                        <span class="text-[10px] text-slate-400 mt-1 block">Durasi tambahan (hari) ketika customer memperpanjang penerimaan.</span>
+                                        <span
+                                            class="text-[10px] text-slate-400 mt-1 block"
+                                            >Durasi tambahan (hari) ketika
+                                            customer memperpanjang penerimaan.</span
+                                        >
                                     </div>
                                 </div>
                             </div>
@@ -2956,8 +3107,8 @@
                             Edit {editorTarget === 'logo' ? 'Logo' : 'Icon'} Toko
                         </h3>
                         <p class="text-xs text-slate-400 font-medium">
-                            Sesuaikan ukuran, rotasi, crop, dan transparansi gambar
-                            sebelum diunggah
+                            Sesuaikan ukuran, rotasi, crop, dan transparansi
+                            gambar sebelum diunggah
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
@@ -2999,10 +3150,22 @@
                     >
                         <!-- Crop mode indicator -->
                         {#if isCropMode}
-                            <div class="w-full mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-                                <i class="ti ti-crop text-amber-600 text-sm"></i>
-                                <p class="text-[10px] font-bold text-amber-700 flex-grow">Seret di atas gambar untuk memilih area crop</p>
-                                <button type="button" onclick={cancelCrop} class="text-[10px] font-black text-amber-600 hover:text-amber-800 uppercase tracking-wider">Batal</button>
+                            <div
+                                class="w-full mb-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl"
+                            >
+                                <i class="ti ti-crop text-amber-600 text-sm"
+                                ></i>
+                                <p
+                                    class="text-[10px] font-bold text-amber-700 flex-grow"
+                                >
+                                    Seret di atas gambar untuk memilih area crop
+                                </p>
+                                <button
+                                    type="button"
+                                    onclick={cancelCrop}
+                                    class="text-[10px] font-black text-amber-600 hover:text-amber-800 uppercase tracking-wider"
+                                    >Batal</button
+                                >
                             </div>
                         {/if}
 
@@ -3010,17 +3173,29 @@
                         <!-- Canvas wrapper: aspect ratio follows output dimensions so preview is accurate -->
                         <div
                             bind:this={cropPreviewEl}
-                            class="checkerboard rounded-xl shadow-inner border {isCropMode ? 'border-amber-400' : 'border-slate-200'} overflow-hidden relative select-none"
+                            class="checkerboard rounded-xl shadow-inner border {isCropMode
+                                ? 'border-amber-400'
+                                : 'border-slate-200'} overflow-hidden relative select-none"
                             style="width: min(320px, 100%); aspect-ratio: {editorWidth} / {editorHeight}; max-height: 280px;"
                         >
                             <!-- svelte-ignore a11y_no_static_element_interactions -->
                             <canvas
                                 bind:this={editorCanvas}
-                                class="w-full h-full {isCropMode ? 'cursor-crosshair' : 'cursor-default'}"
-                                onmousedown={isCropMode ? onCropPointerDown : undefined}
-                                onmousemove={isCropMode ? onCropPointerMove : undefined}
-                                onmouseup={isCropMode ? onCropPointerUp : undefined}
-                                onmouseleave={isCropMode ? onCropPointerUp : undefined}
+                                class="w-full h-full {isCropMode
+                                    ? 'cursor-crosshair'
+                                    : 'cursor-default'}"
+                                onmousedown={isCropMode
+                                    ? onCropPointerDown
+                                    : undefined}
+                                onmousemove={isCropMode
+                                    ? onCropPointerMove
+                                    : undefined}
+                                onmouseup={isCropMode
+                                    ? onCropPointerUp
+                                    : undefined}
+                                onmouseleave={isCropMode
+                                    ? onCropPointerUp
+                                    : undefined}
                             ></canvas>
 
                             <!-- Crop selection overlay -->
@@ -3030,25 +3205,37 @@
                                     style="left:{cropBox.x}px; top:{cropBox.y}px; width:{cropBox.w}px; height:{cropBox.h}px;"
                                 >
                                     <!-- Corner handles -->
-                                    <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
-                                    <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
-                                    <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
-                                    <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                    <div
+                                        class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"
+                                    ></div>
+                                    <div
+                                        class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"
+                                    ></div>
+                                    <div
+                                        class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"
+                                    ></div>
+                                    <div
+                                        class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"
+                                    ></div>
                                 </div>
                             {/if}
                         </div>
 
                         <!-- Crop dimension info -->
                         {#if isCropMode && cropBox.w > 2 && cropBox.h > 2}
-                            <p class="text-[10px] text-amber-600 font-bold mt-2">
-                                {Math.round(cropBox.w)} × {Math.round(cropBox.h)} px (preview)
+                            <p
+                                class="text-[10px] text-amber-600 font-bold mt-2"
+                            >
+                                {Math.round(cropBox.w)} × {Math.round(
+                                    cropBox.h,
+                                )} px (preview)
                             </p>
                         {:else}
                             <p
                                 class="text-[10px] text-slate-400 font-semibold mt-3 flex items-center gap-1"
                             >
-                                <i class="ti ti-info-circle"></i> Kotak kotak-kotak menandakan
-                                area transparan (tanpa background)
+                                <i class="ti ti-info-circle"></i> Kotak kotak-kotak
+                                menandakan area transparan (tanpa background)
                             </p>
                         {/if}
                     </div>
@@ -3058,7 +3245,10 @@
                         <div class="space-y-5">
                             <!-- Custom Width & Height Inputs -->
                             <div class="space-y-2">
-                                <span class="text-xs font-bold text-slate-700 block">Dimensi Output (Piksel)</span>
+                                <span
+                                    class="text-xs font-bold text-slate-700 block"
+                                    >Dimensi Output (Piksel)</span
+                                >
                                 <div class="flex items-center gap-3">
                                     <!-- Width Input -->
                                     <div class="flex-1 relative">
@@ -3198,7 +3388,10 @@
                             <!-- Resize / Scale Slider -->
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs font-bold text-slate-700">Skala / Zoom (Ukuran)</span>
+                                    <span
+                                        class="text-xs font-bold text-slate-700"
+                                        >Skala / Zoom (Ukuran)</span
+                                    >
                                     <span
                                         class="text-xs font-bold text-slate-500"
                                         >{Math.round(editorScale * 100)}%</span
@@ -3267,7 +3460,10 @@
 
                             <!-- Rotation Controls -->
                             <div class="space-y-2">
-                                <span class="text-xs font-bold text-slate-700 block">Putar Gambar (Rotasi)</span>
+                                <span
+                                    class="text-xs font-bold text-slate-700 block"
+                                    >Putar Gambar (Rotasi)</span
+                                >
                                 <div class="grid grid-cols-4 gap-2">
                                     {#each [0, 90, 180, 270] as deg}
                                         <button
@@ -3344,13 +3540,27 @@
 
                         <!-- Landscape warning banner for logo -->
                         {#if isLogoNotLandscape}
-                            <div class="flex items-start gap-2.5 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3">
-                                <i class="ti ti-rotate-rectangle text-rose-500 text-base mt-0.5 shrink-0"></i>
+                            <div
+                                class="flex items-start gap-2.5 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3"
+                            >
+                                <i
+                                    class="ti ti-rotate-rectangle text-rose-500 text-base mt-0.5 shrink-0"
+                                ></i>
                                 <div>
-                                    <span class="text-[11px] font-black text-rose-700 uppercase tracking-tight block">Bukan Format Landscape</span>
-                                    <p class="text-[10px] text-rose-600 font-semibold mt-0.5 leading-relaxed">
-                                        Logo toko <strong>wajib berformat landscape</strong> (lebar &gt; tinggi).<br />
-                                        Sesuaikan dimensi lebar &amp; tinggi di atas, atau gunakan preset landscape, sebelum menekan Terapkan.
+                                    <span
+                                        class="text-[11px] font-black text-rose-700 uppercase tracking-tight block"
+                                        >Bukan Format Landscape</span
+                                    >
+                                    <p
+                                        class="text-[10px] text-rose-600 font-semibold mt-0.5 leading-relaxed"
+                                    >
+                                        Logo toko <strong
+                                            >wajib berformat landscape</strong
+                                        >
+                                        (lebar &gt; tinggi).<br />
+                                        Sesuaikan dimensi lebar &amp; tinggi di atas,
+                                        atau gunakan preset landscape, sebelum menekan
+                                        Terapkan.
                                     </p>
                                 </div>
                             </div>
@@ -3393,13 +3603,18 @@
                                 <button
                                     type="button"
                                     class="flex-1 py-3 px-4 rounded-xl text-white text-xs font-bold transition text-center uppercase tracking-wider shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none"
-                                    style="background-color: {isLogoNotLandscape ? '#94a3b8' : primaryColor};"
+                                    style="background-color: {isLogoNotLandscape
+                                        ? '#94a3b8'
+                                        : primaryColor};"
                                     onclick={applyEdits}
                                     disabled={isLogoNotLandscape}
-                                    title={isLogoNotLandscape ? 'Logo harus landscape sebelum dapat diterapkan' : 'Terapkan perubahan'}
+                                    title={isLogoNotLandscape
+                                        ? 'Logo harus landscape sebelum dapat diterapkan'
+                                        : 'Terapkan perubahan'}
                                 >
                                     {#if isLogoNotLandscape}
-                                        <i class="ti ti-alert-triangle mr-1"></i>Wajib Landscape
+                                        <i class="ti ti-alert-triangle mr-1"
+                                        ></i>Wajib Landscape
                                     {:else}
                                         Terapkan
                                     {/if}

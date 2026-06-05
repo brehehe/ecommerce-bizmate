@@ -32,8 +32,12 @@
         });
     });
 
-    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
-    const storeAppName = $derived((page.props as any).settings?.store_app_name || storeName);
+    const storeName = $derived(
+        (page.props as any).settings?.store_name || 'Bizmate',
+    );
+    const storeAppName = $derived(
+        (page.props as any).settings?.store_app_name || storeName,
+    );
 
     let isSidebarOpen = $state(false);
     let isNotifOpen = $state(false);
@@ -75,7 +79,11 @@
     }
 
     function markAllAsRead() {
-        router.post('/notifications/read-all', { type: 'admin' }, { preserveScroll: true });
+        router.post(
+            '/notifications/read-all',
+            { type: 'admin' },
+            { preserveScroll: true },
+        );
     }
 
     // Guided Setup Tour
@@ -226,7 +234,10 @@
         const path = window.location.pathname;
 
         // Skip syncing if we are at the final step which is on the dashboard to avoid resetting to step 1
-        if (currentTourStep === tourSteps.length && path === '/admin/dashboard') {
+        if (
+            currentTourStep === tourSteps.length &&
+            path === '/admin/dashboard'
+        ) {
             return;
         }
 
@@ -565,7 +576,9 @@
                                                 <button
                                                     onclick={() => {
                                                         isNotifOpen = false;
-                                                        router.visit(`/admin/store/stocks?search=${encodeURIComponent(item.name.split(' (')[0])}`);
+                                                        router.visit(
+                                                            `/admin/store/stocks?search=${encodeURIComponent(item.name.split(' (')[0])}`,
+                                                        );
                                                     }}
                                                     class="w-full text-left text-xs flex items-start justify-between gap-3 hover:bg-rose-100/40 p-1 rounded-md transition"
                                                 >
@@ -599,7 +612,9 @@
                                                 <button
                                                     onclick={() => {
                                                         isNotifOpen = false;
-                                                        router.visit(`/admin/store/stocks?search=${encodeURIComponent(item.name.split(' (')[0])}`);
+                                                        router.visit(
+                                                            `/admin/store/stocks?search=${encodeURIComponent(item.name.split(' (')[0])}`,
+                                                        );
                                                     }}
                                                     class="w-full text-left text-xs flex items-start justify-between gap-3 hover:bg-amber-100/40 p-1 rounded-md transition"
                                                 >
@@ -720,7 +735,9 @@
                         class="px-4 py-1.5 text-white font-bold rounded-lg text-xs transition flex items-center gap-1 shrink-0"
                         style="background-color: var(--color-brand-orange);"
                     >
-                        {currentTourStep === tourSteps.length ? 'Selesai' : 'Lanjutkan'}
+                        {currentTourStep === tourSteps.length
+                            ? 'Selesai'
+                            : 'Lanjutkan'}
                         <i class="ti ti-chevron-right text-xs"></i>
                     </button>
                 </div>

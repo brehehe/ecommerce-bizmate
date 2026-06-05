@@ -339,14 +339,19 @@
     // Audio Oscillator for premium beep sound
     function playBeep() {
         try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const ctx = new (
+                window.AudioContext || (window as any).webkitAudioContext
+            )();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
             osc.frequency.setValueAtTime(1000, ctx.currentTime); // 1000 Hz beep
             gain.gain.setValueAtTime(0, ctx.currentTime);
             gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+            gain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                ctx.currentTime + 0.25,
+            );
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
@@ -358,11 +363,11 @@
 
     async function handleScanSuccess(decodedText: string) {
         if (!decodedText || scanSubmitting) return;
-        
+
         // Stop scanning immediately to prevent multiple scans
         await stopScanning();
         playBeep();
-        
+
         scanInputValue = decodedText.trim();
         submitScannedCode();
     }
@@ -372,11 +377,16 @@
         scanSubmitting = true;
         scanError = '';
 
-        fetch(`/admin/transactions/find-by-number/${encodeURIComponent(scanInputValue.trim())}`)
+        fetch(
+            `/admin/transactions/find-by-number/${encodeURIComponent(scanInputValue.trim())}`,
+        )
             .then(async (resp) => {
                 const data = await resp.json();
                 if (resp.ok && data.success) {
-                    showToast('Kode berhasil ditemukan! Mengalihkan...', 'success');
+                    showToast(
+                        'Kode berhasil ditemukan! Mengalihkan...',
+                        'success',
+                    );
                     // Close modal and redirect
                     showScanModal = false;
                     router.visit(data.redirect_url);
@@ -407,15 +417,19 @@
                 availableCameras = devices;
                 if (!selectedCameraId) {
                     // Prefer back camera if available
-                    const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
+                    const backCam = devices.find(
+                        (d) =>
+                            d.label.toLowerCase().includes('back') ||
+                            d.label.toLowerCase().includes('rear'),
+                    );
                     selectedCameraId = backCam ? backCam.id : devices[0].id;
                 }
-                
+
                 // Initialize scanner
                 if (!html5QrScanner) {
                     html5QrScanner = new Html5Qrcode('scanner-reader');
                 }
-                
+
                 isScanning = true;
                 await html5QrScanner.start(
                     selectedCameraId,
@@ -432,10 +446,11 @@
                     },
                     (errorMessage) => {
                         // Verbose debug scanning errors can be ignored
-                    }
+                    },
                 );
             } else {
-                scanError = 'Kamera tidak ditemukan. Pastikan izin kamera telah diberikan.';
+                scanError =
+                    'Kamera tidak ditemukan. Pastikan izin kamera telah diberikan.';
             }
         } catch (err: any) {
             scanError = 'Gagal mengakses kamera: ' + (err.message || err);
@@ -468,7 +483,7 @@
         scanError = '';
         isScanning = false;
         scanSubmitting = false;
-        
+
         // Auto focus manual input for barcode scanner gun
         setTimeout(() => {
             if (scannerInputEl) {
@@ -506,7 +521,9 @@
                         Kelola semua pesanan customer
                     </p>
                 </div>
-                <div class="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                <div
+                    class="flex items-center gap-2 self-stretch sm:self-auto justify-end"
+                >
                     <button
                         onclick={openScanModal}
                         class="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition font-outfit uppercase tracking-wider shadow-lg flex items-center gap-1.5 hover:opacity-90 active:scale-95"
@@ -774,14 +791,24 @@
                                             >
                                                 #{trx.transaction_number}
                                             </p>
-                                            <div class="flex flex-wrap gap-1 mt-1">
-                                                {#if (trx.items || []).every(item => item.product?.is_digital)}
-                                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase tracking-wider border border-blue-200/30">
-                                                        <i class="ti ti-device-laptop text-[10px]"></i> Digital
+                                            <div
+                                                class="flex flex-wrap gap-1 mt-1"
+                                            >
+                                                {#if (trx.items || []).every((item) => item.product?.is_digital)}
+                                                    <span
+                                                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase tracking-wider border border-blue-200/30"
+                                                    >
+                                                        <i
+                                                            class="ti ti-device-laptop text-[10px]"
+                                                        ></i> Digital
                                                     </span>
-                                                {:else if (trx.items || []).some(item => item.product?.is_digital)}
-                                                    <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-black rounded uppercase tracking-wider border border-amber-200/30">
-                                                        <i class="ti ti-package text-[10px]"></i> Campuran
+                                                {:else if (trx.items || []).some((item) => item.product?.is_digital)}
+                                                    <span
+                                                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-black rounded uppercase tracking-wider border border-amber-200/30"
+                                                    >
+                                                        <i
+                                                            class="ti ti-package text-[10px]"
+                                                        ></i> Campuran
                                                     </span>
                                                 {/if}
                                             </div>
@@ -836,12 +863,20 @@
                                         <!-- Nomor Resi Column -->
                                         <td class="py-5 px-4">
                                             {#if trx.shipping_courier === 'digital'}
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200/50 uppercase tracking-wider">
-                                                    <i class="ti ti-mail text-xs"></i> Pengiriman Digital
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-200/50 uppercase tracking-wider"
+                                                >
+                                                    <i
+                                                        class="ti ti-mail text-xs"
+                                                    ></i> Pengiriman Digital
                                                 </span>
                                             {:else if trx.shipping_courier === 'self_pickup'}
-                                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider">
-                                                    <i class="ti ti-store text-xs"></i> Ambil di Toko
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider"
+                                                >
+                                                    <i
+                                                        class="ti ti-store text-xs"
+                                                    ></i> Ambil di Toko
                                                 </span>
                                             {:else if trx.tracking_number}
                                                 <div
@@ -1317,10 +1352,14 @@
             role="document"
         >
             <!-- Header -->
-            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div
+                class="flex items-center justify-between pb-4 border-b border-slate-100"
+            >
                 <div class="flex items-center gap-2">
                     <i class="ti ti-scan text-xl" style="color:{secondary}"></i>
-                    <h3 class="font-outfit font-black text-slate-800 text-lg uppercase tracking-wider">
+                    <h3
+                        class="font-outfit font-black text-slate-800 text-lg uppercase tracking-wider"
+                    >
                         Scan QR / Barcode
                     </h3>
                 </div>
@@ -1334,16 +1373,29 @@
             </div>
 
             <!-- Body -->
-            <div class="py-6 space-y-5 overflow-y-auto flex-1 flex flex-col items-center">
+            <div
+                class="py-6 space-y-5 overflow-y-auto flex-1 flex flex-col items-center"
+            >
                 <!-- Camera stream -->
                 <div class="w-full flex flex-col items-center">
-                    <div class="relative w-full max-w-[280px] aspect-square bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner flex items-center justify-center">
-                        <div id="scanner-reader" class="w-full h-full object-cover"></div>
-                        
+                    <div
+                        class="relative w-full max-w-[280px] aspect-square bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner flex items-center justify-center"
+                    >
+                        <div
+                            id="scanner-reader"
+                            class="w-full h-full object-cover"
+                        ></div>
+
                         {#if !isScanning && !scanSubmitting}
-                            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/80">
-                                <i class="ti ti-camera-off text-3xl text-slate-600 mb-2"></i>
-                                <p class="text-xs text-slate-400 font-medium">Kamera tidak aktif</p>
+                            <div
+                                class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/80"
+                            >
+                                <i
+                                    class="ti ti-camera-off text-3xl text-slate-600 mb-2"
+                                ></i>
+                                <p class="text-xs text-slate-400 font-medium">
+                                    Kamera tidak aktif
+                                </p>
                                 <button
                                     onclick={startScanning}
                                     class="mt-3 px-4 py-2 text-white rounded-xl text-xs font-bold transition hover:opacity-90 active:scale-95"
@@ -1356,15 +1408,25 @@
 
                         {#if isScanning}
                             <!-- Laser scan line animation -->
-                            <div class="absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-laser pointer-events-none z-10"></div>
+                            <div
+                                class="absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-laser pointer-events-none z-10"
+                            ></div>
                             <!-- Crosshair border indicators -->
-                            <div class="absolute inset-8 border border-white/20 pointer-events-none rounded-xl"></div>
+                            <div
+                                class="absolute inset-8 border border-white/20 pointer-events-none rounded-xl"
+                            ></div>
                         {/if}
 
                         {#if scanSubmitting}
-                            <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center z-20">
-                                <i class="ti ti-loader-2 animate-spin text-3xl text-white mb-2"></i>
-                                <p class="text-xs text-white font-bold">Mencari Transaksi...</p>
+                            <div
+                                class="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center z-20"
+                            >
+                                <i
+                                    class="ti ti-loader-2 animate-spin text-3xl text-white mb-2"
+                                ></i>
+                                <p class="text-xs text-white font-bold">
+                                    Mencari Transaksi...
+                                </p>
                             </div>
                         {/if}
                     </div>
@@ -1372,17 +1434,24 @@
                     <!-- Camera Selector -->
                     {#if availableCameras.length > 1}
                         <div class="w-full max-w-[280px] mt-3">
-                            <label for="camera-select" class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            <label
+                                for="camera-select"
+                                class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1"
+                            >
                                 Sumber Kamera
                             </label>
                             <select
                                 id="camera-select"
                                 value={selectedCameraId}
-                                onchange={(e: any) => changeCamera(e.target.value)}
+                                onchange={(e: any) =>
+                                    changeCamera(e.target.value)}
                                 class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white"
                             >
                                 {#each availableCameras as cam}
-                                    <option value={cam.id}>{cam.label || `Kamera ${cam.id}`}</option>
+                                    <option value={cam.id}
+                                        >{cam.label ||
+                                            `Kamera ${cam.id}`}</option
+                                    >
                                 {/each}
                             </select>
                         </div>
@@ -1391,21 +1460,39 @@
 
                 <!-- Error Message -->
                 {#if scanError}
-                    <div class="w-full p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-700">
-                        <i class="ti ti-alert-circle text-base shrink-0 mt-0.5"></i>
-                        <p class="text-xs font-semibold leading-relaxed break-words">{scanError}</p>
+                    <div
+                        class="w-full p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-red-700"
+                    >
+                        <i class="ti ti-alert-circle text-base shrink-0 mt-0.5"
+                        ></i>
+                        <p
+                            class="text-xs font-semibold leading-relaxed break-words"
+                        >
+                            {scanError}
+                        </p>
                     </div>
                 {/if}
 
                 <!-- Manual / Scanner Gun Input -->
                 <div class="w-full border-t border-slate-100 pt-4">
-                    <form onsubmit={(e) => { e.preventDefault(); submitScannedCode(); }} class="space-y-2">
-                        <label for="scanner-manual-input" class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-outfit">
+                    <form
+                        onsubmit={(e) => {
+                            e.preventDefault();
+                            submitScannedCode();
+                        }}
+                        class="space-y-2"
+                    >
+                        <label
+                            for="scanner-manual-input"
+                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest font-outfit"
+                        >
                             Scan via Scanner Gun / Input Manual
                         </label>
                         <div class="flex gap-2">
                             <div class="relative flex-1">
-                                <i class="ti ti-barcode absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                <i
+                                    class="ti ti-barcode absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
+                                ></i>
                                 <input
                                     id="scanner-manual-input"
                                     type="text"
@@ -1417,7 +1504,8 @@
                             </div>
                             <button
                                 type="submit"
-                                disabled={scanSubmitting || !scanInputValue.trim()}
+                                disabled={scanSubmitting ||
+                                    !scanInputValue.trim()}
                                 class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 font-outfit uppercase tracking-wider shrink-0"
                                 style="background:{primary};"
                             >
@@ -1455,7 +1543,8 @@
         scrollbar-width: none;
     }
     @keyframes laser {
-        0%, 100% {
+        0%,
+        100% {
             top: 5%;
         }
         50% {
@@ -1463,6 +1552,6 @@
         }
     }
     .animate-laser {
-        animation: laser 2.0s infinite linear;
+        animation: laser 2s infinite linear;
     }
 </style>

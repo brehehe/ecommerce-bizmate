@@ -34,14 +34,26 @@
         page.props.theme?.secondary_color || '#fa7315',
     );
 
-    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
-    const storeAppName = $derived((page.props as any).settings?.store_app_name || storeName);
-    const storeIcon = $derived((page.props as any).settings?.store_icon || null);
-    const fallbackEmail = $derived('superadmin@' + storeAppName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.id');
+    const storeName = $derived(
+        (page.props as any).settings?.store_name || 'Bizmate',
+    );
+    const storeAppName = $derived(
+        (page.props as any).settings?.store_app_name || storeName,
+    );
+    const storeIcon = $derived(
+        (page.props as any).settings?.store_icon || null,
+    );
+    const fallbackEmail = $derived(
+        'superadmin@' +
+            storeAppName.toLowerCase().replace(/[^a-z0-9]/g, '') +
+            '.id',
+    );
     const storeNameFontClass = $derived(
-        storeAppName.length <= 10 ? 'text-xl' :
-        storeAppName.length <= 16 ? 'text-base' :
-        'text-sm'
+        storeAppName.length <= 10
+            ? 'text-xl'
+            : storeAppName.length <= 16
+              ? 'text-base'
+              : 'text-sm',
     );
 
     $effect(() => {
@@ -81,7 +93,11 @@
     >
         <div class="flex items-center gap-3">
             {#if storeIcon}
-                <img src={storeIcon} alt="Store Icon" class="w-10 h-10 object-contain" />
+                <img
+                    src={storeIcon}
+                    alt="Store Icon"
+                    class="w-10 h-10 object-contain"
+                />
             {:else}
                 <div
                     class="w-10 h-10 rounded-xl shadow-md flex items-center justify-center text-white text-xl"
@@ -254,7 +270,8 @@
                                 class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0 font-sans"
                                 style="background-color: {secondaryColor};"
                             >
-                                {adminNotifications.returnCounts.menunggu_review}
+                                {adminNotifications.returnCounts
+                                    .menunggu_review}
                             </span>
                         {/if}
                     </span>
@@ -293,7 +310,8 @@
                                 class="px-2 py-0.5 text-[9px] font-black text-white rounded-full leading-none shrink-0 font-sans"
                                 style="background-color: {secondaryColor};"
                             >
-                                {adminNotifications.refundCounts.menunggu_konfirmasi}
+                                {adminNotifications.refundCounts
+                                    .menunggu_konfirmasi}
                             </span>
                         {/if}
                     </span>
@@ -970,7 +988,9 @@
                                 )
                                     ? 'bg-slate-50 font-bold'
                                     : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
-                                style={isActive('/admin/master-data/social-media')
+                                style={isActive(
+                                    '/admin/master-data/social-media',
+                                )
                                     ? `color: ${primaryColor};`
                                     : ''}
                             >
@@ -1119,17 +1139,17 @@
             onclick={() => (isProfileDropdownOpen = !isProfileDropdownOpen)}
             class="w-full flex items-center gap-3 px-2 py-2 cursor-pointer hover:bg-slate-50 rounded-xl transition text-left"
         >
-                <div
-                    class="w-10 h-10 rounded-full border-2 p-0.5 flex items-center justify-center shrink-0 overflow-hidden"
-                    style="border-color: {secondaryColor};"
-                >
-                    {#if user?.avatar}
-                        <img
-                            src="/storage/{user.avatar}"
-                            alt={user.name}
-                            class="w-full h-full rounded-full object-cover"
-                        />
-                    {:else}
+            <div
+                class="w-10 h-10 rounded-full border-2 p-0.5 flex items-center justify-center shrink-0 overflow-hidden"
+                style="border-color: {secondaryColor};"
+            >
+                {#if user?.avatar}
+                    <img
+                        src="/storage/{user.avatar}"
+                        alt={user.name}
+                        class="w-full h-full rounded-full object-cover"
+                    />
+                {:else}
                     <div
                         class="w-full h-full text-white font-bold text-[11px] rounded-full flex items-center justify-center uppercase"
                         style="background-color: {primaryColor};"

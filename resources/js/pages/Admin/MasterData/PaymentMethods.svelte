@@ -9,10 +9,8 @@
     import Input from '@/components/ui/Input.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
 
-    let {
-        paymentMethods = { data: [], links: [], total: 0 },
-        filters = {},
-    } = $props();
+    let { paymentMethods = { data: [], links: [], total: 0 }, filters = {} } =
+        $props();
 
     // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
@@ -23,7 +21,8 @@
     // Checkbox state
     let selectedMethods = $state([]);
     let selectAll = $derived(
-        selectedMethods.length === paymentMethods.data.length && paymentMethods.data.length > 0,
+        selectedMethods.length === paymentMethods.data.length &&
+            paymentMethods.data.length > 0,
     );
 
     // Modal state
@@ -56,7 +55,9 @@
 
     function toggleSelect(id) {
         if (selectedMethods.includes(id)) {
-            selectedMethods = selectedMethods.filter((methodId) => methodId !== id);
+            selectedMethods = selectedMethods.filter(
+                (methodId) => methodId !== id,
+            );
         } else {
             selectedMethods = [...selectedMethods, id];
         }
@@ -117,7 +118,10 @@
         if (isEditing) {
             form.put(`/admin/master-data/payment-methods/${editId}`, {
                 onSuccess: () => {
-                    showToast('Metode Pembayaran berhasil diperbarui', 'success');
+                    showToast(
+                        'Metode Pembayaran berhasil diperbarui',
+                        'success',
+                    );
                     closeModal();
                 },
                 onError: (err) => {
@@ -127,7 +131,10 @@
         } else {
             form.post('/admin/master-data/payment-methods', {
                 onSuccess: () => {
-                    showToast('Metode Pembayaran berhasil ditambahkan', 'success');
+                    showToast(
+                        'Metode Pembayaran berhasil ditambahkan',
+                        'success',
+                    );
                     closeModal();
                 },
                 onError: (err) => {
@@ -152,7 +159,10 @@
                 itemToDelete = null;
             },
             onError: (err) => {
-                showToast(err?.error || 'Gagal menghapus metode pembayaran', 'error');
+                showToast(
+                    err?.error || 'Gagal menghapus metode pembayaran',
+                    'error',
+                );
                 deleteModalOpen = false;
             },
         });
@@ -186,12 +196,16 @@
     <div class="flex-grow flex flex-col min-h-screen">
         <main class="flex-grow p-4 sm:p-8 w-full max-w-full mx-auto space-y-6">
             <!-- Page Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div
+                class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+            >
                 <div>
                     <h3 class="font-outfit font-black text-2xl text-slate-800">
                         Master Metode Pembayaran
                     </h3>
-                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
+                    <p
+                        class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                    >
                         Atur Pembayaran Manual & Payment Gateway
                     </p>
                 </div>
@@ -205,9 +219,13 @@
             </div>
 
             <!-- Main Section: Table Card -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
+            <div
+                class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden"
+            >
                 <!-- Header, PerPage & Search -->
-                <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50/20">
+                <div
+                    class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50/20"
+                >
                     <!-- PerPage Selector -->
                     <div class="shrink-0 w-full sm:w-32">
                         <Select
@@ -235,8 +253,12 @@
                 </div>
 
                 {#if paymentMethods.data.length === 0}
-                    <div class="py-12 text-center text-slate-400 font-bold font-outfit">
-                        <i class="ti ti-credit-card text-4xl block mb-2 text-slate-300"></i>
+                    <div
+                        class="py-12 text-center text-slate-400 font-bold font-outfit"
+                    >
+                        <i
+                            class="ti ti-credit-card text-4xl block mb-2 text-slate-300"
+                        ></i>
                         Belum ada data metode pembayaran.
                     </div>
                 {:else}
@@ -244,7 +266,9 @@
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">
+                                <tr
+                                    class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                                >
                                     <th class="py-6 px-6 w-12 text-center">
                                         <input
                                             type="checkbox"
@@ -260,81 +284,140 @@
                                     <th class="py-6 px-6 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                            <tbody
+                                class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
+                            >
                                 {#each paymentMethods.data as method (method.id)}
                                     {@const isActive = method.is_active ?? true}
-                                    {@const isSelected = selectedMethods.includes(method.id)}
+                                    {@const isSelected =
+                                        selectedMethods.includes(method.id)}
 
-                                    <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected ? 'bg-brand-blueRoyal/5' : ''}">
+                                    <tr
+                                        class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100 {isSelected
+                                            ? 'bg-brand-blueRoyal/5'
+                                            : ''}"
+                                    >
                                         <td class="py-6 px-6 text-center">
                                             <input
                                                 type="checkbox"
                                                 checked={isSelected}
-                                                onchange={() => toggleSelect(method.id)}
+                                                onchange={() =>
+                                                    toggleSelect(method.id)}
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             />
                                         </td>
                                         <td class="py-6 px-6">
-                                            <h4 class="text-sm font-bold text-slate-800">
+                                            <h4
+                                                class="text-sm font-bold text-slate-800"
+                                            >
                                                 {method.name}
                                             </h4>
                                         </td>
                                         <td class="py-6 px-6">
-                                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {method.type === 'manual' ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/50' : 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'}">
-                                                {method.type === 'manual' ? 'Manual Transfer' : 'Gateway'}
+                                            <span
+                                                class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {method.type ===
+                                                'manual'
+                                                    ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/50'
+                                                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'}"
+                                            >
+                                                {method.type === 'manual'
+                                                    ? 'Manual Transfer'
+                                                    : 'Gateway'}
                                             </span>
                                         </td>
                                         <td class="py-6 px-6">
                                             {#if method.type === 'manual'}
-                                                <div class="text-[11px] text-slate-500 font-medium">
-                                                    <strong>Bank:</strong> {method.bank_name} <br/>
-                                                    <strong>No:</strong> {method.account_number} <br/>
-                                                    <strong>A.N:</strong> {method.account_name}
+                                                <div
+                                                    class="text-[11px] text-slate-500 font-medium"
+                                                >
+                                                    <strong>Bank:</strong>
+                                                    {method.bank_name} <br />
+                                                    <strong>No:</strong>
+                                                    {method.account_number}
+                                                    <br />
+                                                    <strong>A.N:</strong>
+                                                    {method.account_name}
                                                 </div>
                                             {:else}
-                                                <div class="text-[11px] text-slate-500 font-medium">
-                                                    <strong>API Key:</strong> ••••••••
+                                                <div
+                                                    class="text-[11px] text-slate-500 font-medium"
+                                                >
+                                                    <strong>API Key:</strong>
+                                                    ••••••••
                                                     {#if method.settings?.url}
-                                                        <br/><strong>URL:</strong> <span class="break-all">{method.settings.url}</span>
+                                                        <br /><strong
+                                                            >URL:</strong
+                                                        >
+                                                        <span class="break-all"
+                                                            >{method.settings
+                                                                .url}</span
+                                                        >
                                                     {/if}
                                                     {#if method.settings?.webhook_token}
-                                                        <br/><strong>Webhook Token:</strong> ••••••••
+                                                        <br /><strong
+                                                            >Webhook Token:</strong
+                                                        > ••••••••
                                                     {/if}
                                                 </div>
                                             {/if}
                                             {#if method.admin_fee > 0}
-                                                <div class="text-[11px] text-brand-blueRoyal font-bold mt-1">
-                                                    + Rp {new Intl.NumberFormat('id-ID').format(method.admin_fee)} (Admin)
+                                                <div
+                                                    class="text-[11px] text-brand-blueRoyal font-bold mt-1"
+                                                >
+                                                    + Rp {new Intl.NumberFormat(
+                                                        'id-ID',
+                                                    ).format(method.admin_fee)} (Admin)
                                                 </div>
                                             {/if}
                                         </td>
                                         <td class="py-6 px-6">
-                                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50' : 'bg-slate-50 text-slate-500 border border-slate-200/50'}">
-                                                {isActive ? 'Aktif' : 'Nonaktif'}
+                                            <span
+                                                class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {isActive
+                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/50'
+                                                    : 'bg-slate-50 text-slate-500 border border-slate-200/50'}"
+                                            >
+                                                {isActive
+                                                    ? 'Aktif'
+                                                    : 'Nonaktif'}
                                             </span>
                                         </td>
                                         <td class="py-6 px-6 text-center">
-                                            <div class="flex items-center justify-center gap-2">
+                                            <div
+                                                class="flex items-center justify-center gap-2"
+                                            >
                                                 <button
-                                                    onclick={() => openEditModal(method)}
+                                                    onclick={() =>
+                                                        openEditModal(method)}
                                                     class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-brand-blueLight hover:text-brand-blueRoyal text-slate-500 flex items-center justify-center transition"
                                                     title="Ubah Data"
                                                 >
-                                                    <i class="ti ti-pencil text-sm"></i>
+                                                    <i
+                                                        class="ti ti-pencil text-sm"
+                                                    ></i>
                                                 </button>
                                                 <button
-                                                    onclick={() => toggleStatus(method)}
-                                                    class="w-8 h-8 rounded-lg border border-slate-200 {isActive ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500' : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition"
+                                                    onclick={() =>
+                                                        toggleStatus(method)}
+                                                    class="w-8 h-8 rounded-lg border border-slate-200 {isActive
+                                                        ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500'
+                                                        : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition"
                                                     title="Ubah Status (Aktif/Nonaktif)"
                                                 >
-                                                    <i class="ti {isActive ? 'ti-ban' : 'ti-check'} text-sm"></i>
+                                                    <i
+                                                        class="ti {isActive
+                                                            ? 'ti-ban'
+                                                            : 'ti-check'} text-sm"
+                                                    ></i>
                                                 </button>
                                                 <button
-                                                    onclick={() => confirmDelete(method)}
+                                                    onclick={() =>
+                                                        confirmDelete(method)}
                                                     class="w-8 h-8 rounded-lg border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center transition"
                                                     title="Hapus Metode"
                                                 >
-                                                    <i class="ti ti-trash text-sm"></i>
+                                                    <i
+                                                        class="ti ti-trash text-sm"
+                                                    ></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -361,11 +444,17 @@
             role="button"
             tabindex="0"
         ></div>
-        <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg relative z-10 transform transition-all duration-300 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div
+            class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg relative z-10 transform transition-all duration-300 overflow-hidden animate-in fade-in zoom-in duration-200"
+        >
             <!-- Modal Header -->
-            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+            >
                 <h3 class="font-outfit font-black text-lg text-slate-800">
-                    {isEditing ? 'Ubah Metode Pembayaran' : 'Tambah Metode Pembayaran'}
+                    {isEditing
+                        ? 'Ubah Metode Pembayaran'
+                        : 'Tambah Metode Pembayaran'}
                 </h3>
                 <button
                     type="button"
@@ -378,7 +467,10 @@
             </div>
 
             <!-- Modal Body Form -->
-            <form onsubmit={saveMethod} class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <form
+                onsubmit={saveMethod}
+                class="p-6 space-y-4 max-h-[70vh] overflow-y-auto"
+            >
                 <Input
                     type="text"
                     bind:value={form.name}
@@ -394,7 +486,7 @@
                     required={true}
                     options={[
                         { id: 'manual', name: 'Manual Transfer' },
-                        { id: 'gateway', name: 'Payment Gateway' }
+                        { id: 'gateway', name: 'Payment Gateway' },
                     ]}
                     error={form.errors.type}
                 />
@@ -466,12 +558,15 @@
                 />
 
                 <!-- Buttons -->
-                <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-4">
+                <div
+                    class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-4"
+                >
                     <button
                         type="button"
                         onclick={closeModal}
                         class="px-5 py-3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-2xl text-xs transition duration-200 uppercase tracking-wider font-outfit"
-                        >Batal</button>
+                        >Batal</button
+                    >
                     <button
                         type="submit"
                         disabled={form.processing}
@@ -499,15 +594,22 @@
             tabindex="0"
         ></div>
 
-        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto">
+        <div
+            class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+        >
+            <div
+                class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+            >
                 <i class="ti ti-alert-triangle"></i>
             </div>
-            <h4 class="font-outfit font-black text-xl text-center text-slate-800 mb-2">
+            <h4
+                class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+            >
                 Hapus Metode Pembayaran?
             </h4>
             <p class="text-sm text-center text-slate-500 font-medium mb-8">
-                Data metode <strong>{itemToDelete?.name}</strong> akan terhapus secara permanen dan tidak dapat dikembalikan.
+                Data metode <strong>{itemToDelete?.name}</strong> akan terhapus secara
+                permanen dan tidak dapat dikembalikan.
             </p>
             <div class="flex items-center gap-3">
                 <button
