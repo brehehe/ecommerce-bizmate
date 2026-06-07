@@ -10,10 +10,17 @@
 
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
 
+    /* svelte-ignore state_referenced_locally */
+    const app_name = currentAppName;
+    /* svelte-ignore state_referenced_locally */
+    const store_name = currentStoreName;
+    /* svelte-ignore state_referenced_locally */
+    const store_app_name = currentStoreAppName;
+
     const form = useForm({
-        app_name: currentAppName,
-        store_name: currentStoreName,
-        store_app_name: currentStoreAppName,
+        app_name,
+        store_name,
+        store_app_name,
         secret_key: 'zozzuehmqewbobfo',
     });
 

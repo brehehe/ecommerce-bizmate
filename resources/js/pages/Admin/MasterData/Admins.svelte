@@ -560,6 +560,8 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         bind:this={menuNode}
+        role="menu"
+        tabindex="-1"
         class="fixed z-[9999] bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-44 overflow-hidden"
         style="
             left: {menuPos.left}px;

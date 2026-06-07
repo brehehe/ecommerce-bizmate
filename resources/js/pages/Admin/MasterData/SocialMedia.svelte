@@ -674,11 +674,11 @@
             <form onsubmit={saveSocialMedia} class="p-6 space-y-4">
                 <!-- Platform Selector -->
                 <div>
-                    <label
+                    <span
                         class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
                     >
                         Platform <span class="text-red-500">*</span>
-                    </label>
+                    </span>
                     <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
                         {#each platformOptions as opt}
                             <button

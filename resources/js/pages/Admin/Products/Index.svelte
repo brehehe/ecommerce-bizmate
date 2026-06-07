@@ -1649,6 +1649,7 @@
                     onclick={() => !isImporting && (isImportModalOpen = false)}
                     class="w-8 h-8 rounded-full flex items-center justify-center border border-slate-200 hover:bg-slate-50 transition cursor-pointer text-slate-400 hover:text-slate-600"
                     disabled={isImporting}
+                    aria-label="Tutup"
                 >
                     <i class="ti ti-x text-sm"></i>
                 </button>

@@ -586,6 +586,7 @@
                 <button
                     onclick={() => (showModal = false)}
                     class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center cursor-pointer border-0"
+                    aria-label="Tutup Modal"
                 >
                     <i class="ti ti-x text-lg"></i>
                 </button>

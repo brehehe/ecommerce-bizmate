@@ -1196,18 +1196,18 @@
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
                     />
                 </Link>
             {:else}
                 <button
                     onclick={() => (activeLightboxImage = middleWide.image)}
-                    class="w-full text-left"
+                    class="block w-full text-left"
                 >
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
                     />
                 </button>
             {/if}
@@ -1536,6 +1536,7 @@
             onclick={() => (showIntro = false)}
             role="dialog"
             aria-modal="true"
+            tabindex="0"
         >
             <div
                 class="flex flex-col items-center gap-6 text-center select-none"
@@ -1580,6 +1581,7 @@
             onclick={() => (showPopup = false)}
             role="dialog"
             aria-modal="true"
+            tabindex="0"
         >
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div

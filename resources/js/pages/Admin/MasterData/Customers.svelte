@@ -596,6 +596,8 @@
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
         bind:this={menuNode}
+        role="menu"
+        tabindex="-1"
         class="fixed z-[9999] bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 w-48 overflow-hidden"
         style="
             left: {menuPos.left}px;
@@ -666,6 +668,7 @@
             <button
                 onclick={() => (drawerOpen = false)}
                 class="p-1 text-slate-400 hover:text-slate-700 transition"
+                aria-label="Tutup Detail"
             >
                 <i class="ti ti-x text-xl"></i>
             </button>

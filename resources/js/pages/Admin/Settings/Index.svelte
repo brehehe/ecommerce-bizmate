@@ -340,6 +340,7 @@
     let editorWidth = $state(512);
     let editorHeight = $state(512);
     let lockAspectRatio = $state(true);
+    let editorSharpen = $state(0);
 
     // Landscape validation for logo: must be wider than tall
     const isLogoNotLandscape = $derived(
@@ -366,6 +367,7 @@
         editorRemoveBg = false;
         editorTolerance = 30;
         editorLoadedImage = null;
+        editorSharpen = 0;
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -549,6 +551,18 @@
         editorScale = +Math.max(wRatio, hRatio).toFixed(2);
     }
 
+    function enhanceToHD() {
+        // Double output dimensions (limit to 4096px max)
+        editorWidth = Math.min(editorWidth * 2, 4096);
+        editorHeight = Math.min(editorHeight * 2, 4096);
+        // Double scale to keep relative image size inside the larger canvas
+        editorScale = Math.min(editorScale * 2, 3.0);
+        // Set sharpen value to 0.5 (50% intensity) for quality preset
+        editorSharpen = 0.5;
+        
+        showToast('Kualitas gambar berhasil ditingkatkan ke HD!', 'success');
+    }
+
     function drawEditorImage(
         img: HTMLImageElement,
         scale: number,
@@ -557,6 +571,7 @@
         tolerance: number,
         canvasWidth: number,
         canvasHeight: number,
+        sharpenAmount: number,
     ) {
         if (!editorCanvas) return;
         const ctx = editorCanvas.getContext('2d');
@@ -568,21 +583,169 @@
         // Clear canvas
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-        // Save context state
-        ctx.save();
+        // 1. Draw rotated image at 100% crisp size to a temporary canvas
+        const isRotated90 = (rotation % 180) !== 0;
+        const tempW = isRotated90 ? img.naturalHeight : img.naturalWidth;
+        const tempH = isRotated90 ? img.naturalWidth : img.naturalHeight;
+        
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = tempW;
+        tempCanvas.height = tempH;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) return;
+        
+        tempCtx.translate(tempW / 2, tempH / 2);
+        tempCtx.rotate((rotation * Math.PI) / 180);
+        tempCtx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+        
+        const srcImgData = tempCtx.getImageData(0, 0, tempW, tempH);
+        const srcData = srcImgData.data;
 
-        // Translate to center to rotate and scale
-        ctx.translate(canvasWidth / 2, canvasHeight / 2);
-        ctx.rotate((rotation * Math.PI) / 180);
-        ctx.scale(scale, scale);
+        // 2. Perform Bicubic Upscaling directly onto the destination canvas Image Data
+        const destImgData = ctx.createImageData(canvasWidth, canvasHeight);
+        const destData = destImgData.data;
 
-        // Draw image centered
-        ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+        function getCubicWeight(t: number) {
+            const absT = Math.abs(t);
+            if (absT <= 1) {
+                return 1.5 * absT * absT * absT - 2.5 * absT * absT + 1;
+            } else if (absT < 2) {
+                return -0.5 * absT * absT * absT + 2.5 * absT * absT - 4 * absT + 2;
+            }
+            return 0;
+        }
 
-        // Restore context
-        ctx.restore();
+        const halfCW = canvasWidth / 2;
+        const halfCH = canvasHeight / 2;
+        const halfTW = tempW / 2;
+        const halfTH = tempH / 2;
 
-        // Background removal (make white/near-white transparent)
+        for (let y = 0; y < canvasHeight; y++) {
+            const v = halfTH + (y - halfCH) / scale;
+            const yRow = Math.floor(v);
+            const dy = v - yRow;
+            
+            const wY0 = getCubicWeight(dy + 1);
+            const wY1 = getCubicWeight(dy);
+            const wY2 = getCubicWeight(dy - 1);
+            const wY3 = getCubicWeight(dy - 2);
+
+            const destRowOffset = y * canvasWidth * 4;
+
+            for (let x = 0; x < canvasWidth; x++) {
+                const u = halfTW + (x - halfCW) / scale;
+                const destOffset = destRowOffset + x * 4;
+
+                // If coordinate is outside the rotated source image bounds, leave it transparent
+                if (u < -1 || u >= tempW || v < -1 || v >= tempH) {
+                    destData[destOffset] = 0;
+                    destData[destOffset + 1] = 0;
+                    destData[destOffset + 2] = 0;
+                    destData[destOffset + 3] = 0;
+                    continue;
+                }
+
+                const xCol = Math.floor(u);
+                const dx = u - xCol;
+
+                const wX0 = getCubicWeight(dx + 1);
+                const wX1 = getCubicWeight(dx);
+                const wX2 = getCubicWeight(dx - 1);
+                const wX3 = getCubicWeight(dx - 2);
+
+                let r = 0, g = 0, b = 0, a = 0;
+                let weightSum = 0;
+
+                for (let j = -1; j <= 2; j++) {
+                    const row = yRow + j;
+                    if (row < 0 || row >= tempH) continue;
+                    const weightY = j === -1 ? wY0 : j === 0 ? wY1 : j === 1 ? wY2 : wY3;
+                    const srcRowOffset = row * tempW * 4;
+
+                    for (let i = -1; i <= 2; i++) {
+                        const col = xCol + i;
+                        if (col < 0 || col >= tempW) continue;
+                        const weightX = i === -1 ? wX0 : i === 0 ? wX1 : i === 1 ? wX2 : wX3;
+                        const weight = weightX * weightY;
+
+                        const offset = srcRowOffset + col * 4;
+                        r += srcData[offset] * weight;
+                        g += srcData[offset + 1] * weight;
+                        b += srcData[offset + 2] * weight;
+                        a += srcData[offset + 3] * weight;
+                        weightSum += weight;
+                    }
+                }
+
+                if (weightSum > 0) {
+                    destData[destOffset] = Math.min(Math.max(r / weightSum, 0), 255);
+                    destData[destOffset + 1] = Math.min(Math.max(g / weightSum, 0), 255);
+                    destData[destOffset + 2] = Math.min(Math.max(b / weightSum, 0), 255);
+                    destData[destOffset + 3] = Math.min(Math.max(a / weightSum, 0), 255);
+                } else {
+                    destData[destOffset] = 0;
+                    destData[destOffset + 1] = 0;
+                    destData[destOffset + 2] = 0;
+                    destData[destOffset + 3] = 0;
+                }
+            }
+        }
+
+        ctx.putImageData(destImgData, 0, 0);
+
+        // 3. Sharpening Filter (Applied before background removal) using 9-pixel kernel including diagonals
+        if (sharpenAmount > 0) {
+            const imgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+            const data = imgData.data;
+            const originalData = new Uint8ClampedArray(data);
+
+            const a = sharpenAmount;
+            const b = 1 + 8 * a;
+
+            for (let y = 1; y < canvasHeight - 1; y++) {
+                const yOff = y * canvasWidth;
+                for (let x = 1; x < canvasWidth - 1; x++) {
+                    const dstOff = (yOff + x) * 4;
+
+                    let r = originalData[dstOff] * b;
+                    let g = originalData[dstOff + 1] * b;
+                    let bVal = originalData[dstOff + 2] * b;
+
+                    const prevRowOff = (y - 1) * canvasWidth * 4;
+                    const currRowOff = y * canvasWidth * 4;
+                    const nextRowOff = (y + 1) * canvasWidth * 4;
+
+                    const n0 = prevRowOff + (x - 1) * 4;
+                    const n1 = prevRowOff + x * 4;
+                    const n2 = prevRowOff + (x + 1) * 4;
+                    const n3 = currRowOff + (x - 1) * 4;
+                    const n4 = currRowOff + (x + 1) * 4;
+                    const n5 = nextRowOff + (x - 1) * 4;
+                    const n6 = nextRowOff + x * 4;
+                    const n7 = nextRowOff + (x + 1) * 4;
+
+                    const neighborR = originalData[n0] + originalData[n1] + originalData[n2] + originalData[n3] + 
+                                      originalData[n4] + originalData[n5] + originalData[n6] + originalData[n7];
+                    const neighborG = originalData[n0+1] + originalData[n1+1] + originalData[n2+1] + originalData[n3+1] + 
+                                      originalData[n4+1] + originalData[n5+1] + originalData[n6+1] + originalData[n7+1];
+                    const neighborB = originalData[n0+2] + originalData[n1+2] + originalData[n2+2] + originalData[n3+2] + 
+                                      originalData[n4+2] + originalData[n5+2] + originalData[n6+2] + originalData[n7+2];
+
+                    r -= neighborR * a;
+                    g -= neighborG * a;
+                    bVal -= neighborB * a;
+
+                    data[dstOff] = r < 0 ? 0 : r > 255 ? 255 : r;
+                    data[dstOff + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+                    data[dstOff + 2] = bVal < 0 ? 0 : bVal > 255 ? 255 : bVal;
+                    // Preserve original alpha channel
+                    data[dstOff + 3] = originalData[dstOff + 3];
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // 4. Background removal (make white/near-white transparent)
         if (removeBg) {
             const imgData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
             const data = imgData.data;
@@ -613,6 +776,7 @@
                 editorTolerance,
                 editorWidth,
                 editorHeight,
+                editorSharpen,
             );
         }
     });
@@ -3478,6 +3642,72 @@
                                             {deg}°
                                         </button>
                                     {/each}
+                                </div>
+                            </div>
+
+                            <!-- HD Mode / Quality Enhancement Controls -->
+                            <div
+                                class="p-4 bg-gradient-to-br from-indigo-50/50 to-brand-teal/5 rounded-2xl border border-slate-100 space-y-3"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span
+                                            class="text-xs font-bold text-slate-800 flex items-center gap-1.5"
+                                        >
+                                            <i class="ti ti-sparkles text-indigo-500"></i>
+                                            Tingkatkan Kualitas (HD Mode)
+                                        </span>
+                                        <p
+                                            class="text-[10px] text-slate-500 mt-0.5 font-medium"
+                                        >
+                                            Kurangi blur dan pertajam detail gambar secara otomatis
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onclick={enhanceToHD}
+                                        class="px-2.5 py-1.5 text-[10px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow transition flex items-center gap-1 shrink-0"
+                                    >
+                                        <i class="ti ti-wand text-xs"></i>
+                                        Auto HD
+                                    </button>
+                                </div>
+
+                                <div class="space-y-2 pt-1">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-bold text-slate-600">
+                                            Ketajaman (Sharpening)
+                                        </span>
+                                        <span class="text-[10px] font-bold text-indigo-600">
+                                            {Math.round(editorSharpen * 100)}%
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            class="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition text-xs"
+                                            onclick={() => (editorSharpen = Math.max(0, +(editorSharpen - 0.1).toFixed(1)))}
+                                            aria-label="Kurangi ketajaman"
+                                        >
+                                            <i class="ti ti-minus"></i>
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.05"
+                                            bind:value={editorSharpen}
+                                            class="flex-grow accent-indigo-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <button
+                                            type="button"
+                                            class="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition text-xs"
+                                            onclick={() => (editorSharpen = Math.min(1, +(editorSharpen + 0.1).toFixed(1)))}
+                                            aria-label="Tambah ketajaman"
+                                        >
+                                            <i class="ti ti-plus"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 

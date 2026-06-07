@@ -1572,6 +1572,7 @@
                         {/each}
                     {:else}
                         <!-- Fallback static icons when no social media configured -->
+                        <!-- svelte-ignore a11y_invalid_attribute -->
                         <a
                             href="#"
                             aria-label="Instagram"
@@ -1579,6 +1580,7 @@
                         >
                             <i class="ti ti-brand-instagram text-base"></i>
                         </a>
+                        <!-- svelte-ignore a11y_invalid_attribute -->
                         <a
                             href="#"
                             aria-label="WhatsApp"
