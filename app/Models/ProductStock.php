@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class ProductStock extends Model
 {
+    use HasUuids;
+
     protected $fillable = ['product_id', 'product_variant_id', 'stock', 'min_stock', 'min_purchase', 'is_unlimited'];
 
     public function product()

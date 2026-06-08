@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Mail\OrderStatusChanged;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Mail;
 
 class Transaction extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'transaction_number',
@@ -76,7 +77,6 @@ class Transaction extends Model
         'is_extended' => 'boolean',
         'delivery_arrived_at' => 'datetime',
         'delivery_photos' => 'array',
-        'courier_user_id' => 'integer',
     ];
 
     /**
@@ -365,7 +365,7 @@ class Transaction extends Model
     /**
      * Process auto status updates (cancel unpaid and complete shipped).
      */
-    public static function processAutoStatusUpdates(?int $userId = null): void
+    public static function processAutoStatusUpdates(?string $userId = null): void
     {
         // 1. Unpaid Expiry
         $query = static::where('status', 'belum_bayar')
@@ -434,7 +434,7 @@ class Transaction extends Model
 
     public function payment(): HasOne
     {
-        return $this->hasOne(TransactionPayment::class)->latestOfMany();
+        return $this->hasOne(TransactionPayment::class)->orderBy('created_at', 'desc');
     }
 
     public function payments(): HasMany
@@ -469,7 +469,7 @@ class Transaction extends Model
 
     public function activeReturn(): HasOne
     {
-        return $this->hasOne(ReturnRequest::class)->whereNotIn('status', ['ditolak'])->latestOfMany();
+        return $this->hasOne(ReturnRequest::class)->whereNotIn('status', ['ditolak'])->orderBy('created_at', 'desc');
     }
 
     public function refundRequests(): HasMany
@@ -479,6 +479,6 @@ class Transaction extends Model
 
     public function activeRefundRequest(): HasOne
     {
-        return $this->hasOne(RefundRequest::class)->whereNotIn('status', ['ditolak'])->latestOfMany();
+        return $this->hasOne(RefundRequest::class)->whereNotIn('status', ['ditolak'])->orderBy('created_at', 'desc');
     }
 }

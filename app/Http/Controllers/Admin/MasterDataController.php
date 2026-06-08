@@ -680,7 +680,7 @@ class MasterDataController extends Controller
     {
         $request->validate([
             'items' => 'required|array',
-            'items.*.id' => 'required|integer|exists:social_media,id',
+            'items.*.id' => 'required|uuid|exists:social_media,id',
             'items.*.order' => 'required|integer|min:0',
         ]);
 

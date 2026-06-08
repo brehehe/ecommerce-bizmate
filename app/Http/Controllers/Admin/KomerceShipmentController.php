@@ -40,7 +40,7 @@ class KomerceShipmentController extends Controller
             $transaction->update([
                 'booking_code' => $bookingCode,
                 'tracking_number' => $trackingNumber,
-                'status' => 'diproses', // Change transaction status to processing
+                'status' => 'dikemas', // Change transaction status to packaging (dikemas)
             ]);
 
             return back()->with('success', 'Pengiriman berhasil dipesan ke Komerce. Kode Booking: '.($bookingCode ?? ''));
@@ -85,8 +85,11 @@ class KomerceShipmentController extends Controller
         $transaction->loadMissing(['items.product', 'items.productVariant']);
         $totalWeight = 0; // in grams
         foreach ($transaction->items as $item) {
-            $variant = $item->productVariant;
             $product = $item->product;
+            if ($product && $product->is_digital) {
+                continue;
+            }
+            $variant = $item->productVariant;
             $qty = (int) $item->quantity;
 
             $weight = 1000;

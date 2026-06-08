@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReturnController as AdminReturnController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
+use App\Http\Controllers\Admin\UATController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
@@ -139,6 +140,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
     Route::post('/settings/tour-complete', [SettingController::class, 'completeTour'])->name('settings.tour-complete');
 
+    // UAT Testing
+    Route::get('/uat', [UATController::class, 'index'])->name('uat.index');
+    Route::post('/uat/run/{step}', [UATController::class, 'runStep'])->name('uat.run');
+
     // Profile
     Route::get('/profile', [ProfileController::class, 'showAdminProfile'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'updateAdminProfile'])->name('profile.update');
@@ -228,6 +233,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
     Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
     Route::post('/transactions/{transaction}/tracking', [AdminTransactionController::class, 'updateTracking'])->name('transactions.update-tracking');
+    Route::post('/transactions/{transaction}/items/{item}/note', [AdminTransactionController::class, 'updateItemNote'])->name('transactions.items.update-note');
     Route::post('/transactions/{transaction}/delivery-history', [AdminTransactionController::class, 'addDeliveryHistory'])->name('transactions.add-delivery-history');
     Route::post('/transactions/{transaction}/komerce/store', [KomerceShipmentController::class, 'storeShipment'])->name('transactions.komerce.store');
     Route::post('/transactions/{transaction}/komerce/pickup', [KomerceShipmentController::class, 'requestPickup'])->name('transactions.komerce.pickup');

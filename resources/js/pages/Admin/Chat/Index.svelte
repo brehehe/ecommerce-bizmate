@@ -209,6 +209,8 @@
                                                 📷 Gambar
                                             {:else if c.last_message.attachment_type === 'product'}
                                                 📦 Produk
+                                            {:else if c.last_message.body && c.last_message.body.startsWith('[TRANSACTION_CARD]')}
+                                                📄 Invoice Pesanan
                                             {:else}
                                                 {c.last_message.body || ''}
                                             {/if}

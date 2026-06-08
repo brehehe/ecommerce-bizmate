@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transaction_payments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('transaction_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('transaction_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('payment_method_id')->nullable()->constrained('payment_methods')->nullOnDelete();
 
             $table->decimal('amount', 15, 2)->default(0);
@@ -31,7 +31,7 @@ return new class extends Migration
             // Admin action
             $table->text('notes')->nullable();
             $table->timestamp('confirmed_at')->nullable();
-            $table->foreignId('confirmed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('confirmed_by')->nullable()->constrained('users')->nullOnDelete();
 
             $table->timestamps();
         });

@@ -143,11 +143,7 @@
                     : null;
             const fromParam = urlParams ? urlParams.get('from') : null;
             if (fromParam === 'checkout') {
-                if (window.history.length > 1) {
-                    window.history.back();
-                } else {
-                    router.visit('/checkout', { replace: true });
-                }
+                router.visit('/checkout', { replace: true });
             } else {
                 router.visit('/', { replace: true });
             }
@@ -653,11 +649,7 @@
                                 ? new URLSearchParams(window.location.search)
                                 : null;
                         if (urlParams && urlParams.get('from') === 'checkout') {
-                            if (window.history.length > 1) {
-                                window.history.back();
-                            } else {
-                                router.visit('/checkout', { replace: true });
-                            }
+                            router.visit('/checkout', { replace: true });
                         }
                     },
                 },
@@ -669,11 +661,7 @@
                     ? new URLSearchParams(window.location.search)
                     : null;
             if (urlParams && urlParams.get('from') === 'checkout') {
-                if (window.history.length > 1) {
-                    window.history.back();
-                } else {
-                    router.visit('/checkout', { replace: true });
-                }
+                router.visit('/checkout', { replace: true });
             }
         }
     }

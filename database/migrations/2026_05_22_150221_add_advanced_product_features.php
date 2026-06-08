@@ -26,23 +26,23 @@ return new class extends Migration
         });
 
         Schema::create('product_images', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
             $table->string('path');
             $table->boolean('is_main')->default(false);
             $table->timestamps();
         });
 
         Schema::create('product_variations', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
             $table->string('name'); // e.g. Warna, Ukuran
             $table->timestamps();
         });
 
         Schema::create('product_variation_options', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_variation_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_variation_id')->constrained()->cascadeOnDelete();
             $table->string('name'); // e.g. Merah, L
             $table->string('description')->nullable();
             $table->string('image')->nullable();
@@ -50,8 +50,8 @@ return new class extends Migration
         });
 
         Schema::create('product_variants', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
             $table->string('sku')->unique();
             $table->decimal('price', 15, 2)->default(0);
             $table->integer('stock')->default(0);
@@ -60,8 +60,8 @@ return new class extends Migration
         });
 
         Schema::create('product_variant_option_combinations', function (Blueprint $table) {
-            $table->foreignId('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
-            $table->foreignId('product_variation_option_id')->constrained('product_variation_options')->cascadeOnDelete();
+            $table->foreignUuid('product_variant_id')->constrained('product_variants')->cascadeOnDelete();
+            $table->foreignUuid('product_variation_option_id')->constrained('product_variation_options')->cascadeOnDelete();
             $table->primary(['product_variant_id', 'product_variation_option_id'], 'pv_pvo_primary');
         });
     }

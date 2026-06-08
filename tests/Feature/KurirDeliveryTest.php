@@ -233,3 +233,18 @@ test('non-admin cannot access courier history page', function () {
         ->get("/admin/master-data/admins/{$kurir->id}/courier-history")
         ->assertRedirect('/');
 });
+
+test('scanning an out_for_pickup order automatically transitions it to dikirim and assigns the courier', function () {
+    $kurir = makeKurir();
+    $trx = makeStoreCourierTransaction('out_for_pickup');
+
+    $this->actingAs($kurir)
+        ->getJson("/kurir/scan/{$trx->booking_code}")
+        ->assertOk()
+        ->assertJson(['success' => true]);
+
+    $fresh = $trx->fresh();
+    expect($fresh->status)->toBe('dikirim');
+    expect($fresh->courier_user_id)->toBe($kurir->id);
+    expect($fresh->tracking_number)->not->toBeNull()->toStartWith('RSI-');
+});

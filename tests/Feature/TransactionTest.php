@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Category;
+use App\Models\Chat;
 use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -206,7 +207,7 @@ test('admin can update transaction status', function () {
     expect($transaction->status)->toBe('diproses');
 });
 
-test('admin can confirm payment and status becomes diproses', function () {
+test('admin can confirm payment and status becomes dikemas for Raja Ongkir when Komerce is disabled', function () {
     ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
 
     $response = $this->actingAs($admin)->post(
@@ -215,13 +216,26 @@ test('admin can confirm payment and status becomes diproses', function () {
 
     $response->assertRedirect();
     $transaction->refresh();
-    expect($transaction->status)->toBe('diproses');
+    expect($transaction->status)->toBe('dikemas');
 
     $this->assertDatabaseHas('transaction_payments', [
         'transaction_id' => $transaction->id,
         'status' => 'confirmed',
         'confirmed_by' => $admin->id,
     ]);
+});
+
+test('admin can confirm payment and status becomes diproses for store_courier or self_pickup', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+    $transaction->update(['shipping_courier' => 'store_courier']);
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.confirm-payment', $transaction)
+    );
+
+    $response->assertRedirect();
+    $transaction->refresh();
+    expect($transaction->status)->toBe('diproses');
 });
 
 test('admin can reject payment and status returns to belum_bayar', function () {
@@ -646,4 +660,67 @@ test('store courier transaction automatically logs booking code, tracking resi, 
 
     // Status should remain 'out_for_pickup' and not automatically change to 'dikirim'
     expect($transaction->fresh()->status)->toBe('out_for_pickup');
+});
+
+test('admin cannot update status, confirm payment, or reject payment if transaction is completed or cancelled', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    // Mark as selesai (completed)
+    $transaction->update(['status' => 'selesai']);
+
+    // Attempt status update
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.update-status', $transaction),
+        ['status' => 'diproses']
+    );
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Transaksi yang sudah selesai atau batal tidak dapat diubah statusnya lagi.');
+
+    // Attempt confirm payment
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.confirm-payment', $transaction)
+    );
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Transaksi yang sudah selesai atau batal tidak dapat menerima konfirmasi pembayaran.');
+
+    // Attempt reject payment
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.reject-payment', $transaction),
+        ['notes' => 'Tolak.']
+    );
+    $response->assertRedirect();
+    $response->assertSessionHas('error', 'Transaksi yang sudah selesai atau batal tidak dapat menerima penolakan pembayaran.');
+});
+
+test('admin updating digital item note automatically creates chat thread and posts chat message', function () {
+    ['transaction' => $transaction, 'admin' => $admin, 'customer' => $customer] = createTestTransaction();
+
+    // Mark the transaction item product as digital
+    $item = $transaction->items->first();
+    $item->product->update(['is_digital' => true]);
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.items.update-note', [$transaction, $item]),
+        ['note' => 'Akses key: SECRET-12345']
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    $item->refresh();
+    expect($item->note)->toBe('Akses key: SECRET-12345');
+
+    // Assert that a chat thread was created/found
+    $this->assertDatabaseHas('chats', [
+        'user_id' => $customer->id,
+        'product_id' => $item->product_id,
+    ]);
+
+    // Assert that a chat message was posted by the admin
+    $chat = Chat::where('user_id', $customer->id)->first();
+    $this->assertDatabaseHas('chat_messages', [
+        'chat_id' => $chat->id,
+        'sender_type' => 'admin',
+        'body' => "Informasi Pengiriman untuk {$item->product_name} (Pesanan #{$transaction->transaction_number}):\nAkses key: SECRET-12345",
+    ]);
 });

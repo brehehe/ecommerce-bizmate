@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('promotions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('type'); // promo_toko, voucher_belanja, voucher_gratis_ongkir, flash_sale, bundling_gift, special_deals
             $table->string('code')->nullable()->unique();
@@ -30,10 +30,10 @@ return new class extends Migration
         });
 
         Schema::create('promotion_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('promotion_id')->constrained('promotions')->onDelete('cascade');
-            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
-            $table->foreignId('product_variant_id')->nullable()->constrained('product_variants')->onDelete('cascade');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('promotion_id')->constrained('promotions')->onDelete('cascade');
+            $table->foreignUuid('product_id')->constrained('products')->onDelete('cascade');
+            $table->foreignUuid('product_variant_id')->nullable()->constrained('product_variants')->onDelete('cascade');
             $table->string('discount_type')->nullable(); // percentage, fixed
             $table->decimal('discount_value', 12, 2)->nullable();
             $table->decimal('promo_price', 12, 2)->nullable();

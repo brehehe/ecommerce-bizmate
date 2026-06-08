@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stock_movements', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_variant_id')->nullable()->constrained('product_variants')->nullOnDelete();
-            $table->foreignId('transaction_id')->nullable()->constrained('transactions')->nullOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('product_variant_id')->nullable()->constrained('product_variants')->nullOnDelete();
+            $table->foreignUuid('transaction_id')->nullable()->constrained('transactions')->nullOnDelete();
 
             $table->enum('type', ['masuk', 'keluar', 'retur', 'penyesuaian']);
             $table->integer('quantity'); // positif = masuk, negatif = keluar
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->integer('stock_after');
             $table->string('notes')->nullable();
 
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
     }

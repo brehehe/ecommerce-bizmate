@@ -40,10 +40,16 @@ class OrderStatusChanged extends Mailable implements ShouldQueue
             'batal' => 'Dibatalkan',
         ];
 
-        $statusText = $statusLabels[$this->transaction->status] ?? ucfirst($this->transaction->status);
+        if ($this->transaction->shipping_courier === 'self_pickup' && $this->transaction->status === 'out_for_pickup') {
+            $statusText = 'Siap Diambil di Toko';
+            $subject = "Pesanan Siap Diambil di Toko — #{$this->transaction->transaction_number}";
+        } else {
+            $statusText = $statusLabels[$this->transaction->status] ?? ucfirst($this->transaction->status);
+            $subject = "Update Status Pesanan #{$this->transaction->transaction_number} — {$statusText}";
+        }
 
         return new Envelope(
-            subject: "Update Status Pesanan #{$this->transaction->transaction_number} — {$statusText}",
+            subject: $subject,
         );
     }
 

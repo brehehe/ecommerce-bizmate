@@ -12,18 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('product_prices', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_variant_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('product_variant_id')->nullable()->constrained()->cascadeOnDelete();
             $table->decimal('price', 15, 2)->default(0);
             $table->decimal('cost', 15, 2)->nullable();
             $table->timestamps();
         });
 
         Schema::create('product_stocks', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_variant_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('product_variant_id')->nullable()->constrained()->cascadeOnDelete();
             $table->integer('stock')->default(0);
             $table->integer('min_stock')->default(0);
             $table->integer('min_purchase')->default(1);

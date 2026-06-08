@@ -170,12 +170,14 @@ class CartController extends Controller
             'product_id' => 'required|exists:products,id',
             'product_variant_id' => 'nullable|exists:product_variants,id',
             'quantity' => 'required|integer|min:1',
+            'buy_now' => 'nullable|boolean',
         ]);
 
         $userId = $request->user()->id;
         $productId = $request->input('product_id');
         $variantId = $request->input('product_variant_id');
         $quantity = (int) $request->input('quantity');
+        $buyNow = $request->boolean('buy_now');
 
         // Load product with stock information for validation
         $product = Product::with([
@@ -202,13 +204,17 @@ class CartController extends Controller
                 ->first();
 
             $existingQty = $existingCartItem?->quantity ?? 0;
-            $totalQty = $existingQty + $quantity;
+            $totalQty = $buyNow ? $quantity : ($existingQty + $quantity);
 
             if ($stockRecord->stock <= 0) {
                 return back()->with('error', "Stok {$productLabel} sudah habis.");
             }
 
             if ($totalQty > $stockRecord->stock) {
+                if ($buyNow) {
+                    return back()->with('error', "Stok {$productLabel} tidak mencukupi untuk jumlah yang Anda beli.");
+                }
+
                 $available = max(0, $stockRecord->stock - $existingQty);
                 if ($available <= 0) {
                     return back()->with('error', "Stok {$productLabel} sudah mencapai batas maksimal di keranjang Anda.");
@@ -218,6 +224,10 @@ class CartController extends Controller
             }
         }
 
+        if ($buyNow) {
+            CartItem::where('user_id', $userId)->update(['is_checked' => false]);
+        }
+
         // Check if this combination already exists in the cart
         $cartItem = CartItem::where('user_id', $userId)
             ->where('product_id', $productId)
@@ -225,7 +235,12 @@ class CartController extends Controller
             ->first();
 
         if ($cartItem) {
-            $cartItem->quantity += $quantity;
+            if ($buyNow) {
+                $cartItem->quantity = $quantity;
+            } else {
+                $cartItem->quantity += $quantity;
+            }
+            $cartItem->is_checked = true;
             $cartItem->save();
         } else {
             CartItem::create([
@@ -233,7 +248,12 @@ class CartController extends Controller
                 'product_id' => $productId,
                 'product_variant_id' => $variantId,
                 'quantity' => $quantity,
+                'is_checked' => true,
             ]);
+        }
+
+        if ($buyNow) {
+            return redirect()->route('checkout.index');
         }
 
         return redirect()->back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
@@ -302,7 +322,7 @@ class CartController extends Controller
         $request->validate([
             'is_checked' => 'required|boolean',
             'ids' => 'nullable|array',
-            'ids.*' => 'integer|exists:cart_items,id',
+            'ids.*' => 'uuid|exists:cart_items,id',
         ]);
 
         $query = CartItem::where('user_id', $request->user()->id);

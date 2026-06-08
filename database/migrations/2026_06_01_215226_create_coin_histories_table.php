@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('coin_histories', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('transaction_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('transaction_id')->nullable()->constrained()->nullOnDelete();
             $table->integer('amount');
             $table->string('type');
             $table->string('description');

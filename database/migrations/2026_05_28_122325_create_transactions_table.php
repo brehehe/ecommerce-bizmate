@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transactions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('transaction_number')->unique();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('customer_address_id')->nullable()->constrained('customer_addresses')->nullOnDelete();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('customer_address_id')->nullable()->constrained('customer_addresses')->nullOnDelete();
             $table->foreignUuid('payment_method_id')->nullable()->constrained('payment_methods')->nullOnDelete();
 
             $table->enum('status', [

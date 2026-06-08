@@ -252,7 +252,6 @@ class ProductController extends Controller
                 ]);
             }
         }
-
         // Process photos
         if (! empty($validated['photos'])) {
             foreach ($validated['photos'] as $index => $photoBase64) {
@@ -266,6 +265,7 @@ class ProductController extends Controller
                     $product->images()->create([
                         'path' => 'storage/products/'.$filename,
                         'is_main' => $index === 0,
+                        'sort_order' => $index,
                     ]);
 
                     if ($index === 0) {
@@ -281,9 +281,12 @@ class ProductController extends Controller
 
         if (! empty($variationsInput)) {
             $variationMap = [];
-            foreach ($variationsInput as $vData) {
-                $variation = $product->variations()->create(['name' => $vData['name']]);
-                foreach ($vData['options'] as $optData) {
+            foreach ($variationsInput as $vIndex => $vData) {
+                $variation = $product->variations()->create([
+                    'name' => $vData['name'],
+                    'sort_order' => $vIndex,
+                ]);
+                foreach ($vData['options'] as $oIndex => $optData) {
                     $imagePath = null;
                     if (! empty($optData['image']) && preg_match('/^data:image\/(\w+);base64,/', $optData['image'], $type)) {
                         $imgBase64 = substr($optData['image'], strpos($optData['image'], ',') + 1);
@@ -298,11 +301,11 @@ class ProductController extends Controller
                         'name' => $optData['name'],
                         'description' => $optData['description'] ?? null,
                         'image' => $imagePath,
+                        'sort_order' => $oIndex,
                     ]);
                     $variationMap[$optData['id']] = $option->id;
                 }
             }
-
             if (! empty($variantsInput)) {
                 foreach ($variantsInput as $vCombData) {
                     $hasCustomWeight = ! empty($vCombData['is_custom']) && ! empty($vCombData['custom_weight']);
@@ -600,6 +603,7 @@ class ProductController extends Controller
             foreach ($finalImagePaths as $index => $path) {
                 $product->images()->where('path', $path)->update([
                     'is_main' => $index === 0,
+                    'sort_order' => $index,
                 ]);
             }
             $product->update(['image' => $mainPath]);
@@ -627,7 +631,7 @@ class ProductController extends Controller
         $keptOptionIds = [];
         $optionIdMap = []; // Maps frontend option IDs to DB option IDs
 
-        foreach ($variationsInput as $vData) {
+        foreach ($variationsInput as $vIndex => $vData) {
             // Find existing variation or create a new one
             $variation = null;
             if (! empty($vData['id']) && is_numeric($vData['id'])) {
@@ -635,15 +639,21 @@ class ProductController extends Controller
             }
 
             if ($variation) {
-                $variation->update(['name' => $vData['name']]);
+                $variation->update([
+                    'name' => $vData['name'],
+                    'sort_order' => $vIndex,
+                ]);
             } else {
-                $variation = $product->variations()->create(['name' => $vData['name']]);
+                $variation = $product->variations()->create([
+                    'name' => $vData['name'],
+                    'sort_order' => $vIndex,
+                ]);
             }
             $keptVariationIds[] = $variation->id;
 
             // Process options of this variation
             if (! empty($vData['options'])) {
-                foreach ($vData['options'] as $optData) {
+                foreach ($vData['options'] as $oIndex => $optData) {
                     $option = null;
                     if (! empty($optData['id']) && is_numeric($optData['id'])) {
                         $option = $variation->options()->find($optData['id']);
@@ -669,12 +679,14 @@ class ProductController extends Controller
                             'name' => $optData['name'],
                             'description' => $optData['description'] ?? null,
                             'image' => $imagePath,
+                            'sort_order' => $oIndex,
                         ]);
                     } else {
                         $option = $variation->options()->create([
                             'name' => $optData['name'],
                             'description' => $optData['description'] ?? null,
                             'image' => $imagePath,
+                            'sort_order' => $oIndex,
                         ]);
                     }
                     $keptOptionIds[] = $option->id;

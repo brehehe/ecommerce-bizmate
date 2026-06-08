@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transaction_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('transaction_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('product_id')->constrained()->restrictOnDelete();
-            $table->foreignId('product_variant_id')->nullable()->constrained('product_variants')->nullOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('transaction_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('product_id')->constrained()->restrictOnDelete();
+            $table->foreignUuid('product_variant_id')->nullable()->constrained('product_variants')->nullOnDelete();
 
             // Snapshot saat transaksi dibuat
             $table->string('product_name');

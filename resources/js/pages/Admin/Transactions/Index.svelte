@@ -3,6 +3,7 @@
     import { page, router } from '@inertiajs/svelte';
     import { Html5Qrcode } from 'html5-qrcode';
     import { onDestroy } from 'svelte';
+    import { dragScroll } from '@/utils/dragScroll';
 
     let {
         transactions,
@@ -18,6 +19,16 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
+
+    const statusOrder = [
+        'belum_bayar',
+        'menunggu',
+        'diproses',
+        'dikemas',
+        'out_for_pickup',
+        'dikirim',
+        'selesai',
+    ];
 
     function initFiltersState(f: any) {
         return {
@@ -83,10 +94,29 @@
             return;
         }
 
+        const validIds = selectedIds.filter((id) => {
+            const trx = transactions.data.find((t: any) => t.id === id);
+            if (!trx) return false;
+            
+            if (['selesai', 'batal'].includes(trx.status)) return false;
+            if (trx.status === bulkStatusValue) return false;
+            if (bulkStatusValue === 'batal') return true;
+            
+            const currentIdx = statusOrder.indexOf(trx.status);
+            const targetIdx = statusOrder.indexOf(bulkStatusValue);
+            
+            return currentIdx !== -1 && targetIdx !== -1 && targetIdx > currentIdx;
+        });
+
+        if (validIds.length === 0) {
+            showToast('Tidak ada transaksi terpilih yang dapat diperbarui ke status tersebut.', 'error');
+            return;
+        }
+
         if (bulkStatusValue === 'dikirim') {
             // Open Bulk Resi Modal
             const selectedTrxs = transactions.data.filter((t: any) =>
-                selectedIds.includes(t.id),
+                validIds.includes(t.id),
             );
             bulkTrackingData = selectedTrxs.map((t: any) => ({
                 id: t.id,
@@ -107,7 +137,7 @@
         router.post(
             '/admin/transactions/bulk-status',
             {
-                ids: selectedIds,
+                ids: validIds,
                 status: bulkStatusValue,
                 cancel_reason:
                     bulkStatusValue === 'batal'
@@ -117,7 +147,7 @@
             {
                 onSuccess: () => {
                     showToast(
-                        `${selectedIds.length} transaksi berhasil diperbarui.`,
+                        `${validIds.length} transaksi berhasil diperbarui.`,
                         'success',
                     );
                     selectedIds = [];
@@ -733,7 +763,7 @@
                         </p>
                     </div>
                 {:else}
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto" use:dragScroll>
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr
@@ -747,14 +777,11 @@
                                             class="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-600"
                                         />
                                     </th>
-                                    <th class="py-5 px-4">No. Transaksi</th>
+                                    <th class="py-5 px-4">Transaksi / Tanggal</th>
                                     <th class="py-5 px-4">Customer</th>
-                                    <th class="py-5 px-4">Items</th>
-                                    <th class="py-5 px-4">Total</th>
-                                    <th class="py-5 px-4">Status</th>
+                                    <th class="py-5 px-4">Total / Items</th>
+                                    <th class="py-5 px-4">Status / Pembayaran</th>
                                     <th class="py-5 px-4">Nomor Resi</th>
-                                    <th class="py-5 px-4">Pembayaran</th>
-                                    <th class="py-5 px-4">Tanggal</th>
                                     <th class="py-5 px-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -786,31 +813,37 @@
                                             {/if}
                                         </td>
                                         <td class="py-5 px-4">
-                                            <p
-                                                class="font-black text-slate-800 tracking-wide font-mono text-sm"
-                                            >
-                                                #{trx.transaction_number}
-                                            </p>
-                                            <div
-                                                class="flex flex-wrap gap-1 mt-1"
-                                            >
-                                                {#if (trx.items || []).every((item) => item.product?.is_digital)}
-                                                    <span
-                                                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase tracking-wider border border-blue-200/30"
-                                                    >
-                                                        <i
-                                                            class="ti ti-device-laptop text-[10px]"
-                                                        ></i> Digital
-                                                    </span>
-                                                {:else if (trx.items || []).some((item) => item.product?.is_digital)}
-                                                    <span
-                                                        class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-black rounded uppercase tracking-wider border border-amber-200/30"
-                                                    >
-                                                        <i
-                                                            class="ti ti-package text-[10px]"
-                                                        ></i> Campuran
-                                                    </span>
-                                                {/if}
+                                            <div class="flex flex-col gap-1">
+                                                <p
+                                                    class="font-black text-slate-800 tracking-wide font-mono text-sm"
+                                                >
+                                                    #{trx.transaction_number}
+                                                </p>
+                                                <div
+                                                    class="flex flex-wrap gap-1"
+                                                >
+                                                    {#if (trx.items || []).every((item) => item.product?.is_digital)}
+                                                        <span
+                                                            class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[9px] font-black rounded uppercase tracking-wider border border-blue-200/30"
+                                                        >
+                                                            <i
+                                                                class="ti ti-device-laptop text-[10px]"
+                                                            ></i> Digital
+                                                        </span>
+                                                    {:else if (trx.items || []).some((item) => item.product?.is_digital)}
+                                                        <span
+                                                            class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-black rounded uppercase tracking-wider border border-amber-200/30"
+                                                        >
+                                                            <i
+                                                                class="ti ti-package text-[10px]"
+                                                            ></i> Campuran
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                                <span
+                                                    class="text-xs text-slate-400 font-bold"
+                                                    >{fmtDate(trx.created_at)}</span
+                                                >
                                             </div>
                                         </td>
                                         <td class="py-5 px-4">
@@ -826,18 +859,16 @@
                                             </p>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span
-                                                class="text-slate-600 font-bold"
-                                                >{(trx.items ?? []).length} item</span
-                                            >
-                                        </td>
-                                        <td class="py-5 px-4">
-                                            <div class="flex flex-col">
+                                            <div class="flex flex-col gap-1">
                                                 <span
                                                     class="font-black text-slate-800"
                                                     >{fmt(
                                                         trx.grand_total,
                                                     )}</span
+                                                >
+                                                <span
+                                                    class="text-xs text-slate-500 font-bold"
+                                                    >{(trx.items ?? []).length} item</span
                                                 >
                                                 {#if trx.coins_redeemed > 0}
                                                     <span
@@ -852,13 +883,36 @@
                                             </div>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <span
-                                                class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider"
-                                                style="background:{statusStyle.bg}; color:{statusStyle.text}"
-                                            >
-                                                {statusLabels[trx.status] ??
-                                                    trx.status}
-                                            </span>
+                                            <div class="flex flex-col gap-1.5 items-start">
+                                                <span
+                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider"
+                                                    style="background:{statusStyle.bg}; color:{statusStyle.text}"
+                                                >
+                                                    {statusLabels[trx.status] ??
+                                                        trx.status}
+                                                </span>
+                                                {#if paymentStatus === 'confirmed'}
+                                                    <span
+                                                        class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider"
+                                                        >Dikonfirmasi</span
+                                                    >
+                                                {:else if paymentStatus === 'rejected'}
+                                                    <span
+                                                        class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200/50 uppercase tracking-wider"
+                                                        >Ditolak</span
+                                                    >
+                                                {:else if trx.payment?.proof_image}
+                                                    <span
+                                                        class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/50 uppercase tracking-wider"
+                                                        >Menunggu Review</span
+                                                    >
+                                                {:else}
+                                                    <span
+                                                        class="text-xs text-slate-400 font-bold"
+                                                        >Belum ada bukti</span
+                                                    >
+                                                {/if}
+                                            </div>
                                         </td>
                                         <!-- Nomor Resi Column -->
                                         <td class="py-5 px-4">
@@ -923,35 +977,6 @@
                                                     >Resi tidak tersedia</span
                                                 >
                                             {/if}
-                                        </td>
-                                        <td class="py-5 px-4">
-                                            {#if paymentStatus === 'confirmed'}
-                                                <span
-                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50 uppercase tracking-wider"
-                                                    >Dikonfirmasi</span
-                                                >
-                                            {:else if paymentStatus === 'rejected'}
-                                                <span
-                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200/50 uppercase tracking-wider"
-                                                    >Ditolak</span
-                                                >
-                                            {:else if trx.payment?.proof_image}
-                                                <span
-                                                    class="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/50 uppercase tracking-wider"
-                                                    >Menunggu Review</span
-                                                >
-                                            {:else}
-                                                <span
-                                                    class="text-xs text-slate-400 font-bold"
-                                                    >Belum ada bukti</span
-                                                >
-                                            {/if}
-                                        </td>
-                                        <td class="py-5 px-4">
-                                            <span
-                                                class="text-xs text-slate-500 font-bold"
-                                                >{fmtDate(trx.created_at)}</span
-                                            >
                                         </td>
                                         <td class="py-5 px-4 text-center">
                                             <div

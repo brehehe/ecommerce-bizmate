@@ -9,8 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('return_media', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('return_id')->constrained('returns')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('return_id')->constrained('returns')->cascadeOnDelete();
             $table->string('file_path', 500);
             $table->string('file_type', 10)->default('image'); // image or video
             $table->string('disk', 30)->default('public');

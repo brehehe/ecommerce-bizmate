@@ -16,7 +16,7 @@ return new class extends Migration
                 $table->boolean('is_replacement_transaction')->default(false)->after('return_status');
             }
             if (! Schema::hasColumn('transactions', 'original_transaction_id')) {
-                $table->foreignId('original_transaction_id')->nullable()->constrained('transactions')->nullOnDelete()->after('is_replacement_transaction');
+                $table->foreignUuid('original_transaction_id')->nullable()->constrained('transactions')->nullOnDelete()->after('is_replacement_transaction');
             }
         });
     }

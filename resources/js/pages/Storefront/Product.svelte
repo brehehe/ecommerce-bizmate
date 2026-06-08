@@ -55,6 +55,7 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
+    const cartCount = $derived((page.props as any).cartCount || 0);
 
     function withOpacity(hex: string, opacity: number): string {
         if (!hex) return '';
@@ -288,7 +289,7 @@
                     slides.push({
                         src: img,
                         type: 'variant' as const,
-                        optionId: Number(opt.id),
+                        optionId: String(opt.id),
                         optionName: String(opt.name ?? ''),
                         variationId: String(variation.id),
                         variationName: String(variation.name ?? ''),
@@ -510,7 +511,7 @@
     );
 
     /** selectedOptions: { [variationId]: optionId } */
-    let selectedOptions: Record<string, number> = $state({});
+    let selectedOptions: Record<string, string> = $state({});
 
     const variationCount = $derived(product.variations?.length ?? 0);
     const fullySelected = $derived(
@@ -520,13 +521,13 @@
     /** Returns the variant whose options exactly match selected option IDs */
     function findVariant(): any | null {
         if (!hasVariations) return null;
-        const selectedIds = Object.values(selectedOptions).map(Number);
+        const selectedIds = Object.values(selectedOptions).map(String);
         if (selectedIds.length < variationCount) return null;
 
         return (
             product.variants?.find((v: any) => {
-                const vOptIds: number[] =
-                    v.options?.map((o: any) => Number(o.id)) ?? [];
+                const vOptIds: string[] =
+                    v.options?.map((o: any) => String(o.id)) ?? [];
                 return (
                     vOptIds.length === selectedIds.length &&
                     selectedIds.every((id) => vOptIds.includes(id))
@@ -537,7 +538,7 @@
 
     const matchingVariant = $derived(findVariant());
 
-    function selectOption(variationId: string, optionId: number) {
+    function selectOption(variationId: string, optionId: string) {
         selectedOptions = { ...selectedOptions, [variationId]: optionId };
         qty = currentMinPurchase; // reset qty
         // Update main image if this option's variant has an image
@@ -570,15 +571,15 @@
         activeDesktopSlideIdx = firstImgIdx !== -1 ? firstImgIdx : 0;
     }
 
-    function isSelected(variationId: string, optionId: number): boolean {
-        return Number(selectedOptions[variationId]) === optionId;
+    function isSelected(variationId: string, optionId: string): boolean {
+        return String(selectedOptions[variationId]) === String(optionId);
     }
 
     function getSelectedLabel(variation: any): string | null {
         const optId = selectedOptions[String(variation.id)];
         if (optId == null) return null;
         return (
-            variation.options?.find((o: any) => Number(o.id) === optId)?.name ??
+            variation.options?.find((o: any) => String(o.id) === String(optId))?.name ??
             null
         );
     }
@@ -587,16 +588,16 @@
      * Find the FIRST variant that contains this option (used to get its image
      * or check availability).
      */
-    function getVariantForOption(optionId: number): any | null {
+    function getVariantForOption(optionId: string): any | null {
         return (
             product.variants?.find((v: any) =>
-                v.options?.some((o: any) => Number(o.id) === optionId),
+                v.options?.some((o: any) => String(o.id) === String(optionId)),
             ) ?? null
         );
     }
 
     function getOptionImage(
-        optionId: number,
+        optionId: string,
         variationName: string,
     ): string | null {
         const lowerName = variationName.toLowerCase();
@@ -608,7 +609,7 @@
         // 1) Option itself may carry an image
         for (const variation of product.variations ?? []) {
             const opt = variation.options?.find(
-                (o: any) => Number(o.id) === optionId,
+                (o: any) => String(o.id) === String(optionId),
             );
             if (opt?.image) return formatImagePath(opt.image);
         }
@@ -623,10 +624,10 @@
     }
 
     /** Is this option in-stock (has at least one variant with stock or unlimited)? */
-    function isOptionAvailable(optionId: number): boolean {
+    function isOptionAvailable(optionId: string): boolean {
         const variants =
             product.variants?.filter((v: any) =>
-                v.options?.some((o: any) => Number(o.id) === optionId),
+                v.options?.some((o: any) => String(o.id) === String(optionId)),
             ) ?? [];
         return variants.some(
             (v: any) =>
@@ -1304,11 +1305,9 @@
                 product_id: product.id,
                 product_variant_id: matchingVariant ? matchingVariant.id : null,
                 quantity: qty,
+                buy_now: true,
             },
             {
-                onSuccess: () => {
-                    router.visit('/cart');
-                },
                 onError: (errors: any) => {
                     const errMsg =
                         errors?.error ??
@@ -1480,10 +1479,18 @@
                             );
                         }
                     }}
-                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition cursor-pointer"
+                    class="relative w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition cursor-pointer"
                     aria-label="Keranjang"
                 >
                     <i class="ti ti-shopping-cart text-lg"></i>
+                    {#if cartCount > 0}
+                        <span
+                            class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white"
+                            style="background-color: {secondary};"
+                        >
+                            {cartCount}
+                        </span>
+                    {/if}
                 </button>
 
                 <!-- Menu Button -->

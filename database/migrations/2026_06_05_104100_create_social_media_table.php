@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('social_media', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('platform');      // instagram, tiktok, facebook, twitter, youtube, whatsapp, telegram, etc.
             $table->string('label');         // Display name, e.g. "Instagram Toko"
             $table->string('url');           // Full URL or handle
@@ -20,6 +20,7 @@ return new class extends Migration
             $table->integer('order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

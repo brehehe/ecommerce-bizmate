@@ -264,6 +264,53 @@
         );
     }
 
+    const waNumber = $derived(
+        storeSettings.store_whatsapp || storeSettings.store_phone || '',
+    );
+
+    const waLink = $derived.by(() => {
+        if (!waNumber) return '#';
+        const num = waNumber.replace(/\D/g, '');
+        const formattedNum = num.startsWith('0') ? '62' + num.slice(1) : num;
+        
+        const firstDigitalItem = (transaction.items || []).find((item: any) => item.product?.is_digital);
+        const productName = firstDigitalItem ? (firstDigitalItem.product_name || firstDigitalItem.product?.name) : 'Produk Digital';
+        const text = `Halo Admin, saya ingin konfirmasi pesanan #${transaction.transaction_number} untuk pembelian ${productName}. Mohon informasi pengiriman produk digitalnya. Terima kasih.`;
+        return `https://wa.me/${formattedNum}?text=${encodeURIComponent(text)}`;
+    });
+
+    async function goToWebChat() {
+        try {
+            const firstDigitalItem = (transaction.items || []).find((item: any) => item.product?.is_digital);
+            const subject = `Pesanan #${transaction.transaction_number}`;
+            const productId = firstDigitalItem ? firstDigitalItem.product_id : null;
+
+            const response = await fetch('/chats', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                },
+                body: JSON.stringify({
+                    subject: subject,
+                    product_id: productId,
+                    transaction_id: transaction.id,
+                }),
+            });
+
+            if (response.ok) {
+                const chat = await response.json();
+                router.visit(`/chats?chat_id=${chat.id}`);
+            } else {
+                router.visit('/chats');
+            }
+        } catch (err) {
+            console.error('Error opening chat:', err);
+            router.visit('/chats');
+        }
+    }
+
     // Return/Retur system
     let showReturnModal = $state(false);
     let returnStep = $state<'form' | 'items'>('form');
@@ -2529,9 +2576,9 @@
                 <!-- Right/Sidebar Column -->
                 <div class="space-y-4">
                     <!-- Shipping Address -->
-                    {#if transaction.shipping_courier === 'digital'}
+                    <!-- {#if (transaction.items || []).some(item => item.product?.is_digital)} -->
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-2"
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3"
                         >
                             <div class="flex items-center gap-2">
                                 <i class="ti ti-mail text-base text-blue-600"
@@ -2551,110 +2598,123 @@
                                     email / chat catatan.</span
                                 >
                             </div>
-                        </div>
-                    {:else if transaction.shipping_courier === 'self_pickup'}
-                        <!-- Store Pickup Section -->
-                        <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-4"
-                        >
-                            <div class="flex items-center gap-2">
-                                <i
-                                    class="ti ti-building-store text-base text-emerald-600"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Ambil di Toko (Store Pickup)</span
+                            <div class="grid grid-cols-1 gap-2 mt-2 pt-2 border-t border-slate-100">
+                                <button
+                                    onclick={goToWebChat}
+                                    class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition active:scale-95 text-slate-700 cursor-pointer animate-fade-in"
                                 >
-                            </div>
-                            <div
-                                class="text-xs text-slate-600 space-y-1 font-medium"
-                            >
-                                <p class="font-bold text-slate-800">
-                                    {storeSettings.store_name || storeName}
-                                </p>
-                                <p>
-                                    {storeSettings.store_address}
-                                    {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
-                                    {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
-                                    {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
-                                    {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
-                                    {#if storeSettings.store_postal_code}
-                                        {storeSettings.store_postal_code}{/if}
-                                </p>
-                            </div>
-                            <div class="h-px bg-slate-100"></div>
-                            <div
-                                class="flex flex-col items-center text-center space-y-2"
-                            >
-                                <p
-                                    class="text-[10px] font-black text-slate-400 uppercase tracking-wider"
-                                >
-                                    QR Code Transaksi
-                                </p>
-                                <img
-                                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(
-                                        transaction.transaction_number,
-                                    )}"
-                                    alt="QR Code Transaksi"
-                                    class="w-36 h-36 border border-slate-100 rounded-xl p-1 bg-white"
-                                />
-                                <p
-                                    class="text-[10.5px] font-medium text-slate-500 leading-relaxed px-2"
-                                >
-                                    Tunjukkan QR Code ini kepada kasir/petugas
-                                    toko untuk pengambilan barang.
-                                </p>
+                                    <i class="ti ti-messages text-sm text-slate-500"></i>
+                                    Chat Penjual
+                                </button>
                             </div>
                         </div>
-                    {:else if customerAddress}
-                        <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
-                        >
-                            <div class="flex items-center gap-2 mb-2">
-                                <i
-                                    class="ti ti-map-pin text-base"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Alamat Pengiriman</span
-                                >
-                            </div>
-                            <p
-                                class="text-sm font-semibold text-slate-800 whitespace-pre-wrap break-words"
+                    <!-- {/if} -->
+
+                    {#if transaction.shipping_courier !== 'digital'}
+                        {#if transaction.shipping_courier === 'self_pickup'}
+                            <!-- Store Pickup Section -->
+                            <div
+                                class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-4"
                             >
-                                {customerAddress.receiver_name}
-                            </p>
-                            <p class="text-xs text-slate-500 break-all">
-                                {customerAddress.phone_number}
-                            </p>
-                            <p
-                                class="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap break-words"
-                            >
-                                {customerAddress.full_address}
-                            </p>
-                            {#if customerAddress.regency_name}
-                                <p class="text-xs text-slate-500">
-                                    {customerAddress.district_name}, {customerAddress.regency_name},
-                                    {customerAddress.province_name}
-                                    {customerAddress.postal_code}
-                                </p>
-                            {/if}
-                            {#if transaction.shipping_courier}
-                                <div
-                                    class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600"
-                                >
-                                    <i class="ti ti-truck"></i>
-                                    <span class="font-semibold uppercase"
-                                        >{transaction.shipping_courier}</span
+                                <div class="flex items-center gap-2">
+                                    <i
+                                        class="ti ti-building-store text-base text-emerald-600"
+                                    ></i>
+                                    <span class="font-bold text-slate-800 text-sm"
+                                        >Ambil di Toko (Store Pickup)</span
                                     >
-                                    <span>{transaction.shipping_service}</span>
-                                    {#if transaction.shipping_etd}
-                                        <span
-                                            >· Est. {transaction.shipping_etd} hari</span
-                                        >
-                                    {/if}
                                 </div>
-                            {/if}
-                        </div>
+                                <div
+                                    class="text-xs text-slate-600 space-y-1 font-medium"
+                                >
+                                    <p class="font-bold text-slate-800">
+                                        {storeSettings.store_name || storeName}
+                                    </p>
+                                    <p>
+                                        {storeSettings.store_address}
+                                        {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
+                                        {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
+                                        {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
+                                        {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
+                                        {#if storeSettings.store_postal_code}
+                                            {storeSettings.store_postal_code}{/if}
+                                    </p>
+                                </div>
+                                <div class="h-px bg-slate-100"></div>
+                                <div
+                                    class="flex flex-col items-center text-center space-y-2"
+                                >
+                                    <p
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-wider"
+                                    >
+                                        QR Code Transaksi
+                                    </p>
+                                    <img
+                                        src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(
+                                            transaction.transaction_number,
+                                        )}"
+                                        alt="QR Code Transaksi"
+                                        class="w-36 h-36 border border-slate-100 rounded-xl p-1 bg-white"
+                                    />
+                                    <p
+                                        class="text-[10.5px] font-medium text-slate-500 leading-relaxed px-2"
+                                    >
+                                        Tunjukkan QR Code ini kepada kasir/petugas
+                                        toko untuk pengambilan barang.
+                                    </p>
+                                </div>
+                            </div>
+                        {:else if customerAddress}
+                            <div
+                                class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
+                            >
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i
+                                        class="ti ti-map-pin text-base"
+                                        style="color:{primary}"
+                                    ></i>
+                                    <span class="font-bold text-slate-800 text-sm"
+                                        >Alamat Pengiriman</span
+                                    >
+                                </div>
+                                <p
+                                    class="text-sm font-semibold text-slate-800 whitespace-pre-wrap break-words"
+                                >
+                                    {customerAddress.receiver_name}
+                                </p>
+                                <p class="text-xs text-slate-500 break-all">
+                                    {customerAddress.phone_number}
+                                </p>
+                                <p
+                                    class="text-xs text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap break-words"
+                                >
+                                    {customerAddress.full_address}
+                                </p>
+                                {#if customerAddress.regency_name}
+                                    <p class="text-xs text-slate-500">
+                                        {customerAddress.district_name}, {customerAddress.regency_name},
+                                        {customerAddress.province_name}
+                                        {customerAddress.postal_code}
+                                    </p>
+                                {/if}
+                                {#if transaction.shipping_courier}
+                                    <div
+                                        class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600"
+                                    >
+                                        <i class="ti ti-truck"></i>
+                                        <span class="font-semibold uppercase"
+                                            >{transaction.shipping_courier}</span
+                                        >
+                                        <span>{transaction.shipping_service}</span>
+                                        {#if transaction.shipping_etd}
+                                            <span
+                                                >· Est. {transaction.shipping_etd} hari</span
+                                            >
+                                        {/if}
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
                     {/if}
 
                     <!-- Shipping Information (Resi) -->

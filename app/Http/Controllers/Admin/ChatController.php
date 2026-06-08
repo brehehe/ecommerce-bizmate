@@ -138,12 +138,28 @@ class ChatController extends Controller
      */
     public function pollMessages(Request $request, Chat $chat): JsonResponse
     {
-        $afterId = (int) $request->query('after_id', 0);
+        $afterId = $request->query('after_id');
+        $afterMessage = $afterId ? ChatMessage::find($afterId) : null;
 
-        $messages = $chat->messages()
-            ->when($afterId > 0, fn ($q) => $q->where('id', '>', $afterId))
-            ->get()
-            ->map(fn (ChatMessage $msg) => $this->formatMessage($msg));
+        $query = $chat->messages()->orderBy('created_at', 'asc');
+
+        if ($afterMessage) {
+            $query->where('created_at', '>=', $afterMessage->created_at);
+        }
+
+        $messagesCollection = $query->get();
+
+        if ($afterMessage) {
+            $index = $messagesCollection->contains('id', $afterMessage->id)
+                ? $messagesCollection->search(fn ($msg) => $msg->id === $afterMessage->id)
+                : false;
+
+            if ($index !== false) {
+                $messagesCollection = $messagesCollection->slice($index + 1)->values();
+            }
+        }
+
+        $messages = $messagesCollection->map(fn (ChatMessage $msg) => $this->formatMessage($msg));
 
         // Mark user messages as read
         $chat->messages()

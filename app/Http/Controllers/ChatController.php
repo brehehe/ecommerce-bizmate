@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Chat;
 use App\Models\ChatMessage;
+use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,11 +37,28 @@ class ChatController extends Controller
                 ] : null,
             ]);
 
+        $transactions = [];
+        if (auth()->check()) {
+            $transactions = Transaction::where('user_id', auth()->id())
+                ->with(['items', 'paymentMethod'])
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(fn ($t) => [
+                    'id' => $t->id,
+                    'transaction_number' => $t->transaction_number,
+                    'grand_total' => (float) $t->grand_total,
+                    'payment_method' => $t->paymentMethod?->name ?? ($t->payment_method ?? '-'),
+                    'status' => $t->status,
+                    'items_summary' => $t->items->map(fn ($item) => $item->product_name.' (x'.$item->quantity.')')->implode(', '),
+                ]);
+        }
+
         if ($request->expectsJson()) {
             return response()->json($chats);
         }
 
-        return Inertia::render('Storefront/Chat', compact('chats'));
+        return Inertia::render('Storefront/Chat', compact('chats', 'transactions'));
     }
 
     /**
@@ -50,13 +68,55 @@ class ChatController extends Controller
     {
         $validated = $request->validate([
             'subject' => 'nullable|string|max:255',
-            'product_id' => 'nullable|integer',
+            'product_id' => 'nullable|uuid',
+            'transaction_id' => 'nullable|uuid',
         ]);
 
         $productId = $validated['product_id'] ?? null;
+        $transactionId = $validated['transaction_id'] ?? null;
         $chat = null;
 
-        if ($productId) {
+        if ($transactionId) {
+            $transaction = Transaction::with(['items', 'paymentMethod'])->find($transactionId);
+            if ($transaction && $transaction->user_id === auth()->id()) {
+                $subject = 'Pesanan #'.$transaction->transaction_number;
+                $chat = Chat::where('user_id', auth()->id())
+                    ->where('subject', $subject)
+                    ->first();
+
+                if (! $chat) {
+                    $chat = Chat::create([
+                        'user_id' => auth()->id(),
+                        'subject' => $subject,
+                        'product_id' => $productId,
+                        'status' => 'open',
+                    ]);
+
+                    // Automatically post the transaction card as the first message
+                    $itemsSummary = $transaction->items->map(fn ($item) => $item->product_name.' (x'.$item->quantity.')')->implode(', ');
+                    $cardData = [
+                        'transaction_number' => $transaction->transaction_number,
+                        'grand_total' => (float) $transaction->grand_total,
+                        'payment_method' => $transaction->paymentMethod?->name ?? ($transaction->payment_method ?? '-'),
+                        'status' => $transaction->status,
+                        'id' => $transaction->id,
+                        'items_summary' => $itemsSummary,
+                    ];
+
+                    ChatMessage::create([
+                        'chat_id' => $chat->id,
+                        'sender_type' => 'user',
+                        'sender_id' => auth()->id(),
+                        'body' => '[TRANSACTION_CARD]'.json_encode($cardData),
+                        'is_read' => false,
+                    ]);
+
+                    $chat->update(['last_message_at' => now()]);
+                }
+            }
+        }
+
+        if (! $chat && $productId) {
             $chat = Chat::where('user_id', auth()->id())
                 ->where('product_id', $productId)
                 ->where('status', 'open')
@@ -92,12 +152,28 @@ class ChatController extends Controller
         // Ensure ownership
         abort_if($chat->user_id !== auth()->id(), 403);
 
-        $afterId = (int) $request->query('after_id', 0);
+        $afterId = $request->query('after_id');
+        $afterMessage = $afterId ? ChatMessage::find($afterId) : null;
 
-        $messages = $chat->messages()
-            ->when($afterId > 0, fn ($q) => $q->where('id', '>', $afterId))
-            ->get()
-            ->map(fn (ChatMessage $msg) => $this->formatMessage($msg));
+        $query = $chat->messages()->orderBy('created_at', 'asc');
+
+        if ($afterMessage) {
+            $query->where('created_at', '>=', $afterMessage->created_at);
+        }
+
+        $messagesCollection = $query->get();
+
+        if ($afterMessage) {
+            $index = $messagesCollection->contains('id', $afterMessage->id)
+                ? $messagesCollection->search(fn ($msg) => $msg->id === $afterMessage->id)
+                : false;
+
+            if ($index !== false) {
+                $messagesCollection = $messagesCollection->slice($index + 1)->values();
+            }
+        }
+
+        $messages = $messagesCollection->map(fn (ChatMessage $msg) => $this->formatMessage($msg));
 
         // Mark admin messages as read
         $chat->messages()

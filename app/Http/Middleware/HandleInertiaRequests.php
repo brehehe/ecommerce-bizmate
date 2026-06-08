@@ -236,9 +236,21 @@ class HandleInertiaRequests extends Middleware
                 'id' => \Str::uuid()->toString(),
             ],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user() ? [
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                    'phone_number' => $request->user()->phone_number,
+                    'gender' => $request->user()->gender,
+                    'birth_date' => $request->user()->birth_date,
+                    'avatar' => $request->user()->avatar,
+                    'coins_balance' => $request->user()->coins_balance,
+                    'roles' => $request->user()->roles->map(fn ($role) => [
+                        'name' => $role->name,
+                    ]),
+                ] : null,
             ],
-            'cartCount' => $request->user() ? CartItem::where('user_id', $request->user()->id)->sum('quantity') : 0,
+            'cartCount' => $request->user() ? CartItem::where('user_id', $request->user()->id)->count() : 0,
             'chatUnreadCount' => $request->user() ? ChatMessage::whereHas('chat', fn ($q) => $q->where('user_id', $request->user()->id))->where('sender_type', 'admin')->where('is_read', false)->count() : 0,
             'adminChatUnreadCount' => $request->user() ? ChatMessage::where('sender_type', 'user')->where('is_read', false)->count() : 0,
             'theme' => [

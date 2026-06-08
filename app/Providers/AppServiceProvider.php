@@ -2,12 +2,15 @@
 
 namespace App\Providers;
 
+use App\Models\Transaction;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,11 +36,12 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        \Illuminate\Support\Facades\Route::bind('transaction', function (string $value) {
-            if (is_numeric($value)) {
-                return \App\Models\Transaction::findOrFail($value);
+        Route::bind('transaction', function (string $value) {
+            if (Str::isUuid($value) || is_numeric($value)) {
+                return Transaction::findOrFail($value);
             }
-            return \App\Models\Transaction::where('transaction_number', $value)->firstOrFail();
+
+            return Transaction::where('transaction_number', $value)->firstOrFail();
         });
     }
 

@@ -133,7 +133,7 @@ class KomerceService
     /**
      * Calculate Domestic Shipping Cost.
      */
-    public static function getDomesticCost(string $origin, string $destination, int $weight, string $courier, ?int $addressId = null): array
+    public static function getDomesticCost(string $origin, string $destination, int $weight, string $courier, ?string $addressId = null): array
     {
         $courierLower = strtolower($courier);
         if ($courierLower === 'gojek') {
@@ -648,24 +648,37 @@ class KomerceService
         }
 
         try {
-            Log::info('Komerce destination search request:', [
+            $url = self::getKomerceUrl('tariff/destination-search');
+            $params = ['keyword' => $keyword];
+            $fullUrlWithParams = $url.'?'.http_build_query($params);
+            $headers = self::getCollaboratorHeaders($apiKey);
+
+            $curlCmd = 'curl -X GET "'.$fullUrlWithParams.'"';
+            foreach ($headers as $key => $val) {
+                $curlCmd .= ' -H "'.$key.': '.$val.'"';
+            }
+
+            Log::info('Komerce destination search request (curl):', [
+                'curl' => $curlCmd,
                 'keyword' => $keyword,
             ]);
 
-            $response = Http::withHeaders(self::getCollaboratorHeaders($apiKey))
-                ->get(self::getKomerceUrl('tariff/destination-search'), [
-                    'keyword' => $keyword,
-                ]);
+            $response = Http::withHeaders($headers)
+                ->get($url, $params);
 
             if ($response->successful()) {
-                Log::info('Komerce destination search success:', [
-                    'response' => $response->json(),
+                $responseData = $response->json();
+
+                Log::info('Komerce destination search success - Response Details:', [
+                    'curl' => $curlCmd,
+                    'response' => $responseData,
                 ]);
 
-                return ['success' => true, 'data' => $response->json('data') ?? []];
+                return ['success' => true, 'data' => $responseData['data'] ?? []];
             }
 
             Log::warning('Komerce destination search failed:', [
+                'curl' => $curlCmd,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
@@ -868,7 +881,11 @@ class KomerceService
 
         $transaction->loadMissing(['items.product', 'items.productVariant']);
 
-        $orderDetails = $transaction->items->map(function ($item) {
+        $physicalItems = $transaction->items->filter(function ($item) {
+            return ! ($item->product && $item->product->is_digital);
+        });
+
+        $orderDetails = $physicalItems->map(function ($item) {
             $price = (int) ($item->harga_akhir ?? $item->harga_jual ?? 0);
             $qty = (int) $item->quantity;
 
@@ -915,7 +932,7 @@ class KomerceService
                 'qty' => $qty,
                 'subtotal' => $price * $qty,
             ];
-        })->toArray();
+        })->values()->toArray();
 
         $itemSubtotalSum = collect($orderDetails)->sum('subtotal');
         $totalWeightGrams = 0;
@@ -1121,11 +1138,9 @@ class KomerceService
                 return ['success' => true, 'data' => $response->json('data') ?? $response->json()];
             }
 
-            Log::warning('Komerce Delivery store failed. Status: '.$response->status().' Body: '.$response->body().' Payload: '.json_encode($payload));
-
             if ($isSandbox) {
                 // Fallback for staging testing: simulate order booking if staging credentials fail or return mock response
-                Log::warning('Komerce Delivery store failed: '.$response->body().'. Returning simulated response for staging test.');
+                Log::info('Komerce Delivery store failed (expected in sandbox): '.$response->body().'. Returning simulated response for staging test.');
 
                 return [
                     'success' => true,
@@ -1140,6 +1155,8 @@ class KomerceService
                     ],
                 ];
             }
+
+            Log::warning('Komerce Delivery store failed. Status: '.$response->status().' Body: '.$response->body().' Payload: '.json_encode($payload));
 
             return [
                 'success' => false,
@@ -1426,8 +1443,6 @@ class KomerceService
                 return ['success' => true, 'history' => $response->json('data.history') ?? $response->json('history') ?? []];
             }
 
-            Log::warning("Komerce getShipmentHistory failed for waybill {$airwayBill}: ".$response->body());
-
             $isSandbox = ! app()->environment('production') || str_contains(self::getKomerceDeliveryUrl(), 'sandbox');
             if ($isSandbox) {
                 // Fallback simulated tracking for testing (progresses dynamically based on transaction status)
@@ -1452,6 +1467,8 @@ class KomerceService
                     'history' => $history,
                 ];
             }
+
+            Log::warning("Komerce getShipmentHistory failed for waybill {$airwayBill}: ".$response->body());
 
             return [
                 'success' => false,
@@ -1493,7 +1510,10 @@ class KomerceService
                 $transaction = Transaction::where('booking_code', $bookingCode)->first();
                 if ($transaction) {
                     $address = $transaction->customerAddress;
-                    $orderDetails = $transaction->items->map(function ($item) {
+                    $physicalItems = $transaction->items->filter(function ($item) {
+                        return ! ($item->product && $item->product->is_digital);
+                    });
+                    $orderDetails = $physicalItems->map(function ($item) {
                         $variant = $item->productVariant;
                         $product = $item->product;
 
@@ -1508,7 +1528,7 @@ class KomerceService
                             'qty' => (int) $item->quantity,
                             'subtotal' => (float) $item->subtotal,
                         ];
-                    })->toArray();
+                    })->values()->toArray();
 
                     return [
                         'success' => true,

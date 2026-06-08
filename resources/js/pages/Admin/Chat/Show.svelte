@@ -51,7 +51,7 @@
         stopPolling();
     });
 
-    let lastChatId = $state<number | null>(null);
+    let lastChatId = $state<string | number | null>(null);
 
     // Sync messages if chat ID changes (navigating between threads on desktop)
     $effect(() => {
@@ -273,6 +273,50 @@
         if (path.startsWith('storage/')) return '/' + path;
         return path.startsWith('/') ? '/storage' + path : '/storage/' + path;
     }
+
+    function parseTransactionCard(body: string) {
+        try {
+            return JSON.parse(body.replace('[TRANSACTION_CARD]', ''));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getStatusColor(status: string) {
+        const colors: Record<string, string> = {
+            belum_bayar: '#f59e0b',
+            menunggu: '#3b82f6',
+            diproses: '#8b5cf6',
+            dikemas: '#06b6d4',
+            out_for_pickup: '#d97706',
+            dikirim: '#f97316',
+            selesai: '#22c55e',
+            batal: '#ef4444',
+        };
+        return colors[status] || '#64748b';
+    }
+
+    function getStatusLabel(status: string) {
+        const labels: Record<string, string> = {
+            belum_bayar: 'Belum Bayar',
+            menunggu: 'Menunggu Konfirmasi',
+            diproses: 'Diproses',
+            dikemas: 'Dikemas',
+            out_for_pickup: 'Pick Up',
+            dikirim: 'Dikirim',
+            selesai: 'Selesai',
+            batal: 'Batal',
+        };
+        return labels[status] || status;
+    }
+
+    function fmt(price: any): string {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(Number(price) || 0);
+    }
 </script>
 
 <svelte:head>
@@ -426,6 +470,8 @@
                                                 📷 Gambar
                                             {:else if c.last_message.attachment_type === 'product'}
                                                 📦 Produk
+                                            {:else if c.last_message.body && c.last_message.body.startsWith('[TRANSACTION_CARD]')}
+                                                📄 Invoice Pesanan
                                             {:else}
                                                 {c.last_message.body || ''}
                                             {/if}
@@ -703,18 +749,62 @@
 
                                             <!-- Text body -->
                                             {#if msg.body}
-                                                <div
-                                                    class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
-                                                    'admin'
-                                                        ? 'rounded-tr-sm text-white'
-                                                        : 'rounded-tl-sm text-slate-800 bg-white'}"
-                                                    style="background-color: {msg.sender_type ===
-                                                    'admin'
-                                                        ? primaryColor
-                                                        : 'white'};"
-                                                >
-                                                    {msg.body}
-                                                </div>
+                                                {#if msg.body.startsWith('[TRANSACTION_CARD]')}
+                                                    {@const card = parseTransactionCard(msg.body)}
+                                                    {#if card}
+                                                        <div
+                                                            class="p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm bg-white border border-slate-200 w-full max-w-[280px] sm:max-w-[320px] text-slate-800 text-left"
+                                                        >
+                                                            <div class="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-slate-400 mb-2">
+                                                                <i class="ti ti-file-invoice text-sm text-emerald-500"></i>
+                                                                <span>Invoice Pesanan</span>
+                                                            </div>
+                                                            <div class="space-y-1.5">
+                                                                <p class="font-bold text-xs text-slate-800">#{card.transaction_number}</p>
+                                                                <div class="h-px bg-slate-100 my-1.5"></div>
+                                                                <div class="flex justify-between text-[11px] font-bold text-slate-500">
+                                                                    <span>Total Belanja:</span>
+                                                                    <span style="color: {primaryColor}">{fmt(card.grand_total)}</span>
+                                                                </div>
+                                                                <div class="flex justify-between text-[11px] font-bold text-slate-500">
+                                                                    <span>Pembayaran:</span>
+                                                                    <span class="text-slate-700">{card.payment_method}</span>
+                                                                </div>
+                                                                <div class="flex justify-between text-[11px] font-bold text-slate-500">
+                                                                    <span>Status:</span>
+                                                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style="background-color: {getStatusColor(card.status)}20; color: {getStatusColor(card.status)};">
+                                                                        {getStatusLabel(card.status)}
+                                                                    </span>
+                                                                </div>
+                                                                {#if card.items_summary}
+                                                                    <p class="text-[10px] text-slate-400 font-medium italic truncate mt-1">
+                                                                        {card.items_summary}
+                                                                    </p>
+                                                                {/if}
+                                                            </div>
+                                                            <button
+                                                                onclick={() => router.visit(`/admin/transactions/${card.id}`)}
+                                                                class="mt-3 w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                                                            >
+                                                                <i class="ti ti-eye"></i>
+                                                                Detail Transaksi
+                                                            </button>
+                                                        </div>
+                                                    {/if}
+                                                {:else}
+                                                    <div
+                                                        class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
+                                                        'admin'
+                                                            ? 'rounded-tr-sm text-white'
+                                                            : 'rounded-tl-sm text-slate-800 bg-white'}"
+                                                        style="background-color: {msg.sender_type ===
+                                                        'admin'
+                                                            ? primaryColor
+                                                            : 'white'};"
+                                                    >
+                                                        {msg.body}
+                                                    </div>
+                                                {/if}
                                             {/if}
                                         </div>
 

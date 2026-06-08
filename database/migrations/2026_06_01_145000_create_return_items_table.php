@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('return_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('return_id')->constrained('returns')->cascadeOnDelete();
-            $table->foreignId('transaction_item_id')->constrained('transaction_items')->cascadeOnDelete();
-            $table->unsignedBigInteger('product_id');
-            $table->unsignedBigInteger('product_variant_id')->nullable();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('return_id')->constrained('returns')->cascadeOnDelete();
+            $table->foreignUuid('transaction_item_id')->constrained('transaction_items')->cascadeOnDelete();
+            $table->uuid('product_id');
+            $table->uuid('product_variant_id')->nullable();
             $table->string('product_name', 255);
             $table->string('variant_name', 255)->nullable();
             $table->unsignedInteger('quantity_returned');

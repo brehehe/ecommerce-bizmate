@@ -978,7 +978,7 @@ class CheckoutController extends Controller
             'weight' => 'required|integer|min:1',
             'courier' => 'required|string',
             'is_international' => 'nullable|boolean',
-            'address_id' => 'required_if:courier,store_courier|nullable|integer',
+            'address_id' => 'required_if:courier,store_courier|nullable|string',
         ]);
 
         if ($request->courier === 'self_pickup') {

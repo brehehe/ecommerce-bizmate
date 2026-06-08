@@ -23,7 +23,16 @@ class ProfileController extends Controller
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/Profile', [
-            'user' => $request->user(),
+            'user' => [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+                'phone_number' => $request->user()->phone_number,
+                'gender' => $request->user()->gender,
+                'birth_date' => $request->user()->birth_date,
+                'avatar' => $request->user()->avatar,
+                'coins_balance' => $request->user()->coins_balance,
+            ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
@@ -104,7 +113,16 @@ class ProfileController extends Controller
     public function showAdminProfile(Request $request): Response
     {
         return Inertia::render('Admin/Profile', [
-            'user' => $request->user(),
+            'user' => [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+                'phone_number' => $request->user()->phone_number,
+                'gender' => $request->user()->gender,
+                'birth_date' => $request->user()->birth_date,
+                'avatar' => $request->user()->avatar,
+                'coins_balance' => $request->user()->coins_balance,
+            ],
         ]);
     }
 

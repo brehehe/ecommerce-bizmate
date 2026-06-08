@@ -5,7 +5,7 @@
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
-    let { chats = [] } = $props();
+    let { chats = [], transactions = [] } = $props();
 
     const page = usePage();
 
@@ -19,7 +19,7 @@
         (page.props as any).settings?.store_name ?? 'bizmate',
     );
 
-    let activeChatId = $state<number | null>(null);
+    let activeChatId = $state<string | null>(null);
     let activeChat = $derived(
         chats.find((c: any) => c.id === activeChatId) || null,
     );
@@ -50,9 +50,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const chatIdParam = urlParams.get('chat_id');
         if (chatIdParam) {
-            const id = parseInt(chatIdParam, 10);
-            if (chats.some((c: any) => c.id === id)) {
-                selectChat(id);
+            if (chats.some((c: any) => c.id === chatIdParam)) {
+                selectChat(chatIdParam);
             }
         } else if (chats.length > 0 && window.innerWidth >= 768) {
             // Auto select first chat on desktop
@@ -64,7 +63,7 @@
         stopPolling();
     });
 
-    async function selectChat(id: number) {
+    async function selectChat(id: string) {
         activeChatId = id;
         messages = [];
         attachedImage = null;
@@ -255,15 +254,15 @@
 
     let deleteModalOpen = $state(false);
     let deleteType = $state<'chat' | 'message'>('chat');
-    let itemToDeleteId = $state<number | null>(null);
+    let itemToDeleteId = $state<string | null>(null);
 
-    function confirmDeleteChat(chatId: number) {
+    function confirmDeleteChat(chatId: string) {
         deleteType = 'chat';
         itemToDeleteId = chatId;
         deleteModalOpen = true;
     }
 
-    function confirmDeleteMessage(messageId: number) {
+    function confirmDeleteMessage(messageId: string) {
         deleteType = 'message';
         itemToDeleteId = messageId;
         deleteModalOpen = true;
@@ -315,6 +314,102 @@
             }
         }
         itemToDeleteId = null;
+    }
+
+    let invoiceModalOpen = $state(false);
+
+    function openInvoiceSelection() {
+        attachMenuOpen = false;
+        invoiceModalOpen = true;
+    }
+
+    async function sendTransactionInvoice(trx: any) {
+        invoiceModalOpen = false;
+        if (!activeChatId) return;
+
+        const cardData = {
+            transaction_number: trx.transaction_number,
+            grand_total: trx.grand_total,
+            payment_method: trx.payment_method,
+            status: trx.status,
+            id: trx.id,
+            items_summary: trx.items_summary,
+        };
+
+        const bodyText = '[TRANSACTION_CARD]' + JSON.stringify(cardData);
+
+        try {
+            const formData = new FormData();
+            formData.append('body', bodyText);
+
+            const response = await fetch(`/chats/${activeChatId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
+                    Accept: 'application/json',
+                },
+                body: formData,
+            });
+
+            if (response.ok) {
+                const msg = await response.json();
+                if (!messages.some((m: any) => m.id === msg.id)) {
+                    messages = [...messages, msg];
+                    setTimeout(scrollToBottom, 50);
+                }
+            }
+        } catch (err) {
+            console.error('Error sending invoice card:', err);
+        }
+    }
+
+    function parseTransactionCard(body: string) {
+        try {
+            return JSON.parse(body.replace('[TRANSACTION_CARD]', ''));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getStatusColor(status: string) {
+        const colors: Record<string, string> = {
+            belum_bayar: '#f59e0b',
+            menunggu: '#3b82f6',
+            diproses: '#8b5cf6',
+            dikemas: '#06b6d4',
+            out_for_pickup: '#d97706',
+            dikirim: '#f97316',
+            selesai: '#22c55e',
+            batal: '#ef4444',
+        };
+        return colors[status] || '#64748b';
+    }
+
+    function getStatusLabel(status: string) {
+        const labels: Record<string, string> = {
+            belum_bayar: 'Belum Bayar',
+            menunggu: 'Menunggu Konfirmasi',
+            diproses: 'Diproses',
+            dikemas: 'Dikemas',
+            out_for_pickup: 'Pick Up',
+            dikirim: 'Dikirim',
+            selesai: 'Selesai',
+            batal: 'Batal',
+        };
+        return labels[status] || status;
+    }
+
+    function fmt(price: any): string {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(Number(price) || 0);
     }
 </script>
 
@@ -466,6 +561,8 @@
                                                 📷 Kirim gambar
                                             {:else if chat.last_message.attachment_type === 'product'}
                                                 📦 Kirim produk
+                                            {:else if chat.last_message.body && chat.last_message.body.startsWith('[TRANSACTION_CARD]')}
+                                                📄 Invoice Pesanan
                                             {:else}
                                                 {chat.last_message.body || ''}
                                             {/if}
@@ -703,18 +800,62 @@
 
                                         <!-- Body text -->
                                         {#if msg.body}
-                                            <div
-                                                class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
-                                                'user'
-                                                    ? 'rounded-tr-sm text-white'
-                                                    : 'rounded-tl-sm text-slate-800 bg-white'}"
-                                                style="background-color: {msg.sender_type ===
-                                                'user'
-                                                    ? primary
-                                                    : 'white'};"
-                                            >
-                                                {msg.body}
-                                            </div>
+                                            {#if msg.body.startsWith('[TRANSACTION_CARD]')}
+                                                {@const card = parseTransactionCard(msg.body)}
+                                                {#if card}
+                                                    <div
+                                                        class="p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm bg-white border border-slate-200 w-full max-w-[280px] sm:max-w-[320px] text-slate-800 text-left"
+                                                    >
+                                                        <div class="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-slate-400 mb-2">
+                                                            <i class="ti ti-file-invoice text-sm text-emerald-500"></i>
+                                                            <span>Invoice Pesanan</span>
+                                                        </div>
+                                                        <div class="space-y-1.5">
+                                                            <p class="font-bold text-xs text-slate-800">#{card.transaction_number}</p>
+                                                            <div class="h-px bg-slate-100 my-1.5"></div>
+                                                            <div class="flex justify-between text-[11px] font-bold text-slate-500">
+                                                                <span>Total Belanja:</span>
+                                                                <span style="color: {primary}">{fmt(card.grand_total)}</span>
+                                                            </div>
+                                                            <div class="flex justify-between text-[11px] font-bold text-slate-500">
+                                                                <span>Pembayaran:</span>
+                                                                <span class="text-slate-700">{card.payment_method}</span>
+                                                            </div>
+                                                            <div class="flex justify-between text-[11px] font-bold text-slate-500">
+                                                                <span>Status:</span>
+                                                                <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style="background-color: {getStatusColor(card.status)}20; color: {getStatusColor(card.status)};">
+                                                                    {getStatusLabel(card.status)}
+                                                                </span>
+                                                            </div>
+                                                            {#if card.items_summary}
+                                                                <p class="text-[10px] text-slate-400 font-medium italic truncate mt-1">
+                                                                    {card.items_summary}
+                                                                </p>
+                                                            {/if}
+                                                        </div>
+                                                        <button
+                                                            onclick={() => router.visit(`/transactions/${card.id}`)}
+                                                            class="mt-3 w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                                                        >
+                                                            <i class="ti ti-eye"></i>
+                                                            Lihat Detail Pesanan
+                                                        </button>
+                                                    </div>
+                                                {/if}
+                                            {:else}
+                                                <div
+                                                    class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
+                                                    'user'
+                                                        ? 'rounded-tr-sm text-white'
+                                                        : 'rounded-tl-sm text-slate-800 bg-white'}"
+                                                    style="background-color: {msg.sender_type ===
+                                                    'user'
+                                                        ? primary
+                                                        : 'white'};"
+                                                >
+                                                    {msg.body}
+                                                </div>
+                                            {/if}
                                         {/if}
                                     </div>
 
@@ -837,6 +978,25 @@
                                             >Gambar</span
                                         >
                                     </button>
+
+                                    <!-- Send Invoice option -->
+                                    <button
+                                        onclick={openInvoiceSelection}
+                                        class="flex flex-col items-center gap-2 cursor-pointer"
+                                    >
+                                        <div
+                                            class="w-12 h-12 rounded-full flex items-center justify-center shadow"
+                                            style="background: linear-gradient(135deg, #10b981, #059669);"
+                                        >
+                                            <i
+                                                class="ti ti-file-invoice text-white text-xl"
+                                            ></i>
+                                        </div>
+                                        <span
+                                            class="text-[10px] font-bold text-slate-700"
+                                            >Kirim Invoice</span
+                                        >
+                                    </button>
                                 </div>
                             </div>
                         {/if}
@@ -951,6 +1111,70 @@
                     alt="Preview Attachment"
                     class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10"
                 />
+            </div>
+        </div>
+    {/if}
+
+    <!-- Invoice Selection Modal -->
+    {#if invoiceModalOpen}
+        <div
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-fade-in"
+        >
+            <div
+                class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                onclick={() => (invoiceModalOpen = false)}
+                onkeypress={() => (invoiceModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div
+                class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh]"
+            >
+                <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                    <h4 class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2">
+                        <i class="ti ti-file-invoice text-emerald-500"></i>
+                        Pilih Invoice Pesanan
+                    </h4>
+                    <button
+                        onclick={() => (invoiceModalOpen = false)}
+                        class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="flex-grow overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+                    {#if transactions.length === 0}
+                        <div class="py-12 text-center text-slate-400">
+                            <i class="ti ti-file-off text-3xl mb-2 text-slate-300 block"></i>
+                            <span class="text-xs font-bold">Belum ada riwayat pesanan</span>
+                        </div>
+                    {:else}
+                        {#each transactions as trx (trx.id)}
+                            <button
+                                onclick={() => sendTransactionInvoice(trx)}
+                                class="w-full text-left p-3.5 border border-slate-100 hover:border-slate-200 rounded-2xl hover:bg-slate-50/50 transition flex items-start justify-between gap-4 cursor-pointer"
+                            >
+                                <div class="min-w-0">
+                                    <p class="font-bold text-xs text-slate-800">#{trx.transaction_number}</p>
+                                    <p class="text-[10px] text-slate-400 font-medium italic truncate mt-0.5">
+                                        {trx.items_summary}
+                                    </p>
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style="background-color: {getStatusColor(trx.status)}20; color: {getStatusColor(trx.status)};">
+                                            {getStatusLabel(trx.status)}
+                                        </span>
+                                        <span class="text-[10px] text-slate-400 font-bold">{trx.payment_method}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <span class="font-black text-xs sm:text-sm" style="color: {primary}">{fmt(trx.grand_total)}</span>
+                                </div>
+                            </button>
+                        {/each}
+                    {/if}
+                </div>
             </div>
         </div>
     {/if}

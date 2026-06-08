@@ -92,6 +92,47 @@
     // Resi tracking modal state and method
     let showResiModal = $state(false);
 
+    let itemDigitalNotes = $state<Record<string, string>>({});
+    let savingDigitalNote = $state<Record<string, boolean>>({});
+
+    $effect(() => {
+        if (transaction?.items) {
+            transaction.items.forEach((item: any) => {
+                if (item.product?.is_digital) {
+                    if (itemDigitalNotes[item.id] === undefined) {
+                        itemDigitalNotes[item.id] = item.note || '';
+                    }
+                }
+            });
+        }
+    });
+
+    function saveDigitalNote(itemId: string) {
+        const noteValue = itemDigitalNotes[itemId] || '';
+        savingDigitalNote[itemId] = true;
+        router.post(
+            `/admin/transactions/${transaction.id}/items/${itemId}/note`,
+            {
+                note: noteValue,
+            },
+            {
+                onSuccess: () => {
+                    showToast(
+                        'Informasi produk digital berhasil disimpan & email terkirim!',
+                        'success',
+                    );
+                },
+                onError: (err: any) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal menyimpan catatan.', 'error');
+                },
+                onFinish: () => {
+                    savingDigitalNote[itemId] = false;
+                },
+            },
+        );
+    }
+
     // Image/Video Gallery Preview Modal
     let showPreviewModal = $state(false);
     let previewItems = $state<string[]>([]);
@@ -279,6 +320,27 @@
         );
     }
 
+    function updateTransactionStatus(targetStatus: string, successMsg: string) {
+        isUpdating = true;
+        router.post(
+            `/admin/transactions/${transaction.id}/status`,
+            {
+                status: targetStatus,
+            },
+            {
+                onSuccess: () => {
+                    showToast(successMsg, 'success');
+                },
+                onError: () => {
+                    showToast('Gagal mengubah status transaksi.', 'error');
+                },
+                onFinish: () => {
+                    isUpdating = false;
+                },
+            },
+        );
+    }
+
     let storeBookingCode = $state('');
     let storeTrackingNumber = $state('');
     let customDeliveryLog = $state('');
@@ -304,6 +366,7 @@
             {
                 booking_code: autoCode,
                 tracking_number: autoResi,
+                status: 'dikemas',
             },
             {
                 onSuccess: () => {
@@ -641,13 +704,15 @@
                             ></i>Cetak Resi
                         </a>
                     {/if}
-                    <button
-                        onclick={() => (showStatusModal = true)}
-                        class="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition font-outfit uppercase tracking-wider shadow-lg flex items-center gap-1.5"
-                        style="background:{primary}; box-shadow: 0 4px 12px -2px {primary}40;"
-                    >
-                        <i class="ti ti-edit text-sm"></i>Ubah Status
-                    </button>
+                    {#if transaction.status !== 'selesai' && transaction.status !== 'batal'}
+                        <button
+                            onclick={() => (showStatusModal = true)}
+                            class="px-5 py-2.5 rounded-xl text-xs font-bold text-white transition font-outfit uppercase tracking-wider shadow-lg flex items-center gap-1.5"
+                            style="background:{primary}; box-shadow: 0 4px 12px -2px {primary}40;"
+                        >
+                            <i class="ti ti-edit text-sm"></i>Ubah Status
+                        </button>
+                    {/if}
                 </div>
             </div>
 
@@ -988,6 +1053,28 @@
                                                 </div>
                                             </div>
                                         {/if}
+                                        {#if item.product?.is_digital && transaction.status !== 'selesai' && transaction.status !== 'batal'}
+                                            <div class="mt-2.5 p-3 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                                                <label class="text-[10px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                                                    <i class="ti ti-key text-xs"></i> Kirim Info Produk Digital (Link / Lisensi)
+                                                </label>
+                                                <div class="flex gap-1.5">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Masukkan link download atau lisensi..."
+                                                        bind:value={itemDigitalNotes[item.id]}
+                                                        class="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                                                    />
+                                                    <button
+                                                        onclick={() => saveDigitalNote(item.id)}
+                                                        disabled={savingDigitalNote[item.id] || !itemDigitalNotes[item.id]?.trim()}
+                                                        class="px-3 py-1.5 text-xs font-bold text-white rounded-xl transition hover:opacity-90 disabled:opacity-50 shrink-0 font-outfit uppercase tracking-wider bg-blue-600 shadow-md shadow-blue-500/10"
+                                                    >
+                                                        {savingDigitalNote[item.id] ? 'Mengirim...' : 'Kirim'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        {/if}
                                         <div
                                             class="grid grid-cols-4 gap-2 mt-3 text-xs"
                                         >
@@ -1191,6 +1278,18 @@
                                     {/if}
                                 </div>
 
+                                {#if transaction.status === 'dikemas'}
+                                    <button
+                                        onclick={() => updateTransactionStatus('out_for_pickup', 'Status diperbarui menjadi Out for Pickup.')}
+                                        disabled={isUpdating}
+                                        class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
+                                        style="background:{secondary}"
+                                    >
+                                        <i class="ti ti-calendar-event text-sm"></i>
+                                        Siapkan untuk Pickup Kurir
+                                    </button>
+                                {/if}
+
                                 <!-- Status Pengiriman (Kurir Toko Journey) -->
                                 <div
                                     class="mt-4 pt-4 border-t border-slate-100 space-y-3.5"
@@ -1374,10 +1473,11 @@
                             </div>
                         </div>
                     {:else if transaction.shipping_courier !== 'self_pickup' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier'}
-                        <!-- Komerce Shipping Delivery Dashboard -->
-                        <div
-                            class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
-                        >
+                        {#if transaction.booking_code || (transaction.status !== 'batal' && transaction.status !== 'selesai')}
+                            <!-- Komerce Shipping Delivery Dashboard -->
+                            <div
+                                class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
+                            >
                             <div
                                 class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3"
                             >
@@ -1582,6 +1682,7 @@
                                 {/if}
                             </div>
                         </div>
+                        {/if}
                     {/if}
 
                     <!-- Customer Info -->
@@ -1613,165 +1714,170 @@
                                 </p>
                             </div>
                         </div>
-                        {#if transaction.shipping_courier === 'digital'}
+                        {#if (transaction.items || []).some((item) => item.product?.is_digital)}
                             <div
-                                class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-xs space-y-2 text-blue-700"
+                                class="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-xs space-y-2 text-blue-700 mb-4"
                             >
                                 <div class="flex items-center gap-2 font-bold">
                                     <i class="ti ti-info-circle text-base"></i>
                                     <span>Pengiriman Digital</span>
                                 </div>
                                 <p class="leading-relaxed font-semibold">
-                                    Produk digital akan dikirimkan melalui email
+                                    Produk digital Anda akan dikirimkan melalui email
                                     / chat catatan.
                                 </p>
                             </div>
-                        {:else if transaction.shipping_courier === 'self_pickup'}
-                            <div
-                                class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-xs space-y-3 text-emerald-800"
-                            >
+                        {/if}
+
+                        {#if transaction.shipping_courier !== 'digital'}
+                            {#if transaction.shipping_courier === 'self_pickup'}
                                 <div
-                                    class="flex items-center gap-2 font-bold text-emerald-700"
+                                    class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-xs space-y-3 text-emerald-800"
                                 >
-                                    <i class="ti ti-building-store text-base"
-                                    ></i>
-                                    <span>Ambil di Toko (Store Pickup)</span>
-                                </div>
-                                <div
-                                    class="space-y-1 font-medium text-emerald-950"
-                                >
-                                    <p class="font-bold">
-                                        {storeSettings.store_name || storeName}
-                                    </p>
-                                    <p>
-                                        {storeSettings.store_address}
-                                        {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
-                                        {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
-                                        {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
-                                        {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
-                                        {#if storeSettings.store_postal_code}
-                                            {storeSettings.store_postal_code}{/if}
-                                    </p>
-                                </div>
-                                <div class="h-px bg-emerald-100"></div>
-                                <div
-                                    class="flex flex-col items-center text-center space-y-2 py-1"
-                                >
-                                    <p
-                                        class="text-[9px] font-black text-emerald-600/70 uppercase tracking-wider"
-                                    >
-                                        Scan Kode Transaksi
-                                    </p>
-                                    <img
-                                        src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(
-                                            transaction.transaction_number,
-                                        )}"
-                                        alt="QR Code Transaksi"
-                                        class="w-32 h-32 border border-emerald-100 rounded-xl p-1 bg-white"
-                                    />
-                                    <p
-                                        class="text-[10px] font-semibold text-emerald-700 leading-relaxed px-1"
-                                    >
-                                        Gunakan QR Code ini untuk memverifikasi
-                                        pengambilan barang oleh customer.
-                                    </p>
-                                </div>
-                            </div>
-                        {:else if customerAddress}
-                            <div
-                                class="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 text-xs space-y-1"
-                            >
-                                <p
-                                    class="font-bold text-slate-700 whitespace-pre-wrap break-words"
-                                >
-                                    {customerAddress.receiver_name}
-                                </p>
-                                <p
-                                    class="text-slate-500 font-semibold break-all"
-                                >
-                                    {customerAddress.phone_number}
-                                </p>
-                                <p
-                                    class="text-slate-600 leading-relaxed font-medium pt-1 border-t border-slate-100 mt-1 whitespace-pre-wrap break-words"
-                                >
-                                    {customerAddress.full_address}
-                                </p>
-                                {#if customerAddress.regency_name}
-                                    <p
-                                        class="text-[11px] text-slate-400 font-semibold mt-0.5"
-                                    >
-                                        {customerAddress.district_name}, {customerAddress.regency_name},
-                                        {customerAddress.province_name}
-                                        {customerAddress.postal_code}
-                                    </p>
-                                {/if}
-                                {#if transaction.shipping_courier}
                                     <div
-                                        class="mt-2.5 pt-2.5 border-t border-slate-200/60 flex items-center gap-2 text-[11px] text-slate-500"
+                                        class="flex items-center gap-2 font-bold text-emerald-700"
                                     >
-                                        <i
-                                            class="ti ti-truck text-slate-400 text-sm"
+                                        <i class="ti ti-building-store text-base"
                                         ></i>
-                                        <span
-                                            class="font-bold uppercase text-slate-700"
-                                            >{transaction.shipping_courier}</span
-                                        >
-                                        <span
-                                            class="font-semibold text-slate-600"
-                                            >{transaction.shipping_service}</span
-                                        >
-                                        {#if transaction.shipping_etd}
-                                            <span class="text-slate-400"
-                                                >· Est. {transaction.shipping_etd}
-                                                hari</span
-                                            >
-                                        {/if}
+                                        <span>Ambil di Toko (Store Pickup)</span>
                                     </div>
-                                {/if}
-                                {#if transaction.tracking_number}
                                     <div
-                                        class="mt-2 pt-2 border-t border-slate-200/60 text-[11px] text-slate-600"
+                                        class="space-y-1 font-medium text-emerald-950"
                                     >
-                                        <span
-                                            class="font-bold text-slate-400 uppercase tracking-wider block mb-0.5 text-[9px]"
-                                            >Nomor Resi</span
+                                        <p class="font-bold">
+                                            {storeSettings.store_name || storeName}
+                                        </p>
+                                        <p>
+                                            {storeSettings.store_address}
+                                            {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
+                                            {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
+                                            {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
+                                            {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
+                                            {#if storeSettings.store_postal_code}
+                                                {storeSettings.store_postal_code}{/if}
+                                        </p>
+                                    </div>
+                                    <div class="h-px bg-emerald-100"></div>
+                                    <div
+                                        class="flex flex-col items-center text-center space-y-2 py-1"
+                                    >
+                                        <p
+                                            class="text-[9px] font-black text-emerald-600/70 uppercase tracking-wider"
                                         >
-                                        <span
-                                            class="font-mono font-bold text-slate-800"
-                                            >{transaction.tracking_number}</span
+                                            Scan Kode Transaksi
+                                        </p>
+                                        <img
+                                            src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encodeURIComponent(
+                                                transaction.transaction_number,
+                                            )}"
+                                            alt="QR Code Transaksi"
+                                            class="w-32 h-32 border border-emerald-100 rounded-xl p-1 bg-white"
+                                        />
+                                        <p
+                                            class="text-[10px] font-semibold text-emerald-700 leading-relaxed px-1"
                                         >
-                                        {#if transaction.courier_name}
+                                            Gunakan QR Code ini untuk memverifikasi
+                                            pengambilan barang oleh customer.
+                                        </p>
+                                    </div>
+
+                                    {#if transaction.status === 'dikemas'}
+                                        <button
+                                            onclick={() => updateTransactionStatus('out_for_pickup', 'Status diperbarui menjadi Out for Pickup (Siap Diambil). Email pemberitahuan telah dikirim.')}
+                                            disabled={isUpdating}
+                                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-emerald-500/10 bg-emerald-500 hover:bg-emerald-600"
+                                        >
+                                            <i class="ti ti-mail text-sm"></i>
+                                            Pesanan Siap Diambil
+                                        </button>
+                                    {/if}
+
+                                    {#if transaction.status === 'out_for_pickup'}
+                                        <button
+                                            onclick={confirmPickup}
+                                            disabled={isUpdating}
+                                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
+                                            style="background:{secondary}"
+                                        >
+                                            <i class="ti ti-circle-check text-sm"></i>
+                                            Pesanan Sudah Diambil
+                                        </button>
+                                    {/if}
+                                </div>
+                            {:else if customerAddress}
+                                <div
+                                    class="bg-slate-50/60 border border-slate-100 rounded-2xl p-4 text-xs space-y-1"
+                                >
+                                    <p
+                                        class="font-bold text-slate-700 whitespace-pre-wrap break-words"
+                                    >
+                                        {customerAddress.receiver_name}
+                                    </p>
+                                    <p
+                                        class="text-slate-500 font-semibold break-all"
+                                    >
+                                        {customerAddress.phone_number}
+                                    </p>
+                                    <p
+                                        class="text-slate-600 leading-relaxed font-medium pt-1 border-t border-slate-100 mt-1 whitespace-pre-wrap break-words"
+                                    >
+                                        {customerAddress.full_address}
+                                    </p>
+                                    {#if customerAddress.regency_name}
+                                        <p
+                                            class="text-[11px] text-slate-400 font-semibold mt-0.5"
+                                        >
+                                            {customerAddress.district_name}, {customerAddress.regency_name},
+                                            {customerAddress.province_name}
+                                            {customerAddress.postal_code}
+                                        </p>
+                                    {/if}
+                                    {#if transaction.shipping_courier}
+                                        <div
+                                            class="mt-2.5 pt-2.5 border-t border-slate-200/60 flex items-center gap-2 text-[11px] text-slate-500"
+                                        >
+                                            <i
+                                                class="ti ti-truck text-slate-400 text-sm"
+                                            ></i>
                                             <span
-                                                class="text-slate-400 font-semibold"
+                                                class="font-bold uppercase text-slate-700"
+                                                >{transaction.shipping_courier}</span
                                             >
-                                                ({transaction.courier_name})</span
+                                            <span
+                                                class="font-semibold text-slate-600"
+                                                >{transaction.shipping_service}</span
                                             >
-                                        {/if}
-                                    </div>
-                                {/if}
-                                <!-- {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
-                                    <div class="mt-4 pt-4 border-t border-slate-200/60">
-                                        <span class="font-bold text-slate-400 uppercase tracking-wider block mb-2 text-[9px]">Bukti Foto Pengiriman ({transaction.delivery_photos.length})</span>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            {#each transaction.delivery_photos as photo, idx}
-                                                <button
-                                                    onclick={() => openPreview(transaction.delivery_photos, idx)}
-                                                    class="block relative rounded-xl overflow-hidden aspect-video bg-slate-50 border border-slate-100 hover:opacity-90 transition text-left w-full cursor-pointer"
+                                            {#if transaction.shipping_etd}
+                                                <span class="text-slate-400"
+                                                    >· Est. {transaction.shipping_etd}
+                                                    hari</span
                                                 >
-                                                    {#if isVideo(photo)}
-                                                        <div class="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-white gap-1">
-                                                            <i class="ti ti-video text-2xl text-slate-300"></i>
-                                                            <span class="text-[10px] font-bold opacity-75">Video Bukti</span>
-                                                        </div>
-                                                    {:else}
-                                                        <img src="/storage/{photo}" alt="Bukti Pengiriman" class="w-full h-full object-cover" />
-                                                    {/if}
-                                                </button>
-                                            {/each}
+                                            {/if}
                                         </div>
-                                    </div>
-                                {/if} -->
-                            </div>
+                                    {/if}
+                                    {#if transaction.tracking_number}
+                                        <div
+                                            class="mt-2 pt-2 border-t border-slate-200/60 text-[11px] text-slate-600"
+                                        >
+                                            <span
+                                                class="font-bold text-slate-400 uppercase tracking-wider block mb-0.5 text-[9px]"
+                                                >Nomor Resi</span
+                                            >
+                                            <span
+                                                class="font-mono font-bold text-slate-800"
+                                                >{transaction.tracking_number}</span
+                                            >
+                                            {#if transaction.courier_name}
+                                                <span
+                                                    class="text-slate-400 font-semibold"
+                                                >
+                                                    ({transaction.courier_name})</span
+                                                >
+                                            {/if}
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/if}
                         {/if}
                     </div>
 
@@ -1971,7 +2077,15 @@
                     class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition mb-4 appearance-none"
                 >
                     {#each Object.entries(statusLabels) as [key, label]}
-                        <option value={key}>{label as string}</option>
+                        {@const targetIdx = statusSteps.findIndex((s) => s.key === key)}
+                        <option
+                            value={key}
+                            disabled={key !== 'batal' &&
+                                targetIdx !== -1 &&
+                                targetIdx < statusIndex}
+                        >
+                            {label as string}
+                        </option>
                     {/each}
                 </select>
                 {#if newStatus === 'batal'}

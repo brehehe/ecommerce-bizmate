@@ -1,6 +1,7 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { page, router } from '@inertiajs/svelte';
+    import { dragScroll } from '@/utils/dragScroll';
 
     let {
         returns,
@@ -226,7 +227,7 @@
                         </p>
                     </div>
                 {:else}
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto" use:dragScroll>
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr

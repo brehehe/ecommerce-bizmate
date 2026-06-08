@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Chat extends Model
 {
+    use HasUuids;
+
     protected $fillable = [
         'user_id',
         'subject',
@@ -33,7 +36,7 @@ class Chat extends Model
 
     public function lastMessage(): HasOne
     {
-        return $this->hasOne(ChatMessage::class)->latestOfMany();
+        return $this->hasOne(ChatMessage::class)->orderBy('created_at', 'desc');
     }
 
     /** Count unread messages sent by the user (not yet read by admin). */

@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('refund_requests', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('refund_number')->unique();
-            $table->foreignId('transaction_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('transaction_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->string('status')->default('menunggu_konfirmasi'); // menunggu_konfirmasi, disetujui, ditolak, selesai
             $table->string('refund_method'); // transfer, poin
             $table->text('reason'); // cancellation reason
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('account_number')->nullable();
             $table->string('account_name')->nullable();
             $table->decimal('refund_amount', 12, 2);
-            $table->foreignId('processed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('processed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('processed_at')->nullable();
             $table->timestamp('refunded_at')->nullable();
             $table->timestamps();

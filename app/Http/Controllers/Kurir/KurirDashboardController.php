@@ -122,6 +122,26 @@ class KurirDashboardController extends Controller
             ], 404);
         }
 
+        // If the scanned order is out_for_pickup, mark as picked up and transition to dikirim
+        if ($transaction->status === 'out_for_pickup') {
+            $updateData = [
+                'status' => 'dikirim',
+                'courier_user_id' => auth()->id(),
+            ];
+
+            if (empty($transaction->tracking_number)) {
+                $updateData['tracking_number'] = 'RSI-'.str_replace('TRX-', '', $transaction->transaction_number).'-'.now()->format('Ymd');
+            }
+
+            $transaction->update($updateData);
+
+            $transaction->statusHistories()->create([
+                'status' => 'dikirim',
+                'description' => 'Pesanan telah dipickup oleh kurir toko dan status berubah menjadi Dikirim.',
+                'created_by' => auth()->id(),
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'id' => $transaction->id,

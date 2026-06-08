@@ -3,11 +3,20 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\DigitalProductDelivered;
+use App\Models\Chat;
+use App\Models\ChatMessage;
 use App\Models\ProductStock;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Models\Transaction;
+use App\Models\TransactionItem;
+use App\Services\KomerceService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class TransactionController extends Controller
@@ -118,12 +127,33 @@ class TransactionController extends Controller
      */
     public function updateStatus(Request $request, Transaction $transaction)
     {
+        if (in_array($transaction->status, ['selesai', 'batal'])) {
+            return back()->with('error', 'Transaksi yang sudah selesai atau batal tidak dapat diubah statusnya lagi.');
+        }
+
         $request->validate([
             'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,out_for_pickup,dikirim,selesai,batal',
             'cancel_reason' => 'required_if:status,batal|nullable|string|max:500',
         ]);
 
         $newStatus = $request->status;
+
+        $statusOrder = [
+            'belum_bayar',
+            'menunggu',
+            'diproses',
+            'dikemas',
+            'out_for_pickup',
+            'dikirim',
+            'selesai',
+        ];
+
+        $currentIndex = array_search($transaction->status, $statusOrder);
+        $newIndex = array_search($newStatus, $statusOrder);
+
+        if ($newStatus !== 'batal' && $currentIndex !== false && $newIndex !== false && $newIndex < $currentIndex) {
+            return back()->with('error', 'Status transaksi tidak dapat diubah kembali ke status sebelumnya.');
+        }
 
         // If cancelling, restore stock
         if ($newStatus === 'batal' && $transaction->status !== 'batal') {
@@ -145,6 +175,10 @@ class TransactionController extends Controller
      */
     public function confirmPayment(Request $request, Transaction $transaction)
     {
+        if (in_array($transaction->status, ['selesai', 'batal'])) {
+            return back()->with('error', 'Transaksi yang sudah selesai atau batal tidak dapat menerima konfirmasi pembayaran.');
+        }
+
         $payment = $transaction->payment;
 
         if (! $payment) {
@@ -158,7 +192,13 @@ class TransactionController extends Controller
             'notes' => $request->notes,
         ]);
 
-        $transaction->update(['status' => 'diproses']);
+        $newStatus = 'diproses';
+        $isRajaOngkir = ! in_array($transaction->shipping_courier, ['self_pickup', 'digital', 'store_courier']);
+        if ($isRajaOngkir && ! KomerceService::isDeliveryEnabled()) {
+            $newStatus = 'dikemas';
+        }
+
+        $transaction->update(['status' => $newStatus]);
 
         return back()->with('success', 'Pembayaran berhasil dikonfirmasi.');
     }
@@ -168,6 +208,10 @@ class TransactionController extends Controller
      */
     public function rejectPayment(Request $request, Transaction $transaction)
     {
+        if (in_array($transaction->status, ['selesai', 'batal'])) {
+            return back()->with('error', 'Transaksi yang sudah selesai atau batal tidak dapat menerima penolakan pembayaran.');
+        }
+
         $request->validate([
             'notes' => 'required|string|max:500',
         ]);
@@ -262,12 +306,29 @@ class TransactionController extends Controller
         $ids = $request->ids;
         $newStatus = $request->status;
 
-        \DB::transaction(function () use ($ids, $newStatus, $request) {
+        $statusOrder = [
+            'belum_bayar',
+            'menunggu',
+            'diproses',
+            'dikemas',
+            'out_for_pickup',
+            'dikirim',
+            'selesai',
+        ];
+
+        \DB::transaction(function () use ($ids, $newStatus, $statusOrder, $request) {
             $transactions = Transaction::whereIn('id', $ids)->get();
 
             foreach ($transactions as $transaction) {
-                // Skip if status is already the same
-                if ($transaction->status === $newStatus) {
+                // Skip if status is already the same or completed/cancelled
+                if ($transaction->status === $newStatus || in_array($transaction->status, ['selesai', 'batal'])) {
+                    continue;
+                }
+
+                $currentIndex = array_search($transaction->status, $statusOrder);
+                $newIndex = array_search($newStatus, $statusOrder);
+
+                if ($newStatus !== 'batal' && $currentIndex !== false && $newIndex !== false && $newIndex < $currentIndex) {
                     continue;
                 }
 
@@ -341,7 +402,9 @@ class TransactionController extends Controller
      */
     public function printShippingLabel($transactionId)
     {
-        if (is_numeric($transactionId)) {
+        if ($transactionId instanceof Transaction) {
+            $transaction = $transactionId;
+        } elseif (Str::isUuid($transactionId) || is_numeric($transactionId)) {
             $transaction = Transaction::findOrFail($transactionId);
         } else {
             $transaction = Transaction::where('booking_code', $transactionId)->firstOrFail();
@@ -376,6 +439,10 @@ class TransactionController extends Controller
             'items.product:id,name,sku',
             'courierUser:id,name',
         ]);
+
+        $transaction->setRelation('items', $transaction->items->filter(function ($item) {
+            return ! ($item->product && $item->product->is_digital);
+        })->values());
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
@@ -434,6 +501,65 @@ class TransactionController extends Controller
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
+    }
+
+    /**
+     * Update digital product note / delivery information for a transaction item.
+     */
+    public function updateItemNote(Request $request, Transaction $transaction, TransactionItem $item): RedirectResponse
+    {
+        $request->validate([
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        if ($item->transaction_id !== $transaction->id) {
+            abort(404);
+        }
+
+        $item->update([
+            'note' => $request->note,
+        ]);
+
+        $transaction->loadMissing('user');
+        if ($item->note && $transaction->user && $transaction->user->email) {
+            try {
+                $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+                Mail::to($transaction->user->email)->queue(
+                    new DigitalProductDelivered($transaction, $item, $storeName, $storeLogo)
+                );
+
+                // Auto-post information to Chat thread
+                $chat = Chat::where('user_id', $transaction->user_id)
+                    ->where('status', 'open')
+                    ->orderByDesc('last_message_at')
+                    ->first();
+
+                if (! $chat) {
+                    $chat = Chat::create([
+                        'user_id' => $transaction->user_id,
+                        'subject' => 'Pesanan #'.$transaction->transaction_number,
+                        'status' => 'open',
+                        'product_id' => $item->product_id,
+                    ]);
+                }
+
+                ChatMessage::create([
+                    'chat_id' => $chat->id,
+                    'sender_type' => 'admin',
+                    'sender_id' => auth()->id() ?? 1,
+                    'body' => "Informasi Pengiriman untuk {$item->product_name} (Pesanan #{$transaction->transaction_number}):\n{$item->note}",
+                    'is_read' => false,
+                ]);
+
+                $chat->update(['last_message_at' => now()]);
+            } catch (\Throwable $e) {
+                Log::error('Gagal mengirim email/chat produk digital: '.$e->getMessage());
+            }
+        }
+
+        return back()->with('success', 'Catatan produk digital berhasil diperbarui, email telah dikirim, dan pesan chat telah terkirim.');
     }
 
     /**

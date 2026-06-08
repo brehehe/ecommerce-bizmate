@@ -72,7 +72,7 @@ class ReturnController extends Controller
             'type' => 'required|in:refund,penggantian_barang',
             'reason' => 'required|string|max:1000',
             'items' => 'required|array|min:1',
-            'items.*.transaction_item_id' => 'required|integer|exists:transaction_items,id',
+            'items.*.transaction_item_id' => 'required|uuid|exists:transaction_items,id',
             'items.*.quantity_returned' => 'required|integer|min:1',
             'media' => 'required|array|min:1',
             'media.*' => 'required|file|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi|max:51200',
