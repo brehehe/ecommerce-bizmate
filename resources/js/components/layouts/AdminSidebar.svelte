@@ -1106,37 +1106,7 @@
                     </div>
                 </a>
             </div>
-            <div class="relative">
-                {#if isActive('/admin/uat')}
-                    <div
-                        class="absolute left-0 top-0 bottom-0 w-1 rounded-r-md"
-                        style="background-color: {secondaryColor};"
-                    ></div>
-                {/if}
-                <a
-                    href="/admin/uat"
-                    use:inertia
-                    class="flex items-center justify-between px-4 py-3 mx-2 rounded-xl transition duration-200 group {isActive(
-                        '/admin/uat',
-                    )
-                        ? 'bg-slate-50 font-bold'
-                        : 'text-slate-600 hover:bg-slate-50 font-semibold'}"
-                    style={isActive('/admin/uat')
-                        ? `color: ${primaryColor};`
-                        : ''}
-                >
-                    <div class="flex items-center gap-3">
-                        <i
-                            class="ti ti-test-pipe text-xl group-hover:scale-110 transition"
-                            style={isActive('/admin/uat')
-                                ? `color: ${primaryColor};`
-                                : ''}
-                        ></i>
-                        <span>UAT Komerce</span>
                     </div>
-                </a>
-            </div>
-        </div>
     </div>
 
     <div class="relative p-4 border-t border-slate-200 shrink-0 bg-white">
