@@ -97,19 +97,24 @@
         const validIds = selectedIds.filter((id) => {
             const trx = transactions.data.find((t: any) => t.id === id);
             if (!trx) return false;
-            
+
             if (['selesai', 'batal'].includes(trx.status)) return false;
             if (trx.status === bulkStatusValue) return false;
             if (bulkStatusValue === 'batal') return true;
-            
+
             const currentIdx = statusOrder.indexOf(trx.status);
             const targetIdx = statusOrder.indexOf(bulkStatusValue);
-            
-            return currentIdx !== -1 && targetIdx !== -1 && targetIdx > currentIdx;
+
+            return (
+                currentIdx !== -1 && targetIdx !== -1 && targetIdx > currentIdx
+            );
         });
 
         if (validIds.length === 0) {
-            showToast('Tidak ada transaksi terpilih yang dapat diperbarui ke status tersebut.', 'error');
+            showToast(
+                'Tidak ada transaksi terpilih yang dapat diperbarui ke status tersebut.',
+                'error',
+            );
             return;
         }
 
@@ -777,10 +782,14 @@
                                             class="w-4 h-4 rounded border-slate-300 cursor-pointer accent-blue-600"
                                         />
                                     </th>
-                                    <th class="py-5 px-4">Transaksi / Tanggal</th>
+                                    <th class="py-5 px-4"
+                                        >Transaksi / Tanggal</th
+                                    >
                                     <th class="py-5 px-4">Customer</th>
                                     <th class="py-5 px-4">Total / Items</th>
-                                    <th class="py-5 px-4">Status / Pembayaran</th>
+                                    <th class="py-5 px-4"
+                                        >Status / Pembayaran</th
+                                    >
                                     <th class="py-5 px-4">Nomor Resi</th>
                                     <th class="py-5 px-4 text-center">Aksi</th>
                                 </tr>
@@ -842,7 +851,9 @@
                                                 </div>
                                                 <span
                                                     class="text-xs text-slate-400 font-bold"
-                                                    >{fmtDate(trx.created_at)}</span
+                                                    >{fmtDate(
+                                                        trx.created_at,
+                                                    )}</span
                                                 >
                                             </div>
                                         </td>
@@ -883,7 +894,9 @@
                                             </div>
                                         </td>
                                         <td class="py-5 px-4">
-                                            <div class="flex flex-col gap-1.5 items-start">
+                                            <div
+                                                class="flex flex-col gap-1.5 items-start"
+                                            >
                                                 <span
                                                     class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider"
                                                     style="background:{statusStyle.bg}; color:{statusStyle.text}"

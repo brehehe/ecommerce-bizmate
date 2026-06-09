@@ -579,8 +579,8 @@
         const optId = selectedOptions[String(variation.id)];
         if (optId == null) return null;
         return (
-            variation.options?.find((o: any) => String(o.id) === String(optId))?.name ??
-            null
+            variation.options?.find((o: any) => String(o.id) === String(optId))
+                ?.name ?? null
         );
     }
 

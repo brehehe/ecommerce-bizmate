@@ -62,6 +62,32 @@ class ChatController extends Controller
     }
 
     /**
+     * Get transactions list as JSON.
+     */
+    public function getTransactionsJson(): JsonResponse
+    {
+        if (! auth()->check()) {
+            return response()->json([], 401);
+        }
+
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->with(['items', 'paymentMethod'])
+            ->latest()
+            ->limit(10)
+            ->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'transaction_number' => $t->transaction_number,
+                'grand_total' => (float) $t->grand_total,
+                'payment_method' => $t->paymentMethod?->name ?? ($t->payment_method ?? '-'),
+                'status' => $t->status,
+                'items_summary' => $t->items->map(fn ($item) => $item->product_name.' (x'.$item->quantity.')')->implode(', '),
+            ]);
+
+        return response()->json($transactions);
+    }
+
+    /**
      * Create a new chat thread.
      */
     public function createChat(Request $request): JsonResponse

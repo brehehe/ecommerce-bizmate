@@ -15,10 +15,10 @@ use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
 use App\Services\KomerceService;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -1581,11 +1581,9 @@ class StorefrontController extends Controller
 
         $user->assignRole('Customer');
 
-        Auth::login($user);
+        event(new Registered($user));
 
-        $request->session()->regenerate();
-
-        return redirect('/');
+        return redirect('/login')->with('success', 'Pendaftaran berhasil! Silakan periksa email Anda untuk memverifikasi akun sebelum masuk.');
     }
 
     /**

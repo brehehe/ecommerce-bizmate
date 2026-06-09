@@ -37,6 +37,78 @@
     let attachedImageUrl = $state<string | null>(null);
     let chatPreviewUrl = $state<string | null>(null);
 
+    let stickerModalOpen = $state(false);
+    let emojiPickerOpen = $state(false);
+
+    // Stickers from DB via shared props
+    const stickersList = $derived((page.props as any).chatStickers || []);
+
+    // Group stickers by category
+    const stickersByCategory = $derived(() => {
+        const groups: Record<string, any[]> = {};
+        for (const s of stickersList) {
+            const cat = s.category || 'Umum';
+            if (!groups[cat]) { groups[cat] = []; }
+            groups[cat].push(s);
+        }
+        return groups;
+    });
+
+    // Common emoji list
+    const emojiList = [
+        '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙',
+        '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
+        '😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐',
+        '😕','😟','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','😈','👿','💀','☠️','💩',
+        '🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾',
+        '👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎',
+        '✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','👀','👁️',
+        '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️',
+        '⭐','🌟','✨','💫','🔥','💥','❄️','🌈','☁️','⛅','🌤️','🌥️','🌦️','🌧️','⛈️','🌩️','🌨️','🌊','💧','💦',
+        '🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🥦','🥕','🌽','🍕','🍔','🍟','🌮','🌯','🍜','🍱',
+        '🎁','🎂','🎉','🎊','🎈','🎀','🏆','🥇','🥈','🥉','🎖️','🏅','🎗️','🎟️','🎫','🎪','🎭','🎨','🎬','🎤',
+    ];
+
+    function insertEmoji(emoji: string) {
+        replyInput = replyInput + emoji;
+        emojiPickerOpen = false;
+    }
+
+    async function sendSticker(stickerId: string) {
+        stickerModalOpen = false;
+
+        const bodyText = '[STICKER]' + stickerId;
+
+        try {
+            const formData = new FormData();
+            formData.append('body', bodyText);
+
+            const response = await fetch(`/admin/chats/${chat.id}/reply`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
+                    Accept: 'application/json',
+                },
+                body: formData,
+            });
+
+            if (response.ok) {
+                const newMsg = await response.json();
+                if (!messages.some((m: any) => m.id === newMsg.id)) {
+                    messages = [...messages, newMsg];
+                    setTimeout(scrollToBottom, 55);
+                }
+            }
+        } catch (err) {
+            console.error('Error sending sticker:', err);
+        }
+    }
+
     let searchQuery = $state('');
     let showSidebar = $state(true);
 
@@ -750,57 +822,132 @@
                                             <!-- Text body -->
                                             {#if msg.body}
                                                 {#if msg.body.startsWith('[TRANSACTION_CARD]')}
-                                                    {@const card = parseTransactionCard(msg.body)}
+                                                    {@const card =
+                                                        parseTransactionCard(
+                                                            msg.body,
+                                                        )}
                                                     {#if card}
                                                         <div
                                                             class="p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm bg-white border border-slate-200 w-full max-w-[280px] sm:max-w-[320px] text-slate-800 text-left"
                                                         >
-                                                            <div class="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-slate-400 mb-2">
-                                                                <i class="ti ti-file-invoice text-sm text-emerald-500"></i>
-                                                                <span>Invoice Pesanan</span>
+                                                            <div
+                                                                class="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-slate-400 mb-2"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-file-invoice text-sm text-emerald-500"
+                                                                ></i>
+                                                                <span
+                                                                    >Invoice
+                                                                    Pesanan</span
+                                                                >
                                                             </div>
-                                                            <div class="space-y-1.5">
-                                                                <p class="font-bold text-xs text-slate-800">#{card.transaction_number}</p>
-                                                                <div class="h-px bg-slate-100 my-1.5"></div>
-                                                                <div class="flex justify-between text-[11px] font-bold text-slate-500">
-                                                                    <span>Total Belanja:</span>
-                                                                    <span style="color: {primaryColor}">{fmt(card.grand_total)}</span>
+                                                            <div
+                                                                class="space-y-1.5"
+                                                            >
+                                                                <p
+                                                                    class="font-bold text-xs text-slate-800"
+                                                                >
+                                                                    #{card.transaction_number}
+                                                                </p>
+                                                                <div
+                                                                    class="h-px bg-slate-100 my-1.5"
+                                                                ></div>
+                                                                <div
+                                                                    class="flex justify-between text-[11px] font-bold text-slate-500"
+                                                                >
+                                                                    <span
+                                                                        >Total
+                                                                        Belanja:</span
+                                                                    >
+                                                                    <span
+                                                                        style="color: {primaryColor}"
+                                                                        >{fmt(
+                                                                            card.grand_total,
+                                                                        )}</span
+                                                                    >
                                                                 </div>
-                                                                <div class="flex justify-between text-[11px] font-bold text-slate-500">
-                                                                    <span>Pembayaran:</span>
-                                                                    <span class="text-slate-700">{card.payment_method}</span>
+                                                                <div
+                                                                    class="flex justify-between text-[11px] font-bold text-slate-500"
+                                                                >
+                                                                    <span
+                                                                        >Pembayaran:</span
+                                                                    >
+                                                                    <span
+                                                                        class="text-slate-700"
+                                                                        >{card.payment_method}</span
+                                                                    >
                                                                 </div>
-                                                                <div class="flex justify-between text-[11px] font-bold text-slate-500">
-                                                                    <span>Status:</span>
-                                                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase" style="background-color: {getStatusColor(card.status)}20; color: {getStatusColor(card.status)};">
-                                                                        {getStatusLabel(card.status)}
+                                                                <div
+                                                                    class="flex justify-between text-[11px] font-bold text-slate-500"
+                                                                >
+                                                                    <span
+                                                                        >Status:</span
+                                                                    >
+                                                                    <span
+                                                                        class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase"
+                                                                        style="background-color: {getStatusColor(
+                                                                            card.status,
+                                                                        )}20; color: {getStatusColor(
+                                                                            card.status,
+                                                                        )};"
+                                                                    >
+                                                                        {getStatusLabel(
+                                                                            card.status,
+                                                                        )}
                                                                     </span>
                                                                 </div>
                                                                 {#if card.items_summary}
-                                                                    <p class="text-[10px] text-slate-400 font-medium italic truncate mt-1">
+                                                                    <p
+                                                                        class="text-[10px] text-slate-400 font-medium italic truncate mt-1"
+                                                                    >
                                                                         {card.items_summary}
                                                                     </p>
                                                                 {/if}
                                                             </div>
                                                             <button
-                                                                onclick={() => router.visit(`/admin/transactions/${card.id}`)}
+                                                                onclick={() =>
+                                                                    router.visit(
+                                                                        `/admin/transactions/${card.id}`,
+                                                                    )}
                                                                 class="mt-3 w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                                                             >
-                                                                <i class="ti ti-eye"></i>
+                                                                <i
+                                                                    class="ti ti-eye"
+                                                                ></i>
                                                                 Detail Transaksi
                                                             </button>
                                                         </div>
                                                     {/if}
+                                                {:else if msg.body.startsWith('[STICKER]')}
+                                                    {@const stickerId =
+                                                        msg.body.replace(
+                                                            '[STICKER]',
+                                                            '',
+                                                        )}
+                                                    {@const stickerData = stickersList.find((s: any) => s.id === stickerId)}
+                                                    <div
+                                                        class="relative py-1 select-none"
+                                                    >
+                                                        {#if stickerData}
+                                                            <img
+                                                                src={stickerData.url}
+                                                                alt={stickerData.name}
+                                                                class="w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform hover:scale-105 duration-200"
+                                                            />
+                                                        {:else}
+                                                            <span class="text-2xl">✨</span>
+                                                        {/if}
+                                                    </div>
                                                 {:else}
                                                     <div
-                                                        class="px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
+                                                        class="max-w-full break-words px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
                                                         'admin'
                                                             ? 'rounded-tr-sm text-white'
                                                             : 'rounded-tl-sm text-slate-800 bg-white'}"
                                                         style="background-color: {msg.sender_type ===
                                                         'admin'
                                                             ? primaryColor
-                                                            : 'white'};"
+                                                            : 'white'}; overflow-wrap: anywhere;"
                                                     >
                                                         {msg.body}
                                                     </div>
@@ -872,11 +1019,29 @@
                             <div class="flex items-center gap-2.5">
                                 <button
                                     onclick={triggerImageUpload}
-                                    class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-200 transition cursor-pointer"
+                                    class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-200 transition cursor-pointer shrink-0"
                                     aria-label="Upload Foto"
                                     title="Lampirkan Gambar"
                                 >
                                     <i class="ti ti-photo text-lg"></i>
+                                </button>
+
+                                <button
+                                    onclick={() => (stickerModalOpen = true)}
+                                    class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-200 transition cursor-pointer shrink-0"
+                                    aria-label="Kirim Stiker"
+                                    title="Kirim Stiker"
+                                >
+                                    <i class="ti ti-sticker text-lg"></i>
+                                </button>
+
+                                <button
+                                    onclick={() => (emojiPickerOpen = !emojiPickerOpen)}
+                                    class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-200 transition cursor-pointer shrink-0"
+                                    aria-label="Emoji"
+                                    title="Sisipkan Emoji"
+                                >
+                                    <i class="ti ti-mood-smile text-lg"></i>
                                 </button>
 
                                 <input
@@ -1108,4 +1273,132 @@
             </div>
         </div>
     {/if}
+
+    <!-- Sticker Selection Modal -->
+    {#if stickerModalOpen}
+        <div
+            class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+        >
+            <div
+                class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                onclick={() => (stickerModalOpen = false)}
+                onkeypress={() => (stickerModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div
+                class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[80vh]"
+            >
+                <!-- Pull Indicator for Mobile Bottom Sheet -->
+                <div
+                    class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+                ></div>
+
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 shrink-0"
+                >
+                    <div class="flex flex-col">
+                        <h4
+                            class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2"
+                        >
+                            <i class="ti ti-sticker text-violet-500"></i>
+                            Pilih Stiker
+                        </h4>
+                        <p
+                            class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5"
+                        >
+                            Kirim reaksi stiker lucu ke chat
+                        </p>
+                    </div>
+                    <button
+                        onclick={() => (stickerModalOpen = false)}
+                        class="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                        aria-label="Tutup"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
+                </div>
+
+                <div
+                    class="grid grid-cols-2 gap-4 py-2 flex-grow overflow-y-auto custom-scrollbar pb-6 sm:pb-0"
+                >
+                    {#if stickersList.length === 0}
+                        <div class="col-span-2 py-10 text-center text-slate-400">
+                            <i class="ti ti-sticker text-4xl block mb-2 text-slate-200"></i>
+                            <p class="text-xs font-bold">Belum ada stiker.</p>
+                            <p class="text-[10px] text-slate-300 mt-1">Tambahkan di Master Data → Stiker Chat</p>
+                        </div>
+                    {:else}
+                        {#each stickersList as sticker}
+                            <button
+                                onclick={() => sendSticker(sticker.id)}
+                                class="group relative bg-slate-50/50 hover:bg-violet-50/30 border border-slate-100 hover:border-violet-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-95 hover:shadow-2xs"
+                            >
+                                <img
+                                    src={sticker.url}
+                                    alt={sticker.name}
+                                    class="w-20 h-20 object-contain transition-transform group-hover:scale-110 duration-200 select-none"
+                                />
+                                <span
+                                    class="text-[10px] font-bold text-slate-400 group-hover:text-violet-600 transition-colors uppercase tracking-wider"
+                                >
+                                    {sticker.name}
+                                </span>
+                            </button>
+                        {/each}
+                    {/if}
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Emoji Picker Panel -->
+    {#if emojiPickerOpen}
+        <div
+            class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+            <div
+                class="fixed inset-0 bg-slate-900/30 backdrop-blur-sm"
+                onclick={() => (emojiPickerOpen = false)}
+                onkeypress={() => (emojiPickerOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div
+                class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-5 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[60vh]"
+            >
+                <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"></div>
+
+                <div class="flex items-center justify-between mb-3 shrink-0">
+                    <h4 class="font-outfit font-black text-base text-slate-800 flex items-center gap-2">
+                        <i class="ti ti-mood-smile text-amber-500"></i>
+                        Emoji
+                    </h4>
+                    <button
+                        onclick={() => (emojiPickerOpen = false)}
+                        class="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                        aria-label="Tutup"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="flex-grow overflow-y-auto custom-scrollbar">
+                    <div class="grid grid-cols-8 gap-0.5">
+                        {#each emojiList as emoji}
+                            <button
+                                onclick={() => insertEmoji(emoji)}
+                                class="w-9 h-9 text-xl flex items-center justify-center rounded-xl hover:bg-slate-100 transition active:scale-90 cursor-pointer"
+                            >
+                                {emoji}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
 </AdminLayout>
+

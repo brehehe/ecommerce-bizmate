@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\CartItem;
 use App\Models\ChatMessage;
+use App\Models\ChatSticker;
 use App\Models\Notification;
 use App\Models\ProductStock;
 use App\Models\RefundRequest;
@@ -114,6 +115,7 @@ class HandleInertiaRequests extends Middleware
         $storeDescription = '';
 
         $socialMediaLinks = [];
+        $chatStickers = [];
 
         try {
             if (Schema::hasTable('settings')) {
@@ -222,6 +224,20 @@ class HandleInertiaRequests extends Middleware
                     ])
                     ->toArray();
             }
+
+            if (Schema::hasTable('chat_stickers')) {
+                $chatStickers = ChatSticker::where('is_active', true)
+                    ->orderBy('order')
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn ($s) => [
+                        'id' => $s->id,
+                        'name' => $s->name,
+                        'category' => $s->category,
+                        'url' => $s->image_url,
+                    ])
+                    ->toArray();
+            }
         } catch (\Throwable $e) {
             // Fallback when database is not ready
         }
@@ -323,6 +339,7 @@ class HandleInertiaRequests extends Middleware
                 'store_description' => $storeDescription,
             ],
             'socialMediaLinks' => $socialMediaLinks,
+            'chatStickers' => $chatStickers,
             'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
                 'lowStockCount' => ProductStock::where('is_unlimited', false)
                     ->where('stock', '>', 0)

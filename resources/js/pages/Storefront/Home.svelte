@@ -1532,7 +1532,10 @@
         <div
             transition:fade={{ duration: 600 }}
             class="fixed inset-0 z-[99999] flex flex-col items-center justify-center text-white cursor-pointer"
-            style="background: radial-gradient(circle at center, {withOpacity(primary, 0.95)} 0%, #030712 100%);"
+            style="background: radial-gradient(circle at center, {withOpacity(
+                primary,
+                0.95,
+            )} 0%, #030712 100%);"
             onclick={() => (showIntro = false)}
             role="dialog"
             aria-modal="true"
@@ -1543,7 +1546,9 @@
                 transition:scale={{ duration: 600, delay: 100, start: 0.9 }}
             >
                 {#if storeLogo}
-                    <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center bg-white/10 backdrop-blur-md rounded-3xl p-4 shadow-2xl border border-white/20 animate-pulse">
+                    <div
+                        class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center bg-white/10 backdrop-blur-md rounded-3xl p-4 shadow-2xl border border-white/20 animate-pulse"
+                    >
                         <img
                             src={storeLogo}
                             alt={storeName}
@@ -1551,22 +1556,34 @@
                         />
                     </div>
                 {:else}
-                    <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-white/10 to-white/5 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 animate-pulse">
-                        <i class="ti ti-shopping-bag text-5xl sm:text-6xl text-white"></i>
+                    <div
+                        class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-white/10 to-white/5 backdrop-blur-md flex items-center justify-center shadow-2xl border border-white/20 animate-pulse"
+                    >
+                        <i
+                            class="ti ti-shopping-bag text-5xl sm:text-6xl text-white"
+                        ></i>
                     </div>
                 {/if}
 
                 <div class="space-y-2">
-                    <h1 class="font-outfit font-black text-2xl sm:text-3xl tracking-wide bg-gradient-to-r from-white via-white/95 to-white/80 bg-clip-text text-transparent">
+                    <h1
+                        class="font-outfit font-black text-2xl sm:text-3xl tracking-wide bg-gradient-to-r from-white via-white/95 to-white/80 bg-clip-text text-transparent"
+                    >
                         {storeName}
                     </h1>
-                    <p class="text-xs sm:text-sm text-white/50 tracking-wider uppercase font-medium">
+                    <p
+                        class="text-xs sm:text-sm text-white/50 tracking-wider uppercase font-medium"
+                    >
                         Belanja Mudah &amp; Terpercaya
                     </p>
                 </div>
 
-                <div class="w-32 h-1 bg-white/10 rounded-full overflow-hidden relative mt-4">
-                    <div class="absolute inset-0 bg-gradient-to-r from-white/40 via-white to-white/40 rounded-full animate-loadingBar"></div>
+                <div
+                    class="w-32 h-1 bg-white/10 rounded-full overflow-hidden relative mt-4"
+                >
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-white/40 via-white to-white/40 rounded-full animate-loadingBar"
+                    ></div>
                 </div>
             </div>
         </div>
@@ -1613,7 +1630,9 @@
 
                 <!-- Optional Action Button -->
                 {#if popupBanner.link && popupBanner.link !== '#'}
-                    <div class="p-4 bg-white border-t border-slate-50 flex justify-center">
+                    <div
+                        class="p-4 bg-white border-t border-slate-50 flex justify-center"
+                    >
                         <Link
                             href={popupBanner.link}
                             onclick={() => (showPopup = false)}

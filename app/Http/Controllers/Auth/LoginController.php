@@ -22,9 +22,17 @@ class LoginController extends Controller
         ]);
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-
             $user = Auth::user();
+
+            if ($user->hasRole('Customer') && ! $user->hasVerifiedEmail()) {
+                Auth::logout();
+
+                return back()->withErrors([
+                    'email' => 'Akun Anda belum diverifikasi. Silakan periksa email Anda.',
+                ])->onlyInput('email');
+            }
+
+            $request->session()->regenerate();
 
             if (! $user->hasRole('Customer')) {
                 return redirect()->intended('/admin/dashboard');

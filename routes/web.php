@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\Admin\UATController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CartController;
@@ -45,6 +46,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::post('/login', [LoginController::class, 'authenticate']);
     Route::post('/register', [StorefrontController::class, 'register'])->name('register');
+    Route::post('/email/resend-verification-guest', [EmailVerificationController::class, 'resendGuest'])->name('verification.resend.guest');
 });
 
 // Forgot & Reset Password
@@ -53,7 +55,13 @@ Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink
 Route::get('/reset-password/{token}', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
 Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])->middleware('signed')->name('verification.verify');
+
 Route::middleware('auth')->group(function () {
+    // Email Verification Routes
+    Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])->middleware('throttle:6,1')->name('verification.send');
+
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
@@ -62,20 +70,20 @@ Route::middleware('auth')->group(function () {
     Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
     Route::post('/cart/select-vouchers', [CartController::class, 'selectVouchers'])->name('cart.select-vouchers');
 
-    // Customer Profile Edit
+    // Customer Profile Edit (Keep open for email updates)
     Route::get('/profile', [ProfileController::class, 'showCustomerProfile'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'updateCustomerProfile'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updateCustomerPassword'])->name('profile.password.update');
     Route::get('/profile/coin-history', [ProfileController::class, 'coinHistory'])->name('profile.coin-history');
 
-    // Customer Bank Accounts
+    // Customer Bank Accounts (Keep open as part of profile)
     Route::get('/profile/bank-accounts', [ProfileController::class, 'bankAccounts'])->name('profile.bank-accounts.index');
     Route::post('/profile/bank-accounts', [ProfileController::class, 'storeBankAccount'])->name('profile.bank-accounts.store');
     Route::put('/profile/bank-accounts/{bankAccount}', [ProfileController::class, 'updateBankAccount'])->name('profile.bank-accounts.update');
     Route::delete('/profile/bank-accounts/{bankAccount}', [ProfileController::class, 'destroyBankAccount'])->name('profile.bank-accounts.destroy');
     Route::post('/profile/bank-accounts/{bankAccount}/make-primary', [ProfileController::class, 'makePrimaryBankAccount'])->name('profile.bank-accounts.make-primary');
 
-    // Customer Shipping Addresses
+    // Customer Shipping Addresses (Keep open to setup address)
     Route::get('/profile/addresses', [CustomerAddressController::class, 'index'])->name('profile.addresses.index');
     Route::post('/profile/addresses', [CustomerAddressController::class, 'store'])->name('profile.addresses.store');
     Route::put('/profile/addresses/{address}', [CustomerAddressController::class, 'update'])->name('profile.addresses.update');
@@ -87,49 +95,53 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
     Route::get('/api/addresses/ip-location', [CustomerAddressController::class, 'ipLocation'])->name('api.addresses.ip-location');
 
-    // Chat
-    Route::get('/chats', [ChatController::class, 'index'])->name('chats.index');
-    Route::post('/chats', [ChatController::class, 'createChat'])->name('chats.create');
-    Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->name('chats.messages');
-    Route::post('/chats/{chat}/messages', [ChatController::class, 'store'])->name('chats.store');
-    Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->name('chats.destroy');
-    Route::delete('/chats/{chat}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
+    // Verified Customer Actions
+    Route::middleware('verified')->group(function () {
+        // Chat
+        Route::get('/chats', [ChatController::class, 'index'])->name('chats.index');
+        Route::get('/chats/transactions', [ChatController::class, 'getTransactionsJson'])->name('chats.transactions');
+        Route::post('/chats', [ChatController::class, 'createChat'])->name('chats.create');
+        Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->name('chats.messages');
+        Route::post('/chats/{chat}/messages', [ChatController::class, 'store'])->name('chats.store');
+        Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->name('chats.destroy');
+        Route::delete('/chats/{chat}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
 
-    // Checkout
-    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-    Route::post('/checkout/apply-voucher', [CheckoutController::class, 'applyVoucher'])->name('checkout.apply-voucher');
-    Route::post('/checkout/shipping-cost', [CheckoutController::class, 'shippingCost'])->name('checkout.shipping-cost');
-    Route::get('/checkout/cities', [CheckoutController::class, 'cities'])->name('checkout.cities');
-    Route::get('/checkout/international-destinations', [CheckoutController::class, 'internationalDestinations'])->name('checkout.international-destinations');
-    Route::get('/checkout/komerce/search-destination', [CheckoutController::class, 'searchKomerceDestination'])->name('checkout.komerce.search-destination');
+        // Checkout
+        Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+        Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+        Route::post('/checkout/apply-voucher', [CheckoutController::class, 'applyVoucher'])->name('checkout.apply-voucher');
+        Route::post('/checkout/shipping-cost', [CheckoutController::class, 'shippingCost'])->name('checkout.shipping-cost');
+        Route::get('/checkout/cities', [CheckoutController::class, 'cities'])->name('checkout.cities');
+        Route::get('/checkout/international-destinations', [CheckoutController::class, 'internationalDestinations'])->name('checkout.international-destinations');
+        Route::get('/checkout/komerce/search-destination', [CheckoutController::class, 'searchKomerceDestination'])->name('checkout.komerce.search-destination');
 
-    // Transaction (Customer)
-    Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
-    Route::get('/transactions/{transaction}', [StorefrontController::class, 'transactionDetail'])->name('transactions.show');
-    Route::get('/transactions/{transaction}/print-invoice', [StorefrontController::class, 'printInvoice'])->name('transactions.print-invoice-customer');
-    Route::post('/transactions/{transaction}/upload-proof', [CheckoutController::class, 'uploadProof'])->name('transactions.upload-proof');
-    Route::post('/transactions/{transaction}/cancel', [StorefrontController::class, 'cancelTransaction'])->name('transactions.cancel');
-    Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
-    Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
-    Route::post('/transactions/{transaction}/extend-auto-complete', [StorefrontController::class, 'extendAutoComplete'])->name('transactions.extend-auto-complete');
-    Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
-    Route::post('/reviews/{review}/report', [StorefrontController::class, 'reportReview'])->name('reviews.report');
-    Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
+        // Transaction (Customer)
+        Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
+        Route::get('/transactions/{transaction}', [StorefrontController::class, 'transactionDetail'])->name('transactions.show');
+        Route::get('/transactions/{transaction}/print-invoice', [StorefrontController::class, 'printInvoice'])->name('transactions.print-invoice-customer');
+        Route::post('/transactions/{transaction}/upload-proof', [CheckoutController::class, 'uploadProof'])->name('transactions.upload-proof');
+        Route::post('/transactions/{transaction}/cancel', [StorefrontController::class, 'cancelTransaction'])->name('transactions.cancel');
+        Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
+        Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
+        Route::post('/transactions/{transaction}/extend-auto-complete', [StorefrontController::class, 'extendAutoComplete'])->name('transactions.extend-auto-complete');
+        Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
+        Route::post('/reviews/{review}/report', [StorefrontController::class, 'reportReview'])->name('reviews.report');
+        Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
 
-    // Returns (Customer)
-    Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
+        // Returns (Customer)
+        Route::get('/returns', [ReturnController::class, 'index'])->name('returns.index');
 
-    // Refunds (Customer)
-    Route::get('/refunds', [RefundController::class, 'index'])->name('refunds.index');
-    Route::get('/refunds/{refundRequest}', [RefundController::class, 'show'])->name('refunds.show');
-    Route::post('/transactions/{transaction}/refund-request', [RefundController::class, 'store'])->name('refunds.store');
-    Route::post('/transactions/{transaction}/return', [ReturnController::class, 'store'])->name('returns.store');
-    Route::post('/returns/{returnRequest}/tracking', [ReturnController::class, 'updateTracking'])->name('returns.tracking');
+        // Refunds (Customer)
+        Route::get('/refunds', [RefundController::class, 'index'])->name('refunds.index');
+        Route::get('/refunds/{refundRequest}', [RefundController::class, 'show'])->name('refunds.show');
+        Route::post('/transactions/{transaction}/refund-request', [RefundController::class, 'store'])->name('refunds.store');
+        Route::post('/transactions/{transaction}/return', [ReturnController::class, 'store'])->name('returns.store');
+        Route::post('/returns/{returnRequest}/tracking', [ReturnController::class, 'updateTracking'])->name('returns.tracking');
 
-    // Notifications (Customer)
-    Route::post('/notifications/{notification}/read', [StorefrontController::class, 'markNotificationAsRead'])->name('notifications.read');
-    Route::post('/notifications/read-all', [StorefrontController::class, 'markAllNotificationsAsRead'])->name('notifications.read-all');
+        // Notifications (Customer)
+        Route::post('/notifications/{notification}/read', [StorefrontController::class, 'markNotificationAsRead'])->name('notifications.read');
+        Route::post('/notifications/read-all', [StorefrontController::class, 'markAllNotificationsAsRead'])->name('notifications.read-all');
+    });
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->group(function () {
@@ -216,6 +228,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/master-data/social-media/reorder', [MasterDataController::class, 'reorderSocialMedia'])->name('master-data.social-media.reorder');
 
     Route::get('/master-data/roles', [MasterDataController::class, 'roles'])->name('master-data.roles');
+
+    // Stickers (Chat)
+    Route::get('/master-data/stickers', [MasterDataController::class, 'stickers'])->name('master-data.stickers');
+    Route::post('/master-data/stickers', [MasterDataController::class, 'storeSticker'])->name('master-data.stickers.store');
+    Route::put('/master-data/stickers/{chatSticker}', [MasterDataController::class, 'updateSticker'])->name('master-data.stickers.update');
+    Route::delete('/master-data/stickers/{chatSticker}', [MasterDataController::class, 'destroySticker'])->name('master-data.stickers.destroy');
+    Route::post('/master-data/stickers/{chatSticker}/toggle-active', [MasterDataController::class, 'toggleActiveSticker'])->name('master-data.stickers.toggle-active');
 
     // Chat (Admin)
     Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Models\ChatSticker;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
 use App\Models\SocialMedia;
@@ -11,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,8 +31,14 @@ class MasterDataController extends Controller
                 $q->where('name', $request->role);
             }
         })->select([
-            'id', 'name', 'email', 'phone_number', 'avatar',
-            'is_active', 'last_active_at', 'created_at',
+            'id',
+            'name',
+            'email',
+            'phone_number',
+            'avatar',
+            'is_active',
+            'last_active_at',
+            'created_at',
         ]);
 
         if ($request->filled('search')) {
@@ -152,9 +160,17 @@ class MasterDataController extends Controller
                 $q->where('name', 'Customer');
             })
             ->select([
-                'id', 'name', 'email', 'phone_number', 'avatar',
-                'gender', 'birth_date', 'coins_balance',
-                'is_active', 'last_active_at', 'created_at',
+                'id',
+                'name',
+                'email',
+                'phone_number',
+                'avatar',
+                'gender',
+                'birth_date',
+                'coins_balance',
+                'is_active',
+                'last_active_at',
+                'created_at',
             ]);
 
         if ($request->filled('search')) {
@@ -689,5 +705,106 @@ class MasterDataController extends Controller
         }
 
         return back()->with('success', 'Urutan media sosial berhasil disimpan.');
+    }
+
+    /**
+     * Display a listing of chat stickers.
+     */
+    public function stickers(Request $request): Response
+    {
+        $query = ChatSticker::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('category', 'ilike', "%{$search}%");
+            });
+        }
+
+        $perPage = $request->get('perPage', 20);
+        $stickers = $query->orderBy('order')->orderBy('name')->paginate($perPage)->withQueryString();
+
+        return Inertia::render('Admin/MasterData/Stickers', [
+            'stickers' => $stickers,
+            'filters' => [
+                'search' => $request->search,
+                'perPage' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Store a newly created chat sticker.
+     */
+    public function storeSticker(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:100',
+            'image' => 'required|image|mimes:png,jpg,jpeg,gif,webp|max:2048',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $path = $request->file('image')->store('chat-stickers', 'public');
+        $maxOrder = ChatSticker::max('order') ?? 0;
+
+        ChatSticker::create([
+            'name' => $request->name,
+            'category' => $request->category,
+            'image_path' => $path,
+            'order' => $maxOrder + 1,
+            'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
+        ]);
+
+        return back()->with('success', 'Stiker berhasil ditambahkan.');
+    }
+
+    /**
+     * Update the specified chat sticker.
+     */
+    public function updateSticker(Request $request, ChatSticker $chatSticker): RedirectResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:100',
+            'image' => 'nullable|image|mimes:png,jpg,jpeg,gif,webp|max:2048',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if ($request->hasFile('image')) {
+            Storage::disk('public')->delete($chatSticker->image_path);
+            $chatSticker->image_path = $request->file('image')->store('chat-stickers', 'public');
+        }
+
+        $chatSticker->update([
+            'name' => $request->name,
+            'category' => $request->category,
+            'image_path' => $chatSticker->image_path,
+            'is_active' => filter_var($request->input('is_active', $chatSticker->is_active), FILTER_VALIDATE_BOOLEAN),
+        ]);
+
+        return back()->with('success', 'Stiker berhasil diperbarui.');
+    }
+
+    /**
+     * Remove the specified chat sticker.
+     */
+    public function destroySticker(ChatSticker $chatSticker): RedirectResponse
+    {
+        Storage::disk('public')->delete($chatSticker->image_path);
+        $chatSticker->delete();
+
+        return back()->with('success', 'Stiker berhasil dihapus.');
+    }
+
+    /**
+     * Toggle active status of a chat sticker.
+     */
+    public function toggleActiveSticker(ChatSticker $chatSticker): RedirectResponse
+    {
+        $chatSticker->update(['is_active' => ! $chatSticker->is_active]);
+
+        return back()->with('success', 'Status stiker berhasil diubah.');
     }
 }

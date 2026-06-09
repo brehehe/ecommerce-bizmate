@@ -272,25 +272,38 @@
         if (!waNumber) return '#';
         const num = waNumber.replace(/\D/g, '');
         const formattedNum = num.startsWith('0') ? '62' + num.slice(1) : num;
-        
-        const firstDigitalItem = (transaction.items || []).find((item: any) => item.product?.is_digital);
-        const productName = firstDigitalItem ? (firstDigitalItem.product_name || firstDigitalItem.product?.name) : 'Produk Digital';
+
+        const firstDigitalItem = (transaction.items || []).find(
+            (item: any) => item.product?.is_digital,
+        );
+        const productName = firstDigitalItem
+            ? firstDigitalItem.product_name || firstDigitalItem.product?.name
+            : 'Produk Digital';
         const text = `Halo Admin, saya ingin konfirmasi pesanan #${transaction.transaction_number} untuk pembelian ${productName}. Mohon informasi pengiriman produk digitalnya. Terima kasih.`;
         return `https://wa.me/${formattedNum}?text=${encodeURIComponent(text)}`;
     });
 
     async function goToWebChat() {
         try {
-            const firstDigitalItem = (transaction.items || []).find((item: any) => item.product?.is_digital);
+            const firstDigitalItem = (transaction.items || []).find(
+                (item: any) => item.product?.is_digital,
+            );
             const subject = `Pesanan #${transaction.transaction_number}`;
-            const productId = firstDigitalItem ? firstDigitalItem.product_id : null;
+            const productId = firstDigitalItem
+                ? firstDigitalItem.product_id
+                : null;
 
             const response = await fetch('/chats', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
                 },
                 body: JSON.stringify({
                     subject: subject,
@@ -2024,259 +2037,49 @@
                             </div>
                         {/if}
 
- <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
-                    {#if canUploadProof}
-                        <div
-                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
-                        >
+                        <!-- Upload Proof (if manual payment & belum bayar/menunggu) -->
+                        {#if canUploadProof}
                             <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
+                                class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
                             >
-                                <i
-                                    class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
-                                ></i>
-                                <span class="font-bold text-rose-700 text-sm"
-                                    >Upload Bukti Pembayaran</span
-                                >
-                            </div>
-                            <div class="p-4">
                                 <div
-                                    class="bg-slate-50 rounded-xl p-3 border border-red-300 mb-3"
+                                    class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
                                 >
-                                    <p class="text-xs text-slate-500 mb-0.5">
-                                        Transfer ke:
-                                    </p>
-                                    <p class="text-sm font-bold text-slate-800">
-                                        {paymentMethod?.bank_name}
-                                    </p>
-                                    <p
-                                        class="text-xl font-black text-slate-900"
+                                    <i
+                                        class="ti ti-alert-triangle text-base text-red-500 animate-pulse"
+                                    ></i>
+                                    <span
+                                        class="font-bold text-rose-700 text-sm"
+                                        >Upload Bukti Pembayaran</span
                                     >
-                                        {paymentMethod?.account_number}
-                                    </p>
-                                    <p class="text-xs text-slate-500">
-                                        a.n. {paymentMethod?.account_name}
-                                    </p>
+                                </div>
+                                <div class="p-4">
                                     <div
-                                        class="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between"
+                                        class="bg-slate-50 rounded-xl p-3 border border-red-300 mb-3"
                                     >
-                                        <p class="text-xs text-rose-500">
-                                            Jumlah transfer:
+                                        <p
+                                            class="text-xs text-slate-500 mb-0.5"
+                                        >
+                                            Transfer ke:
                                         </p>
                                         <p
-                                            class="text-base font-black text-rose-600"
+                                            class="text-sm font-bold text-slate-800"
                                         >
-                                            {fmt(transaction.grand_total)}
+                                            {paymentMethod?.bank_name}
                                         </p>
-                                    </div>
-                                </div>
-                                {#if latestPayment?.proof_image}
-                                    <div class="mb-3">
-                                        <p class="text-xs text-slate-500 mb-1">
-                                            Bukti bayar yang diunggah:
+                                        <p
+                                            class="text-xl font-black text-slate-900"
+                                        >
+                                            {paymentMethod?.account_number}
                                         </p>
-                                        <button
-                                            type="button"
-                                            onclick={() =>
-                                                openPreview(
-                                                    [latestPayment.proof_image],
-                                                    0,
-                                                )}
-                                            class="group relative overflow-hidden rounded-xl border border-slate-200 block text-left p-0 focus:outline-none"
-                                        >
-                                            <img
-                                                src={formatImagePath(
-                                                    latestPayment.proof_image,
-                                                )}
-                                                alt="Bukti Pembayaran"
-                                                class="w-28 h-28 object-cover hover:scale-105 transition duration-300"
-                                            />
-                                            <div
-                                                class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none"
-                                            >
-                                                <i
-                                                    class="ti ti-zoom-in text-base"
-                                                ></i>
-                                            </div>
-                                        </button>
-                                        <p class="text-xs text-slate-400 mt-1">
-                                            Diunggah {fmtDate(
-                                                latestPayment.proof_uploaded_at,
-                                            )}
-                                            {#if latestPayment.status === 'rejected' && latestPayment.notes}
-                                                <span
-                                                    class="text-rose-500 font-semibold"
-                                                >
-                                                    · Ditolak: {latestPayment.notes}</span
-                                                >
-                                            {/if}
+                                        <p class="text-xs text-slate-500">
+                                            a.n. {paymentMethod?.account_name}
                                         </p>
-                                    </div>
-                                {/if}
-                                <button
-                                    onclick={() => (showUploadModal = true)}
-                                    class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
-                                >
-                                    <i class="ti ti-upload text-sm"></i>
-                                    {latestPayment?.proof_image
-                                        ? 'Ganti Bukti Bayar'
-                                        : 'Upload Bukti Bayar'}
-                                </button>
-                            </div>
-                        </div>
-                    {/if}
-
-                    <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
-                    {#if isGateway && transaction.status === 'belum_bayar'}
-                        <div
-                            class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
-                        >
-                            <div
-                                class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
-                            >
-                                <i
-                                    class="ti ti-credit-card text-base animate-pulse text-rose-600"
-                                ></i>
-                                <span class="font-bold text-rose-700 text-sm"
-                                    >Selesaikan Pembayaran</span
-                                >
-                            </div>
-                            <div class="p-4">
-                                {#if isQris && qrisData}
-                                    <div
-                                        class="flex flex-col items-center justify-center p-5 bg-white border border-rose-100 rounded-3xl shadow-xl shadow-rose-50/30 relative overflow-hidden"
-                                    >
-                                        <!-- Merchant Info -->
-                                        <div class="text-center mb-4">
-                                            <h4
-                                                class="font-bold text-slate-800 text-sm"
-                                            >
-                                                {storeName ||
-                                                    'Merchant Pembayaran'}
-                                            </h4>
-                                            <p
-                                                class="text-[9px] text-slate-400 font-medium tracking-wide"
-                                            >
-                                                NMID: ID102030405060
-                                            </p>
-                                        </div>
-
-                                        <!-- QR Code Wrapper (No green corners, no scanner line) -->
                                         <div
-                                            class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80"
+                                            class="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between"
                                         >
-                                            {#if qrisData.image}
-                                                <img
-                                                    src={qrisData.image}
-                                                    alt="QRIS Code"
-                                                    class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
-                                                />
-                                            {:else}
-                                                <div
-                                                    class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center"
-                                                >
-                                                    <i
-                                                        class="ti ti-qrcode text-4xl text-slate-400"
-                                                    ></i>
-                                                </div>
-                                            {/if}
-                                        </div>
-
-                                        <!-- Instructions / Tips -->
-                                        <div
-                                            class="mt-4 w-full bg-slate-50/80 rounded-2xl p-3 border border-slate-100 text-[10px] text-slate-600 leading-normal"
-                                        >
-                                            <div
-                                                class="font-bold text-slate-700 mb-1 flex items-center gap-1"
-                                            >
-                                                <i
-                                                    class="ti ti-info-circle text-xs text-blue-500"
-                                                ></i> Cara Membayar:
-                                            </div>
-                                            <ul
-                                                class="list-decimal pl-3 space-y-0.5 text-slate-500"
-                                            >
-                                                <li>
-                                                    Buka e-wallet (GoPay, OVO,
-                                                    Dana, LinkAja) atau
-                                                    m-Banking Anda.
-                                                </li>
-                                                <li>Scan QR Code di atas.</li>
-                                                <li>
-                                                    Pastikan nama merchant
-                                                    adalah <strong
-                                                        class="text-slate-700"
-                                                        >{storeName ||
-                                                            'Toko Kami'}</strong
-                                                    >.
-                                                </li>
-                                                <li>
-                                                    Masukkan nominal yang sesuai
-                                                    & selesaikan pembayaran.
-                                                </li>
-                                            </ul>
-                                        </div>
-
-                                        <!-- Payment Detail Footer -->
-                                        <div
-                                            class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5"
-                                        >
-                                            <div
-                                                class="flex justify-between items-center text-xs px-1"
-                                            >
-                                                <span class="text-slate-500"
-                                                    >Total Tagihan:</span
-                                                >
-                                                <span
-                                                    class="font-extrabold text-sm text-rose-600"
-                                                    >{fmt(
-                                                        transaction.grand_total,
-                                                    )}</span
-                                                >
-                                            </div>
-
-                                            <div
-                                                class="flex justify-between items-center text-[10px] px-1 text-slate-400"
-                                            >
-                                                <span>No. Invoice:</span>
-                                                <span class="font-mono"
-                                                    >{transaction.transaction_number ||
-                                                        transaction.invoice_number}</span
-                                                >
-                                            </div>
-                                        </div>
-
-                                        <!-- Action Buttons -->
-                                        <div class="flex gap-2 w-full mt-4">
-                                            {#if qrisData.image}
-                                                <button
-                                                    type="button"
-                                                    onclick={downloadQrisImage}
-                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm"
-                                                >
-                                                    <i
-                                                        class="ti ti-download text-sm"
-                                                    ></i>
-                                                    Simpan QR Code
-                                                </button>
-                                            {/if}
-                                        </div>
-                                    </div>
-                                {:else}
-                                    <p
-                                        class="text-xs text-slate-500 leading-relaxed mb-3"
-                                    >
-                                        Pesanan Anda menggunakan sistem
-                                        pembayaran otomatis terverifikasi.
-                                        Silakan klik tombol di bawah untuk
-                                        membuka portal pembayaran {gatewayName}.
-                                    </p>
-                                    <div
-                                        class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-red-300"
-                                    >
-                                        <div>
-                                            <p class="text-xs text-rose-600">
-                                                Total Tagihan:
+                                            <p class="text-xs text-rose-500">
+                                                Jumlah transfer:
                                             </p>
                                             <p
                                                 class="text-base font-black text-rose-600"
@@ -2284,30 +2087,259 @@
                                                 {fmt(transaction.grand_total)}
                                             </p>
                                         </div>
-                                        {#if gatewayInvoiceUrl}
-                                            <a
-                                                href={gatewayInvoiceUrl}
-                                                class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
-                                            >
-                                                Bayar Sekarang
-                                                <i class="ti ti-arrow-right"
-                                                ></i>
-                                            </a>
-                                        {:else if gatewayError}
-                                            <div
-                                                class="text-xs text-rose-500 font-bold max-w-[180px] leading-relaxed text-right"
-                                            >
-                                                <i
-                                                    class="ti ti-alert-circle mr-1"
-                                                ></i>
-                                                {gatewayError}
-                                            </div>
-                                        {/if}
                                     </div>
-                                {/if}
+                                    {#if latestPayment?.proof_image}
+                                        <div class="mb-3">
+                                            <p
+                                                class="text-xs text-slate-500 mb-1"
+                                            >
+                                                Bukti bayar yang diunggah:
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onclick={() =>
+                                                    openPreview(
+                                                        [
+                                                            latestPayment.proof_image,
+                                                        ],
+                                                        0,
+                                                    )}
+                                                class="group relative overflow-hidden rounded-xl border border-slate-200 block text-left p-0 focus:outline-none"
+                                            >
+                                                <img
+                                                    src={formatImagePath(
+                                                        latestPayment.proof_image,
+                                                    )}
+                                                    alt="Bukti Pembayaran"
+                                                    class="w-28 h-28 object-cover hover:scale-105 transition duration-300"
+                                                />
+                                                <div
+                                                    class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold pointer-events-none"
+                                                >
+                                                    <i
+                                                        class="ti ti-zoom-in text-base"
+                                                    ></i>
+                                                </div>
+                                            </button>
+                                            <p
+                                                class="text-xs text-slate-400 mt-1"
+                                            >
+                                                Diunggah {fmtDate(
+                                                    latestPayment.proof_uploaded_at,
+                                                )}
+                                                {#if latestPayment.status === 'rejected' && latestPayment.notes}
+                                                    <span
+                                                        class="text-rose-500 font-semibold"
+                                                    >
+                                                        · Ditolak: {latestPayment.notes}</span
+                                                    >
+                                                {/if}
+                                            </p>
+                                        </div>
+                                    {/if}
+                                    <button
+                                        onclick={() => (showUploadModal = true)}
+                                        class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
+                                    >
+                                        <i class="ti ti-upload text-sm"></i>
+                                        {latestPayment?.proof_image
+                                            ? 'Ganti Bukti Bayar'
+                                            : 'Upload Bukti Bayar'}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    {/if}
+                        {/if}
+
+                        <!-- Payment Gateway Block (if gateway payment & belum bayar) -->
+                        {#if isGateway && transaction.status === 'belum_bayar'}
+                            <div
+                                class="bg-rose-50 rounded-2xl border border-rose-100 overflow-hidden"
+                            >
+                                <div
+                                    class="px-4 pt-4 pb-3 flex items-center gap-2 border-b border-rose-100/50"
+                                >
+                                    <i
+                                        class="ti ti-credit-card text-base animate-pulse text-rose-600"
+                                    ></i>
+                                    <span
+                                        class="font-bold text-rose-700 text-sm"
+                                        >Selesaikan Pembayaran</span
+                                    >
+                                </div>
+                                <div class="p-4">
+                                    {#if isQris && qrisData}
+                                        <div
+                                            class="flex flex-col items-center justify-center p-5 bg-white border border-rose-100 rounded-3xl shadow-xl shadow-rose-50/30 relative overflow-hidden"
+                                        >
+                                            <!-- Merchant Info -->
+                                            <div class="text-center mb-4">
+                                                <h4
+                                                    class="font-bold text-slate-800 text-sm"
+                                                >
+                                                    {storeName ||
+                                                        'Merchant Pembayaran'}
+                                                </h4>
+                                                <p
+                                                    class="text-[9px] text-slate-400 font-medium tracking-wide"
+                                                >
+                                                    NMID: ID102030405060
+                                                </p>
+                                            </div>
+
+                                            <!-- QR Code Wrapper (No green corners, no scanner line) -->
+                                            <div
+                                                class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80"
+                                            >
+                                                {#if qrisData.image}
+                                                    <img
+                                                        src={qrisData.image}
+                                                        alt="QRIS Code"
+                                                        class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
+                                                    />
+                                                {:else}
+                                                    <div
+                                                        class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center"
+                                                    >
+                                                        <i
+                                                            class="ti ti-qrcode text-4xl text-slate-400"
+                                                        ></i>
+                                                    </div>
+                                                {/if}
+                                            </div>
+
+                                            <!-- Instructions / Tips -->
+                                            <div
+                                                class="mt-4 w-full bg-slate-50/80 rounded-2xl p-3 border border-slate-100 text-[10px] text-slate-600 leading-normal"
+                                            >
+                                                <div
+                                                    class="font-bold text-slate-700 mb-1 flex items-center gap-1"
+                                                >
+                                                    <i
+                                                        class="ti ti-info-circle text-xs text-blue-500"
+                                                    ></i> Cara Membayar:
+                                                </div>
+                                                <ul
+                                                    class="list-decimal pl-3 space-y-0.5 text-slate-500"
+                                                >
+                                                    <li>
+                                                        Buka e-wallet (GoPay,
+                                                        OVO, Dana, LinkAja) atau
+                                                        m-Banking Anda.
+                                                    </li>
+                                                    <li>
+                                                        Scan QR Code di atas.
+                                                    </li>
+                                                    <li>
+                                                        Pastikan nama merchant
+                                                        adalah <strong
+                                                            class="text-slate-700"
+                                                            >{storeName ||
+                                                                'Toko Kami'}</strong
+                                                        >.
+                                                    </li>
+                                                    <li>
+                                                        Masukkan nominal yang
+                                                        sesuai & selesaikan
+                                                        pembayaran.
+                                                    </li>
+                                                </ul>
+                                            </div>
+
+                                            <!-- Payment Detail Footer -->
+                                            <div
+                                                class="mt-4 pt-3 border-t border-slate-100 w-full flex flex-col gap-1.5"
+                                            >
+                                                <div
+                                                    class="flex justify-between items-center text-xs px-1"
+                                                >
+                                                    <span class="text-slate-500"
+                                                        >Total Tagihan:</span
+                                                    >
+                                                    <span
+                                                        class="font-extrabold text-sm text-rose-600"
+                                                        >{fmt(
+                                                            transaction.grand_total,
+                                                        )}</span
+                                                    >
+                                                </div>
+
+                                                <div
+                                                    class="flex justify-between items-center text-[10px] px-1 text-slate-400"
+                                                >
+                                                    <span>No. Invoice:</span>
+                                                    <span class="font-mono"
+                                                        >{transaction.transaction_number ||
+                                                            transaction.invoice_number}</span
+                                                    >
+                                                </div>
+                                            </div>
+
+                                            <!-- Action Buttons -->
+                                            <div class="flex gap-2 w-full mt-4">
+                                                {#if qrisData.image}
+                                                    <button
+                                                        type="button"
+                                                        onclick={downloadQrisImage}
+                                                        class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm"
+                                                    >
+                                                        <i
+                                                            class="ti ti-download text-sm"
+                                                        ></i>
+                                                        Simpan QR Code
+                                                    </button>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    {:else}
+                                        <p
+                                            class="text-xs text-slate-500 leading-relaxed mb-3"
+                                        >
+                                            Pesanan Anda menggunakan sistem
+                                            pembayaran otomatis terverifikasi.
+                                            Silakan klik tombol di bawah untuk
+                                            membuka portal pembayaran {gatewayName}.
+                                        </p>
+                                        <div
+                                            class="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-red-300"
+                                        >
+                                            <div>
+                                                <p
+                                                    class="text-xs text-rose-600"
+                                                >
+                                                    Total Tagihan:
+                                                </p>
+                                                <p
+                                                    class="text-base font-black text-rose-600"
+                                                >
+                                                    {fmt(
+                                                        transaction.grand_total,
+                                                    )}
+                                                </p>
+                                            </div>
+                                            {#if gatewayInvoiceUrl}
+                                                <a
+                                                    href={gatewayInvoiceUrl}
+                                                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
+                                                >
+                                                    Bayar Sekarang
+                                                    <i class="ti ti-arrow-right"
+                                                    ></i>
+                                                </a>
+                                            {:else if gatewayError}
+                                                <div
+                                                    class="text-xs text-rose-500 font-bold max-w-[180px] leading-relaxed text-right"
+                                                >
+                                                    <i
+                                                        class="ti ti-alert-circle mr-1"
+                                                    ></i>
+                                                    {gatewayError}
+                                                </div>
+                                            {/if}
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
 
                         <!-- Status History Timeline -->
                         {#if transaction.status_histories && transaction.status_histories.length > 0}
@@ -2577,37 +2609,38 @@
                 <div class="space-y-4">
                     <!-- Shipping Address -->
                     <!-- {#if (transaction.items || []).some(item => item.product?.is_digital)} -->
-                        <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3"
-                        >
-                            <div class="flex items-center gap-2">
-                                <i class="ti ti-mail text-base text-blue-600"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Pengiriman Digital</span
-                                >
-                            </div>
-                            <div
-                                class="p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-[11px] font-bold text-blue-700 flex items-start gap-2"
+                    <div
+                        class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3"
+                    >
+                        <div class="flex items-center gap-2">
+                            <i class="ti ti-mail text-base text-blue-600"></i>
+                            <span class="font-bold text-slate-800 text-sm"
+                                >Pengiriman Digital</span
                             >
-                                <i
-                                    class="ti ti-info-circle text-sm shrink-0 mt-0.5"
-                                ></i>
-                                <span
-                                    >Produk digital Anda akan dikirimkan melalui
-                                    email / chat catatan.</span
-                                >
-                            </div>
-                            <div class="grid grid-cols-1 gap-2 mt-2 pt-2 border-t border-slate-100">
-                                <button
-                                    onclick={goToWebChat}
-                                    class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition active:scale-95 text-slate-700 cursor-pointer animate-fade-in"
-                                >
-                                    <i class="ti ti-messages text-sm text-slate-500"></i>
-                                    Chat Penjual
-                                </button>
-                            </div>
                         </div>
+                        <div
+                            class="p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-[11px] font-bold text-blue-700 flex items-start gap-2"
+                        >
+                            <i class="ti ti-info-circle text-sm shrink-0 mt-0.5"
+                            ></i>
+                            <span
+                                >Produk digital Anda akan dikirimkan melalui
+                                email / chat catatan.</span
+                            >
+                        </div>
+                        <div
+                            class="grid grid-cols-1 gap-2 mt-2 pt-2 border-t border-slate-100"
+                        >
+                            <button
+                                onclick={goToWebChat}
+                                class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition active:scale-95 text-slate-700 cursor-pointer animate-fade-in"
+                            >
+                                <i class="ti ti-messages text-sm text-slate-500"
+                                ></i>
+                                Chat Penjual
+                            </button>
+                        </div>
+                    </div>
                     <!-- {/if} -->
 
                     {#if transaction.shipping_courier !== 'digital'}
@@ -2620,7 +2653,8 @@
                                     <i
                                         class="ti ti-building-store text-base text-emerald-600"
                                     ></i>
-                                    <span class="font-bold text-slate-800 text-sm"
+                                    <span
+                                        class="font-bold text-slate-800 text-sm"
                                         >Ambil di Toko (Store Pickup)</span
                                     >
                                 </div>
@@ -2659,8 +2693,9 @@
                                     <p
                                         class="text-[10.5px] font-medium text-slate-500 leading-relaxed px-2"
                                     >
-                                        Tunjukkan QR Code ini kepada kasir/petugas
-                                        toko untuk pengambilan barang.
+                                        Tunjukkan QR Code ini kepada
+                                        kasir/petugas toko untuk pengambilan
+                                        barang.
                                     </p>
                                 </div>
                             </div>
@@ -2673,7 +2708,8 @@
                                         class="ti ti-map-pin text-base"
                                         style="color:{primary}"
                                     ></i>
-                                    <span class="font-bold text-slate-800 text-sm"
+                                    <span
+                                        class="font-bold text-slate-800 text-sm"
                                         >Alamat Pengiriman</span
                                     >
                                 </div>
@@ -2705,10 +2741,13 @@
                                         <span class="font-semibold uppercase"
                                             >{transaction.shipping_courier}</span
                                         >
-                                        <span>{transaction.shipping_service}</span>
+                                        <span
+                                            >{transaction.shipping_service}</span
+                                        >
                                         {#if transaction.shipping_etd}
                                             <span
-                                                >· Est. {transaction.shipping_etd} hari</span
+                                                >· Est. {transaction.shipping_etd}
+                                                hari</span
                                             >
                                         {/if}
                                     </div>

@@ -8,7 +8,9 @@ export function dragScroll(node: HTMLElement) {
             return; // Only drag on left click
         }
         const target = e.target as HTMLElement;
-        if (target.closest('a, button, input, select, label, [role="button"]')) {
+        if (
+            target.closest('a, button, input, select, label, [role="button"]')
+        ) {
             return;
         }
         isDown = true;

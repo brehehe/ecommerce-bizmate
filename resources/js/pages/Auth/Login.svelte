@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { useForm, page, Link } from '@inertiajs/svelte';
+    import { useForm, page, Link, router } from '@inertiajs/svelte';
     import { slide } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
@@ -28,6 +28,34 @@
     });
 
     let showPassword = $state(false);
+    let isResending = $state(false);
+
+    const resendVerification = () => {
+        isResending = true;
+        router.post(
+            '/email/resend-verification-guest',
+            {
+                email: form.email,
+            },
+            {
+                onSuccess: () => {
+                    isResending = false;
+                },
+                onError: (err) => {
+                    const firstError = Object.values(err)[0] as string;
+                    showToast(
+                        firstError || 'Gagal mengirim link.',
+                        'error',
+                        'top',
+                    );
+                    isResending = false;
+                },
+                onFinish: () => {
+                    isResending = false;
+                },
+            },
+        );
+    };
 
     const shownFlashIds = new Set();
     $effect(() => {
@@ -210,14 +238,35 @@
                 {#if form.errors.email}
                     <div
                         transition:slide
-                        class="p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-3"
+                        class="p-4 bg-rose-50 border border-rose-100 rounded-xl flex flex-col gap-2"
                     >
-                        <i
-                            class="ti ti-alert-circle text-rose-500 text-xl mt-0.5"
-                        ></i>
-                        <p class="text-sm font-bold text-rose-600">
-                            {form.errors.email}
-                        </p>
+                        <div class="flex items-start gap-3">
+                            <i
+                                class="ti ti-alert-circle text-rose-500 text-xl mt-0.5"
+                            ></i>
+                            <p class="text-sm font-bold text-rose-600">
+                                {form.errors.email}
+                            </p>
+                        </div>
+                        {#if form.errors.email.includes('belum diverifikasi')}
+                            <div class="pl-8 pt-1">
+                                <button
+                                    type="button"
+                                    onclick={resendVerification}
+                                    disabled={isResending}
+                                    class="text-xs font-bold text-rose-700 underline hover:text-rose-900 transition disabled:opacity-50 flex items-center gap-1.5 p-0 bg-transparent border-0 cursor-pointer"
+                                >
+                                    {#if isResending}
+                                        <i
+                                            class="ti ti-loader animate-spin text-sm"
+                                        ></i> Mengirim...
+                                    {:else}
+                                        <i class="ti ti-send text-sm"></i> Kirim Ulang
+                                        Link Verifikasi
+                                    {/if}
+                                </button>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
 

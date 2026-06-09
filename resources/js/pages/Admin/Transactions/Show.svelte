@@ -1054,24 +1054,47 @@
                                             </div>
                                         {/if}
                                         {#if item.product?.is_digital && transaction.status !== 'selesai' && transaction.status !== 'batal'}
-                                            <div class="mt-2.5 p-3 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                                                <label for="digital_note_{item.id}" class="text-[10px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
-                                                    <i class="ti ti-key text-xs"></i> Kirim Info Produk Digital (Link / Lisensi)
+                                            <div
+                                                class="mt-2.5 p-3 bg-blue-50/50 border border-blue-100 rounded-2xl"
+                                            >
+                                                <label
+                                                    for="digital_note_{item.id}"
+                                                    class="text-[10px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5"
+                                                >
+                                                    <i class="ti ti-key text-xs"
+                                                    ></i> Kirim Info Produk Digital
+                                                    (Link / Lisensi)
                                                 </label>
                                                 <div class="flex gap-1.5">
                                                     <input
                                                         id="digital_note_{item.id}"
                                                         type="text"
                                                         placeholder="Masukkan link download atau lisensi..."
-                                                        bind:value={itemDigitalNotes[item.id]}
+                                                        bind:value={
+                                                            itemDigitalNotes[
+                                                                item.id
+                                                            ]
+                                                        }
                                                         class="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
                                                     />
                                                     <button
-                                                        onclick={() => saveDigitalNote(item.id)}
-                                                        disabled={savingDigitalNote[item.id] || !itemDigitalNotes[item.id]?.trim()}
+                                                        onclick={() =>
+                                                            saveDigitalNote(
+                                                                item.id,
+                                                            )}
+                                                        disabled={savingDigitalNote[
+                                                            item.id
+                                                        ] ||
+                                                            !itemDigitalNotes[
+                                                                item.id
+                                                            ]?.trim()}
                                                         class="px-3 py-1.5 text-xs font-bold text-white rounded-xl transition hover:opacity-90 disabled:opacity-50 shrink-0 font-outfit uppercase tracking-wider bg-blue-600 shadow-md shadow-blue-500/10"
                                                     >
-                                                        {savingDigitalNote[item.id] ? 'Mengirim...' : 'Kirim'}
+                                                        {savingDigitalNote[
+                                                            item.id
+                                                        ]
+                                                            ? 'Mengirim...'
+                                                            : 'Kirim'}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1281,12 +1304,17 @@
 
                                 {#if transaction.status === 'dikemas'}
                                     <button
-                                        onclick={() => updateTransactionStatus('out_for_pickup', 'Status diperbarui menjadi Out for Pickup.')}
+                                        onclick={() =>
+                                            updateTransactionStatus(
+                                                'out_for_pickup',
+                                                'Status diperbarui menjadi Out for Pickup.',
+                                            )}
                                         disabled={isUpdating}
                                         class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
                                         style="background:{secondary}"
                                     >
-                                        <i class="ti ti-calendar-event text-sm"></i>
+                                        <i class="ti ti-calendar-event text-sm"
+                                        ></i>
                                         Siapkan untuk Pickup Kurir
                                     </button>
                                 {/if}
@@ -1479,210 +1507,216 @@
                             <div
                                 class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
                             >
-                            <div
-                                class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3"
-                            >
-                                <h3
-                                    class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2"
+                                <div
+                                    class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3"
                                 >
-                                    <i
-                                        class="ti ti-truck text-lg"
-                                        style="color:{primary}"
-                                    ></i>
-                                    Komerce Shipping
-                                </h3>
-                                {#if transaction.booking_code}
-                                    <span
-                                        class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider"
+                                    <h3
+                                        class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2"
                                     >
-                                        Booked
-                                    </span>
-                                {:else}
-                                    <span
-                                        class="text-[9px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider"
-                                    >
-                                        Ready
-                                    </span>
-                                {/if}
-                            </div>
-
-                            <div class="space-y-4">
-                                {#if !transaction.booking_code}
-                                    <p
-                                        class="text-xs text-slate-500 leading-relaxed"
-                                    >
-                                        Pesan kurir pengiriman secara otomatis
-                                        melalui integrasi Komerce Delivery.
-                                    </p>
-                                    <button
-                                        onclick={storeKomerceShipment}
-                                        disabled={bookingLoading}
-                                        class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-blueRoyal/10"
-                                        style="background:{primary}"
-                                    >
-                                        <i class="ti ti-package-export text-sm"
+                                        <i
+                                            class="ti ti-truck text-lg"
+                                            style="color:{primary}"
                                         ></i>
-                                        {bookingLoading
-                                            ? 'Memproses Booking...'
-                                            : 'Pesan Pengiriman (Komerce)'}
-                                    </button>
-                                {:else}
-                                    <div
-                                        class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2"
-                                    >
-                                        <div class="flex justify-between">
-                                            <span
-                                                class="text-slate-400 font-bold uppercase text-[9px]"
-                                                >Kode Booking</span
-                                            >
-                                            <span
-                                                class="font-mono font-bold text-slate-800 select-all"
-                                                >{transaction.booking_code}</span
-                                            >
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span
-                                                class="text-slate-400 font-bold uppercase text-[9px]"
-                                                >Nomor Resi / AWB</span
-                                            >
-                                            <span
-                                                class="font-mono font-bold text-slate-800 select-all"
-                                                >{transaction.tracking_number ??
-                                                    '-'}</span
-                                            >
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span
-                                                class="text-slate-400 font-bold uppercase text-[9px]"
-                                                >Kurir</span
-                                            >
-                                            <span
-                                                class="font-bold text-slate-800 uppercase"
-                                                >{transaction.shipping_courier} ({transaction.shipping_service})</span
-                                            >
-                                        </div>
-                                    </div>
+                                        Komerce Shipping
+                                    </h3>
+                                    {#if transaction.booking_code}
+                                        <span
+                                            class="text-[9px] font-black px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider"
+                                        >
+                                            Booked
+                                        </span>
+                                    {:else}
+                                        <span
+                                            class="text-[9px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider"
+                                        >
+                                            Ready
+                                        </span>
+                                    {/if}
+                                </div>
 
-                                    <div class="flex flex-col gap-2 pt-2">
-                                        <!-- Print Label -->
-                                        <a
-                                            href="/admin/transactions/{transaction.id}/komerce/print"
-                                            target="_blank"
-                                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition active:scale-95 shadow-sm"
+                                <div class="space-y-4">
+                                    {#if !transaction.booking_code}
+                                        <p
+                                            class="text-xs text-slate-500 leading-relaxed"
+                                        >
+                                            Pesan kurir pengiriman secara
+                                            otomatis melalui integrasi Komerce
+                                            Delivery.
+                                        </p>
+                                        <button
+                                            onclick={storeKomerceShipment}
+                                            disabled={bookingLoading}
+                                            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-blueRoyal/10"
+                                            style="background:{primary}"
                                         >
                                             <i
-                                                class="ti ti-printer text-sm text-slate-500"
+                                                class="ti ti-package-export text-sm"
                                             ></i>
-                                            Cetak Label Pengiriman
-                                        </a>
-                                        <!-- Request Pickup -->
-                                        {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
-                                            <button
-                                                onclick={() =>
-                                                    (showPickupModal = true)}
-                                                class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
-                                                style="background:{secondary}"
-                                            >
-                                                <i
-                                                    class="ti ti-calendar-event text-sm"
-                                                ></i>
-                                                Request Courier Pickup
-                                            </button>
-                                        {/if}
-
-                                        <!-- Cancel Booking -->
-                                        {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
-                                            <button
-                                                onclick={cancelKomerceShipment}
-                                                disabled={bookingLoading}
-                                                class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 text-xs font-bold text-red-600 bg-white hover:bg-red-50/50 transition active:scale-[0.98]"
-                                            >
-                                                <i
-                                                    class="ti ti-trash text-sm text-red-500"
-                                                ></i>
-                                                Batalkan Booking Komerce
-                                            </button>
-                                        {/if}
-                                    </div>
-
-                                    <!-- Live tracking subpanel -->
-                                    {#if transaction.tracking_number}
+                                            {bookingLoading
+                                                ? 'Memproses Booking...'
+                                                : 'Pesan Pengiriman (Komerce)'}
+                                        </button>
+                                    {:else}
                                         <div
-                                            class="mt-4 pt-4 border-t border-slate-100"
+                                            class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-xs space-y-2"
                                         >
-                                            <h4
-                                                class="font-bold text-slate-800 text-xs mb-3 flex items-center gap-1.5"
+                                            <div class="flex justify-between">
+                                                <span
+                                                    class="text-slate-400 font-bold uppercase text-[9px]"
+                                                    >Kode Booking</span
+                                                >
+                                                <span
+                                                    class="font-mono font-bold text-slate-800 select-all"
+                                                    >{transaction.booking_code}</span
+                                                >
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span
+                                                    class="text-slate-400 font-bold uppercase text-[9px]"
+                                                    >Nomor Resi / AWB</span
+                                                >
+                                                <span
+                                                    class="font-mono font-bold text-slate-800 select-all"
+                                                    >{transaction.tracking_number ??
+                                                        '-'}</span
+                                                >
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span
+                                                    class="text-slate-400 font-bold uppercase text-[9px]"
+                                                    >Kurir</span
+                                                >
+                                                <span
+                                                    class="font-bold text-slate-800 uppercase"
+                                                    >{transaction.shipping_courier}
+                                                    ({transaction.shipping_service})</span
+                                                >
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-col gap-2 pt-2">
+                                            <!-- Print Label -->
+                                            <a
+                                                href="/admin/transactions/{transaction.id}/komerce/print"
+                                                target="_blank"
+                                                class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition active:scale-95 shadow-sm"
                                             >
                                                 <i
-                                                    class="ti ti-timeline text-slate-400"
+                                                    class="ti ti-printer text-sm text-slate-500"
                                                 ></i>
-                                                Riwayat Perjalanan Paket
-                                            </h4>
+                                                Cetak Label Pengiriman
+                                            </a>
+                                            <!-- Request Pickup -->
+                                            {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
+                                                <button
+                                                    onclick={() =>
+                                                        (showPickupModal = true)}
+                                                    class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
+                                                    style="background:{secondary}"
+                                                >
+                                                    <i
+                                                        class="ti ti-calendar-event text-sm"
+                                                    ></i>
+                                                    Request Courier Pickup
+                                                </button>
+                                            {/if}
 
-                                            {#if trackingLoading}
-                                                <div class="space-y-3 py-1">
-                                                    {#each [1, 2] as _}
-                                                        <div
-                                                            class="flex gap-2.5 animate-pulse"
-                                                        >
-                                                            <div
-                                                                class="w-2 h-2 rounded-full bg-slate-200 mt-1 shrink-0"
-                                                            ></div>
-                                                            <div
-                                                                class="space-y-1 w-full"
-                                                            >
-                                                                <div
-                                                                    class="h-2.5 bg-slate-200 rounded w-1/4"
-                                                                ></div>
-                                                                <div
-                                                                    class="h-2.5 bg-slate-200 rounded w-5/6"
-                                                                ></div>
-                                                            </div>
-                                                        </div>
-                                                    {/each}
-                                                </div>
-                                            {:else if trackingErr}
-                                                <p
-                                                    class="text-[10px] text-slate-400 italic"
+                                            <!-- Cancel Booking -->
+                                            {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
+                                                <button
+                                                    onclick={cancelKomerceShipment}
+                                                    disabled={bookingLoading}
+                                                    class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 text-xs font-bold text-red-600 bg-white hover:bg-red-50/50 transition active:scale-[0.98]"
                                                 >
-                                                    {trackingErr}
-                                                </p>
-                                            {:else if trackingTimeline && trackingTimeline.length > 0}
-                                                <div
-                                                    class="relative pl-3 border-l border-slate-100 space-y-3 py-1"
-                                                >
-                                                    {#each trackingTimeline as step}
-                                                        <div class="relative">
-                                                            <div
-                                                                class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full bg-slate-300 border border-white"
-                                                            ></div>
-                                                            <div>
-                                                                <p
-                                                                    class="text-[9px] text-slate-400 font-bold"
-                                                                >
-                                                                    {step.date}
-                                                                </p>
-                                                                <p
-                                                                    class="text-[11px] text-slate-600 mt-0.5 leading-snug"
-                                                                >
-                                                                    {step.desc}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    {/each}
-                                                </div>
-                                            {:else}
-                                                <p
-                                                    class="text-[10px] text-slate-400 italic"
-                                                >
-                                                    Belum ada history tracking.
-                                                </p>
+                                                    <i
+                                                        class="ti ti-trash text-sm text-red-500"
+                                                    ></i>
+                                                    Batalkan Booking Komerce
+                                                </button>
                                             {/if}
                                         </div>
+
+                                        <!-- Live tracking subpanel -->
+                                        {#if transaction.tracking_number}
+                                            <div
+                                                class="mt-4 pt-4 border-t border-slate-100"
+                                            >
+                                                <h4
+                                                    class="font-bold text-slate-800 text-xs mb-3 flex items-center gap-1.5"
+                                                >
+                                                    <i
+                                                        class="ti ti-timeline text-slate-400"
+                                                    ></i>
+                                                    Riwayat Perjalanan Paket
+                                                </h4>
+
+                                                {#if trackingLoading}
+                                                    <div class="space-y-3 py-1">
+                                                        {#each [1, 2] as _}
+                                                            <div
+                                                                class="flex gap-2.5 animate-pulse"
+                                                            >
+                                                                <div
+                                                                    class="w-2 h-2 rounded-full bg-slate-200 mt-1 shrink-0"
+                                                                ></div>
+                                                                <div
+                                                                    class="space-y-1 w-full"
+                                                                >
+                                                                    <div
+                                                                        class="h-2.5 bg-slate-200 rounded w-1/4"
+                                                                    ></div>
+                                                                    <div
+                                                                        class="h-2.5 bg-slate-200 rounded w-5/6"
+                                                                    ></div>
+                                                                </div>
+                                                            </div>
+                                                        {/each}
+                                                    </div>
+                                                {:else if trackingErr}
+                                                    <p
+                                                        class="text-[10px] text-slate-400 italic"
+                                                    >
+                                                        {trackingErr}
+                                                    </p>
+                                                {:else if trackingTimeline && trackingTimeline.length > 0}
+                                                    <div
+                                                        class="relative pl-3 border-l border-slate-100 space-y-3 py-1"
+                                                    >
+                                                        {#each trackingTimeline as step}
+                                                            <div
+                                                                class="relative"
+                                                            >
+                                                                <div
+                                                                    class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full bg-slate-300 border border-white"
+                                                                ></div>
+                                                                <div>
+                                                                    <p
+                                                                        class="text-[9px] text-slate-400 font-bold"
+                                                                    >
+                                                                        {step.date}
+                                                                    </p>
+                                                                    <p
+                                                                        class="text-[11px] text-slate-600 mt-0.5 leading-snug"
+                                                                    >
+                                                                        {step.desc}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        {/each}
+                                                    </div>
+                                                {:else}
+                                                    <p
+                                                        class="text-[10px] text-slate-400 italic"
+                                                    >
+                                                        Belum ada history
+                                                        tracking.
+                                                    </p>
+                                                {/if}
+                                            </div>
+                                        {/if}
                                     {/if}
-                                {/if}
+                                </div>
                             </div>
-                        </div>
                         {/if}
                     {/if}
 
@@ -1724,8 +1758,8 @@
                                     <span>Pengiriman Digital</span>
                                 </div>
                                 <p class="leading-relaxed font-semibold">
-                                    Produk digital Anda akan dikirimkan melalui email
-                                    / chat catatan.
+                                    Produk digital Anda akan dikirimkan melalui
+                                    email / chat catatan.
                                 </p>
                             </div>
                         {/if}
@@ -1738,15 +1772,18 @@
                                     <div
                                         class="flex items-center gap-2 font-bold text-emerald-700"
                                     >
-                                        <i class="ti ti-building-store text-base"
+                                        <i
+                                            class="ti ti-building-store text-base"
                                         ></i>
-                                        <span>Ambil di Toko (Store Pickup)</span>
+                                        <span>Ambil di Toko (Store Pickup)</span
+                                        >
                                     </div>
                                     <div
                                         class="space-y-1 font-medium text-emerald-950"
                                     >
                                         <p class="font-bold">
-                                            {storeSettings.store_name || storeName}
+                                            {storeSettings.store_name ||
+                                                storeName}
                                         </p>
                                         <p>
                                             {storeSettings.store_address}
@@ -1777,14 +1814,19 @@
                                         <p
                                             class="text-[10px] font-semibold text-emerald-700 leading-relaxed px-1"
                                         >
-                                            Gunakan QR Code ini untuk memverifikasi
-                                            pengambilan barang oleh customer.
+                                            Gunakan QR Code ini untuk
+                                            memverifikasi pengambilan barang
+                                            oleh customer.
                                         </p>
                                     </div>
 
                                     {#if transaction.status === 'dikemas'}
                                         <button
-                                            onclick={() => updateTransactionStatus('out_for_pickup', 'Status diperbarui menjadi Out for Pickup (Siap Diambil). Email pemberitahuan telah dikirim.')}
+                                            onclick={() =>
+                                                updateTransactionStatus(
+                                                    'out_for_pickup',
+                                                    'Status diperbarui menjadi Out for Pickup (Siap Diambil). Email pemberitahuan telah dikirim.',
+                                                )}
                                             disabled={isUpdating}
                                             class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-emerald-500/10 bg-emerald-500 hover:bg-emerald-600"
                                         >
@@ -1800,7 +1842,9 @@
                                             class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
                                             style="background:{secondary}"
                                         >
-                                            <i class="ti ti-circle-check text-sm"></i>
+                                            <i
+                                                class="ti ti-circle-check text-sm"
+                                            ></i>
                                             Pesanan Sudah Diambil
                                         </button>
                                     {/if}
@@ -2078,7 +2122,9 @@
                     class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition mb-4 appearance-none"
                 >
                     {#each Object.entries(statusLabels) as [key, label]}
-                        {@const targetIdx = statusSteps.findIndex((s) => s.key === key)}
+                        {@const targetIdx = statusSteps.findIndex(
+                            (s) => s.key === key,
+                        )}
                         <option
                             value={key}
                             disabled={key !== 'batal' &&

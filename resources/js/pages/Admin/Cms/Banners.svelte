@@ -611,19 +611,28 @@
                                 Promo Popup Banner
                             </h3>
                             <p class="text-xs text-slate-500 font-medium">
-                                Banner popup gambar yang muncul otomatis setelah loading intro selesai di beranda.
+                                Banner popup gambar yang muncul otomatis setelah
+                                loading intro selesai di beranda.
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <label class="inline-flex items-center cursor-pointer select-none">
+                            <label
+                                class="inline-flex items-center cursor-pointer select-none"
+                            >
                                 <input
                                     type="checkbox"
                                     bind:checked={form.popup_banner.is_active}
                                     class="sr-only peer"
                                 />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 relative"></div>
-                                <span class="ml-2 text-xs font-bold text-slate-600 uppercase tracking-wider">
-                                    {form.popup_banner.is_active ? 'Aktif' : 'Nonaktif'}
+                                <div
+                                    class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 relative"
+                                ></div>
+                                <span
+                                    class="ml-2 text-xs font-bold text-slate-600 uppercase tracking-wider"
+                                >
+                                    {form.popup_banner.is_active
+                                        ? 'Aktif'
+                                        : 'Nonaktif'}
                                 </span>
                             </label>
                         </div>
@@ -713,9 +722,7 @@
                                     </p>
                                     <input
                                         type="text"
-                                        bind:value={
-                                            form.popup_banner.link
-                                        }
+                                        bind:value={form.popup_banner.link}
                                         placeholder="Contoh: /flash-sale atau #"
                                         class="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 transition"
                                     />

@@ -559,7 +559,7 @@
         editorScale = Math.min(editorScale * 2, 3.0);
         // Set sharpen value to 0.5 (50% intensity) for quality preset
         editorSharpen = 0.5;
-        
+
         showToast('Kualitas gambar berhasil ditingkatkan ke HD!', 'success');
     }
 
@@ -584,20 +584,20 @@
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
         // 1. Draw rotated image at 100% crisp size to a temporary canvas
-        const isRotated90 = (rotation % 180) !== 0;
+        const isRotated90 = rotation % 180 !== 0;
         const tempW = isRotated90 ? img.naturalHeight : img.naturalWidth;
         const tempH = isRotated90 ? img.naturalWidth : img.naturalHeight;
-        
+
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = tempW;
         tempCanvas.height = tempH;
         const tempCtx = tempCanvas.getContext('2d');
         if (!tempCtx) return;
-        
+
         tempCtx.translate(tempW / 2, tempH / 2);
         tempCtx.rotate((rotation * Math.PI) / 180);
         tempCtx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-        
+
         const srcImgData = tempCtx.getImageData(0, 0, tempW, tempH);
         const srcData = srcImgData.data;
 
@@ -610,7 +610,9 @@
             if (absT <= 1) {
                 return 1.5 * absT * absT * absT - 2.5 * absT * absT + 1;
             } else if (absT < 2) {
-                return -0.5 * absT * absT * absT + 2.5 * absT * absT - 4 * absT + 2;
+                return (
+                    -0.5 * absT * absT * absT + 2.5 * absT * absT - 4 * absT + 2
+                );
             }
             return 0;
         }
@@ -624,7 +626,7 @@
             const v = halfTH + (y - halfCH) / scale;
             const yRow = Math.floor(v);
             const dy = v - yRow;
-            
+
             const wY0 = getCubicWeight(dy + 1);
             const wY1 = getCubicWeight(dy);
             const wY2 = getCubicWeight(dy - 1);
@@ -653,19 +655,30 @@
                 const wX2 = getCubicWeight(dx - 1);
                 const wX3 = getCubicWeight(dx - 2);
 
-                let r = 0, g = 0, b = 0, a = 0;
+                let r = 0,
+                    g = 0,
+                    b = 0,
+                    a = 0;
                 let weightSum = 0;
 
                 for (let j = -1; j <= 2; j++) {
                     const row = yRow + j;
                     if (row < 0 || row >= tempH) continue;
-                    const weightY = j === -1 ? wY0 : j === 0 ? wY1 : j === 1 ? wY2 : wY3;
+                    const weightY =
+                        j === -1 ? wY0 : j === 0 ? wY1 : j === 1 ? wY2 : wY3;
                     const srcRowOffset = row * tempW * 4;
 
                     for (let i = -1; i <= 2; i++) {
                         const col = xCol + i;
                         if (col < 0 || col >= tempW) continue;
-                        const weightX = i === -1 ? wX0 : i === 0 ? wX1 : i === 1 ? wX2 : wX3;
+                        const weightX =
+                            i === -1
+                                ? wX0
+                                : i === 0
+                                  ? wX1
+                                  : i === 1
+                                    ? wX2
+                                    : wX3;
                         const weight = weightX * weightY;
 
                         const offset = srcRowOffset + col * 4;
@@ -678,10 +691,22 @@
                 }
 
                 if (weightSum > 0) {
-                    destData[destOffset] = Math.min(Math.max(r / weightSum, 0), 255);
-                    destData[destOffset + 1] = Math.min(Math.max(g / weightSum, 0), 255);
-                    destData[destOffset + 2] = Math.min(Math.max(b / weightSum, 0), 255);
-                    destData[destOffset + 3] = Math.min(Math.max(a / weightSum, 0), 255);
+                    destData[destOffset] = Math.min(
+                        Math.max(r / weightSum, 0),
+                        255,
+                    );
+                    destData[destOffset + 1] = Math.min(
+                        Math.max(g / weightSum, 0),
+                        255,
+                    );
+                    destData[destOffset + 2] = Math.min(
+                        Math.max(b / weightSum, 0),
+                        255,
+                    );
+                    destData[destOffset + 3] = Math.min(
+                        Math.max(a / weightSum, 0),
+                        255,
+                    );
                 } else {
                     destData[destOffset] = 0;
                     destData[destOffset + 1] = 0;
@@ -724,12 +749,33 @@
                     const n6 = nextRowOff + x * 4;
                     const n7 = nextRowOff + (x + 1) * 4;
 
-                    const neighborR = originalData[n0] + originalData[n1] + originalData[n2] + originalData[n3] + 
-                                      originalData[n4] + originalData[n5] + originalData[n6] + originalData[n7];
-                    const neighborG = originalData[n0+1] + originalData[n1+1] + originalData[n2+1] + originalData[n3+1] + 
-                                      originalData[n4+1] + originalData[n5+1] + originalData[n6+1] + originalData[n7+1];
-                    const neighborB = originalData[n0+2] + originalData[n1+2] + originalData[n2+2] + originalData[n3+2] + 
-                                      originalData[n4+2] + originalData[n5+2] + originalData[n6+2] + originalData[n7+2];
+                    const neighborR =
+                        originalData[n0] +
+                        originalData[n1] +
+                        originalData[n2] +
+                        originalData[n3] +
+                        originalData[n4] +
+                        originalData[n5] +
+                        originalData[n6] +
+                        originalData[n7];
+                    const neighborG =
+                        originalData[n0 + 1] +
+                        originalData[n1 + 1] +
+                        originalData[n2 + 1] +
+                        originalData[n3 + 1] +
+                        originalData[n4 + 1] +
+                        originalData[n5 + 1] +
+                        originalData[n6 + 1] +
+                        originalData[n7 + 1];
+                    const neighborB =
+                        originalData[n0 + 2] +
+                        originalData[n1 + 2] +
+                        originalData[n2 + 2] +
+                        originalData[n3 + 2] +
+                        originalData[n4 + 2] +
+                        originalData[n5 + 2] +
+                        originalData[n6 + 2] +
+                        originalData[n7 + 2];
 
                     r -= neighborR * a;
                     g -= neighborG * a;
@@ -3654,13 +3700,16 @@
                                         <span
                                             class="text-xs font-bold text-slate-800 flex items-center gap-1.5"
                                         >
-                                            <i class="ti ti-sparkles text-indigo-500"></i>
+                                            <i
+                                                class="ti ti-sparkles text-indigo-500"
+                                            ></i>
                                             Tingkatkan Kualitas (HD Mode)
                                         </span>
                                         <p
                                             class="text-[10px] text-slate-500 mt-0.5 font-medium"
                                         >
-                                            Kurangi blur dan pertajam detail gambar secara otomatis
+                                            Kurangi blur dan pertajam detail
+                                            gambar secara otomatis
                                         </p>
                                     </div>
                                     <button
@@ -3674,11 +3723,17 @@
                                 </div>
 
                                 <div class="space-y-2 pt-1">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-[10px] font-bold text-slate-600">
+                                    <div
+                                        class="flex justify-between items-center"
+                                    >
+                                        <span
+                                            class="text-[10px] font-bold text-slate-600"
+                                        >
                                             Ketajaman (Sharpening)
                                         </span>
-                                        <span class="text-[10px] font-bold text-indigo-600">
+                                        <span
+                                            class="text-[10px] font-bold text-indigo-600"
+                                        >
                                             {Math.round(editorSharpen * 100)}%
                                         </span>
                                     </div>
@@ -3686,7 +3741,13 @@
                                         <button
                                             type="button"
                                             class="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition text-xs"
-                                            onclick={() => (editorSharpen = Math.max(0, +(editorSharpen - 0.1).toFixed(1)))}
+                                            onclick={() =>
+                                                (editorSharpen = Math.max(
+                                                    0,
+                                                    +(
+                                                        editorSharpen - 0.1
+                                                    ).toFixed(1),
+                                                ))}
                                             aria-label="Kurangi ketajaman"
                                         >
                                             <i class="ti ti-minus"></i>
@@ -3702,7 +3763,13 @@
                                         <button
                                             type="button"
                                             class="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition text-xs"
-                                            onclick={() => (editorSharpen = Math.min(1, +(editorSharpen + 0.1).toFixed(1)))}
+                                            onclick={() =>
+                                                (editorSharpen = Math.min(
+                                                    1,
+                                                    +(
+                                                        editorSharpen + 0.1
+                                                    ).toFixed(1),
+                                                ))}
                                             aria-label="Tambah ketajaman"
                                         >
                                             <i class="ti ti-plus"></i>

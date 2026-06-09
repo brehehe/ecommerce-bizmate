@@ -211,6 +211,8 @@
                                                 📦 Produk
                                             {:else if c.last_message.body && c.last_message.body.startsWith('[TRANSACTION_CARD]')}
                                                 📄 Invoice Pesanan
+                                            {:else if c.last_message.body && c.last_message.body.startsWith('[STICKER]')}
+                                                ✨ Stiker
                                             {:else}
                                                 {c.last_message.body || ''}
                                             {/if}

@@ -231,17 +231,442 @@
         }
     }
 
-    async function sendChatMessage() {
-        const text = chatInput.trim();
-        if (!text || !activeChatId) return;
+    let stickerModalOpen = $state(false);
+    let emojiPickerOpen = $state(false);
+
+    // Stickers from DB via shared props
+    const stickersList = $derived((page.props as any).chatStickers || []);
+
+    // Common emoji list
+    const emojiList = [
+        '😀',
+        '😃',
+        '😄',
+        '😁',
+        '😆',
+        '😅',
+        '🤣',
+        '😂',
+        '🙂',
+        '🙃',
+        '😉',
+        '😊',
+        '😇',
+        '🥰',
+        '😍',
+        '🤩',
+        '😘',
+        '😗',
+        '☺️',
+        '😚',
+        '😙',
+        '😋',
+        '😛',
+        '😜',
+        '🤪',
+        '😝',
+        '🤑',
+        '🤗',
+        '🤭',
+        '🤫',
+        '🤔',
+        '🤐',
+        '🤨',
+        '😐',
+        '😑',
+        '😶',
+        '😏',
+        '😒',
+        '🙄',
+        '😬',
+        '🤥',
+        '😔',
+        '😪',
+        '🤤',
+        '😴',
+        '😷',
+        '🤒',
+        '🤕',
+        '🤢',
+        '🤮',
+        '🤧',
+        '🥵',
+        '🥶',
+        '🥴',
+        '😵',
+        '🤯',
+        '🤠',
+        '🥳',
+        '😎',
+        '🤓',
+        '🧐',
+        '😕',
+        '😟',
+        '🙁',
+        '☹️',
+        '😣',
+        '😖',
+        '😫',
+        '😩',
+        '🥺',
+        '😢',
+        '😭',
+        '😤',
+        '😠',
+        '😡',
+        '🤬',
+        '😈',
+        '👿',
+        '💀',
+        '☠️',
+        '💩',
+        '🤡',
+        '👹',
+        '👺',
+        '👻',
+        '👽',
+        '👾',
+        '🤖',
+        '😺',
+        '😸',
+        '😹',
+        '😻',
+        '😼',
+        '😽',
+        '🙀',
+        '😿',
+        '😾',
+        '👋',
+        '🤚',
+        '🖐️',
+        '✋',
+        '🖖',
+        '👌',
+        '🤌',
+        '🤏',
+        '✌️',
+        '🤞',
+        '🤟',
+        '🤘',
+        '🤙',
+        '👈',
+        '👉',
+        '👆',
+        '🖕',
+        '👇',
+        '☝️',
+        '👍',
+        '👎',
+        '✊',
+        '👊',
+        '🤛',
+        '🤜',
+        '👏',
+        '🙌',
+        '👐',
+        '🤲',
+        '🤝',
+        '🙏',
+        '💪',
+        '🦾',
+        '🦿',
+        '🦵',
+        '🦶',
+        '👂',
+        '🦻',
+        '👃',
+        '👀',
+        '👁️',
+        '❤️',
+        '🧡',
+        '💛',
+        '💚',
+        '💙',
+        '💜',
+        '🖤',
+        '🤍',
+        '🤎',
+        '💔',
+        '❣️',
+        '💕',
+        '💞',
+        '💓',
+        '💗',
+        '💖',
+        '💘',
+        '💝',
+        '💟',
+        '☮️',
+        '⭐',
+        '🌟',
+        '✨',
+        '💫',
+        '🔥',
+        '💥',
+        '❄️',
+        '🌈',
+        '☁️',
+        '⛅',
+        '🌤️',
+        '🌥️',
+        '🌦️',
+        '🌧️',
+        '⛈️',
+        '🌩️',
+        '🌨️',
+        '🌊',
+        '💧',
+        '💦',
+        '🍎',
+        '🍊',
+        '🍋',
+        '🍇',
+        '🍓',
+        '🍒',
+        '🍑',
+        '🥭',
+        '🍍',
+        '🥥',
+        '🥦',
+        '🥕',
+        '🌽',
+        '🍕',
+        '🍔',
+        '🍟',
+        '🌮',
+        '🌯',
+        '🍜',
+        '🍱',
+        '🎁',
+        '🎂',
+        '🎉',
+        '🎊',
+        '🎈',
+        '🎀',
+        '🏆',
+        '🥇',
+        '🥈',
+        '🥉',
+        '🎖️',
+        '🏅',
+        '🎗️',
+        '🎟️',
+        '🎫',
+        '🎪',
+        '🎭',
+        '🎨',
+        '🎬',
+        '🎤',
+    ];
+
+    function insertEmoji(emoji: string) {
+        chatInput = chatInput + emoji;
+        emojiPickerOpen = false;
+    }
+
+    async function sendSticker(stickerId: string) {
+        stickerModalOpen = false;
+        if (!activeChatId) return;
+
+        const bodyText = '[STICKER]' + stickerId;
 
         // Optimistic update
         const tempId = -Date.now();
         const optimisticMsg = {
             id: tempId,
-            body: text,
+            body: bodyText,
             sender_type: 'user',
-            sender_id: auth.id,
+            sender_id: auth?.id,
+            time: new Date().toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+            }),
+            created_at: new Date().toISOString(),
+            is_read: false,
+        };
+        chatMessages = [...chatMessages, optimisticMsg];
+        setTimeout(scrollMiniChatToBottom, 55);
+
+        try {
+            const response = await fetch(`/chats/${activeChatId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ body: bodyText }),
+            });
+
+            if (response.ok) {
+                const newMsg = await response.json();
+                chatMessages = chatMessages.map((m) =>
+                    m.id === tempId ? newMsg : m,
+                );
+            }
+        } catch (err) {
+            console.error('Error sending sticker:', err);
+        }
+    }
+
+    let attachedImage = $state<File | null>(null);
+    let attachedImageUrl = $state<string | null>(null);
+    let invoiceModalOpen = $state(false);
+    let transactionsList = $state<any[]>([]);
+
+    function parseTransactionCard(body: string) {
+        try {
+            return JSON.parse(body.replace('[TRANSACTION_CARD]', ''));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getStatusColor(status: string) {
+        const colors: Record<string, string> = {
+            belum_bayar: '#f59e0b',
+            menunggu: '#3b82f6',
+            diproses: '#8b5cf6',
+            dikemas: '#06b6d4',
+            out_for_pickup: '#d97706',
+            dikirim: '#f97316',
+            selesai: '#22c55e',
+            batal: '#ef4444',
+        };
+        return colors[status] || '#64748b';
+    }
+
+    function getStatusLabel(status: string) {
+        const labels: Record<string, string> = {
+            belum_bayar: 'Belum Bayar',
+            menunggu: 'Menunggu Konfirmasi',
+            diproses: 'Diproses',
+            dikemas: 'Dikemas',
+            out_for_pickup: 'Pick Up',
+            dikirim: 'Dikirim',
+            selesai: 'Selesai',
+            batal: 'Batal',
+        };
+        return labels[status] || status;
+    }
+
+    function fmt(price: any): string {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(Number(price) || 0);
+    }
+
+    function triggerImageUpload() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = (e: any) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                attachedImage = file;
+                attachedImageUrl = URL.createObjectURL(file);
+            }
+        };
+        input.click();
+    }
+
+    async function openInvoiceSelection() {
+        invoiceModalOpen = true;
+        try {
+            const response = await fetch('/chats/transactions', {
+                headers: { Accept: 'application/json' },
+            });
+            if (response.ok) {
+                transactionsList = await response.json();
+            }
+        } catch (err) {
+            console.error('Error fetching transactions for mini-chat:', err);
+        }
+    }
+
+    async function sendTransactionInvoice(trx: any) {
+        invoiceModalOpen = false;
+        if (!activeChatId) return;
+
+        const cardData = {
+            transaction_number: trx.transaction_number,
+            grand_total: trx.grand_total,
+            payment_method: trx.payment_method,
+            status: trx.status,
+            id: trx.id,
+            items_summary: trx.items_summary,
+        };
+
+        const bodyText = '[TRANSACTION_CARD]' + JSON.stringify(cardData);
+
+        // Optimistic update
+        const tempId = -Date.now();
+        const optimisticMsg = {
+            id: tempId,
+            body: bodyText,
+            sender_type: 'user',
+            sender_id: auth?.id,
+            time: new Date().toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+            }),
+            created_at: new Date().toISOString(),
+            is_read: false,
+        };
+        chatMessages = [...chatMessages, optimisticMsg];
+        setTimeout(scrollMiniChatToBottom, 55);
+
+        try {
+            const response = await fetch(`/chats/${activeChatId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN':
+                        (
+                            document.querySelector(
+                                'meta[name="csrf-token"]',
+                            ) as HTMLMetaElement
+                        )?.content || '',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ body: bodyText }),
+            });
+
+            if (response.ok) {
+                const newMsg = await response.json();
+                chatMessages = chatMessages.map((m) =>
+                    m.id === tempId ? newMsg : m,
+                );
+                fetchChatList(true);
+            } else {
+                chatMessages = chatMessages.filter((m) => m.id !== tempId);
+            }
+        } catch (err) {
+            console.error('Error sending transaction card:', err);
+            chatMessages = chatMessages.filter((m) => m.id !== tempId);
+        }
+    }
+
+    async function sendChatMessage() {
+        const text = chatInput.trim();
+        if ((!text && !attachedImage) || !activeChatId) return;
+
+        // Optimistic update
+        const tempId = -Date.now();
+        const optimisticMsg = {
+            id: tempId,
+            body: text || null,
+            attachment_type: attachedImage ? 'image' : null,
+            attachment_data: attachedImage ? { url: attachedImageUrl } : null,
+            sender_type: 'user',
+            sender_id: auth?.id,
             time: new Date().toLocaleTimeString('id-ID', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -251,22 +676,33 @@
         };
         chatMessages = [...chatMessages, optimisticMsg];
         chatInput = '';
+        const savedAttachedImage = attachedImage;
+        attachedImage = null;
+        attachedImageUrl = null;
         setTimeout(scrollMiniChatToBottom, 50);
 
         try {
+            const formData = new FormData();
+            if (text) formData.append('body', text);
+            if (
+                optimisticMsg.attachment_type === 'image' &&
+                savedAttachedImage
+            ) {
+                formData.append('image', savedAttachedImage);
+            }
+
             const response = await fetch(`/chats/${activeChatId}/messages`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
                     'X-CSRF-TOKEN':
                         (
                             document.querySelector(
                                 'meta[name="csrf-token"]',
                             ) as HTMLMetaElement
                         )?.content || '',
+                    Accept: 'application/json',
                 },
-                body: JSON.stringify({ body: text }),
+                body: formData,
             });
 
             if (response.ok) {
@@ -2079,6 +2515,10 @@
                                             📷 Gambar
                                         {:else if chat.last_message.attachment_type === 'product'}
                                             📦 Produk
+                                        {:else if chat.last_message.body && chat.last_message.body.startsWith('[STICKER]')}
+                                            ✨ Stiker
+                                        {:else if chat.last_message.body && chat.last_message.body.startsWith('[TRANSACTION_CARD]')}
+                                            📄 Invoice Pesanan
                                         {:else}
                                             {chat.last_message.body || ''}
                                         {/if}
@@ -2214,13 +2654,13 @@
                 {:else}
                     {#each chatMessages as msg (msg.id)}
                         <div
-                            class="group relative flex flex-col {msg.sender_type ===
+                            class="group relative flex flex-col w-full {msg.sender_type ===
                             'user'
                                 ? 'items-end'
                                 : 'items-start'} gap-0.5"
                         >
                             <div
-                                class="flex items-center gap-1.5 max-w-full {msg.sender_type ===
+                                class="flex items-center gap-1.5 max-w-[85%] {msg.sender_type ===
                                 'user'
                                     ? 'flex-row-reverse'
                                     : 'flex-row'}"
@@ -2234,7 +2674,7 @@
                                     {#if msg.attachment_type === 'product' && msg.attachment_data}
                                         <!-- Product Card -->
                                         <div
-                                            class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type ===
+                                            class="max-w-full w-full rounded-2xl overflow-hidden border shadow-xs {msg.sender_type ===
                                             'user'
                                                 ? 'rounded-tr-sm'
                                                 : 'rounded-tl-sm'}"
@@ -2290,7 +2730,7 @@
                                     {#if msg.attachment_type === 'image' && msg.attachment_data?.url}
                                         <!-- Image Card -->
                                         <div
-                                            class="max-w-[85%] rounded-2xl overflow-hidden border shadow-xs {msg.sender_type ===
+                                            class="max-w-full w-full rounded-2xl overflow-hidden border shadow-xs {msg.sender_type ===
                                             'user'
                                                 ? 'rounded-tr-sm'
                                                 : 'rounded-tl-sm'}"
@@ -2311,18 +2751,125 @@
                                     {/if}
 
                                     {#if msg.body}
-                                        <div
-                                            class="max-w-[85%] px-3.5 py-2 rounded-2xl text-[11px] leading-relaxed shadow-3xs {msg.sender_type ===
-                                            'user'
-                                                ? 'rounded-tr-sm text-white'
-                                                : 'rounded-tl-sm text-slate-800 bg-white'}"
-                                            style="background-color: {msg.sender_type ===
-                                            'user'
-                                                ? primary
-                                                : 'white'};"
-                                        >
-                                            {msg.body}
-                                        </div>
+                                        {#if msg.body.startsWith('[STICKER]')}
+                                            {@const stickerId =
+                                                msg.body.replace(
+                                                    '[STICKER]',
+                                                    '',
+                                                )}
+                                            {@const stickerData =
+                                                stickersList.find(
+                                                    (s: any) =>
+                                                        s.id === stickerId,
+                                                )}
+                                            <div
+                                                class="relative py-0.5 select-none"
+                                            >
+                                                {#if stickerData}
+                                                    <img
+                                                        src={stickerData.url}
+                                                        alt={stickerData.name}
+                                                        class="w-16 h-16 object-contain transition-transform hover:scale-105 duration-200"
+                                                    />
+                                                {:else}
+                                                    <span class="text-xl"
+                                                        >✨</span
+                                                    >
+                                                {/if}
+                                            </div>
+                                        {:else if msg.body.startsWith('[TRANSACTION_CARD]')}
+                                            {@const card = parseTransactionCard(
+                                                msg.body,
+                                            )}
+                                            {#if card}
+                                                <div
+                                                    class="p-3.5 rounded-2xl text-[10.5px] leading-relaxed shadow-xs bg-white border border-slate-200 w-full max-w-[240px] text-slate-800 text-left"
+                                                >
+                                                    <div
+                                                        class="flex items-center gap-1 font-black text-[10px] uppercase tracking-wider text-slate-400 mb-1.5"
+                                                    >
+                                                        <i
+                                                            class="ti ti-file-invoice text-xs text-emerald-500"
+                                                        ></i>
+                                                        <span
+                                                            >Invoice Pesanan</span
+                                                        >
+                                                    </div>
+                                                    <div class="space-y-1">
+                                                        <p
+                                                            class="font-bold text-[11px] text-slate-800 truncate"
+                                                        >
+                                                            #{card.transaction_number}
+                                                        </p>
+                                                        <div
+                                                            class="h-px bg-slate-100 my-1"
+                                                        ></div>
+                                                        <div
+                                                            class="flex justify-between font-bold text-slate-500"
+                                                        >
+                                                            <span>Total:</span>
+                                                            <span
+                                                                style="color: {primary}"
+                                                                >{fmt(
+                                                                    card.grand_total,
+                                                                )}</span
+                                                            >
+                                                        </div>
+                                                        <div
+                                                            class="flex justify-between font-bold text-slate-500"
+                                                        >
+                                                            <span>Status:</span>
+                                                            <span
+                                                                class="px-1.5 py-0.5 rounded-full text-[8.5px] font-black uppercase"
+                                                                style="background-color: {getStatusColor(
+                                                                    card.status,
+                                                                )}20; color: {getStatusColor(
+                                                                    card.status,
+                                                                )};"
+                                                            >
+                                                                {getStatusLabel(
+                                                                    card.status,
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <Link
+                                                        href={`/transactions/${card.id}`}
+                                                        class="mt-2.5 w-full py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-250/60 text-slate-700 text-[10px] font-bold rounded-xl transition active:scale-95 flex items-center justify-center gap-1"
+                                                    >
+                                                        <i class="ti ti-eye"
+                                                        ></i>
+                                                        Detail Pesanan
+                                                    </Link>
+                                                </div>
+                                            {/if}
+                                        {:else}
+                                            {@const isEmojiOnly =
+                                                /^[\p{Emoji}\s]+$/u.test(
+                                                    msg.body,
+                                                ) &&
+                                                msg.body.trim().length <= 12}
+                                            {#if isEmojiOnly}
+                                                <div
+                                                    class="py-0.5 text-2xl leading-none flex flex-row flex-wrap gap-0.5"
+                                                >
+                                                    {msg.body}
+                                                </div>
+                                            {:else}
+                                                <div
+                                                    class="max-w-full break-words px-3.5 py-2 rounded-2xl text-xs leading-relaxed shadow-3xs {msg.sender_type ===
+                                                    'user'
+                                                        ? 'rounded-tr-sm text-white'
+                                                        : 'rounded-tl-sm text-slate-800 bg-white'}"
+                                                    style="background-color: {msg.sender_type ===
+                                                    'user'
+                                                        ? primary
+                                                        : 'white'}; overflow-wrap: anywhere;"
+                                                >
+                                                    {msg.body}
+                                                </div>
+                                            {/if}
+                                        {/if}
                                     {/if}
                                 </div>
 
@@ -2347,10 +2894,64 @@
 
             <!-- Message Input Area -->
             {#if activeChatId}
-                <div
-                    class="bg-white border-t border-slate-100 px-3.5 py-3 shrink-0"
-                >
-                    <div class="flex items-center gap-2">
+                <div class="bg-white border-t border-slate-100 shrink-0">
+                    <!-- Attached Image Preview -->
+                    {#if attachedImageUrl}
+                        <div
+                            class="px-4 pb-2 pt-2 border-b border-slate-100 flex justify-start"
+                        >
+                            <div
+                                class="relative inline-block bg-white border border-slate-200 rounded-xl p-1.5 shadow-xs"
+                            >
+                                <img
+                                    src={attachedImageUrl}
+                                    alt="Preview"
+                                    class="w-14 h-14 rounded-lg object-cover"
+                                />
+                                <button
+                                    onclick={() => {
+                                        attachedImage = null;
+                                        attachedImageUrl = null;
+                                    }}
+                                    class="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full w-4 h-4 flex items-center justify-center shadow-xs cursor-pointer"
+                                    ><i class="ti ti-x text-[10px]"></i></button
+                                >
+                            </div>
+                        </div>
+                    {/if}
+                    <div class="px-3.5 py-3 flex items-center gap-2">
+                        <button
+                            onclick={triggerImageUpload}
+                            class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-150 transition cursor-pointer shrink-0"
+                            aria-label="Kirim Gambar"
+                            title="Kirim Gambar"
+                        >
+                            <i class="ti ti-photo text-base"></i>
+                        </button>
+                        <button
+                            onclick={openInvoiceSelection}
+                            class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-150 transition cursor-pointer shrink-0"
+                            aria-label="Kirim Invoice"
+                            title="Kirim Invoice"
+                        >
+                            <i class="ti ti-file-invoice text-base"></i>
+                        </button>
+                        <button
+                            onclick={() => (stickerModalOpen = true)}
+                            class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-150 transition cursor-pointer shrink-0"
+                            aria-label="Kirim Stiker"
+                            title="Kirim Stiker"
+                        >
+                            <i class="ti ti-sticker text-base"></i>
+                        </button>
+                        <button
+                            onclick={() => (emojiPickerOpen = true)}
+                            class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-150 transition cursor-pointer shrink-0"
+                            aria-label="Emoji"
+                            title="Sisipkan Emoji"
+                        >
+                            <i class="ti ti-mood-smile text-base"></i>
+                        </button>
                         <input
                             type="text"
                             bind:value={chatInput}
@@ -2362,7 +2963,7 @@
                         />
                         <button
                             onclick={sendChatMessage}
-                            disabled={!chatInput.trim()}
+                            disabled={!chatInput.trim() && !attachedImage}
                             class="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-xs transition active:scale-95 disabled:opacity-40 shrink-0 cursor-pointer"
                             style="background-color: {primary};"
                             aria-label="Kirim"
@@ -3105,6 +3706,274 @@
                                 'Belum ada Syarat & Ketentuan.'}
                         </p>
                     </div>
+                {/if}
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Sticker Selection Modal -->
+{#if stickerModalOpen}
+    <div
+        class="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+    >
+        <div
+            class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onclick={() => (stickerModalOpen = false)}
+            onkeypress={() => (stickerModalOpen = false)}
+            role="button"
+            tabindex="0"
+        ></div>
+
+        <div
+            class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[80vh]"
+        >
+            <!-- Pull Indicator for Mobile Bottom Sheet -->
+            <div
+                class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+            ></div>
+
+            <div
+                class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 shrink-0"
+            >
+                <div class="flex flex-col">
+                    <h4
+                        class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2"
+                    >
+                        <i class="ti ti-sticker text-violet-500"></i>
+                        Pilih Stiker
+                    </h4>
+                    <p
+                        class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5"
+                    >
+                        Kirim reaksi stiker lucu ke chat
+                    </p>
+                </div>
+                <button
+                    onclick={() => (stickerModalOpen = false)}
+                    class="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                    aria-label="Tutup"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+            </div>
+
+            <div
+                class="grid grid-cols-2 gap-4 py-2 flex-grow overflow-y-auto custom-scrollbar pb-6 sm:pb-0"
+            >
+                {#if stickersList.length === 0}
+                    <div class="col-span-2 py-10 text-center text-slate-400">
+                        <i
+                            class="ti ti-sticker text-4xl block mb-2 text-slate-200"
+                        ></i>
+                        <p class="text-xs font-bold">Belum ada stiker.</p>
+                        <p class="text-[10px] text-slate-300 mt-1">
+                            Tambahkan di Master Data → Stiker Chat
+                        </p>
+                    </div>
+                {:else}
+                    {#each stickersList as sticker}
+                        <button
+                            onclick={() => sendSticker(sticker.id)}
+                            class="group relative bg-slate-50/50 hover:bg-violet-50/30 border border-slate-100 hover:border-violet-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-95 hover:shadow-2xs"
+                        >
+                            <img
+                                src={sticker.url}
+                                alt={sticker.name}
+                                class="w-20 h-20 object-contain transition-transform group-hover:scale-110 duration-200 select-none"
+                            />
+                            <span
+                                class="text-[10px] font-bold text-slate-400 group-hover:text-violet-600 transition-colors uppercase tracking-wider"
+                            >
+                                {sticker.name}
+                            </span>
+                        </button>
+                    {/each}
+                {/if}
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Emoji Picker Panel -->
+{#if emojiPickerOpen}
+    <div
+        class="fixed inset-0 z-[99998] flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
+        <div
+            class="fixed inset-0 bg-slate-900/30 backdrop-blur-sm"
+            onclick={() => (emojiPickerOpen = false)}
+            onkeypress={() => (emojiPickerOpen = false)}
+            role="button"
+            tabindex="0"
+        ></div>
+
+        <div
+            class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-5 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[60vh]"
+        >
+            <div
+                class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+            ></div>
+
+            <div class="flex items-center justify-between mb-3 shrink-0">
+                <h4
+                    class="font-outfit font-black text-base text-slate-800 flex items-center gap-2"
+                >
+                    <i class="ti ti-mood-smile text-amber-500"></i>
+                    Emoji
+                </h4>
+                <button
+                    onclick={() => (emojiPickerOpen = false)}
+                    class="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition"
+                    aria-label="Tutup"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="flex-grow overflow-y-auto custom-scrollbar">
+                <div class="grid grid-cols-8 gap-0.5">
+                    {#each emojiList as emoji}
+                        <button
+                            onclick={() => insertEmoji(emoji)}
+                            class="w-9 h-9 text-xl flex items-center justify-center rounded-xl hover:bg-slate-100 transition active:scale-90 cursor-pointer"
+                        >
+                            {emoji}
+                        </button>
+                    {/each}
+                </div>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Invoice Selection Modal -->
+{#if invoiceModalOpen}
+    <div
+        class="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+    >
+        <div
+            class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onclick={() => (invoiceModalOpen = false)}
+            onkeypress={() => (invoiceModalOpen = false)}
+            role="button"
+            tabindex="0"
+        ></div>
+
+        <div
+            class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-6 sm:p-8 max-w-lg w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[85vh] sm:max-h-[80vh]"
+        >
+            <!-- Pull Indicator for Mobile Bottom Sheet -->
+            <div
+                class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+            ></div>
+
+            <div
+                class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 shrink-0"
+            >
+                <div class="flex flex-col">
+                    <h4
+                        class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2"
+                    >
+                        <i class="ti ti-file-invoice text-emerald-500"></i>
+                        Pilih Invoice Pesanan
+                    </h4>
+                    <p
+                        class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5"
+                    >
+                        Kirim detail transaksi ke chat
+                    </p>
+                </div>
+                <button
+                    onclick={() => (invoiceModalOpen = false)}
+                    class="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                    aria-label="Tutup"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+            </div>
+
+            <div
+                class="flex-grow overflow-y-auto space-y-3 pr-1 custom-scrollbar pb-6 sm:pb-0"
+            >
+                {#if transactionsList.length === 0}
+                    <div
+                        class="py-16 text-center text-slate-400 flex flex-col items-center justify-center"
+                    >
+                        <div
+                            class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-3"
+                        >
+                            <i class="ti ti-file-off text-2xl text-slate-300"
+                            ></i>
+                        </div>
+                        <span class="text-xs font-bold"
+                            >Belum ada riwayat pesanan</span
+                        >
+                    </div>
+                {:else}
+                    {#each transactionsList as trx (trx.id)}
+                        <button
+                            onclick={() => sendTransactionInvoice(trx)}
+                            class="group w-full text-left p-4 border border-slate-100 hover:border-slate-200/80 rounded-2xl hover:bg-slate-50/50 transition-all duration-200 flex items-center justify-between gap-4 cursor-pointer hover:shadow-2xs active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-slate-100 bg-white"
+                        >
+                            <div class="min-w-0 flex-grow">
+                                <div class="flex items-center gap-1.5">
+                                    <span
+                                        class="font-bold text-xs text-slate-800 tracking-tight"
+                                        >#{trx.transaction_number}</span
+                                    >
+                                </div>
+                                <p
+                                    class="text-[10.5px] text-slate-500 font-medium truncate mt-1.5 flex items-center gap-1.5"
+                                >
+                                    <i
+                                        class="ti ti-shopping-bag text-xs text-slate-400"
+                                    ></i>
+                                    {trx.items_summary}
+                                </p>
+                                <div
+                                    class="flex items-center gap-2 mt-2.5 flex-wrap"
+                                >
+                                    <span
+                                        class="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
+                                        style="background-color: {getStatusColor(
+                                            trx.status,
+                                        )}12; color: {getStatusColor(
+                                            trx.status,
+                                        )}; border: 1px solid {getStatusColor(
+                                            trx.status,
+                                        )}20;"
+                                    >
+                                        {getStatusLabel(trx.status)}
+                                    </span>
+                                    <span
+                                        class="text-[9.5px] text-slate-400 font-bold flex items-center gap-1"
+                                    >
+                                        <span
+                                            class="w-1.5 h-1.5 rounded-full bg-slate-250 inline-block"
+                                        ></span>
+                                        {trx.payment_method}
+                                    </span>
+                                </div>
+                            </div>
+                            <div
+                                class="text-right shrink-0 flex flex-col items-end justify-between self-stretch"
+                            >
+                                <span
+                                    class="font-black text-xs sm:text-sm"
+                                    style="color: {primary}"
+                                    >{fmt(trx.grand_total)}</span
+                                >
+                                <div
+                                    class="w-6 h-6 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600 transition-colors mt-2"
+                                >
+                                    <i
+                                        class="ti ti-chevron-right text-xs transition-transform group-hover:translate-x-0.5"
+                                    ></i>
+                                </div>
+                            </div>
+                        </button>
+                    {/each}
                 {/if}
             </div>
         </div>

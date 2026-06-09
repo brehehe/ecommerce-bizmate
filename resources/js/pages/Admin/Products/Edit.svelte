@@ -3376,9 +3376,11 @@
 
     function moveOption(vIndex, oIndex, direction) {
         const targetIndex = oIndex + direction;
-        if (targetIndex < 0 || targetIndex >= variations[vIndex].options.length) return;
+        if (targetIndex < 0 || targetIndex >= variations[vIndex].options.length)
+            return;
         const temp = variations[vIndex].options[oIndex];
-        variations[vIndex].options[oIndex] = variations[vIndex].options[targetIndex];
+        variations[vIndex].options[oIndex] =
+            variations[vIndex].options[targetIndex];
         variations[vIndex].options[targetIndex] = temp;
         variations[vIndex].options = [...variations[vIndex].options];
         generateCombinations();
@@ -3821,7 +3823,8 @@
                                             onclick={() => movePhoto(i, -1)}
                                             class="w-6 h-6 rounded bg-slate-900/60 text-white hover:bg-brand-blueRoyal flex items-center justify-center transition"
                                         >
-                                            <i class="ti ti-arrow-left text-xs"></i>
+                                            <i class="ti ti-arrow-left text-xs"
+                                            ></i>
                                         </button>
                                     {:else}
                                         <div></div>
@@ -3833,7 +3836,8 @@
                                             onclick={() => movePhoto(i, 1)}
                                             class="w-6 h-6 rounded bg-slate-900/60 text-white hover:bg-brand-blueRoyal flex items-center justify-center transition"
                                         >
-                                            <i class="ti ti-arrow-right text-xs"></i>
+                                            <i class="ti ti-arrow-right text-xs"
+                                            ></i>
                                         </button>
                                     {:else}
                                         <div></div>
@@ -4922,26 +4926,42 @@
                                         <div
                                             class="flex items-center gap-2 font-bold text-sm text-slate-800"
                                         >
-                                            <span>Tipe Variasi {vIndex + 1}</span>
-                                            <div class="flex items-center gap-0.5 ml-2">
+                                            <span
+                                                >Tipe Variasi {vIndex + 1}</span
+                                            >
+                                            <div
+                                                class="flex items-center gap-0.5 ml-2"
+                                            >
                                                 {#if vIndex > 0}
                                                     <button
                                                         type="button"
-                                                        onclick={() => moveVariation(vIndex, -1)}
+                                                        onclick={() =>
+                                                            moveVariation(
+                                                                vIndex,
+                                                                -1,
+                                                            )}
                                                         class="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition"
                                                         title="Pindahkan ke Atas"
                                                     >
-                                                        <i class="ti ti-arrow-up text-xs"></i>
+                                                        <i
+                                                            class="ti ti-arrow-up text-xs"
+                                                        ></i>
                                                     </button>
                                                 {/if}
                                                 {#if vIndex < variations.length - 1}
                                                     <button
                                                         type="button"
-                                                        onclick={() => moveVariation(vIndex, 1)}
+                                                        onclick={() =>
+                                                            moveVariation(
+                                                                vIndex,
+                                                                1,
+                                                            )}
                                                         class="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition"
                                                         title="Pindahkan ke Bawah"
                                                     >
-                                                        <i class="ti ti-arrow-down text-xs"></i>
+                                                        <i
+                                                            class="ti ti-arrow-down text-xs"
+                                                        ></i>
                                                     </button>
                                                 {/if}
                                             </div>
@@ -5043,25 +5063,41 @@
                                                     class="flex-grow px-3 py-2 text-sm focus:outline-none"
                                                     placeholder="Opsi"
                                                 />
-                                                <div class="flex items-center gap-0.5 border-r border-slate-100 pr-1 flex-shrink-0">
+                                                <div
+                                                    class="flex items-center gap-0.5 border-r border-slate-100 pr-1 flex-shrink-0"
+                                                >
                                                     {#if oIndex > 0}
                                                         <button
                                                             type="button"
-                                                            onclick={() => moveOption(vIndex, oIndex, -1)}
+                                                            onclick={() =>
+                                                                moveOption(
+                                                                    vIndex,
+                                                                    oIndex,
+                                                                    -1,
+                                                                )}
                                                             class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
                                                             title="Geser Kiri"
                                                         >
-                                                            <i class="ti ti-chevron-left text-xs"></i>
+                                                            <i
+                                                                class="ti ti-chevron-left text-xs"
+                                                            ></i>
                                                         </button>
                                                     {/if}
                                                     {#if oIndex < v.options.length - 1}
                                                         <button
                                                             type="button"
-                                                            onclick={() => moveOption(vIndex, oIndex, 1)}
+                                                            onclick={() =>
+                                                                moveOption(
+                                                                    vIndex,
+                                                                    oIndex,
+                                                                    1,
+                                                                )}
                                                             class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
                                                             title="Geser Kanan"
                                                         >
-                                                            <i class="ti ti-chevron-right text-xs"></i>
+                                                            <i
+                                                                class="ti ti-chevron-right text-xs"
+                                                            ></i>
                                                         </button>
                                                     {/if}
                                                 </div>
