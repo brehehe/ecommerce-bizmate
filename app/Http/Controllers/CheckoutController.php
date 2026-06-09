@@ -40,21 +40,7 @@ class CheckoutController extends Controller
 
         $user = $request->user();
 
-        // Only checked cart items
-        $cartItems = CartItem::with([
-            'product.productPrice',
-            'product.productStock',
-            'product.images',
-            'product.variants.productPrice',
-            'product.variants.productStock',
-            'product.variants.options',
-            'productVariant.productPrice',
-            'productVariant.productStock',
-            'productVariant.options',
-        ])
-            ->where('user_id', $user->id)
-            ->where('is_checked', true)
-            ->get();
+        $cartItems = $this->getCheckoutItems($user);
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Pilih produk terlebih dahulu sebelum checkout.');
@@ -121,6 +107,7 @@ class CheckoutController extends Controller
                 $matchedVariant = $product->variants->firstWhere('id', $variant->id);
                 if ($matchedVariant) {
                     $item->setRelation('productVariant', $matchedVariant);
+                    $item->setRelation('product_variant', $matchedVariant);
                     $variant = $matchedVariant;
                 }
             }
@@ -225,17 +212,7 @@ class CheckoutController extends Controller
         $user = $request->user();
 
         // Get checked cart items
-        $cartItems = CartItem::with([
-            'product.productPrice',
-            'product.productStock',
-            'product.variants.productPrice',
-            'product.variants.productStock',
-            'productVariant.productPrice',
-            'productVariant.productStock',
-        ])
-            ->where('user_id', $user->id)
-            ->where('is_checked', true)
-            ->get();
+        $cartItems = $this->getCheckoutItems($user);
 
         if ($cartItems->isEmpty()) {
             return back()->with('error', 'Tidak ada produk yang dipilih untuk checkout.');
@@ -282,17 +259,7 @@ class CheckoutController extends Controller
         }
 
         // Get checked cart items
-        $cartItems = CartItem::with([
-            'product.productPrice',
-            'product.productStock',
-            'product.variants.productPrice',
-            'product.variants.productStock',
-            'productVariant.productPrice',
-            'productVariant.productStock',
-        ])
-            ->where('user_id', $user->id)
-            ->where('is_checked', true)
-            ->get();
+        $cartItems = $this->getCheckoutItems($user);
 
         if ($cartItems->isEmpty()) {
             return back()->with('error', 'Tidak ada produk yang dipilih untuk checkout.');
@@ -324,6 +291,7 @@ class CheckoutController extends Controller
                 if ($matchedVariant) {
                     $variant = $matchedVariant;
                     $item->setRelation('productVariant', $matchedVariant);
+                    $item->setRelation('product_variant', $matchedVariant);
                 }
             }
 
@@ -826,10 +794,14 @@ class CheckoutController extends Controller
                 }
             }
 
-            // Remove checked cart items
-            CartItem::where('user_id', $user->id)
-                ->where('is_checked', true)
-                ->delete();
+            if (session()->has('buy_now_item')) {
+                session()->forget('buy_now_item');
+            } else {
+                // Remove checked cart items
+                CartItem::where('user_id', $user->id)
+                    ->where('is_checked', true)
+                    ->delete();
+            }
 
             // Store transaction number in session for redirect
             session(['last_transaction_number' => $transaction->transaction_number]);
@@ -1880,5 +1852,64 @@ class CheckoutController extends Controller
             ->sum('promo_quantity_used');
 
         return max(0, $promoItem->promo_stock - $soldPromoQty);
+    }
+
+    /**
+     * Get the cart items for checkout, respecting the session-based "Buy Now" flow.
+     */
+    private function getCheckoutItems($user)
+    {
+        if (session()->has('buy_now_item')) {
+            $buyNowData = session('buy_now_item');
+
+            $product = Product::with([
+                'productPrice',
+                'productStock',
+                'images',
+                'variants.productPrice',
+                'variants.productStock',
+                'variants.options',
+            ])->find($buyNowData['product_id']);
+
+            if ($product) {
+                $variant = null;
+                if (! empty($buyNowData['product_variant_id'])) {
+                    $variant = $product->variants->firstWhere('id', $buyNowData['product_variant_id']);
+                }
+
+                $tempCartItem = new CartItem([
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variant?->id,
+                    'quantity' => $buyNowData['quantity'],
+                    'is_checked' => true,
+                ]);
+
+                // Manually assign primary key since it's in-memory mock
+                $tempCartItem->id = 'buy-now-temp-id';
+
+                $tempCartItem->setRelation('product', $product);
+                if ($variant) {
+                    $tempCartItem->setRelation('productVariant', $variant);
+                    $tempCartItem->setRelation('product_variant', $variant);
+                }
+
+                return new Collection([$tempCartItem]);
+            }
+        }
+
+        return CartItem::with([
+            'product.productPrice',
+            'product.productStock',
+            'product.images',
+            'product.variants.productPrice',
+            'product.variants.productStock',
+            'product.variants.options',
+            'productVariant.productPrice',
+            'productVariant.productStock',
+            'productVariant.options',
+        ])
+            ->where('user_id', $user->id)
+            ->where('is_checked', true)
+            ->get();
     }
 }

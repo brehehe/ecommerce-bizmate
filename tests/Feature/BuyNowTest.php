@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-test('buy now temporarily unchecks other cart items and redirects to checkout', function () {
+test('buy now stores item in session and redirects to checkout without modifying cart database', function () {
     $user = User::factory()->create();
     $category = Category::create([
         'name' => 'Elektronik',
@@ -64,16 +64,20 @@ test('buy now temporarily unchecks other cart items and redirects to checkout', 
     // Assert redirect to checkout.index
     $response->assertRedirect(route('checkout.index'));
 
-    // Assert that the first cart item is now unchecked
+    // Assert that the first cart item is still checked
     $cartItem1->refresh();
-    expect($cartItem1->is_checked)->toBeFalse();
+    expect($cartItem1->is_checked)->toBeTrue();
 
-    // Assert that the new cart item exists and is checked
-    $cartItem2 = CartItem::where('user_id', $user->id)
+    // Assert that no new cart item was created in the database for product 2
+    $cartItem2Exists = CartItem::where('user_id', $user->id)
         ->where('product_id', $product2->id)
-        ->first();
+        ->exists();
+    expect($cartItem2Exists)->toBeFalse();
 
-    expect($cartItem2)->not->toBeNull();
-    expect($cartItem2->is_checked)->toBeTrue();
-    expect($cartItem2->quantity)->toBe(1);
+    // Assert that the session has the buy now item
+    $response->assertSessionHas('buy_now_item', [
+        'product_id' => $product2->id,
+        'product_variant_id' => null,
+        'quantity' => 1,
+    ]);
 });

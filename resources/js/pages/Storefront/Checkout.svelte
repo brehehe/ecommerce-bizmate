@@ -403,7 +403,7 @@
     }
 
     function getCartItemImage(item: any): string {
-        const variant = item.productVariant;
+        const variant = item.productVariant ?? item.product_variant;
         const product = item.product;
         if (variant?.image) return formatImagePath(variant.image);
         if (product?.images?.length > 0) {
@@ -588,7 +588,7 @@
                 return acc;
             }
             const w =
-                item.productVariant?.weight ?? item.product?.weight ?? 1000;
+                (item.productVariant ?? item.product_variant)?.weight ?? item.product?.weight ?? 1000;
             return acc + w * item.quantity;
         }, 0),
     );
@@ -891,7 +891,7 @@
         const times: { name: string; endTime: Date }[] = [];
         const seen = new Set<string>();
         for (const item of cartItems as any[]) {
-            const src = (item.productVariant ?? item.product) as any;
+            const src = (item.productVariant ?? item.product_variant ?? item.product) as any;
             if (src?.promo_end_time && src?.is_promo && src?.promo_type) {
                 const key = src.promo_end_time;
                 if (!seen.has(key)) {
@@ -1236,7 +1236,7 @@
                         <div class="divide-y divide-slate-100">
                             {#each cartItems as item}
                                 {@const product = item.product}
-                                {@const variant = item.productVariant}
+                                {@const variant = item.productVariant ?? item.product_variant}
                                 {@const imgUrl = getCartItemImage(item)}
                                 <div class="px-4 py-3.5">
                                     <div class="flex gap-3">

@@ -19,6 +19,8 @@ class CartController extends Controller
      */
     public function index(Request $request)
     {
+        session()->forget('buy_now_item');
+
         $cartItems = CartItem::with([
             'product.productPrice',
             'product.productStock',
@@ -225,7 +227,15 @@ class CartController extends Controller
         }
 
         if ($buyNow) {
-            CartItem::where('user_id', $userId)->update(['is_checked' => false]);
+            session([
+                'buy_now_item' => [
+                    'product_id' => $productId,
+                    'product_variant_id' => $variantId,
+                    'quantity' => $quantity,
+                ],
+            ]);
+
+            return redirect()->route('checkout.index');
         }
 
         // Check if this combination already exists in the cart
@@ -235,11 +245,7 @@ class CartController extends Controller
             ->first();
 
         if ($cartItem) {
-            if ($buyNow) {
-                $cartItem->quantity = $quantity;
-            } else {
-                $cartItem->quantity += $quantity;
-            }
+            $cartItem->quantity += $quantity;
             $cartItem->is_checked = true;
             $cartItem->save();
         } else {
@@ -250,10 +256,6 @@ class CartController extends Controller
                 'quantity' => $quantity,
                 'is_checked' => true,
             ]);
-        }
-
-        if ($buyNow) {
-            return redirect()->route('checkout.index');
         }
 
         return redirect()->back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
