@@ -1106,7 +1106,7 @@
                     </div>
                 </a>
             </div>
-                    </div>
+        </div>
     </div>
 
     <div class="relative p-4 border-t border-slate-200 shrink-0 bg-white">

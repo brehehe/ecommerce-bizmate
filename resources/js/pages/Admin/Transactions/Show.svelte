@@ -1055,11 +1055,12 @@
                                         {/if}
                                         {#if item.product?.is_digital && transaction.status !== 'selesai' && transaction.status !== 'batal'}
                                             <div class="mt-2.5 p-3 bg-blue-50/50 border border-blue-100 rounded-2xl">
-                                                <label class="text-[10px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                                                <label for="digital_note_{item.id}" class="text-[10px] font-black text-blue-700 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
                                                     <i class="ti ti-key text-xs"></i> Kirim Info Produk Digital (Link / Lisensi)
                                                 </label>
                                                 <div class="flex gap-1.5">
                                                     <input
+                                                        id="digital_note_{item.id}"
                                                         type="text"
                                                         placeholder="Masukkan link download atau lisensi..."
                                                         bind:value={itemDigitalNotes[item.id]}

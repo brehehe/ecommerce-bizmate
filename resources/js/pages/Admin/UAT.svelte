@@ -117,6 +117,7 @@
             <button
                 onclick={() => window.history.back()}
                 class="w-8 h-8 rounded-lg flex items-center justify-center bg-[#fa4a2a] text-white hover:bg-[#e04828] cursor-pointer transition shadow-sm"
+                aria-label="Kembali"
             >
                 <i class="ti ti-chevron-left text-sm"></i>
             </button>

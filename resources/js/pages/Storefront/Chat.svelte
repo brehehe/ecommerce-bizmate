@@ -1139,6 +1139,7 @@
                     <button
                         onclick={() => (invoiceModalOpen = false)}
                         class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition"
+                        aria-label="Tutup"
                     >
                         <i class="ti ti-x text-lg"></i>
                     </button>
