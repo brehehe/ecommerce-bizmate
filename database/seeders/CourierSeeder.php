@@ -13,17 +13,31 @@ class CourierSeeder extends Seeder
     public function run(): void
     {
         $couriers = [
+            'gojek' => 'GoSend / Gojek',
+            'grab' => 'GrabExpress / Grab',
+            'deliveree' => 'Deliveree',
             'jne' => 'JNE',
-            'sicepat' => 'SiCepat Express',
-            'ide' => 'ID Express',
-            'sap' => 'SAP Express',
-            'jnt' => 'J&T Express',
+            'tiki' => 'TIKI',
             'ninja' => 'Ninja Xpress',
             'lion' => 'Lion Parcel',
-            'gojek' => 'GoSend (Instant)',
+            'rara' => 'Rara Delivery',
+            'sicepat' => 'SiCepat Express',
+            'jnt' => 'J&T Express',
+            'idexpress' => 'ID Express',
+            'rpx' => 'RPX Holding',
+            'jdl' => 'JDL Express',
+            'wahana' => 'Wahana Prestasi Logistik',
+            'pos' => 'POS Indonesia',
+            'anteraja' => 'Anteraja',
+            'sap' => 'SAP Express',
+            'paxel' => 'Paxel',
+            'borzo' => 'Borzo',
+            'lalamove' => 'Lalamove',
+            'sentralcargo' => 'Sentral Cargo',
+            'dash_express' => 'Dash Express',
         ];
 
-        // Delete any other couriers from database
+        // Delete any other couriers from database except the new list
         Courier::whereNotIn('code', array_keys($couriers))->forceDelete();
 
         $order = 1;

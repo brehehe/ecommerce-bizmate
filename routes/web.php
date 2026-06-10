@@ -94,6 +94,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/addresses/search', [CustomerAddressController::class, 'searchApi'])->name('api.addresses.search');
     Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
     Route::get('/api/addresses/ip-location', [CustomerAddressController::class, 'ipLocation'])->name('api.addresses.ip-location');
+    Route::get('/api/addresses/biteship-areas', [CustomerAddressController::class, 'searchBiteshipAreas'])->name('api.addresses.biteship-areas');
+    Route::get('/api/addresses/rajaongkir-areas', [CustomerAddressController::class, 'searchRajaOngkirAreas'])->name('api.addresses.rajaongkir-areas');
 
     // Verified Customer Actions
     Route::middleware('verified')->group(function () {
@@ -257,6 +259,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions/{transaction}/komerce/store', [KomerceShipmentController::class, 'storeShipment'])->name('transactions.komerce.store');
     Route::post('/transactions/{transaction}/komerce/pickup', [KomerceShipmentController::class, 'requestPickup'])->name('transactions.komerce.pickup');
     Route::get('/transactions/{transaction}/komerce/print', [KomerceShipmentController::class, 'printLabel'])->name('transactions.komerce.print');
+    Route::get('/transactions/{transaction}/biteship/label', [KomerceShipmentController::class, 'biteshipLabel'])->name('transactions.biteship.label');
     Route::post('/transactions/{transaction}/komerce/cancel', [KomerceShipmentController::class, 'cancelShipment'])->name('transactions.komerce.cancel');
     Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
     Route::get('/transactions/{transaction}/komerce/detail', [KomerceShipmentController::class, 'getOrderDetail'])->name('transactions.komerce.detail');

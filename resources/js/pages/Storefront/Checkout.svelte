@@ -1481,11 +1481,16 @@
                                     <div
                                         class="mb-3 relative courier-select-container"
                                     >
-                                        <p
-                                            class="text-xs font-semibold text-slate-500 mb-2"
-                                        >
-                                            Pilih Kurir
-                                        </p>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="text-xs font-semibold text-slate-500">
+                                                Pilih Kurir
+                                            </p>
+                                            {#if totalWeightGrams > 0}
+                                                <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                                    Berat: {(totalWeightGrams / 1000).toFixed(2)} kg ({totalWeightGrams.toLocaleString()}g)
+                                                </span>
+                                            {/if}
+                                        </div>
 
                                         <!-- Dropdown Trigger -->
                                         <button
@@ -1649,11 +1654,11 @@
                                         >
                                             <i
                                                 class="ti ti-alert-circle text-base"
-                                            ></i>
+                                             ></i>
                                             <span>{shippingError}</span>
                                         </div>
                                     {:else if shippingOptions.length > 0}
-                                        <div class="space-y-2 mt-3">
+                                        <div class="space-y-2 mt-3 max-h-[350px] overflow-y-auto scrollbar-thin pr-1">
                                             {#each shippingOptions as opt}
                                                 <button
                                                     onclick={() =>

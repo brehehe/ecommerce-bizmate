@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Label Pengiriman {{ $transaction->transaction_number }}</title>
+    <title>Label Pengiriman Biteship - {{ $transaction->transaction_number }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Inter', sans-serif;
             color: #000000;
             margin: 0;
-            padding: 20px;
+            padding: 10px;
             background-color: #ffffff;
             font-size: 11px;
             -webkit-print-color-adjust: exact;
@@ -24,271 +23,234 @@
             width: 100%;
             max-width: 480px;
             margin: 0 auto;
-            border: 3px solid #000;
+            border: 2px solid #000;
             box-sizing: border-box;
-            padding: 12px;
             background-color: #fff;
-            position: relative;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 10px;
-            margin-bottom: 8px;
-        }
-        .header-left {
-            font-family: 'Outfit', sans-serif;
-            font-size: 16px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .header-center {
-            font-family: 'Outfit', sans-serif;
-            font-size: 18px;
-            font-weight: 800;
-            text-align: center;
-            border-left: 2px solid #000;
-            border-right: 2px solid #000;
-            padding: 0 16px;
-            letter-spacing: 1px;
-        }
-        .header-right {
-            font-family: 'Outfit', sans-serif;
-            font-size: 16px;
-            font-weight: 800;
-            text-transform: uppercase;
-            text-align: right;
-        }
-        .resi-box {
-            border: 2px solid #000;
-            text-align: center;
-            font-size: 16px;
-            font-weight: 800;
-            padding: 6px;
-            margin: 8px 0;
-            font-family: monospace;
-            letter-spacing: 0.5px;
-        }
-        .barcode-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 4px 0;
-            border-bottom: 2px dashed #000;
-            margin-bottom: 8px;
-        }
-        #barcode {
-            width: 100%;
-            max-height: 70px;
-        }
-        .address-grid {
-            display: grid;
-            grid-template-columns: 1.6fr 1fr;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-            font-size: 11px;
-            line-height: 1.4;
-        }
-        .address-left {
-            padding-right: 10px;
-        }
-        .address-right {
-            padding-left: 10px;
-            border-left: 1px dashed #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-        }
-        .grid-title {
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            color: #555;
-            display: block;
-            margin-bottom: 2px;
-        }
-        .highlight-text {
-            font-size: 13px;
-            font-weight: 800;
-            color: #000;
-            display: block;
-        }
-        .badge-label {
-            display: inline-block;
-            border: 1px solid #000;
-            font-size: 9px;
-            font-weight: bold;
-            padding: 1px 5px;
-            margin: 4px 0;
-            border-radius: 2px;
-            text-transform: uppercase;
-            background-color: #fff;
-            width: fit-content;
-        }
-        .address-detail {
-            margin: 4px 0 0 0;
-            font-size: 11px;
-            color: #111;
-            font-weight: 500;
-            word-break: break-word;
-        }
-        .sender-phone {
-            font-family: monospace;
-            font-size: 12px;
-            font-weight: bold;
-            margin: 2px 0 6px 0;
-        }
-        .sender-city {
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-top: auto;
-            color: #000;
-        }
-        .destination-boxes {
-            display: flex;
-            gap: 6px;
-            margin: 8px 0;
-        }
-        .dest-box {
-            flex: 1;
-            border: 2px solid #000;
-            text-align: center;
-            font-weight: 800;
-            font-size: 14px;
-            padding: 6px;
-            text-transform: uppercase;
-            font-family: 'Outfit', sans-serif;
-            letter-spacing: 0.5px;
-        }
-        .payment-banner {
-            border: 2px solid #000;
-            display: flex;
-            margin: 8px 0;
-            overflow: hidden;
-        }
-        .payment-left {
-            width: 35%;
-            border-right: 2px solid #000;
-            padding: 6px;
-            font-weight: 800;
-            font-size: 12px;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f1f5f9;
-            text-transform: uppercase;
-            font-family: 'Outfit', sans-serif;
-        }
-        .payment-right {
-            width: 65%;
-            padding: 6px;
-            font-size: 9.5px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-style: italic;
-        }
-        .meta-section {
-            display: grid;
-            grid-template-columns: 1.4fr 1fr;
-            border-bottom: 2px dashed #000;
-            padding: 8px 0;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .meta-details {
-            font-size: 10.5px;
-            line-height: 1.5;
-        }
-        .meta-row {
-            margin: 2px 0;
-            font-weight: 600;
-        }
-        .meta-barcode-container {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
-        #mini-qrcode {
-            width: 70px;
-            height: 70px;
-            display: block;
-        }
-        #mini-qrcode img {
-            width: 70px;
-            height: 70px;
-            display: block;
-        }
-        .packing-list-section {
-            padding-top: 4px;
-            font-size: 10px;
-        }
-        .packing-list-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 10px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-            color: #333;
-        }
-        .packing-list-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 4px;
-        }
-        .packing-list-table th {
-            border-bottom: 1.5px solid #000;
-            text-align: left;
-            padding: 4px 2px;
-            font-size: 9px;
-            font-weight: 800;
-            color: #000;
-            text-transform: uppercase;
-        }
-        .packing-list-table td {
-            border-bottom: 1px dashed #ccc;
-            padding: 5px 2px;
-            font-size: 10px;
-            color: #000;
-            vertical-align: middle;
-        }
-        .packing-list-table tr:last-child td {
-            border-bottom: none;
         }
         
+        /* Top Row: Courier and Platform Logos */
+        .top-header {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            border-bottom: 2px solid #000;
+            align-items: center;
+            padding: 8px;
+            text-align: center;
+        }
+        .courier-logo-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            border-right: 1px solid #000;
+            height: 100%;
+            padding-right: 4px;
+        }
+        .courier-name-badge {
+            background-color: #000;
+            color: #fff;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+        .platform-logo-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .platform-logo-text {
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .platform-logo-text span {
+            color: #00bfa6;
+        }
+        .platform-url {
+            font-size: 9px;
+            color: #555;
+            margin-top: 2px;
+        }
+        .store-logo-section {
+            border-left: 1px solid #000;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            padding-left: 4px;
+            word-break: break-all;
+        }
+
+        /* Barcode Area */
+        .barcode-section {
+            border-bottom: 2px solid #000;
+            padding: 8px 0;
+            text-align: center;
+        }
+        #barcode {
+            width: 85%;
+            max-height: 65px;
+            margin: 0 auto;
+        }
+        .awb-text {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 4px;
+            letter-spacing: 1px;
+        }
+
+        /* COD Section */
+        .cod-section {
+            border-bottom: 2px solid #000;
+            padding: 6px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 800;
+            background-color: #f3f4f6;
+        }
+
+        /* Service Type Section */
+        .service-section {
+            border-bottom: 2px solid #000;
+            padding: 6px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Routing Code & Qty/Weight Section */
+        .routing-qty-section {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            border-bottom: 2px solid #000;
+        }
+        .routing-box {
+            padding: 10px;
+            font-weight: 800;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-right: 2px solid #000;
+            background-color: #000;
+            color: #fff;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        .qty-weight-box {
+            padding: 6px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            font-size: 11px;
+        }
+        .qty-weight-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+        .qty-weight-row span:last-child {
+            font-weight: 800;
+        }
+
+        /* Address Grid */
+        .address-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 2px solid #000;
+            min-height: 120px;
+        }
+        .receiver-column {
+            padding: 8px;
+            border-right: 1px solid #000;
+        }
+        .sender-column {
+            padding: 8px;
+        }
+        .address-title {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #444;
+            margin-bottom: 4px;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 2px;
+        }
+        .address-name {
+            font-size: 12px;
+            font-weight: 800;
+            margin-bottom: 2px;
+        }
+        .address-phone {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .address-text {
+            font-size: 10px;
+            line-height: 1.3;
+            color: #111;
+        }
+
+        /* Footer Info Section */
+        .footer-info-section {
+            padding: 8px;
+            border-bottom: 2px solid #000;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+        .footer-info-row {
+            margin: 4px 0;
+        }
+        .footer-info-label {
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Branding footer */
+        .branding-footer {
+            padding: 6px;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        /* Packing list toggle / print buttons */
         .print-btn-bar {
             max-width: 480px;
-            margin: 0 auto 15px auto;
+            margin: 0 auto 10px auto;
             display: flex;
             justify-content: flex-end;
         }
         .print-btn {
-            background-color: #0f172a;
-            color: #ffffff;
+            background-color: #000;
+            color: #fff;
             border: none;
-            padding: 10px 22px;
+            padding: 8px 18px;
             font-size: 12px;
             font-weight: 700;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            transition: background-color 0.2s ease;
         }
         .print-btn:hover {
-            background-color: #1e293b;
+            opacity: 0.9;
         }
 
         @media print {
@@ -300,10 +262,9 @@
                 display: none !important;
             }
             .label-container {
-                border: 3px solid #000;
                 max-width: 100%;
                 width: 100%;
-                box-sizing: border-box;
+                border: 2px solid #000;
             }
             @page {
                 size: portrait;
@@ -319,120 +280,113 @@
     </div>
 
     <div class="label-container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-left">
-                <span style="font-size: 18px;">🛒</span>
-                <span>{{ $storeName }}</span>
+        <!-- Top Header: Courier and Biteship Branding -->
+        <div class="top-header">
+            <div class="courier-logo-section">
+                <span style="font-size: 10px; color: #555;">KURIR</span>
+                <span class="courier-name-badge">{{ strtoupper($transaction->courier_name ?? $transaction->shipping_courier ?? 'KURIR') }}</span>
             </div>
-            <div class="header-center">
-                {{ strtoupper($transaction->shipping_service ?? 'REG') }}
+            
+            <div class="platform-logo-section">
+                <div class="platform-logo-text">
+                    biteship
+                </div>
+                <div class="platform-url">www.biteship.com</div>
             </div>
-            <div class="header-right">
-                {{ strtoupper($transaction->courier_name ?? $transaction->shipping_courier ?? 'KURIR') }}
+
+            <div class="store-logo-section">
+                {{ $storeName }}
             </div>
         </div>
 
-        <!-- Resi Box -->
-        <div class="resi-box">
-            No. Resi: {{ $transaction->tracking_number ?? 'BELUM MASUK RESI' }}
-        </div>
-
-        <!-- Barcode -->
-        <div class="barcode-container">
+        <!-- Barcode Area -->
+        <div class="barcode-section">
             <svg id="barcode"></svg>
+            <div class="awb-text">Nomor Resi - {{ $transaction->tracking_number ?? 'BELUM MASUK RESI' }}</div>
         </div>
 
-        <!-- Sender / Receiver Grid -->
-        <div class="address-grid">
-            <div class="address-left">
-                <span class="grid-title">Penerima:</span>
-                <span class="highlight-text">{{ $transaction->customerAddress->receiver_name ?? '-' }}</span>
-                @if($transaction->customerAddress && $transaction->customerAddress->label)
-                    <span class="badge-label">{{ strtoupper($transaction->customerAddress->label) }}</span>
-                @else
-                    <span class="badge-label">ALAMAT</span>
-                @endif
-                <p class="address-detail">
+        <!-- COD Info (Only shows if payment method is COD) -->
+        @if(str_contains(strtolower($transaction->paymentMethod->name ?? ''), 'cod'))
+            <div class="cod-section">
+                Nilai COD: Rp. {{ number_format($transaction->grand_total, 0, ',', '.') }}
+            </div>
+        @endif
+
+        <!-- Service Type -->
+        <div class="service-section">
+            Jenis Layanan - {{ strtoupper(preg_replace('/\[.*?\]\s*/', '', $transaction->shipping_service ?? 'REG')) }}
+        </div>
+
+        <!-- Routing Code & Qty/Weight Section -->
+        <div class="routing-qty-section">
+            <div class="routing-box">
+                {{ $routingCode ?? 'NO-RC' }}
+            </div>
+            <div class="qty-weight-box">
+                @php
+                    $totalQty = $transaction->items->sum('quantity');
+                    $realWeightGrams = $transaction->items->sum(function($item) {
+                        return ($item->productVariant->weight ?? $item->product->weight ?? 1000) * $item->quantity;
+                    });
+                    $realWeightKg = $realWeightGrams / 1000;
+                @endphp
+                <div class="qty-weight-row">
+                    <span>Quantity</span>
+                    <span>: {{ $totalQty }} Pcs</span>
+                </div>
+                <div class="qty-weight-row">
+                    <span>Weight</span>
+                    <span>: {{ number_format($realWeightKg, 1) }} Kg</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Address Grid -->
+        <div class="address-section">
+            <div class="receiver-column">
+                <div class="address-title">Alamat Penerima:</div>
+                <div class="address-name">{{ $transaction->customerAddress->receiver_name ?? '-' }}</div>
+                <div class="address-phone">{{ $transaction->customerAddress->phone_number ?? '-' }}</div>
+                <div class="address-text">
                     {{ $transaction->customerAddress->full_address ?? '-' }}
                     @if($transaction->customerAddress && $transaction->customerAddress->regency_name)
                         <br><strong>{{ $transaction->customerAddress->district_name }}, {{ $transaction->customerAddress->regency_name }}, {{ $transaction->customerAddress->province_name }} {{ $transaction->customerAddress->postal_code }}</strong>
                     @endif
-                </p>
-            </div>
-            <div class="address-right">
-                <span class="grid-title">Pengirim:</span>
-                <span class="highlight-text" style="font-size: 11px;">{{ $storeName }}</span>
-                <p style="margin: 2px 0; font-size: 9.5px; font-weight: bold; color: #333;">Telp: {{ $storePhone }}</p>
-                <p style="margin: 2px 0 6px 0; font-size: 9px; line-height: 1.3; color: #444; word-break: break-word;">{{ $storeAddress }}</p>
-                
-                <div style="margin-top: auto; border-top: 1px dashed #000; padding-top: 4px; margin-bottom: 2px;">
-                    <span class="grid-title">No. HP Penerima:</span>
-                    <p class="sender-phone">{{ $transaction->customerAddress->phone_number ?? '-' }}</p>
                 </div>
-                <p class="sender-city">{{ strtoupper($storeCity) }}</p>
+            </div>
+            
+            <div class="sender-column">
+                <div class="address-title">Alamat Pengirim:</div>
+                <div class="address-name">{{ $storeName }}</div>
+                <div class="address-phone">{{ $storePhone }}</div>
+                <div class="address-text">
+                    {{ $storeAddress }}
+                    <br><strong>{{ $storeCity }}</strong>
+                </div>
             </div>
         </div>
 
-        <!-- Destination Highlights -->
-        <div class="destination-boxes">
-            <div class="dest-box">
-                {{ strtoupper($transaction->customerAddress->regency_name ?? 'REGENCY') }}
+        <!-- Footer Info Section -->
+        <div class="footer-info-section">
+            <div class="footer-info-row">
+                <span class="footer-info-label">Jenis Barang:</span> 
+                @php
+                    $itemNames = $transaction->items->map(function($item) {
+                        return $item->product_name . ' (x' . $item->quantity . ')';
+                    })->join(', ');
+                @endphp
+                <span>{{ $itemNames ?: 'Paket Belanja' }}</span>
             </div>
-            <div class="dest-box">
-                {{ strtoupper($transaction->customerAddress->district_name ?? 'DISTRICT') }}
-            </div>
-        </div>
-
-        <!-- Payment Banner -->
-        <div class="payment-banner">
-            @if(str_contains(strtolower($transaction->paymentMethod->name ?? ''), 'cod'))
-                <div class="payment-left" style="background-color: #fee2e2;">COD</div>
-                <div class="payment-right">Kurir wajib menagih pembayaran sejumlah <strong>Rp {{ number_format($transaction->grand_total, 0, ',', '.') }}</strong> ke Penerima.</div>
-            @else
-                <div class="payment-left">CASHLESS</div>
-                <div class="payment-right">Penjual tidak perlu bayar ongkir ke Kurir</div>
-            @endif
-        </div>
-
-        <!-- Metadata & Mini Barcode -->
-        <div class="meta-section">
-            <div class="meta-details">
-                <div class="meta-row">Berat: <strong>{{ number_format($transaction->items->sum('quantity') * 500) }} gr</strong></div>
-                <div class="meta-row">COD: <strong>{{ str_contains(strtolower($transaction->paymentMethod->name ?? ''), 'cod') ? 'Rp ' . number_format($transaction->grand_total, 0, ',', '.') : 'Rp 0' }}</strong></div>
-                <div class="meta-row">Batas Kirim: <strong>{{ $transaction->created_at ? $transaction->created_at->addDays(2)->format('d-m-Y') : date('d-m-Y') }}</strong></div>
-                <div class="meta-row" style="font-size: 9.5px; word-break: break-all;">No. Pesanan: <strong>{{ $transaction->transaction_number }}</strong></div>
-            </div>
-            <div class="meta-barcode-container">
-                <div id="mini-qrcode"></div>
+            
+            <div class="footer-info-row">
+                <span class="footer-info-label">Catatan:</span> 
+                <span>{{ $transaction->notes ?? 'Tidak Ada' }}</span>
             </div>
         </div>
 
-        <!-- Packing List -->
-        <div class="packing-list-section">
-            <div class="packing-list-title">Daftar Isi Paket (Packing List)</div>
-            <table class="packing-list-table">
-                <thead>
-                    <tr>
-                        <th style="width: 5%;">#</th>
-                        <th style="width: 45%;">Nama Produk</th>
-                        <th style="width: 25%;">SKU</th>
-                        <th style="width: 15%;">Variasi</th>
-                        <th style="width: 10%; text-align: center;">Qty</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($transaction->items as $item)
-                        <tr>
-                            <td>{{ $loop->iteration }}</td>
-                            <td style="font-weight: 600;">{{ $item->product_name }}</td>
-                            <td style="font-family: monospace; font-size: 9.5px;">{{ $item->product_sku ?? '-' }}</td>
-                            <td>{{ $item->variant_name ?? '-' }}</td>
-                            <td style="text-align: center; font-weight: 800; font-size: 12px;">x{{ $item->quantity }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        <!-- Biteship Platform Branding -->
+        <div class="branding-footer">
+            Pengiriman melalui platform Biteship<br>www.biteship.com
         </div>
     </div>
 
@@ -440,20 +394,10 @@
         // Generate main barcode
         JsBarcode("#barcode", "{{ $transaction->tracking_number ?? 'BELUM-ADA-RESI' }}", {
             format: "CODE128",
-            width: 2,
-            height: 55,
+            width: 2.2,
+            height: 50,
             displayValue: false,
             margin: 0
-        });
-
-        // Generate mini QR code for order number
-        new QRCode(document.getElementById("mini-qrcode"), {
-            text: "{{ $transaction->transaction_number }}",
-            width: 70,
-            height: 70,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
         });
 
         window.onload = function() {

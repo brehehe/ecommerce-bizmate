@@ -8,6 +8,7 @@
         statusLabels = {},
         storeName = '',
         storeLogo = '',
+        biteshipEnabled = false,
     } = $props();
 
     const primary = $derived(
@@ -518,6 +519,53 @@
     let trackingLoading = $state(false);
     let trackingErr = $state('');
 
+    function translateBiteshipDesc(desc) {
+        if (!desc) return '';
+        const descLower = desc.toLowerCase();
+        
+        if (descLower.includes('confirmed') && descLower.includes('notified')) {
+            return 'Pesanan kurir terkonfirmasi. Kurir telah dinotifikasi untuk menjemput paket.';
+        }
+        if (descLower.includes('allocated') && descLower.includes('ready to pick up')) {
+            return 'Kurir telah dialokasikan dan bersiap untuk menjemput paket.';
+        }
+        if (descLower.includes('on the way to pick up')) {
+            return 'Kurir sedang dalam perjalanan menuju lokasi penjemputan.';
+        }
+        if (descLower.includes('picked') || descLower.includes('dijemput') || descLower.includes('diserahkan')) {
+            return 'Paket telah diambil oleh kurir.';
+        }
+        if (descLower.includes('in transit') || descLower.includes('on the way to the destination')) {
+            return 'Paket sedang dalam perjalanan ke alamat penerima.';
+        }
+        if (descLower.includes('dropping off') || descLower.includes('on the way to customer')) {
+            return 'Kurir sedang dalam perjalanan mengirimkan paket ke pelanggan.';
+        }
+        if (descLower.includes('delivered') || descLower.includes('diterima') || descLower.includes('sampai')) {
+            return 'Paket telah berhasil diterima oleh penerima.';
+        }
+        if (descLower.includes('returned') || descLower.includes('kembali')) {
+            return 'Paket berhasil dikembalikan ke pengirim.';
+        }
+        if (descLower.includes('cancelled') || descLower.includes('batal') || descLower.includes('canceled')) {
+            return 'Pengiriman dibatalkan.';
+        }
+        if (descLower.includes('rejected') || descLower.includes('ditolak')) {
+            return 'Pengiriman ditolak.';
+        }
+        if (descLower.includes('courier not found') || descLower.includes('couriernotfound')) {
+            return 'Pengiriman dibatalkan karena tidak ada kurir yang tersedia.';
+        }
+        if (descLower.includes('on hold') || descLower.includes('ditangguhkan')) {
+            return 'Pengiriman ditangguhkan sementara.';
+        }
+        if (descLower.includes('disposed')) {
+            return 'Paket berhasil dimusnahkan.';
+        }
+
+        return desc;
+    }
+
     async function loadAdminTracking() {
         if (!transaction.tracking_number) return;
         trackingLoading = true;
@@ -528,7 +576,10 @@
             );
             const data = await resp.json();
             if (resp.ok && data.success) {
-                trackingTimeline = data.history;
+                trackingTimeline = (data.history || []).map(step => ({
+                    ...step,
+                    desc: translateBiteshipDesc(step.desc)
+                })).reverse();
             } else {
                 trackingErr = data.error ?? 'Gagal memuat history tracking.';
             }
@@ -580,6 +631,27 @@
     }
 
     function requestPickupKomerce() {
+        if (biteshipEnabled) {
+            bookingLoading = true;
+            router.post(
+                `/admin/transactions/${transaction.id}/komerce/pickup`,
+                {},
+                {
+                    onSuccess: () => {
+                        showPickupModal = false;
+                        showToast('Request pickup Biteship berhasil diproses.', 'success');
+                    },
+                    onError: (err: any) => {
+                        const first = Object.values(err)[0] as string;
+                        showToast(first ?? 'Gagal mengajukan request pickup.', 'error');
+                    },
+                    onFinish: () => {
+                        bookingLoading = false;
+                    },
+                }
+            );
+            return;
+        }
         if (!pickupTime) {
             showToast('Silakan pilih waktu pickup.', 'error');
             return;
@@ -595,7 +667,7 @@
                 onSuccess: () => {
                     showPickupModal = false;
                 },
-                onError: (err) => {
+                onError: (err: any) => {
                     const first = Object.values(err)[0] as string;
                     showToast(
                         first ?? 'Gagal mengajukan request pickup.',
@@ -1503,7 +1575,7 @@
                         </div>
                     {:else if transaction.shipping_courier !== 'self_pickup' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier'}
                         {#if transaction.booking_code || (transaction.status !== 'batal' && transaction.status !== 'selesai')}
-                            <!-- Komerce Shipping Delivery Dashboard -->
+                            <!-- Komerce/Biteship Shipping Delivery Dashboard -->
                             <div
                                 class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
                             >
@@ -1517,7 +1589,7 @@
                                             class="ti ti-truck text-lg"
                                             style="color:{primary}"
                                         ></i>
-                                        Komerce Shipping
+                                        {biteshipEnabled ? 'Biteship Shipping' : 'Komerce Shipping'}
                                     </h3>
                                     {#if transaction.booking_code}
                                         <span
@@ -1540,7 +1612,7 @@
                                             class="text-xs text-slate-500 leading-relaxed"
                                         >
                                             Pesan kurir pengiriman secara
-                                            otomatis melalui integrasi Komerce
+                                            otomatis melalui integrasi {biteshipEnabled ? 'Biteship' : 'Komerce'}
                                             Delivery.
                                         </p>
                                         <button
@@ -1554,7 +1626,7 @@
                                             ></i>
                                             {bookingLoading
                                                 ? 'Memproses Booking...'
-                                                : 'Pesan Pengiriman (Komerce)'}
+                                                : `Pesan Pengiriman (${biteshipEnabled ? 'Biteship' : 'Komerce'})`}
                                         </button>
                                     {:else}
                                         <div
@@ -1609,8 +1681,13 @@
                                             <!-- Request Pickup -->
                                             {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
                                                 <button
-                                                    onclick={() =>
-                                                        (showPickupModal = true)}
+                                                    onclick={() => {
+                                                        if (biteshipEnabled) {
+                                                            requestPickupKomerce();
+                                                        } else {
+                                                            showPickupModal = true;
+                                                        }
+                                                    }}
                                                     class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-md shadow-brand-orange/10"
                                                     style="background:{secondary}"
                                                 >
@@ -1631,7 +1708,7 @@
                                                     <i
                                                         class="ti ti-trash text-sm text-red-500"
                                                     ></i>
-                                                    Batalkan Booking Komerce
+                                                    Batalkan Booking {biteshipEnabled ? 'Biteship' : 'Komerce'}
                                                 </button>
                                             {/if}
                                         </div>
@@ -1682,21 +1759,29 @@
                                                     <div
                                                         class="relative pl-3 border-l border-slate-100 space-y-3 py-1"
                                                     >
-                                                        {#each trackingTimeline as step}
+                                                        {#each trackingTimeline as step, idx}
                                                             <div
                                                                 class="relative"
                                                             >
                                                                 <div
-                                                                    class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full bg-slate-300 border border-white"
+                                                                    class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full border border-white"
+                                                                    class:bg-blue-600={idx === 0}
+                                                                    class:bg-slate-300={idx > 0}
+                                                                    class:shadow-[0_0_6px_rgba(37,99,235,0.4)]={idx === 0}
                                                                 ></div>
                                                                 <div>
                                                                     <p
-                                                                        class="text-[9px] text-slate-400 font-bold"
+                                                                        class="text-[9px] font-bold"
+                                                                        class:text-blue-600={idx === 0}
+                                                                        class:text-slate-400={idx > 0}
                                                                     >
                                                                         {step.date}
                                                                     </p>
                                                                     <p
-                                                                        class="text-[11px] text-slate-600 mt-0.5 leading-snug"
+                                                                        class="text-[11px] mt-0.5 leading-snug"
+                                                                        class:font-semibold={idx === 0}
+                                                                        class:text-slate-800={idx === 0}
+                                                                        class:text-slate-600={idx > 0}
                                                                     >
                                                                         {step.desc}
                                                                     </p>

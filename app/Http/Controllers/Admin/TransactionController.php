@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -95,6 +96,7 @@ class TransactionController extends Controller
             'statusLabels' => Transaction::statusLabels(),
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'biteshipEnabled' => BiteshipService::isEnabled(),
         ]);
     }
 

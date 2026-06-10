@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Transaction;
+use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -35,7 +36,15 @@ class SyncShipmentStatus extends Command
         foreach ($transactions as $transaction) {
             $this->info("Syncing transaction: {$transaction->transaction_number} (Resi: {$transaction->tracking_number})");
 
-            $response = KomerceService::getShipmentHistory($transaction->tracking_number, $transaction->shipping_courier);
+            $isBiteship = BiteshipService::isEnabled() &&
+                $transaction->booking_code &&
+                ! str_starts_with(strtoupper($transaction->tracking_number ?? ''), 'KOMERKOM');
+
+            if ($isBiteship) {
+                $response = BiteshipService::getShipmentHistory($transaction->tracking_number, $transaction->shipping_courier);
+            } else {
+                $response = KomerceService::getShipmentHistory($transaction->tracking_number, $transaction->shipping_courier);
+            }
 
             if (isset($response['success']) && $response['success'] && ! empty($response['history'])) {
                 $history = $response['history'];
@@ -51,7 +60,7 @@ class SyncShipmentStatus extends Command
                         $this->info("Transaction {$transaction->transaction_number} status updated to [selesai].");
                         Log::info("Auto-sync: Transaction {$transaction->transaction_number} completed based on courier delivery.");
                     }
-                } elseif (str_contains($desc, 'jalan') || str_contains($desc, 'transit') || str_contains($desc, 'kurir') || str_contains($desc, 'kirim') || str_contains($desc, 'pickup') || str_contains($desc, 'hub')) {
+                } elseif (str_contains($desc, 'jalan') || str_contains($desc, 'transit') || str_contains($desc, 'kurir') || str_contains($desc, 'kirim') || str_contains($desc, 'pickup') || str_contains($desc, 'hub') || str_contains($desc, 'picked') || str_contains($desc, 'dropping') || str_contains($desc, 'intransit')) {
                     if (in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
                         $transaction->update(['status' => 'dikirim']);
                         $this->info("Transaction {$transaction->transaction_number} status updated to [dikirim].");

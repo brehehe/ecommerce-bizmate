@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\Transaction;
+use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -13,10 +15,41 @@ use Illuminate\Support\Facades\Log;
 class KomerceShipmentController extends Controller
 {
     /**
-     * Store/book shipment in Komerce.
+     * Store/book shipment.
      */
     public function storeShipment(Transaction $transaction)
     {
+        if (BiteshipService::isEnabled()) {
+            $address = $transaction->customerAddress;
+            if (! $address) {
+                return back()->with('error', 'Alamat pengiriman tidak ditemukan.');
+            }
+
+            Log::info('Biteship Shipment Store Action for Transaction: '.$transaction->transaction_number);
+
+            $response = BiteshipService::storeShipment($transaction);
+
+            if (isset($response['success']) && $response['success']) {
+                $data = $response['data'];
+
+                $bookingCode = $data['booking_code'] ?? null;
+                $trackingNumber = $data['airway_bill'] ?? $transaction->tracking_number;
+
+                // Save booking details to transaction
+                $transaction->update([
+                    'booking_code' => $bookingCode,
+                    'tracking_number' => $trackingNumber,
+                    'status' => 'dikemas', // Change transaction status to packaging (dikemas)
+                ]);
+
+                return back()->with('success', 'Pengiriman berhasil dipesan ke Biteship. Kode Booking: '.($bookingCode ?? ''));
+            }
+
+            $errorMsg = $response['error'] ?? 'Gagal membuat pesanan pengiriman di Biteship.';
+
+            return back()->with('error', $errorMsg);
+        }
+
         if (! KomerceService::isDeliveryEnabled()) {
             return back()->with('error', 'Layanan Komerce Shipping Delivery belum diaktifkan di pengaturan.');
         }
@@ -64,6 +97,15 @@ class KomerceShipmentController extends Controller
             return back()->with('error', 'Kode booking pengiriman tidak ditemukan. Silakan pesan pengiriman terlebih dahulu.');
         }
 
+        if (BiteshipService::isEnabled()) {
+            // Biteship orders schedule pickup automatically, but we allow manual status transition for UI consistency.
+            $transaction->update([
+                'status' => 'out_for_pickup',
+            ]);
+
+            return back()->with('success', 'Request pickup berhasil diajukan secara otomatis melalui Biteship.');
+        }
+
         $request->validate([
             'pickup_time' => 'required|string', // e.g. "2026-06-04 14:00:00"
             'vehicle_type' => 'nullable|string', // e.g. "motorcycle", "car", "truck"
@@ -106,7 +148,7 @@ class KomerceShipmentController extends Controller
         $vehicleType = $request->vehicle_type ?? 'motorcycle';
         if ($totalWeight >= 10000 && $vehicleType !== 'truck') {
             return back()->withErrors([
-                'vehicle_type' => 'Pengiriman dengan total berat 10 kg atau lebih wajib menggunakan kendaraan Truk.',
+                'vehicle_type' => 'Pengiriman dengan total berat 10 kg or lebih wajib menggunakan kendaraan Truk.',
             ]);
         }
 
@@ -169,6 +211,10 @@ class KomerceShipmentController extends Controller
             return back()->with('error', 'Kode booking pengiriman tidak ditemukan.');
         }
 
+        if (BiteshipService::isEnabled()) {
+            return redirect()->route('admin.transactions.biteship.label', $transaction->id);
+        }
+
         $response = KomerceService::printLabel($transaction->booking_code);
 
         if (isset($response['success']) && $response['success']) {
@@ -183,12 +229,56 @@ class KomerceShipmentController extends Controller
     }
 
     /**
+     * Render local Biteship Thermal Label view.
+     */
+    public function biteshipLabel(Transaction $transaction)
+    {
+        $transaction->load([
+            'customerAddress',
+            'paymentMethod',
+            'items',
+        ]);
+
+        $routingCode = null;
+        if ($transaction->booking_code) {
+            $orderRes = BiteshipService::getOrderDetail($transaction->booking_code);
+            if (isset($orderRes['success']) && $orderRes['success']) {
+                $routingCode = $orderRes['data']['courier']['routing_code'] ?? null;
+            }
+        }
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '-';
+        $storeAddress = Setting::where('key', 'address')->value('value') ?? 'Gudang Utama BIZMATE';
+        $storeCity = Setting::where('key', 'regency_name')->value('value') ?? 'DKI Jakarta';
+
+        return view('print.shipping-label', compact('transaction', 'storeName', 'storePhone', 'storeAddress', 'storeCity', 'routingCode'));
+    }
+
+    /**
      * Cancel Shipment booking.
      */
     public function cancelShipment(Transaction $transaction)
     {
         if (! $transaction->booking_code) {
             return back()->with('error', 'Kode booking pengiriman tidak ditemukan.');
+        }
+
+        if (BiteshipService::isEnabled()) {
+            $response = BiteshipService::cancelShipment($transaction->booking_code);
+
+            if (isset($response['success']) && $response['success']) {
+                $transaction->update([
+                    'booking_code' => null,
+                    'tracking_number' => null,
+                ]);
+
+                return back()->with('success', 'Booking pengiriman Biteship berhasil dibatalkan.');
+            }
+
+            $errorMsg = $response['error'] ?? 'Gagal membatalkan booking pengiriman di Biteship.';
+
+            return back()->with('error', $errorMsg);
         }
 
         $response = KomerceService::cancelShipment($transaction->booking_code);
@@ -213,10 +303,22 @@ class KomerceShipmentController extends Controller
      */
     public function trackShipment(Transaction $transaction)
     {
-        // We can track either by airway bill (tracking_number) or booking_code
         $waybill = $transaction->tracking_number;
         if (! $waybill) {
             return response()->json(['error' => 'Resi pengiriman belum tersedia.'], 400);
+        }
+
+        if (BiteshipService::isEnabled()) {
+            $response = BiteshipService::getShipmentHistory($waybill, $transaction->shipping_courier);
+
+            if (isset($response['success']) && $response['success']) {
+                return response()->json([
+                    'success' => true,
+                    'history' => $response['history'] ?? [],
+                ]);
+            }
+
+            return response()->json(['error' => $response['error'] ?? 'Gagal melacak status pengiriman dari Biteship.'], 422);
         }
 
         $response = KomerceService::getShipmentHistory($waybill, $transaction->shipping_courier);

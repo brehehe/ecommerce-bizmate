@@ -81,6 +81,12 @@
             settings.shipping_delivery_enabled === 'true' ||
             settings.shipping_delivery_enabled === true ||
             settings.shipping_delivery_enabled === '1',
+        biteship_enabled:
+            settings.biteship_enabled === 'true' ||
+            settings.biteship_enabled === true ||
+            settings.biteship_enabled === '1',
+        biteship_url: settings.biteship_url || 'https://api.biteship.com/v1/',
+        biteship_secret_key: settings.biteship_secret_key || '',
         payment_api_enabled:
             settings.payment_api_enabled === 'true' ||
             settings.payment_api_enabled === true ||
@@ -279,6 +285,18 @@
     $effect(() => {
         if (!form.holiday_mode) {
             form.always_open = true;
+        }
+    });
+
+    $effect(() => {
+        if (form.shipping_delivery_enabled) {
+            form.biteship_enabled = false;
+        }
+    });
+
+    $effect(() => {
+        if (form.biteship_enabled) {
+            form.shipping_delivery_enabled = false;
         }
     });
 
@@ -2977,6 +2995,37 @@
                                 </div>
 
                                 <div class="h-px bg-slate-100 my-2"></div>
+
+                                 <!-- Biteship Shipping Settings -->
+                                 <div class="space-y-2">
+                                     <Toggle
+                                         bind:checked={form.biteship_enabled}
+                                         label="Aktifkan Biteship Shipping API"
+                                         icon="ti-truck-delivery"
+                                     />
+                                     {#if form.biteship_enabled}
+                                         <div
+                                             class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                         >
+                                             <Input
+                                                 id="input-biteship-url"
+                                                 bind:value={form.biteship_url}
+                                                 label="Biteship Base URL"
+                                                 placeholder="Contoh: https://api.biteship.com/v1/"
+                                                 required={true}
+                                             />
+                                             <Input
+                                                 id="input-biteship-secret-key"
+                                                 bind:value={form.biteship_secret_key}
+                                                 label="Biteship Secret Key / Token"
+                                                 placeholder="biteship_live.xxx / biteship_test.xxx"
+                                                 required={true}
+                                             />
+                                         </div>
+                                     {/if}
+                                 </div>
+
+                                 <div class="h-px bg-slate-100 my-2"></div>
 
                                 <!-- Payment API Settings -->
                                 <div class="space-y-2">

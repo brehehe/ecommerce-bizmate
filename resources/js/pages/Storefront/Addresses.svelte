@@ -1,13 +1,13 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, router, Link } from '@inertiajs/svelte';
-    import { fade, slide } from 'svelte/transition';
+    import { fade } from 'svelte/transition';
     import { onMount, tick, untrack } from 'svelte';
     import { showToast } from '@/utils/toast';
     import SelectSearch from '@/components/ui/SelectSearch.svelte';
     import 'leaflet/dist/leaflet.css';
 
-    let { addresses = [] } = $props();
+    let { addresses = [], isBiteshipEnabled = false, isRajaOngkirEnabled = false } = $props();
 
     // Theme configuration
     const primary = $derived(
@@ -53,6 +53,20 @@
     let formVillageId = $state('');
     let formVillageName = $state('');
     let formPostalCode = $state('');
+
+    // Shipping area ID state (Biteship / RajaOngkir)
+    let formBiteshipAreaId = $state('');
+    let formBiteshipAreaLabel = $state(''); // Human-readable name for selected area
+    let formRajaOngkirDestId = $state('');
+    let biteshipAreaResults = $state<any[]>([]);
+    let biteshipAreaLoading = $state(false);
+    let rajaongkirAreaResults = $state<any[]>([]);
+    let rajaongkirAreaLoading = $state(false);
+    let showAreaDropdown = $state(false);
+    let areaSearchInput = $state('');
+    let areaDebounce: any;
+    let manualAreaMode = $state(false); // True when user skips Biteship and fills dropdowns manually
+    let formSelectedAreaData = $state<any>(null); // Full Biteship area object for read-only display
 
     let provinces = $state<any[]>([]);
     let regencies = $state<any[]>([]);
@@ -152,6 +166,31 @@
 
     // Geolocation logic
     function getBrowserLocation() {
+        // Try to get default coordinates from the user's primary or first address
+        let defaultLat = -7.2575;
+        let defaultLon = 112.7521;
+        if (addresses && addresses.length > 0) {
+            const primary = addresses.find((a: any) => a.is_primary && a.latitude && a.longitude);
+            if (primary) {
+                defaultLat = parseFloat(primary.latitude);
+                defaultLon = parseFloat(primary.longitude);
+            } else {
+                const withCoords = addresses.find((a: any) => a.latitude && a.longitude);
+                if (withCoords) {
+                    defaultLat = parseFloat(withCoords.latitude);
+                    defaultLon = parseFloat(withCoords.longitude);
+                }
+            }
+        }
+
+        // If permission was already denied, go directly to the map with default coordinates silently
+        if (permissionState === 'denied') {
+            mapLatitude = defaultLat;
+            mapLongitude = defaultLon;
+            step = 'map';
+            return;
+        }
+
         locationLoading = true;
 
         if (navigator.geolocation) {
@@ -175,40 +214,25 @@
                 },
                 async (error) => {
                     locationLoading = false;
-                    console.error('GPS Geolocation error:', error);
-
+                    
+                    // Fallback directly to map with default coordinates silently on any error/denied
+                    mapLatitude = defaultLat;
+                    mapLongitude = defaultLon;
+                    step = 'map';
+                    
                     if (error.code === 1) {
-                        // PERMISSION_DENIED: User or browser blocked access
-                        // Do not show overlapping toast; the inline pink warning card explains everything clearly!
-                    } else if (error.code === 2) {
-                        // POSITION_UNAVAILABLE: Location scanner failed
-                        showToast(
-                            'Lokasi tidak tersedia. Pastikan Wi-Fi perangkat Anda aktif.',
-                            'error',
-                            'top',
-                        );
-                        await fallbackToIpLocation();
-                    } else if (error.code === 3) {
-                        // TIMEOUT
-                        showToast(
-                            'Waktu habis mendeteksi lokasi. Mengalihkan ke perkiraan internet...',
-                            'error',
-                            'top',
-                        );
-                        await fallbackToIpLocation();
+                        permissionState = 'denied';
                     } else {
-                        await fallbackToIpLocation();
+                        console.warn('GPS Geolocation error:', error);
                     }
                 },
                 { enableHighAccuracy: true, timeout: 8000 },
             );
         } else {
             locationLoading = false;
-            showToast(
-                'Browser Anda tidak mendukung deteksi lokasi.',
-                'error',
-                'top',
-            );
+            mapLatitude = defaultLat;
+            mapLongitude = defaultLon;
+            step = 'map';
         }
     }
 
@@ -248,6 +272,67 @@
         step = 'form';
     }
 
+    // Biteship Maps area autocomplete search (used in form step)
+    function handleBiteshipAreaSearch() {
+        clearTimeout(areaDebounce);
+        showAreaDropdown = false;
+        if (!areaSearchInput.trim() || areaSearchInput.length < 3) {
+            biteshipAreaResults = [];
+            return;
+        }
+
+        biteshipAreaLoading = true;
+        areaDebounce = setTimeout(async () => {
+            try {
+                const response = await fetch(
+                    `/api/addresses/biteship-areas?q=${encodeURIComponent(areaSearchInput)}`,
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    biteshipAreaResults = data.areas ?? [];
+                    showAreaDropdown = biteshipAreaResults.length > 0;
+                }
+            } catch (err) {
+                console.error('Error fetching Biteship areas:', err);
+            } finally {
+                biteshipAreaLoading = false;
+            }
+        }, 500);
+    }
+
+    function selectBiteshipArea(area: any) {
+        formBiteshipAreaId = area.id;
+        formBiteshipAreaLabel = area.name;
+        formSelectedAreaData = area; // Store full area object for read-only display
+        areaSearchInput = area.name;
+        biteshipAreaResults = [];
+        showAreaDropdown = false;
+        manualAreaMode = false; // Stay in Biteship mode — show read-only summary
+
+        // Always fill all regional name fields from Biteship area data
+        formProvinceName = area.administrative_division_level_1_name || formProvinceName;
+        formRegencyName = area.administrative_division_level_2_name || formRegencyName;
+        formDistrictName = area.administrative_division_level_3_name || formDistrictName;
+        formVillageName = ''; // Biteship doesn't provide village (level 4)
+        formPostalCode = area.postal_code ? String(area.postal_code) : formPostalCode;
+
+        // Clear regional IDs since they came from Biteship, not the dropdown cascade
+        formProvinceId = '';
+        formRegencyId = '';
+        formDistrictId = '';
+        formVillageId = '';
+
+        console.log('[Biteship] Area dipilih:', {
+            id: area.id,
+            name: area.name,
+            province: area.administrative_division_level_1_name,
+            regency: area.administrative_division_level_2_name,
+            district: area.administrative_division_level_3_name,
+            postal_code: area.postal_code,
+            full_area_object: area,
+        });
+    }
+
     // Search query suggestion logic
     let debounceTimer: any;
     function handleSearchInput() {
@@ -284,7 +369,65 @@
                 const data = await response.json();
                 pinpointAddress =
                     data.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+                
+                // Always update the address description when the pinpoint changes
                 formFullAddress = pinpointAddress;
+
+                // Extract address details from Nominatim
+                const addrDetails = data.address ?? {};
+                
+                // Resolve Province Name
+                const province = addrDetails.state || addrDetails.region || '';
+                
+                // Resolve Regency/City Name
+                const regency = addrDetails.city || addrDetails.regency || addrDetails.county || addrDetails.municipality || '';
+                
+                // Resolve District Name
+                const district = addrDetails.suburb || addrDetails.district || addrDetails.city_district || addrDetails.village || '';
+                
+                // Resolve Postal Code
+                const postcode = addrDetails.postcode || '';
+
+                if (province) formProvinceName = province;
+                if (regency) formRegencyName = regency;
+                if (district) formDistrictName = district;
+                if (postcode) formPostalCode = postcode;
+
+                // Clear regional IDs because we are using pinpoint coordinates/names
+                formProvinceId = '';
+                formRegencyId = '';
+                formDistrictId = '';
+                formVillageId = '';
+
+                // If Biteship is enabled, automatically query and resolve the Biteship Area ID
+                if (isBiteshipEnabled && district && regency) {
+                    const queryStr = `${district}, ${regency}`;
+                    try {
+                        const biteshipResp = await fetch(
+                            `/api/addresses/biteship-areas?q=${encodeURIComponent(queryStr)}`,
+                        );
+                        if (biteshipResp.ok) {
+                            const biteshipData = await biteshipResp.json();
+                            const areas = biteshipData.areas ?? [];
+                            if (areas.length > 0) {
+                                const bestArea = areas[0];
+                                formBiteshipAreaId = bestArea.id;
+                                formBiteshipAreaLabel = bestArea.name;
+                                formSelectedAreaData = bestArea;
+                                
+                                // Use official Biteship division names
+                                formProvinceName = bestArea.administrative_division_level_1_name || formProvinceName;
+                                formRegencyName = bestArea.administrative_division_level_2_name || formRegencyName;
+                                formDistrictName = bestArea.administrative_division_level_3_name || formDistrictName;
+                                if (bestArea.postal_code) {
+                                    formPostalCode = String(bestArea.postal_code);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error auto-resolving Biteship area:', e);
+                    }
+                }
             } else {
                 pinpointAddress = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
             }
@@ -300,7 +443,10 @@
         mapLatitude = lat;
         mapLongitude = lon;
         pinpointAddress = item.display_name || item.name;
-        formFullAddress = pinpointAddress;
+        // Only auto-fill address if the user hasn't typed anything yet
+        if (!formFullAddress.trim()) {
+            formFullAddress = pinpointAddress;
+        }
 
         // Transition step; $effect will auto-initialize map
         step = 'map';
@@ -513,6 +659,14 @@
         formVillageId = '';
         formVillageName = '';
         formPostalCode = '';
+        formBiteshipAreaId = '';
+        formBiteshipAreaLabel = '';
+        formSelectedAreaData = null;
+        formRajaOngkirDestId = '';
+        areaSearchInput = '';
+        biteshipAreaResults = [];
+        rajaongkirAreaResults = [];
+        manualAreaMode = !isBiteshipEnabled;
         regencies = [];
         districts = [];
         villages = [];
@@ -544,6 +698,20 @@
         formVillageId = addr.village_id || '';
         formVillageName = addr.village_name || '';
         formPostalCode = addr.postal_code || '';
+        formBiteshipAreaId = addr.biteship_area_id || '';
+        formBiteshipAreaLabel = addr.biteship_area_id ? (addr.district_name ? `${addr.district_name}, ${addr.regency_name}` : addr.regency_name || '') : '';
+        formSelectedAreaData = addr.biteship_area_id ? {
+            administrative_division_level_1_name: addr.province_name,
+            administrative_division_level_2_name: addr.regency_name,
+            administrative_division_level_3_name: addr.district_name,
+            postal_code: addr.postal_code,
+        } : null;
+        formRajaOngkirDestId = addr.rajaongkir_destination_id || '';
+        areaSearchInput = formBiteshipAreaLabel;
+        biteshipAreaResults = [];
+        rajaongkirAreaResults = [];
+        // For editing: show manual mode if no Biteship area or Biteship is disabled
+        manualAreaMode = !isBiteshipEnabled || !addr.biteship_area_id;
 
         // Eager load dependent options
         if (formProvinceId) await fetchRegencies(formProvinceId);
@@ -583,6 +751,8 @@
             village_id: formVillageId,
             village_name: formVillageName,
             postal_code: formPostalCode,
+            biteship_area_id: formBiteshipAreaId || null,
+            rajaongkir_destination_id: formRajaOngkirDestId || null,
             latitude: mapLatitude,
             longitude: mapLongitude,
             note: formNote,
@@ -925,33 +1095,7 @@
                         {/if}
                     </div>
 
-                    <!-- Warning banner when location permission is denied -->
-                    {#if permissionState === 'denied'}
-                        <div
-                            class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex gap-3"
-                            transition:slide
-                        >
-                            <i
-                                class="ti ti-alert-triangle text-rose-500 text-xl shrink-0 mt-0.5"
-                            ></i>
-                            <div>
-                                <h4 class="text-sm font-bold text-rose-800">
-                                    Akses Lokasi Diblokir
-                                </h4>
-                                <p
-                                    class="text-xs text-rose-600 mt-1 leading-relaxed"
-                                >
-                                    Izin lokasi dinonaktifkan di browser Anda.
-                                    Silakan klik ikon <b
-                                        >lingkaran (i) / gembok</b
-                                    >
-                                    di sebelah kiri alamat URL browser Anda, lalu
-                                    aktifkan kembali tombol <b>"Lokasi"</b> agar peta
-                                    & deteksi otomatis berfungsi.
-                                </p>
-                            </div>
-                        </div>
-                    {/if}
+
 
                     <!-- Geolocation trigger -->
                     <button
@@ -1007,7 +1151,7 @@
                             </p>
                         </div>
                     {:else if searchResults.length > 0}
-                        <div class="space-y-1 pt-2" transition:slide>
+                        <div class="space-y-1 pt-2" transition:fade>
                             <h4
                                 class="text-xs font-bold text-slate-400 px-1 mb-2"
                             >
@@ -1124,7 +1268,12 @@
 
                     <div class="flex flex-col gap-2">
                         <button
-                            onclick={() => (step = 'form')}
+                            onclick={() => {
+                                if (pinpointAddress) {
+                                    formFullAddress = pinpointAddress;
+                                }
+                                step = 'form';
+                            }}
                             class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition hover:opacity-90 flex items-center justify-center"
                             style="background-color: {primary};"
                         >
@@ -1208,7 +1357,151 @@
                         />
                     </div>
 
-                    <!-- Wilayah Pengiriman Dropdowns -->
+                    <!-- Biteship Area Search card (shown before Wilayah if Biteship enabled) -->
+                    {#if isBiteshipEnabled}
+                        <div class="p-4 border border-slate-100 rounded-2xl space-y-3 {formBiteshipAreaId ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50/50'}">
+                            <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <i
+                                    class="ti ti-truck-delivery text-sm"
+                                    style="color: {primary};"
+                                ></i>
+                                Cari Area Pengiriman
+                                {#if formBiteshipAreaId}
+                                    <span class="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 normal-case">
+                                        <i class="ti ti-circle-check"></i> Terdeteksi
+                                    </span>
+                                {/if}
+                            </h3>
+
+                            <div class="relative">
+                                <div class="relative">
+                                    <i class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                                    <input
+                                        id="biteship-area-search"
+                                        type="text"
+                                        bind:value={areaSearchInput}
+                                        oninput={handleBiteshipAreaSearch}
+                                        placeholder="Ketik kecamatan / kota untuk cari area..."
+                                        class="w-full pl-10 pr-10 py-3 text-sm border rounded-xl bg-white focus:outline-none focus:ring-1 transition {formBiteshipAreaId ? 'border-emerald-300 focus:ring-emerald-200' : 'border-slate-200 focus:ring-slate-300'}"
+                                        autocomplete="off"
+                                    />
+                                    {#if biteshipAreaLoading}
+                                        <i class="ti ti-loader animate-spin absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                    {:else if formBiteshipAreaId && !showAreaDropdown}
+                                        <button
+                                            aria-label="Clear area"
+                                            onclick={() => {
+                                                formBiteshipAreaId = '';
+                                                formBiteshipAreaLabel = '';
+                                                areaSearchInput = '';
+                                                biteshipAreaResults = [];
+                                                showAreaDropdown = false;
+                                                manualAreaMode = false;
+                                            }}
+                                            class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition"
+                                        >
+                                            <i class="ti ti-x text-sm"></i>
+                                        </button>
+                                    {/if}
+                                </div>
+
+                                <!-- Dropdown results -->
+                                {#if showAreaDropdown && biteshipAreaResults.length > 0}
+                                    <div
+                                        class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-52 overflow-y-auto"
+                                    >
+                                        {#each biteshipAreaResults as area}
+                                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                            <div
+                                                role="option"
+                                                aria-selected={formBiteshipAreaId === area.id}
+                                                tabindex="0"
+                                                onclick={() => selectBiteshipArea(area)}
+                                                class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition border-b border-slate-50 last:border-0"
+                                            >
+                                                <i class="ti ti-map-pin text-slate-400 shrink-0 text-sm"></i>
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-semibold text-slate-700 truncate">
+                                                        {area.administrative_division_level_3_name || area.name}
+                                                    </p>
+                                                    <p class="text-xs text-slate-400 truncate">
+                                                        {area.administrative_division_level_2_name || ''}{area.administrative_division_level_2_name && area.postal_code ? ', ' : ''}{area.postal_code || ''}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </div>
+
+                            {#if formBiteshipAreaId}
+                                <div class="flex items-start gap-2 text-[11px] text-emerald-700">
+                                    <i class="ti ti-circle-check mt-0.5 shrink-0"></i>
+                                    <span>Area dipilih: <strong>{formBiteshipAreaLabel || areaSearchInput}</strong>. Wilayah pengiriman otomatis terisi.</span>
+                                </div>
+                            {:else if areaSearchInput.length >= 3 && !biteshipAreaLoading && biteshipAreaResults.length === 0}
+                                <div class="flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                    <i class="ti ti-alert-triangle shrink-0 mt-0.5"></i>
+                                    <span>Area <strong>"{areaSearchInput}"</strong> tidak ditemukan. Coba kata kunci lain atau isi data wilayah secara manual.</span>
+                                </div>
+                            {/if}
+
+                            <!-- Manual toggle -->
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    manualAreaMode = !manualAreaMode;
+                                    showAreaDropdown = false;
+                                }}
+                                class="text-[11px] font-semibold flex items-center gap-1.5 transition {manualAreaMode ? 'text-slate-500' : 'text-slate-400 hover:text-slate-600'}"
+                            >
+                                <i class="ti ti-edit text-xs"></i>
+                                {manualAreaMode ? 'Kembali ke Pencarian Area' : 'Tidak Ketemu? Isi Wilayah Manual'}
+                            </button>
+                        </div>
+                    {/if}
+
+                    <!-- Wilayah Pengiriman: read-only summary (when Biteship area selected & not manual) -->
+                    {#if isBiteshipEnabled && formBiteshipAreaId && !manualAreaMode && formSelectedAreaData}
+                        <div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-3">
+                            <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-map-pin text-sm" style="color: {primary};"></i>
+                                Wilayah Pengiriman
+                                <span class="ml-auto text-[10px] font-normal text-slate-400 normal-case">dari Biteship</span>
+                            </h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Provinsi</p>
+                                    <p class="text-sm font-semibold text-slate-700 mt-0.5">{formSelectedAreaData.administrative_division_level_1_name || '—'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kota / Kabupaten</p>
+                                    <p class="text-sm font-semibold text-slate-700 mt-0.5">{formSelectedAreaData.administrative_division_level_2_name || '—'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kecamatan</p>
+                                    <p class="text-sm font-semibold text-slate-700 mt-0.5">{formSelectedAreaData.administrative_division_level_3_name || '—'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kode Pos</p>
+                                    <p class="text-sm font-semibold text-slate-700 mt-0.5">{formPostalCode || '—'}</p>
+                                </div>
+                            </div>
+                            <div class="pt-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kelurahan</p>
+                                <input
+                                    id="village-manual"
+                                    type="text"
+                                    bind:value={formVillageName}
+                                    placeholder="Isi kelurahan secara manual (opsional)"
+                                    class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                                />
+                                <p class="text-[10px] text-slate-400 mt-1">Biteship tidak menyediakan data kelurahan, isi sendiri jika diperlukan.</p>
+                            </div>
+                        </div>
+
+                    <!-- Wilayah Pengiriman Dropdowns (when Biteship disabled OR manual mode) -->
+                    {:else if !isBiteshipEnabled || manualAreaMode}
                     <div
                         class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-4"
                     >
@@ -1282,6 +1575,7 @@
                             </div>
                         </div>
                     </div>
+                    {/if}
 
                     <!-- Alamat Lengkap -->
                     <div>
@@ -1438,10 +1732,9 @@
                             !formFullAddress.trim() ||
                             !formReceiverName.trim() ||
                             !formPhoneNumber.trim() ||
-                            !formProvinceId ||
-                            !formRegencyId ||
-                            !formDistrictId ||
-                            !formVillageId ||
+                            (formBiteshipAreaId
+                                ? !formProvinceName || !formRegencyName || !formDistrictName
+                                : !formProvinceId || !formRegencyId || !formDistrictId || !formVillageId) ||
                             !formPostalCode.trim()}
                         class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
                         style="background-color: {primary};"
@@ -1764,30 +2057,7 @@
                                     </button>
                                 {/if}
                             </div>
-                            {#if permissionState === 'denied'}
-                                <div
-                                    class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex gap-3"
-                                    transition:slide
-                                >
-                                    <i
-                                        class="ti ti-alert-triangle text-rose-500 text-xl shrink-0 mt-0.5"
-                                    ></i>
-                                    <div>
-                                        <h4
-                                            class="text-sm font-bold text-rose-800"
-                                        >
-                                            Akses Lokasi Diblokir
-                                        </h4>
-                                        <p
-                                            class="text-xs text-rose-600 mt-1 leading-relaxed"
-                                        >
-                                            Izin lokasi dinonaktifkan di browser
-                                            Anda. Silakan aktifkan kembali
-                                            melalui pengaturan browser.
-                                        </p>
-                                    </div>
-                                </div>
-                            {/if}
+
                             <button
                                 onclick={getBrowserLocation}
                                 disabled={locationLoading}
@@ -1841,7 +2111,7 @@
                                     </p>
                                 </div>
                             {:else if searchResults.length > 0}
-                                <div class="space-y-1 pt-2" transition:slide>
+                                <div class="space-y-1 pt-2" transition:fade>
                                     <h4
                                         class="text-xs font-bold text-slate-400 px-1 mb-2"
                                     >
@@ -1955,7 +2225,12 @@
                             </div>
                             <div class="flex gap-3">
                                 <button
-                                    onclick={() => (step = 'form')}
+                                    onclick={() => {
+                                        if (pinpointAddress) {
+                                            formFullAddress = pinpointAddress;
+                                        }
+                                        step = 'form';
+                                    }}
                                     class="flex-1 py-3.5 rounded-2xl font-bold text-white shadow transition hover:opacity-90"
                                     style="background-color: {primary};"
                                 >
@@ -2043,6 +2318,151 @@
                                 />
                             </div>
 
+                            <!-- Biteship Area Search card (desktop, shown before Wilayah if Biteship enabled) -->
+                            {#if isBiteshipEnabled}
+                                <div class="p-4 border border-slate-100 rounded-2xl space-y-3 {formBiteshipAreaId ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50/50'}">
+                                    <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i
+                                            class="ti ti-truck-delivery text-sm"
+                                            style="color: {primary};"
+                                        ></i>
+                                        Cari Area Pengiriman
+                                        {#if formBiteshipAreaId}
+                                            <span class="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 normal-case">
+                                                <i class="ti ti-circle-check"></i> Terdeteksi
+                                            </span>
+                                        {/if}
+                                    </h3>
+
+                                    <div class="relative">
+                                        <div class="relative">
+                                            <i class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+                                            <input
+                                                id="dt-biteship-area-search"
+                                                type="text"
+                                                bind:value={areaSearchInput}
+                                                oninput={handleBiteshipAreaSearch}
+                                                placeholder="Ketik kecamatan / kota untuk cari area..."
+                                                class="w-full pl-10 pr-10 py-3 text-sm border rounded-xl bg-white focus:outline-none focus:ring-1 transition {formBiteshipAreaId ? 'border-emerald-300 focus:ring-emerald-200' : 'border-slate-200 focus:ring-slate-300'}"
+                                                autocomplete="off"
+                                            />
+                                            {#if biteshipAreaLoading}
+                                                <i class="ti ti-loader animate-spin absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                            {:else if formBiteshipAreaId && !showAreaDropdown}
+                                                <button
+                                                    aria-label="Clear area"
+                                                    onclick={() => {
+                                                        formBiteshipAreaId = '';
+                                                        formBiteshipAreaLabel = '';
+                                                        areaSearchInput = '';
+                                                        biteshipAreaResults = [];
+                                                        showAreaDropdown = false;
+                                                        manualAreaMode = false;
+                                                    }}
+                                                    class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition"
+                                                >
+                                                    <i class="ti ti-x text-sm"></i>
+                                                </button>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Dropdown results -->
+                                        {#if showAreaDropdown && biteshipAreaResults.length > 0}
+                                            <div
+                                                class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-52 overflow-y-auto"
+                                            >
+                                                {#each biteshipAreaResults as area}
+                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                                    <div
+                                                        role="option"
+                                                        aria-selected={formBiteshipAreaId === area.id}
+                                                        tabindex="0"
+                                                        onclick={() => selectBiteshipArea(area)}
+                                                        class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition border-b border-slate-50 last:border-0"
+                                                    >
+                                                        <i class="ti ti-map-pin text-slate-400 shrink-0 text-sm"></i>
+                                                        <div class="min-w-0">
+                                                            <p class="text-sm font-semibold text-slate-700 truncate">
+                                                                {area.administrative_division_level_3_name || area.name}
+                                                            </p>
+                                                            <p class="text-xs text-slate-400 truncate">
+                                                                {area.administrative_division_level_2_name || ''}{area.administrative_division_level_2_name && area.postal_code ? ', ' : ''}{area.postal_code || ''}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                {/each}
+                                            </div>
+                                        {/if}
+                                    </div>
+
+                                    {#if formBiteshipAreaId}
+                                        <div class="flex items-start gap-2 text-[11px] text-emerald-700">
+                                            <i class="ti ti-circle-check mt-0.5 shrink-0"></i>
+                                            <span>Area dipilih: <strong>{formBiteshipAreaLabel || areaSearchInput}</strong>. Wilayah pengiriman otomatis terisi.</span>
+                                        </div>
+                                    {:else if areaSearchInput.length >= 3 && !biteshipAreaLoading && biteshipAreaResults.length === 0}
+                                        <div class="flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
+                                            <i class="ti ti-alert-triangle shrink-0 mt-0.5"></i>
+                                            <span>Area <strong>"{areaSearchInput}"</strong> tidak ditemukan. Coba kata kunci lain atau isi data wilayah secara manual.</span>
+                                        </div>
+                                    {/if}
+
+                                    <!-- Manual toggle -->
+                                    <button
+                                        type="button"
+                                        onclick={() => {
+                                            manualAreaMode = !manualAreaMode;
+                                            showAreaDropdown = false;
+                                        }}
+                                        class="text-[11px] font-semibold flex items-center gap-1.5 transition {manualAreaMode ? 'text-slate-500' : 'text-slate-400 hover:text-slate-600'}"
+                                    >
+                                        <i class="ti ti-edit text-xs"></i>
+                                        {manualAreaMode ? 'Kembali ke Pencarian Area' : 'Tidak Ketemu? Isi Wilayah Manual'}
+                                    </button>
+                                </div>
+                            {/if}
+
+                            <!-- Wilayah Pengiriman: read-only summary (desktop, when Biteship area selected & not manual) -->
+                            {#if isBiteshipEnabled && formBiteshipAreaId && !manualAreaMode && formSelectedAreaData}
+                                <div class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-3">
+                                    <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i class="ti ti-map-pin text-sm" style="color: {primary};"></i>
+                                        Wilayah Pengiriman
+                                        <span class="ml-auto text-[10px] font-normal text-slate-400 normal-case">dari Biteship</span>
+                                    </h3>
+                                    <div class="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                                        <div>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Provinsi</p>
+                                            <p class="text-sm font-semibold text-slate-700 mt-0.5">{formSelectedAreaData.administrative_division_level_1_name || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kota / Kabupaten</p>
+                                            <p class="text-sm font-semibold text-slate-700 mt-0.5">{formSelectedAreaData.administrative_division_level_2_name || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kecamatan</p>
+                                            <p class="text-sm font-semibold text-slate-700 mt-0.5">{formSelectedAreaData.administrative_division_level_3_name || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kode Pos</p>
+                                            <p class="text-sm font-semibold text-slate-700 mt-0.5">{formPostalCode || '—'}</p>
+                                        </div>
+                                    </div>
+                                    <div class="pt-1">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Kelurahan</p>
+                                        <input
+                                            id="dt-village-manual"
+                                            type="text"
+                                            bind:value={formVillageName}
+                                            placeholder="Isi kelurahan secara manual (opsional)"
+                                            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                                        />
+                                        <p class="text-[10px] text-slate-400 mt-1">Biteship tidak menyediakan data kelurahan, isi sendiri jika diperlukan.</p>
+                                    </div>
+                                </div>
+
+                            <!-- Wilayah Pengiriman Dropdowns (desktop, when Biteship disabled OR manual mode) -->
+                            {:else if !isBiteshipEnabled || manualAreaMode}
                             <div
                                 class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-4"
                             >
@@ -2109,6 +2529,8 @@
                                     </div>
                                 </div>
                             </div>
+                            {/if}
+
 
                             <div>
                                 <div
@@ -2275,10 +2697,9 @@
                                     !formFullAddress.trim() ||
                                     !formReceiverName.trim() ||
                                     !formPhoneNumber.trim() ||
-                                    !formProvinceId ||
-                                    !formRegencyId ||
-                                    !formDistrictId ||
-                                    !formVillageId ||
+                                    (formBiteshipAreaId
+                                        ? !formProvinceName || !formRegencyName || !formDistrictName
+                                        : !formProvinceId || !formRegencyId || !formDistrictId || !formVillageId) ||
                                     !formPostalCode.trim()}
                                 class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
                                 style="background-color: {primary};"

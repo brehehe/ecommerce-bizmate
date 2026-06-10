@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\BiteshipWebhookController;
 use App\Http\Controllers\Api\FlipWebhookController;
 use App\Http\Controllers\Api\KomerceWebhookController;
 use App\Http\Controllers\Api\MidtransWebhookController;
@@ -15,3 +16,4 @@ Route::post('/payment/xendit/callback', [XenditWebhookController::class, 'handle
 Route::post('/payment/midtrans/callback', [MidtransWebhookController::class, 'handleCallback']);
 Route::post('/payment/flip/callback', [FlipWebhookController::class, 'handleCallback']);
 Route::match(['post', 'put'], '/payment/komerce/callback', [KomerceWebhookController::class, 'handleCallback'])->name('api.komerce.webhook');
+Route::post('/payment/biteship/callback', [BiteshipWebhookController::class, 'handleCallback'])->name('api.biteship.webhook');

@@ -1671,6 +1671,29 @@ class StorefrontController extends Controller
             'refundRequests',
         ]);
 
+        if ($transaction->status === 'belum_bayar' && $request->query('simulated_payment') == '1') {
+            $latestPayment = $transaction->payment;
+            if ($latestPayment) {
+                DB::transaction(function () use ($transaction, $latestPayment) {
+                    $latestPayment->update([
+                        'status' => 'confirmed',
+                        'gateway_status' => 'PAID',
+                        'confirmed_at' => now(),
+                    ]);
+
+                    $transaction->update([
+                        'status' => 'diproses',
+                    ]);
+
+                    Log::info('Simulated Payment Verified on Page Load', [
+                        'transaction_id' => $transaction->id,
+                    ]);
+                });
+
+                $transaction->load(['payments', 'payment']);
+            }
+        }
+
         $userReviews = ProductReview::where('user_id', $request->user()->id)
             ->where('transaction_id', $transaction->id)
             ->where('product_id', $validated['product_id'] ?? null) // keep context safe

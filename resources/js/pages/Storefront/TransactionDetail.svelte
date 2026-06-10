@@ -1017,6 +1017,53 @@
     let loadingTracking = $state(false);
     let trackingError = $state('');
 
+    function translateBiteshipDesc(desc) {
+        if (!desc) return '';
+        const descLower = desc.toLowerCase();
+        
+        if (descLower.includes('confirmed') && descLower.includes('notified')) {
+            return 'Pesanan kurir terkonfirmasi. Kurir telah dinotifikasi untuk menjemput paket.';
+        }
+        if (descLower.includes('allocated') && descLower.includes('ready to pick up')) {
+            return 'Kurir telah dialokasikan dan bersiap untuk menjemput paket.';
+        }
+        if (descLower.includes('on the way to pick up')) {
+            return 'Kurir sedang dalam perjalanan menuju lokasi penjemputan.';
+        }
+        if (descLower.includes('picked') || descLower.includes('dijemput') || descLower.includes('diserahkan')) {
+            return 'Paket telah diambil oleh kurir.';
+        }
+        if (descLower.includes('in transit') || descLower.includes('on the way to the destination')) {
+            return 'Paket sedang dalam perjalanan ke alamat penerima.';
+        }
+        if (descLower.includes('dropping off') || descLower.includes('on the way to customer')) {
+            return 'Kurir sedang dalam perjalanan mengirimkan paket ke pelanggan.';
+        }
+        if (descLower.includes('delivered') || descLower.includes('diterima') || descLower.includes('sampai')) {
+            return 'Paket telah berhasil diterima oleh penerima.';
+        }
+        if (descLower.includes('returned') || descLower.includes('kembali')) {
+            return 'Paket berhasil dikembalikan ke pengirim.';
+        }
+        if (descLower.includes('cancelled') || descLower.includes('batal') || descLower.includes('canceled')) {
+            return 'Pengiriman dibatalkan.';
+        }
+        if (descLower.includes('rejected') || descLower.includes('ditolak')) {
+            return 'Pengiriman ditolak.';
+        }
+        if (descLower.includes('courier not found') || descLower.includes('couriernotfound')) {
+            return 'Pengiriman dibatalkan karena tidak ada kurir yang tersedia.';
+        }
+        if (descLower.includes('on hold') || descLower.includes('ditangguhkan')) {
+            return 'Pengiriman ditangguhkan sementara.';
+        }
+        if (descLower.includes('disposed')) {
+            return 'Paket berhasil dimusnahkan.';
+        }
+
+        return desc;
+    }
+
     async function fetchTrackingHistory() {
         if (!transaction.tracking_number) return;
         loadingTracking = true;
@@ -1027,7 +1074,10 @@
             );
             const data = await resp.json();
             if (resp.ok && data.success) {
-                trackingHistory = data.history;
+                trackingHistory = (data.history || []).map(step => ({
+                    ...step,
+                    desc: translateBiteshipDesc(step.desc)
+                })).reverse();
             } else {
                 trackingError = data.error ?? 'Gagal melacak pengiriman.';
             }
@@ -2319,6 +2369,8 @@
                                             {#if gatewayInvoiceUrl}
                                                 <a
                                                     href={gatewayInvoiceUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer external"
                                                     class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 shadow-sm"
                                                 >
                                                     Bayar Sekarang

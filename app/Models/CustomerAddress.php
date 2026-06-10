@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Model;
     'village_id',
     'village_name',
     'postal_code',
+    'biteship_area_id',
+    'rajaongkir_destination_id',
     'latitude',
     'longitude',
     'note',

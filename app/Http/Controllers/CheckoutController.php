@@ -17,6 +17,7 @@ use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\TransactionPayment;
+use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -946,11 +947,11 @@ class CheckoutController extends Controller
     public function shippingCost(Request $request)
     {
         $request->validate([
-            'destination' => 'required_unless:courier,self_pickup,store_courier|nullable|integer',
+            'destination' => 'required_without:address_id|nullable|string',
             'weight' => 'required|integer|min:1',
             'courier' => 'required|string',
             'is_international' => 'nullable|boolean',
-            'address_id' => 'required_if:courier,store_courier|nullable|string',
+            'address_id' => 'nullable|string',
         ]);
 
         if ($request->courier === 'self_pickup') {
@@ -1124,14 +1125,33 @@ class CheckoutController extends Controller
         if ($request->is_international) {
             $response = KomerceService::getInternationalCost(
                 $origin,
-                $request->destination,
+                (string) ($request->destination ?? ''),
                 $request->weight,
                 $request->courier
+            );
+        } elseif (KomerceService::isDeliveryEnabled()) {
+            $response = KomerceService::getDomesticCost(
+                $origin,
+                (string) ($request->destination ?? ''),
+                $request->weight,
+                $request->courier,
+                $request->address_id
+            );
+        } elseif (BiteshipService::isEnabled()) {
+            $user = $request->user();
+            $cartItems = $user ? $this->getCheckoutItems($user) : collect();
+            $response = BiteshipService::getDomesticCost(
+                $origin,
+                (string) ($request->destination ?? ''),
+                $request->weight,
+                $request->courier,
+                $request->address_id,
+                $cartItems
             );
         } else {
             $response = KomerceService::getDomesticCost(
                 $origin,
-                $request->destination,
+                (string) ($request->destination ?? ''),
                 $request->weight,
                 $request->courier,
                 $request->address_id
@@ -1158,7 +1178,13 @@ class CheckoutController extends Controller
             'keyword' => 'required|string|min:2',
         ]);
 
-        $response = KomerceService::searchDestination($request->keyword);
+        if (KomerceService::isDeliveryEnabled()) {
+            $response = KomerceService::searchDestination($request->keyword);
+        } elseif (BiteshipService::isEnabled()) {
+            $response = BiteshipService::searchDestination($request->keyword);
+        } else {
+            $response = KomerceService::searchDestination($request->keyword);
+        }
 
         if (isset($response['error'])) {
             return response()->json(['error' => $response['error']], 422);

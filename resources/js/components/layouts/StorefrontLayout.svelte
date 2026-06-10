@@ -2112,7 +2112,7 @@
             <div class="p-6">
                 <!-- LOGIN TAB -->
                 {#if authTab === 'login'}
-                    <div transition:slide={{ duration: 150 }}>
+                    <div transition:fade={{ duration: 150 }}>
                         <h2
                             class="text-xl font-outfit font-black text-slate-800 mb-1"
                         >
@@ -2238,7 +2238,7 @@
 
                     <!-- REGISTER TAB -->
                 {:else}
-                    <div transition:slide={{ duration: 150 }}>
+                    <div transition:fade={{ duration: 150 }}>
                         <h2
                             class="text-xl font-outfit font-black text-slate-800 mb-1"
                         >

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomerAddress;
+use App\Models\Setting;
+use App\Services\BiteshipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class CustomerAddressController extends Controller
@@ -19,8 +22,13 @@ class CustomerAddressController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $isBiteshipEnabled = BiteshipService::isEnabled();
+        $isRajaOngkirEnabled = ! empty(Setting::where('key', 'rajaongkir_shipping_cost')->value('value'));
+
         return Inertia::render('Storefront/Addresses', [
             'addresses' => $addresses,
+            'isBiteshipEnabled' => $isBiteshipEnabled,
+            'isRajaOngkirEnabled' => $isRajaOngkirEnabled,
         ]);
     }
 
@@ -43,6 +51,8 @@ class CustomerAddressController extends Controller
             'village_id' => 'nullable|string',
             'village_name' => 'nullable|string',
             'postal_code' => 'nullable|string',
+            'biteship_area_id' => 'nullable|string|max:100',
+            'rajaongkir_destination_id' => 'nullable|string|max:20',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'note' => 'nullable|string|max:45',
@@ -91,6 +101,8 @@ class CustomerAddressController extends Controller
             'village_id' => 'nullable|string',
             'village_name' => 'nullable|string',
             'postal_code' => 'nullable|string',
+            'biteship_area_id' => 'nullable|string|max:100',
+            'rajaongkir_destination_id' => 'nullable|string|max:20',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'note' => 'nullable|string|max:45',
@@ -157,6 +169,98 @@ class CustomerAddressController extends Controller
         $address->update(['is_primary' => true]);
 
         return redirect()->back()->with('success', 'Alamat utama berhasil diubah.');
+    }
+
+    /**
+     * Search areas using Biteship Maps API (proxy).
+     */
+    public function searchBiteshipAreas(Request $request)
+    {
+        $query = $request->query('q');
+        if (empty($query) || strlen(trim($query)) < 3) {
+            return response()->json(['success' => false, 'areas' => []]);
+        }
+
+        $apiKey = BiteshipService::getBiteshipKey();
+        if (empty($apiKey)) {
+            return response()->json(['success' => false, 'areas' => [], 'error' => 'Biteship API key not configured.'], 422);
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'authorization' => $apiKey,
+                'Accept' => 'application/json',
+            ])
+                ->timeout(10)
+                ->get(BiteshipService::getBiteshipUrl().'/maps/areas', [
+                    'countries' => 'ID',
+                    'input' => $query,
+                    'type' => 'single',
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                return response()->json([
+                    'success' => true,
+                    'areas' => $data['areas'] ?? [],
+                ]);
+            }
+
+            Log::warning('Biteship Maps Areas proxy failed: '.$response->body());
+
+            return response()->json(['success' => false, 'areas' => []], 200);
+        } catch (\Exception $e) {
+            Log::error('Biteship Maps Areas proxy error: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'areas' => []], 200);
+        }
+    }
+
+    /**
+     * Search destination areas using RajaOngkir / Komerce API (proxy).
+     */
+    public function searchRajaOngkirAreas(Request $request)
+    {
+        $query = $request->query('q');
+        if (empty($query) || strlen(trim($query)) < 3) {
+            return response()->json(['success' => false, 'data' => []]);
+        }
+
+        $baseUrl = Setting::where('key', 'komerce_delivery_url')->value('value')
+            ?? 'https://api.collaborator.komerce.id/api/v1/';
+        $apiKey = Setting::where('key', 'shipping_delivery_key')->value('value');
+
+        if (empty($apiKey)) {
+            return response()->json(['success' => false, 'data' => []]);
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer '.$apiKey,
+                'Accept' => 'application/json',
+            ])
+                ->timeout(10)
+                ->get(rtrim($baseUrl, '/').'/destination/search', [
+                    'keyword' => $query,
+                    'limit' => 10,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $data['data'] ?? [],
+                ]);
+            }
+
+            return response()->json(['success' => false, 'data' => []]);
+        } catch (\Exception $e) {
+            Log::error('RajaOngkir search areas proxy error: '.$e->getMessage());
+
+            return response()->json(['success' => false, 'data' => []]);
+        }
     }
 
     /**
