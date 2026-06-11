@@ -199,6 +199,13 @@
     let selectedShipping: any = $state(null);
     let loadingShipping = $state(false);
     let shippingError = $state('');
+    // Track couriers that returned no available routes for the current address
+    let unavailableCouriers = $state<Set<string>>(new Set());
+
+    // Couriers filtered to exclude those with no coverage for current address
+    const visibleCouriers = $derived(
+        availableCouriers.filter((c: string) => !unavailableCouriers.has(c)),
+    );
 
     async function autoSelectShipping(courierIndex = 0) {
         if (isDigitalOnly) return;
@@ -234,6 +241,8 @@
             autoSelectShipping(0);
         } else if (selectedAddressId && selectedAddressId !== lastAddressId) {
             lastAddressId = selectedAddressId;
+            // Reset unavailable couriers — may differ per address
+            unavailableCouriers = new Set();
             if (selectedCourier) {
                 fetchShipping().then(() => {
                     if (!shippingOptions || shippingOptions.length === 0) {
@@ -686,8 +695,14 @@
 
             const data = await resp.json();
             if (resp.ok && data.results && data.results.length > 0) {
-                const services = data.results[0]?.costs ?? [];
-                shippingOptions = services;
+                // Collect costs from ALL result groups (Biteship returns all services
+                // for one courier grouped; other providers may return multiple groups)
+                const allServices: any[] = [];
+                for (const result of data.results) {
+                    const costs = result.costs ?? [];
+                    allServices.push(...costs);
+                }
+                shippingOptions = allServices;
                 if (shippingOptions.length > 0) {
                     shippingOptions.sort(
                         (a: any, b: any) =>
@@ -695,8 +710,27 @@
                             (b.cost?.[0]?.value ?? 0),
                     );
                     selectedShipping = shippingOptions[0];
+                    // Mark courier as available for this address
+                    unavailableCouriers = new Set(
+                        [...unavailableCouriers].filter(
+                            (c) => c !== selectedCourier,
+                        ),
+                    );
+                } else {
+                    // No services under this courier — mark as unavailable
+                    unavailableCouriers = new Set([
+                        ...unavailableCouriers,
+                        selectedCourier,
+                    ]);
+                    shippingError =
+                        'Tidak ada layanan pengiriman tersedia untuk kurir ini.';
                 }
             } else {
+                // API returned error or empty — mark courier as unavailable
+                unavailableCouriers = new Set([
+                    ...unavailableCouriers,
+                    selectedCourier,
+                ]);
                 shippingError =
                     data.error ?? 'Tidak ada layanan pengiriman tersedia.';
             }
@@ -1576,7 +1610,7 @@
                                                 <div
                                                     class="max-h-60 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin"
                                                 >
-                                                    {#each availableCouriers.filter( (c) => courierLabels[c]
+                                                    {#each visibleCouriers.filter( (c) => (courierLabels[c] ?? c)
                                                                 .toLowerCase()
                                                                 .includes(searchCourierQuery.toLowerCase()), ) as courier}
                                                         <button
@@ -1600,7 +1634,7 @@
                                                             <span
                                                                 >{courierLabels[
                                                                     courier
-                                                                ]}</span
+                                                                ] ?? courier.toUpperCase()}</span
                                                             >
                                                             {#if selectedCourier === courier}
                                                                 <i
@@ -1616,8 +1650,7 @@
                                                                 class="ti ti-search-off text-lg text-slate-300"
                                                             ></i>
                                                             <span
-                                                                >Kurir "{searchCourierQuery}"
-                                                                tidak ditemukan</span
+                                                                >{searchCourierQuery ? `Kurir "${searchCourierQuery}" tidak ditemukan` : 'Semua kurir tidak tersedia untuk alamat ini'}</span
                                                             >
                                                         </div>
                                                     {/each}
