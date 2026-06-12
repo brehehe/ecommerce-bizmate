@@ -925,6 +925,7 @@
     let searchQuery = $state('');
     let mapSearchResults = $state([]);
     let showMapSearchDropdown = $state(false);
+    let isFetchingLocation = $state(false);
 
     onMount(async () => {
         await fetchProvinces();
@@ -1001,6 +1002,64 @@
         form.longitude = lon.toString();
         searchQuery = result.display_name;
         showMapSearchDropdown = false;
+    }
+
+    async function getCurrentLocation() {
+        if (isFetchingLocation) return;
+        if (!navigator.geolocation) {
+            showToast('Geolokasi tidak didukung oleh browser Anda.', 'error');
+            return;
+        }
+
+        isFetchingLocation = true;
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                form.latitude = lat.toString();
+                form.longitude = lon.toString();
+
+                if (map && marker) {
+                    map.setView([lat, lon], 15);
+                    marker.setLatLng([lat, lon]);
+                }
+
+                // Coba lakukan reverse geocoding untuk melengkapi searchQuery alamat
+                try {
+                    const res = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+                    );
+                    const data = await res.json();
+                    if (data && data.display_name) {
+                        searchQuery = data.display_name;
+                    }
+                } catch (err) {
+                    console.error('Reverse geocoding error:', err);
+                }
+
+                isFetchingLocation = false;
+                showToast('Lokasi berhasil diperbarui.', 'success');
+            },
+            (error) => {
+                isFetchingLocation = false;
+                let errorMessage = 'Gagal mendapatkan lokasi.';
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorMessage = 'Izin akses lokasi ditolak.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    errorMessage = 'Informasi lokasi tidak tersedia.';
+                } else if (error.code === error.TIMEOUT) {
+                    errorMessage = 'Waktu permintaan lokasi habis.';
+                }
+                showToast(errorMessage, 'error');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+            }
+        );
     }
 
     async function fetchProvinces() {
@@ -1401,6 +1460,19 @@
                                         class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition flex items-center gap-2"
                                     >
                                         <i class="ti ti-search"></i> Cari
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={getCurrentLocation}
+                                        disabled={isFetchingLocation}
+                                        class="px-4 py-2.5 bg-sky-50 hover:bg-sky-100 disabled:opacity-50 disabled:cursor-not-allowed text-sky-700 rounded-lg font-bold text-sm transition flex items-center gap-2 shrink-0 border border-sky-100"
+                                    >
+                                        {#if isFetchingLocation}
+                                            <i class="ti ti-loader animate-spin"></i>
+                                        {:else}
+                                            <i class="ti ti-device-gps"></i>
+                                        {/if}
+                                        Lokasi Saya
                                     </button>
                                 </div>
 

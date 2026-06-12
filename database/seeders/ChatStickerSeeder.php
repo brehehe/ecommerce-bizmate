@@ -41,9 +41,9 @@ class ChatStickerSeeder extends Seeder
             ChatSticker::updateOrCreate(
                 ['name' => $data['name']],
                 [
-                    'category'  => $data['category'],
+                    'category' => $data['category'],
                     'image_path' => $dest,
-                    'order'     => $index + 1,
+                    'order' => $index + 1,
                     'is_active' => true,
                 ]
             );

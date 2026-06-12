@@ -170,6 +170,16 @@ class CategoryAndProductSeeder extends Seeder
                             ],
                         ],
                     ],
+                    [
+                        'name' => 'Charger Macbook Air M1 USB-C 30W',
+                        'brand' => 'Apple',
+                        'price' => 599000,
+                        'image' => 'https://images.unsplash.com/photo-1619489646924-b4fce76b1db5?w=600&auto=format&fit=crop&q=80',
+                        'gallery' => [
+                            'https://images.unsplash.com/photo-1622445262465-24819af52486?w=600&auto=format&fit=crop&q=80',
+                        ],
+                        'summary' => 'Adaptor daya USB-C 30W resmi untuk Macbook Air M1 Anda, pengisian daya cepat dan aman.',
+                    ],
                 ],
             ],
             [

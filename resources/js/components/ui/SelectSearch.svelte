@@ -35,12 +35,12 @@
 
         dropAbove = spaceBelow < DROPDOWN_MAX_H && spaceAbove > spaceBelow;
         dropWidth = rect.width;
-        dropLeft = rect.left + window.scrollX;
+        dropLeft = rect.left;
 
         if (dropAbove) {
-            dropTop = rect.top + window.scrollY - 4; // will anchor to bottom of dropdown
+            dropTop = rect.top - 4; // will anchor to bottom of dropdown
         } else {
-            dropTop = rect.bottom + window.scrollY + 4;
+            dropTop = rect.bottom + 4;
         }
     }
 
@@ -68,6 +68,58 @@
                 if (searchInput) searchInput.focus();
             }, 10);
         } else {
+            isOpen = false;
+        }
+    }
+
+    let activeIndex = $state(-1);
+    let optionsContainer: HTMLDivElement | null = $state(null);
+
+    $effect(() => {
+        if (isOpen) {
+            if (filteredOptions.length > 0) {
+                const foundIdx = filteredOptions.findIndex(opt => opt.id == value || opt.name == value);
+                activeIndex = foundIdx !== -1 ? foundIdx : 0;
+            } else {
+                activeIndex = -1;
+            }
+        } else {
+            activeIndex = -1;
+        }
+    });
+
+    function scrollToActiveOption() {
+        setTimeout(() => {
+            if (!optionsContainer) return;
+            const activeEl = optionsContainer.querySelector('[data-active="true"]');
+            if (activeEl) {
+                activeEl.scrollIntoView({ block: 'nearest' });
+            }
+        }, 10);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+        if (!isOpen) return;
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (filteredOptions.length > 0) {
+                activeIndex = (activeIndex + 1) % filteredOptions.length;
+                scrollToActiveOption();
+            }
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (filteredOptions.length > 0) {
+                activeIndex = (activeIndex - 1 + filteredOptions.length) % filteredOptions.length;
+                scrollToActiveOption();
+            }
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            if (activeIndex >= 0 && activeIndex < filteredOptions.length) {
+                selectOption(filteredOptions[activeIndex].id);
+            }
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
             isOpen = false;
         }
     }
@@ -113,6 +165,12 @@
         tabindex="0"
         class="w-full px-3 py-2 border rounded-xl text-sm transition flex justify-between items-center {disabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white cursor-pointer hover:border-brand-blueRoyal'} {error ? 'border-rose-500' : 'border-slate-200'} {isOpen ? 'border-brand-blueRoyal ring-2 ring-brand-blueRoyal/10' : ''}"
         onclick={toggleOpen}
+        onkeydown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleOpen();
+            }
+        }}
     >
         <span class="truncate {selectedLabel ? 'text-slate-800' : 'text-slate-400'}">
             {selectedLabel || placeholder}
@@ -148,24 +206,29 @@
                     bind:value={search}
                     placeholder="Cari..."
                     bind:this={searchInput}
+                    onkeydown={handleKeyDown}
                     class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-brand-blueRoyal transition"
                 />
             </div>
         </div>
 
         <!-- Options list -->
-        <div class="overflow-y-auto flex-grow">
+        <div bind:this={optionsContainer} class="overflow-y-auto flex-grow">
             {#if filteredOptions.length === 0}
                 <div class="p-4 text-center text-sm text-slate-400">Tidak ada hasil</div>
             {:else}
-                {#each filteredOptions as option}
+                {#each filteredOptions as option, index}
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <div
                         role="button"
                         tabindex="0"
+                        data-active={index === activeIndex}
                         class="px-4 py-2.5 text-sm cursor-pointer flex items-center gap-2 transition-colors
                             {value === option.id || value === option.name
                                 ? 'bg-brand-blueRoyal/5 text-brand-blueRoyal font-bold'
+                                : ''}
+                            {index === activeIndex
+                                ? 'bg-slate-100 text-slate-900 font-bold'
                                 : 'text-slate-700 hover:bg-slate-50'}"
                         onclick={() => selectOption(option.id)}
                     >

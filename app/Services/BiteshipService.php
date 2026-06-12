@@ -603,7 +603,7 @@ class BiteshipService
             'courier_company' => $courierCompany,
             'courier_type' => $courierType,
             'delivery_type' => 'now',
-            'reference_id' => $transaction->transaction_number,
+            'reference_id' => $transaction->transaction_number.'-'.time(),
             'items' => $itemsPayload,
         ];
 

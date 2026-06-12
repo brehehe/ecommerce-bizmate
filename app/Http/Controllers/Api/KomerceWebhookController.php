@@ -7,6 +7,7 @@ use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\TransactionPayment;
+use App\Models\WebhookEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,10 @@ use Illuminate\Support\Facades\Log;
 class KomerceWebhookController extends Controller
 {
     /**
-     * Handle incoming callback/webhook from Komerce (QRISLY or Payment API).
+     * Handle incoming callback/webhook from Komerce (shipping or payment).
+     *
+     * Idempotency: if the same event has already been processed, we return 200
+     * immediately without re-processing, preventing duplicate status updates.
      */
     public function handleCallback(Request $request): JsonResponse
     {
@@ -23,7 +27,7 @@ class KomerceWebhookController extends Controller
             'body' => $request->all(),
         ]);
 
-        // 1. Check if this is a shipping status callback (has booking_code, airway_bill, order_no, or cnote)
+        // 1. Check if this is a shipping status callback
         $bookingCode = $request->input('booking_code') ?? $request->input('order_no');
         $airwayBill = $request->input('airway_bill') ?? $request->input('tracking_number') ?? $request->input('cnote');
 
@@ -38,25 +42,28 @@ class KomerceWebhookController extends Controller
         if ($transaction && ($bookingCode || $airwayBill)) {
             $shippingStatus = strtolower($request->input('shipping_status') ?? $request->input('status') ?? '');
 
+            // --- Idempotency Check for Shipping Webhook ---
+            $shippingRef = $bookingCode ?? $airwayBill;
+            $idempotencyKey = "komerce:shipping:{$shippingRef}:{$shippingStatus}";
+
+            if (WebhookEvent::alreadyProcessed($idempotencyKey)) {
+                Log::info("Komerce Shipping Webhook: duplicate event skipped [{$idempotencyKey}]");
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Webhook already processed (duplicate skipped)',
+                ]);
+            }
+
             Log::info("Komerce Shipping Webhook: Transaction {$transaction->transaction_number} status is {$shippingStatus}");
 
             if (in_array($shippingStatus, ['delivered', 'diterima', 'success', 'selesai', 'arrived'])) {
                 if ($transaction->status !== 'selesai') {
                     $transaction->update(['status' => 'selesai']);
-
-                    return response()->json([
-                        'status' => 'success',
-                        'message' => 'Transaction marked as completed via shipping webhook',
-                    ]);
                 }
             } elseif (in_array($shippingStatus, ['shipping', 'dikirim', 'on_delivery', 'transit', 'picked_up', 'pickup', 'dijemput', 'diserahkan', 'paket_diterima_kurir', 'hub', 'sorting_center', 'dalam_perjalanan'])) {
                 if (in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
                     $transaction->update(['status' => 'dikirim']);
-
-                    return response()->json([
-                        'status' => 'success',
-                        'message' => 'Transaction marked as shipped via shipping webhook',
-                    ]);
                 }
             } elseif (in_array($shippingStatus, ['cancelled', 'batal', 'returned', 'retur', 'gagal', 'dibatalkan'])) {
                 if (! in_array($transaction->status, ['batal', 'selesai'])) {
@@ -68,17 +75,14 @@ class KomerceWebhookController extends Controller
                             'cancelled_at' => now(),
                         ]);
                     });
-
-                    return response()->json([
-                        'status' => 'success',
-                        'message' => 'Transaction marked as cancelled/returned via shipping webhook and stock restored',
-                    ]);
                 }
             }
 
+            WebhookEvent::record('komerce', $idempotencyKey, $request->all(), 200);
+
             return response()->json([
                 'status' => 'success',
-                'message' => 'Shipping status received but no status transition needed',
+                'message' => 'Shipping webhook processed',
             ]);
         }
 
@@ -91,6 +95,18 @@ class KomerceWebhookController extends Controller
                 'status' => 'error',
                 'message' => 'Missing reference_id',
             ], 400);
+        }
+
+        // --- Idempotency Check for Payment Webhook ---
+        $idempotencyKey = "komerce:payment:{$referenceId}:{$status}";
+
+        if (WebhookEvent::alreadyProcessed($idempotencyKey)) {
+            Log::info("Komerce Payment Webhook: duplicate event skipped [{$idempotencyKey}]");
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Webhook already processed (duplicate skipped)',
+            ]);
         }
 
         // Find payment by gateway_transaction_id
@@ -110,6 +126,8 @@ class KomerceWebhookController extends Controller
             Log::warning('Komerce Webhook: Payment Record Not Found', [
                 'reference_id' => $referenceId,
             ]);
+
+            WebhookEvent::record('komerce', $idempotencyKey, $request->all(), 404);
 
             return response()->json([
                 'status' => 'error',
@@ -134,7 +152,7 @@ class KomerceWebhookController extends Controller
                         'status' => 'diproses',
                     ]);
 
-                    Log::info('Komerce Webhook Processed Successfully', [
+                    Log::info('Komerce Payment Webhook Processed Successfully', [
                         'transaction_id' => $transaction->id,
                         'reference_id' => $referenceId,
                     ]);
@@ -142,9 +160,11 @@ class KomerceWebhookController extends Controller
             }
         }
 
+        WebhookEvent::record('komerce', $idempotencyKey, $request->all(), 200);
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Webhook processed successfully',
+            'message' => 'Payment webhook processed',
         ], 200);
     }
 

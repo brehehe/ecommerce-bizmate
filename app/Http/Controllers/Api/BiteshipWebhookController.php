@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Models\Transaction;
+use App\Models\WebhookEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,9 @@ class BiteshipWebhookController extends Controller
 {
     /**
      * Handle incoming callback/webhook from Biteship.
+     *
+     * Idempotency: if the same event (order_id + status) has already been
+     * processed, we return 200 immediately without re-processing.
      */
     public function handleCallback(Request $request): JsonResponse
     {
@@ -33,6 +37,20 @@ class BiteshipWebhookController extends Controller
             ], 400);
         }
 
+        // --- Idempotency Check ---
+        // Build a key that uniquely identifies this specific event.
+        // If Biteship retries the same event we should not process it twice.
+        $idempotencyKey = "biteship:{$orderId}:{$status}";
+
+        if (WebhookEvent::alreadyProcessed($idempotencyKey)) {
+            Log::info("Biteship Webhook: duplicate event skipped [{$idempotencyKey}]");
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Webhook already processed (duplicate skipped)',
+            ]);
+        }
+
         // Find transaction by booking code or airway bill
         $transaction = Transaction::where('booking_code', $orderId)->first();
         if (! $transaction && $waybillId) {
@@ -41,6 +59,9 @@ class BiteshipWebhookController extends Controller
 
         if (! $transaction) {
             Log::warning('Biteship Webhook: Transaction not found for order_id: '.$orderId);
+
+            // Still record to avoid retrying a permanently-missing reference
+            WebhookEvent::record('biteship', $idempotencyKey, $request->all(), 404);
 
             return response()->json([
                 'status' => 'error',
@@ -55,21 +76,11 @@ class BiteshipWebhookController extends Controller
             if ($transaction->status !== 'selesai') {
                 $transaction->update(['status' => 'selesai']);
                 Log::info("Biteship Webhook: Transaction {$transaction->transaction_number} status updated to [selesai].");
-
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Transaction marked as completed via Biteship webhook',
-                ]);
             }
         } elseif (in_array($status, ['picked', 'picked_up', 'dropping_off', 'droppingoff', 'in_transit', 'intransit'])) {
             if (in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
                 $transaction->update(['status' => 'dikirim']);
                 Log::info("Biteship Webhook: Transaction {$transaction->transaction_number} status updated to [dikirim].");
-
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Transaction marked as shipped via Biteship webhook',
-                ]);
             }
         } elseif (in_array($status, ['cancelled', 'rejected', 'courier_not_found', 'couriernotfound', 'returned', 'disposed'])) {
             if (! in_array($transaction->status, ['batal', 'selesai'])) {
@@ -82,17 +93,15 @@ class BiteshipWebhookController extends Controller
                     ]);
                 });
                 Log::info("Biteship Webhook: Transaction {$transaction->transaction_number} cancelled and stock restored.");
-
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Transaction marked as cancelled/rejected via Biteship webhook and stock restored',
-                ]);
             }
         }
 
+        // Mark this event as processed so future retries are ignored
+        WebhookEvent::record('biteship', $idempotencyKey, $request->all(), 200);
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Biteship webhook received but no status transition needed',
+            'message' => 'Biteship webhook processed',
         ]);
     }
 
