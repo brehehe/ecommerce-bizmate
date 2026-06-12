@@ -90,6 +90,14 @@
     let profileDropOpen = $state(false);
     let isNotifOpen = $state(false);
 
+    // PWA Install Prompt state
+    let deferredPrompt = $state<any>(null);
+    let showInstallBanner = $state(false);
+    let showInstallGuideModal = $state(false);
+    let isIOS = $state(false);
+
+    const isPwaInstallEnabled = $derived((page.props as any).settings?.pwa_install_enabled !== false);
+
     const cartCount = $derived((page.props as any).cartCount || 0);
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
     const customerNotifications = $derived(
@@ -865,6 +873,65 @@
         };
     });
 
+    onMount(() => {
+        isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+        if (!isPwaInstallEnabled) return;
+
+        const isDismissed = localStorage.getItem('pwa_install_prompt_dismissed') === 'true';
+
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            if (!isDismissed) {
+                showInstallBanner = true;
+            }
+        };
+
+        const handleAppInstalled = () => {
+            deferredPrompt = null;
+            showInstallBanner = false;
+            localStorage.setItem('pwa_install_prompt_dismissed', 'true');
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        // Fallback display after a small delay if not dismissed and not already triggered
+        if (!isDismissed && !showInstallBanner) {
+            const timer = setTimeout(() => {
+                showInstallBanner = true;
+            }, 3000);
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                window.removeEventListener('appinstalled', handleAppInstalled);
+            };
+        }
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+    });
+
+    async function installApp() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            showInstallBanner = false;
+            localStorage.setItem('pwa_install_prompt_dismissed', 'true');
+        } else {
+            showInstallGuideModal = true;
+        }
+    }
+
+    function dismissInstallBanner() {
+        showInstallBanner = false;
+        localStorage.setItem('pwa_install_prompt_dismissed', 'true');
+    }
+
     function openRegister() {
         authTab = 'register';
         authModalOpen = true;
@@ -1195,7 +1262,7 @@
                 </div>
 
                 <!-- Search bar (desktop) -->
-                <form onsubmit={handleSearch} class="flex-grow max-w-2xl mx-8">
+                <form onsubmit={handleSearch} class="flex-grow max-w-3xl lg:max-w-4xl mx-6">
                     <div class="relative">
                         <input
                             type="text"
@@ -1215,38 +1282,32 @@
                 </form>
 
                 <!-- Right actions (desktop) -->
-                <div class="flex items-center gap-4 shrink-0">
+                <div class="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
                     <!-- Poin Saya -->
                     {#if (page.props as any).settings?.coins_enabled}
                         <button
                             onclick={openCoinsModal}
-                            class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                            class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                             aria-label="Poin Saya"
                         >
-                            <i class="ti ti-coins text-2xl"></i>
-                            {#if auth}
-                                <span
-                                    class="text-[10px] font-bold text-white/80 mt-0.5"
-                                >
+                            <i class="ti ti-coins text-xl"></i>
+                            <span class="text-[9px] font-bold text-white/80 mt-0.5">
+                                {#if auth}
                                     {formatNumber(auth.coins_balance || 0)} Poin
-                                </span>
-                            {:else}
-                                <span
-                                    class="text-[10px] font-bold text-white/80 mt-0.5"
-                                >
-                                    0 Poin
-                                </span>
-                            {/if}
+                                {:else}
+                                    Poin
+                                {/if}
+                            </span>
                         </button>
                     {/if}
 
                     <!-- Cart -->
                     <button
                         onclick={goToCart}
-                        class="relative p-2.5 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center"
+                        class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center"
                         aria-label="Keranjang"
                     >
-                        <i class="ti ti-shopping-cart text-2xl"></i>
+                        <i class="ti ti-shopping-cart text-xl"></i>
                         {#if cartCount > 0}
                             <span
                                 class="absolute top-1 right-2.5 w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm font-sans"
@@ -1255,7 +1316,7 @@
                                 {cartCount}
                             </span>
                         {/if}
-                        <span class="text-[10px] font-bold text-white/80 mt-0.5"
+                        <span class="text-[9px] font-bold text-white/80 mt-0.5"
                             >Keranjang</span
                         >
                     </button>
@@ -3976,6 +4037,120 @@
                     {/each}
                 {/if}
             </div>
+        </div>
+    </div>
+{/if}
+
+<!-- PWA Install Floating Banner -->
+{#if showInstallBanner && isPwaInstallEnabled}
+    <div
+        class="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 max-w-sm bg-white/95 backdrop-blur-md border border-slate-100 rounded-2xl shadow-xl p-4 z-[99999] flex items-center gap-3 animate-in slide-in-from-bottom duration-300"
+    >
+        <!-- Store Icon -->
+        <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 shadow-2xs">
+            {#if storeIcon}
+                <img src={formatMiniChatImagePath(storeIcon)} alt={storeAppName} class="w-full h-full object-cover" />
+            {:else}
+                <div class="w-full h-full flex items-center justify-center text-white font-black text-lg" style="background-color: {primary};">
+                    {storeAppName.charAt(0).toUpperCase()}
+                </div>
+            {/if}
+        </div>
+
+        <!-- Content -->
+        <div class="flex-grow min-w-0">
+            <h4 class="font-outfit font-black text-xs text-slate-800 leading-tight">Instal Aplikasi {storeAppName}</h4>
+            <p class="text-[10px] text-slate-500 font-medium leading-normal mt-0.5">Tambahkan ke layar utama untuk akses cepat dan nyaman!</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex flex-col gap-1.5 shrink-0">
+            <button
+                onclick={installApp}
+                class="px-3 py-1.5 rounded-lg text-[10px] font-black text-white transition active:scale-95 cursor-pointer shadow-xs"
+                style="background-color: {primary};"
+            >
+                Instal
+            </button>
+            <button
+                onclick={dismissInstallBanner}
+                class="px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 transition active:scale-95 cursor-pointer"
+            >
+                Nanti
+            </button>
+        </div>
+    </div>
+{/if}
+
+<!-- PWA Install Manual Guide Modal -->
+{#if showInstallGuideModal}
+    <div
+        class="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+    >
+        <div
+            class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onclick={() => (showInstallGuideModal = false)}
+            onkeypress={() => (showInstallGuideModal = false)}
+            role="button"
+            tabindex="0"
+        ></div>
+
+        <div
+            class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-6 sm:p-8 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col"
+        >
+            <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"></div>
+
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 shrink-0">
+                <h4 class="font-outfit font-black text-base text-slate-800 flex items-center gap-2">
+                    <i class="ti ti-download text-amber-500 text-lg"></i>
+                    Petunjuk Instalasi
+                </h4>
+                <button
+                    onclick={() => (showInstallGuideModal = false)}
+                    class="p-1.5 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                    aria-label="Tutup"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-xs font-bold text-slate-600">
+                {#if isIOS}
+                    <div class="flex gap-3 items-start">
+                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">1</span>
+                        <p class="leading-relaxed">Buka browser <span class="text-slate-800">Safari</span> pada iPhone/iPad Anda.</p>
+                    </div>
+                    <div class="flex gap-3 items-start">
+                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">2</span>
+                        <p class="leading-relaxed">Ketuk tombol <span class="text-slate-800">Bagikan</span> (icon kotak dengan panah atas <i class="ti ti-share text-base inline-block align-middle"></i>).</p>
+                    </div>
+                    <div class="flex gap-3 items-start">
+                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">3</span>
+                        <p class="leading-relaxed">Geser ke bawah dan pilih opsi <span class="text-slate-800">"Tambahkan ke Layar Utama"</span> (Add to Home Screen).</p>
+                    </div>
+                {:else}
+                    <div class="flex gap-3 items-start">
+                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">1</span>
+                        <p class="leading-relaxed">Ketuk icon menu <span class="text-slate-800">titik tiga (<i class="ti ti-dots-vertical text-base inline-block align-middle"></i>)</span> di pojok kanan atas browser.</p>
+                    </div>
+                    <div class="flex gap-3 items-start">
+                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">2</span>
+                        <p class="leading-relaxed">Pilih opsi <span class="text-slate-800">"Instal aplikasi"</span> atau <span class="text-slate-800">"Tambahkan ke Layar Utama"</span>.</p>
+                    </div>
+                {/if}
+            </div>
+
+            <button
+                onclick={() => {
+                    showInstallGuideModal = false;
+                    showInstallBanner = false;
+                    localStorage.setItem('pwa_install_prompt_dismissed', 'true');
+                }}
+                class="mt-6 w-full py-3 rounded-2xl text-xs font-black text-white transition active:scale-95 cursor-pointer shadow-xs text-center"
+                style="background-color: {primary};"
+            >
+                Saya Mengerti
+            </button>
         </div>
     </div>
 {/if}

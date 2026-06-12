@@ -72,6 +72,11 @@ class HandleInertiaRequests extends Middleware
 
         $holidayMode = false;
         $alwaysOpen = true;
+
+        // Driven by CHECKOUT_LOCKED / CHECKOUT_LOCKED_MESSAGE in .env
+        $checkoutLocked = (bool) config('app.checkout_locked', false);
+        $checkoutLockedMessage = config('app.checkout_locked_message', 'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.');
+        $pwaInstallEnabled = (bool) config('app.pwa_install_enabled', true);
         $operationalHours = [];
 
         $refundPointsEnabled = false;
@@ -297,6 +302,10 @@ class HandleInertiaRequests extends Middleware
                 'holiday_mode' => $holidayMode,
                 'always_open' => $alwaysOpen,
                 'operational_hours' => $operationalHours,
+
+                'checkout_locked' => $checkoutLocked,
+                'checkout_locked_message' => $checkoutLockedMessage,
+                'pwa_install_enabled' => $pwaInstallEnabled,
 
                 'refund_points_enabled' => $refundPointsEnabled,
                 'refund_transfer_days' => $refundTransferDays,

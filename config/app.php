@@ -123,6 +123,35 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Checkout Lock
+    |--------------------------------------------------------------------------
+    |
+    | When CHECKOUT_LOCKED=true in .env, the checkout page will display a
+    | notice and block all new orders. Useful for maintenance, stock-taking,
+    | or any situation where you need to temporarily pause checkouts without
+    | taking the whole site offline.
+    |
+    | CHECKOUT_LOCKED_MESSAGE lets you provide a custom reason shown to
+    | customers. Defaults to a generic maintenance message.
+    |
+    */
+
+    'checkout_locked' => (bool) env('CHECKOUT_LOCKED', false),
+    'checkout_locked_message' => env('CHECKOUT_LOCKED_MESSAGE', 'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Install Prompt
+    |--------------------------------------------------------------------------
+    |
+    | When PWA_INSTALL_ENABLED=true in .env, users will see a banner
+    | inviting them to install the application to their home screen.
+    |
+    */
+    'pwa_install_enabled' => (bool) env('PWA_INSTALL_ENABLED', true),
+
     'rajaongkir' => [
         'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),
         'shipping_cost' => env('RAJAONGKIR_SHIPPING_COST_KEY', 'zvvoSZT25a2e20929ec5ff826xI0rWY1'),

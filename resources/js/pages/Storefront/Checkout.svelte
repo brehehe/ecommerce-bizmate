@@ -61,6 +61,15 @@
         return currentTime >= openTime && currentTime <= closeTime;
     });
 
+    /** Driven by CHECKOUT_LOCKED + CHECKOUT_LOCKED_MESSAGE in .env */
+    const isCheckoutLocked = $derived(
+        (storeSettings.checkout_locked as boolean) === true,
+    );
+    const checkoutLockedMessage = $derived(
+        (storeSettings.checkout_locked_message as string) ||
+            'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.',
+    );
+
     const visibleVouchers = $derived.by(() => {
         const base = (vouchers || []).filter(
             (v: any) =>
@@ -849,6 +858,10 @@
     }
 
     function submitCheckout() {
+        if (isCheckoutLocked) {
+            showToast(checkoutLockedMessage, 'error');
+            return;
+        }
         if (!isStoreOpen) {
             showToast(
                 'Toko sedang tutup. Checkout tidak tersedia saat ini.',
@@ -2424,8 +2437,32 @@
                                 </div>
                             </div>
 
-                            <!-- Desktop submit button -->
-                            {#if !isStoreOpen}
+                            <!-- Checkout locked (via .env CHECKOUT_LOCKED) -->
+                            {#if isCheckoutLocked}
+                                <div
+                                    class="bg-red-50/80 border border-red-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left"
+                                >
+                                    <div
+                                        class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5"
+                                    >
+                                        <i
+                                            class="ti ti-lock text-red-600 text-lg"
+                                        ></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h4
+                                            class="font-bold text-red-800 text-[11px] uppercase tracking-tight"
+                                        >
+                                            Checkout Tidak Tersedia
+                                        </h4>
+                                        <p
+                                            class="text-[9px] text-red-700 font-semibold mt-1 leading-snug"
+                                        >
+                                            {checkoutLockedMessage}
+                                        </p>
+                                    </div>
+                                </div>
+                            {:else if !isStoreOpen}
                                 <div
                                     class="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left"
                                 >
@@ -2454,6 +2491,7 @@
                             <button
                                 onclick={submitCheckout}
                                 disabled={isSubmitting ||
+                                    isCheckoutLocked ||
                                     (!isDigitalOnly &&
                                         selectedCourier !== 'self_pickup' &&
                                         !selectedAddressId) ||
@@ -2491,6 +2529,7 @@
                 <button
                     onclick={submitCheckout}
                     disabled={isSubmitting ||
+                        isCheckoutLocked ||
                         (!isDigitalOnly &&
                             selectedCourier !== 'self_pickup' &&
                             !selectedAddressId) ||

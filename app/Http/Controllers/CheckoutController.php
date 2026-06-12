@@ -210,6 +210,13 @@ class CheckoutController extends Controller
      */
     public function store(Request $request)
     {
+        // Guard: CHECKOUT_LOCKED in .env disables all new orders
+        if (config('app.checkout_locked')) {
+            $message = config('app.checkout_locked_message', 'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.');
+
+            return back()->with('error', $message);
+        }
+
         $user = $request->user();
 
         // Get checked cart items
