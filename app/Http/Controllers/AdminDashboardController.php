@@ -172,9 +172,18 @@ class AdminDashboardController extends Controller
             ->limit(3)
             ->get();
 
+        $topProductIds = collect($topProductsRaw)->pluck('product_id')->filter()->all();
+        $productModels = [];
+        if (! empty($topProductIds)) {
+            $productModels = Product::with('images')
+                ->whereIn('id', $topProductIds)
+                ->get()
+                ->keyBy('id');
+        }
+
         $topProducts = [];
         foreach ($topProductsRaw as $item) {
-            $productModel = Product::with('images')->find($item->product_id);
+            $productModel = $productModels[$item->product_id] ?? null;
             $imageUrl = 'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?auto=format&fit=crop&w=150&q=80';
             if ($productModel) {
                 if ($productModel->image) {

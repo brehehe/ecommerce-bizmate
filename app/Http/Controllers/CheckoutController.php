@@ -31,6 +31,10 @@ use Inertia\Inertia;
 
 class CheckoutController extends Controller
 {
+    private ?array $promoItemsCache = null;
+
+    private ?array $soldPromoQuantitiesCache = null;
+
     /**
      * Display the checkout page.
      */
@@ -61,14 +65,44 @@ class CheckoutController extends Controller
             ->get();
 
         // Populate product info for bundling_gift promotions (same as CartController)
-        $activePromotions->each(function ($promo) {
+        $bundlingProductIds = [];
+        foreach ($activePromotions as $promo) {
+            if ($promo->type === 'bundling_gift' && isset($promo->settings['bundle'])) {
+                $bundle = $promo->settings['bundle'];
+                if (isset($bundle['buy_items'])) {
+                    foreach ($bundle['buy_items'] as $buyItem) {
+                        if (! empty($buyItem['product_id'])) {
+                            $bundlingProductIds[] = $buyItem['product_id'];
+                        }
+                    }
+                }
+                if (isset($bundle['get_items'])) {
+                    foreach ($bundle['get_items'] as $getItem) {
+                        if (! empty($getItem['product_id'])) {
+                            $bundlingProductIds[] = $getItem['product_id'];
+                        }
+                    }
+                }
+            }
+        }
+        $bundlingProductIds = array_unique($bundlingProductIds);
+
+        $productsMap = [];
+        if (! empty($bundlingProductIds)) {
+            $productsMap = Product::with(['productPrice', 'images'])
+                ->whereIn('id', $bundlingProductIds)
+                ->get()
+                ->keyBy('id');
+        }
+
+        $activePromotions->each(function ($promo) use ($productsMap) {
             if ($promo->type === 'bundling_gift' && isset($promo->settings['bundle'])) {
                 $bundle = $promo->settings['bundle'];
 
                 if (isset($bundle['buy_items'])) {
                     foreach ($bundle['buy_items'] as &$buyItem) {
                         if (! empty($buyItem['product_id'])) {
-                            $prod = Product::with(['productPrice', 'images'])->find($buyItem['product_id']);
+                            $prod = $productsMap->get($buyItem['product_id']);
                             if ($prod) {
                                 $buyItem['product_name'] = $prod->name;
                                 $buyItem['product_slug'] = $prod->slug;
@@ -82,7 +116,7 @@ class CheckoutController extends Controller
                 if (isset($bundle['get_items'])) {
                     foreach ($bundle['get_items'] as &$getItem) {
                         if (! empty($getItem['product_id'])) {
-                            $prod = Product::with(['productPrice', 'images'])->find($getItem['product_id']);
+                            $prod = $productsMap->get($getItem['product_id']);
                             if ($prod) {
                                 $getItem['product_name'] = $prod->name;
                                 $getItem['product_slug'] = $prod->slug;
@@ -1856,33 +1890,62 @@ class CheckoutController extends Controller
      */
     private function getRemainingPromoStock($promotionId, $productId, $variantId = null): ?int
     {
-        $promoItem = PromotionItem::where('promotion_id', $promotionId)
-            ->where('product_id', $productId)
-            ->where('product_variant_id', $variantId)
-            ->first();
+        if ($this->promoItemsCache === null) {
+            $this->promoItemsCache = [];
+
+            $activePromoIds = Promotion::where('is_active', true)
+                ->where('start_time', '<=', now())
+                ->where('end_time', '>=', now())
+                ->pluck('id');
+
+            $promoItems = PromotionItem::whereIn('promotion_id', $activePromoIds)->get();
+            foreach ($promoItems as $item) {
+                $vId = $item->product_variant_id ?? 'null';
+                $this->promoItemsCache["{$item->promotion_id}_{$item->product_id}_{$vId}"] = $item;
+            }
+        }
+
+        if ($this->soldPromoQuantitiesCache === null) {
+            $this->soldPromoQuantitiesCache = [];
+
+            $soldQuantities = TransactionItem::selectRaw('applied_promotion_id, product_id, product_variant_id, SUM(promo_quantity_used) as total_used')
+                ->whereIn('applied_promotion_id', array_keys($this->promoItemsCache ? array_flip(array_column($this->promoItemsCache, 'promotion_id')) : []))
+                ->whereHas('transaction', function ($q) {
+                    $q->where('status', '!=', 'batal');
+                })
+                ->groupBy('applied_promotion_id', 'product_id', 'product_variant_id')
+                ->get();
+
+            foreach ($soldQuantities as $item) {
+                $vId = $item->product_variant_id ?? 'null';
+                $this->soldPromoQuantitiesCache["{$item->applied_promotion_id}_{$item->product_id}_{$vId}"] = (int) $item->total_used;
+            }
+        }
+
+        $vKey = $variantId ?? 'null';
+        $cacheKey = "{$promotionId}_{$productId}_{$vKey}";
+        $promoItem = $this->promoItemsCache[$cacheKey] ?? null;
 
         if (! $promoItem && $variantId) {
-            $promoItem = PromotionItem::where('promotion_id', $promotionId)
-                ->where('product_id', $productId)
-                ->whereNull('product_variant_id')
-                ->first();
+            $fallbackKey = "{$promotionId}_{$productId}_null";
+            $promoItem = $this->promoItemsCache[$fallbackKey] ?? null;
         }
 
         if (! $promoItem || is_null($promoItem->promo_stock)) {
             return null;
         }
 
-        $soldPromoQty = TransactionItem::where('applied_promotion_id', $promotionId)
-            ->where('product_id', $productId)
-            ->where(function ($q) use ($promoItem) {
-                if (! is_null($promoItem->product_variant_id)) {
-                    $q->where('product_variant_id', $promoItem->product_variant_id);
+        $soldPromoQty = 0;
+        if (is_null($promoItem->product_variant_id)) {
+            $prefix = "{$promotionId}_{$productId}_";
+            foreach ($this->soldPromoQuantitiesCache as $key => $usedQty) {
+                if (str_starts_with($key, $prefix)) {
+                    $soldPromoQty += $usedQty;
                 }
-            })
-            ->whereHas('transaction', function ($q) {
-                $q->where('status', '!=', 'batal');
-            })
-            ->sum('promo_quantity_used');
+            }
+        } else {
+            $soldPromoQty = $this->soldPromoQuantitiesCache[$cacheKey] ?? 0;
+        }
 
         return max(0, $promoItem->promo_stock - $soldPromoQty);
     }

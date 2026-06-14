@@ -104,6 +104,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/chats/transactions', [ChatController::class, 'getTransactionsJson'])->name('chats.transactions');
         Route::post('/chats', [ChatController::class, 'createChat'])->name('chats.create');
         Route::get('/chats/{chat}/messages', [ChatController::class, 'messages'])->name('chats.messages');
+
         Route::post('/chats/{chat}/messages', [ChatController::class, 'store'])->name('chats.store');
         Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->name('chats.destroy');
         Route::delete('/chats/{chat}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
@@ -242,6 +243,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');
     Route::get('/chats/{chat}', [AdminChatController::class, 'show'])->name('chats.show');
     Route::get('/chats/{chat}/poll', [AdminChatController::class, 'pollMessages'])->name('chats.poll');
+
     Route::post('/chats/{chat}/reply', [AdminChatController::class, 'reply'])->name('chats.reply');
     Route::delete('/chats/{chat}', [AdminChatController::class, 'destroy'])->name('chats.destroy');
     Route::delete('/chats/{chat}/messages/{message}', [AdminChatController::class, 'destroyMessage'])->name('chats.messages.destroy');

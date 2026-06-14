@@ -7,6 +7,8 @@
         @php
             $storeIcon = \App\Models\Setting::where('key', 'store_icon')->value('value');
             $title = \App\Models\Setting::where('key', 'store_name')->value('value');
+            $primaryColor = \App\Models\Setting::where('key', 'primary_color')->value('value') ?: '#0c4cb4';
+            $secondaryColor = \App\Models\Setting::where('key', 'secondary_color')->value('value') ?: '#fa7315';
         @endphp
 
         @if($storeIcon)
@@ -37,6 +39,8 @@
             :root {
                 --dynamic-font-sans: '{{ $storeFont }}', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji' !important;
                 --dynamic-font-outfit: '{{ $storeFont }}', sans-serif !important;
+                --dynamic-primary: {{ $primaryColor }} !important;
+                --dynamic-secondary: {{ $secondaryColor }} !important;
             }
         </style>
         

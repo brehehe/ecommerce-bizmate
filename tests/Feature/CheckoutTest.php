@@ -582,7 +582,7 @@ test('customer can get domestic shipping cost for gosend and grab', function () 
 
     // Query shipping cost for GoSend
     $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
-        'destination' => 3578,
+        'destination' => '3578',
         'weight' => 1000,
         'courier' => 'gojek', // also maps to gosend
     ]);
@@ -595,7 +595,7 @@ test('customer can get domestic shipping cost for gosend and grab', function () 
 
     // Query shipping cost for Grab
     $responseGrab = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
-        'destination' => 3578,
+        'destination' => '3578',
         'weight' => 1000,
         'courier' => 'grab',
     ]);
@@ -616,11 +616,11 @@ test('shipping cost fails if gosend or grab distance is greater than 50km', func
     $this->address->update([
         'latitude' => -6.2088,
         'longitude' => 106.8456,
-        'regency_id' => 3173,
+        'regency_id' => '3173',
     ]);
 
     $response = $this->actingAs($this->user)->post(route('checkout.shipping-cost'), [
-        'destination' => 3173,
+        'destination' => '3173',
         'weight' => 1000,
         'courier' => 'gojek',
     ]);

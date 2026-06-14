@@ -14,6 +14,7 @@ use App\Models\SocialMedia;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -124,82 +125,84 @@ class HandleInertiaRequests extends Middleware
 
         try {
             if (Schema::hasTable('settings')) {
-                $primaryColor = Setting::where('key', 'primary_color')->value('value') ?? $primaryColor;
-                $secondaryColor = Setting::where('key', 'secondary_color')->value('value') ?? $secondaryColor;
-                $taxEnabled = Setting::where('key', 'tax_enabled')->value('value') === '1';
-                $taxPercentage = Setting::where('key', 'tax_percentage')->value('value') ?? 0;
-                $storeName = Setting::where('key', 'store_name')->value('value') ?? $storeName;
-                $storeAppName = Setting::where('key', 'store_app_name')->value('value') ?? $storeName;
-                $storeLogo = Setting::where('key', 'store_logo')->value('value');
-                $storeIcon = Setting::where('key', 'store_icon')->value('value');
-                $setupTourCompleted = Setting::where('key', 'setup_tour_completed')->value('value') === '1';
-                $cartButtonStyle = Setting::where('key', 'storefront_cart_button_style')->value('value') ?? 'button';
+                $settings = Setting::pluck('value', 'key')->all();
 
-                $coinsEnabled = Setting::where('key', 'coins_enabled')->value('value') === '1';
-                $coinConversionRate = (float) (Setting::where('key', 'coin_conversion_rate')->value('value') ?? 1);
-                $coinEarningMethod = Setting::where('key', 'coin_earning_method')->value('value') ?? 'proportional';
-                $coinEarningRateRupiah = (float) (Setting::where('key', 'coin_earning_rate_rupiah')->value('value') ?? 1000);
-                $coinEarningRateCoins = (float) (Setting::where('key', 'coin_earning_rate_coins')->value('value') ?? 1);
+                $primaryColor = $settings['primary_color'] ?? $primaryColor;
+                $secondaryColor = $settings['secondary_color'] ?? $secondaryColor;
+                $taxEnabled = ($settings['tax_enabled'] ?? null) === '1';
+                $taxPercentage = $settings['tax_percentage'] ?? 0;
+                $storeName = $settings['store_name'] ?? $storeName;
+                $storeAppName = $settings['store_app_name'] ?? $storeName;
+                $storeLogo = $settings['store_logo'] ?? null;
+                $storeIcon = $settings['store_icon'] ?? null;
+                $setupTourCompleted = ($settings['setup_tour_completed'] ?? null) === '1';
+                $cartButtonStyle = $settings['storefront_cart_button_style'] ?? 'button';
 
-                $tiersVal = Setting::where('key', 'coin_earning_tiers')->value('value');
+                $coinsEnabled = ($settings['coins_enabled'] ?? null) === '1';
+                $coinConversionRate = (float) ($settings['coin_conversion_rate'] ?? 1);
+                $coinEarningMethod = $settings['coin_earning_method'] ?? 'proportional';
+                $coinEarningRateRupiah = (float) ($settings['coin_earning_rate_rupiah'] ?? 1000);
+                $coinEarningRateCoins = (float) ($settings['coin_earning_rate_coins'] ?? 1);
+
+                $tiersVal = $settings['coin_earning_tiers'] ?? null;
                 $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
                 if (! is_array($coinEarningTiers)) {
                     $coinEarningTiers = [];
                 }
 
-                $coinMinPurchaseRedeem = (float) (Setting::where('key', 'coin_min_purchase_redeem')->value('value') ?? 0);
-                $coinMaxRedeemPerTxn = (float) (Setting::where('key', 'coin_max_redeem_per_txn')->value('value') ?? 50000);
-                $coinMaxRedeemPercentage = (float) (Setting::where('key', 'coin_max_redeem_percentage')->value('value') ?? 100);
-                $coinTermsConditions = Setting::where('key', 'coin_terms_conditions')->value('value') ?? '';
+                $coinMinPurchaseRedeem = (float) ($settings['coin_min_purchase_redeem'] ?? 0);
+                $coinMaxRedeemPerTxn = (float) ($settings['coin_max_redeem_per_txn'] ?? 50000);
+                $coinMaxRedeemPercentage = (float) ($settings['coin_max_redeem_percentage'] ?? 100);
+                $coinTermsConditions = $settings['coin_terms_conditions'] ?? '';
 
-                $holidayMode = Setting::where('key', 'holiday_mode')->value('value') === '1';
-                $alwaysOpen = Setting::where('key', 'always_open')->value('value') !== '0'; // default true if not set
-                $opsHoursVal = Setting::where('key', 'operational_hours')->value('value');
+                $holidayMode = ($settings['holiday_mode'] ?? null) === '1';
+                $alwaysOpen = ($settings['always_open'] ?? null) !== '0'; // default true if not set
+                $opsHoursVal = $settings['operational_hours'] ?? null;
 
-                $refundPointsEnabled = Setting::where('key', 'refund_points_enabled')->value('value') === '1';
-                $refundTransferDays = Setting::where('key', 'refund_transfer_days')->value('value') ?? '3-5';
-                $refundMinAmountTransfer = (float) (Setting::where('key', 'refund_min_amount_transfer')->value('value') ?? 0);
-                $refundMinAmountPoints = (float) (Setting::where('key', 'refund_min_amount_points')->value('value') ?? 0);
-                $refundTermsTransfer = Setting::where('key', 'refund_terms_transfer')->value('value') ?? '';
-                $refundTermsPoints = Setting::where('key', 'refund_terms_points')->value('value') ?? '';
+                $refundPointsEnabled = ($settings['refund_points_enabled'] ?? null) === '1';
+                $refundTransferDays = $settings['refund_transfer_days'] ?? '3-5';
+                $refundMinAmountTransfer = (float) ($settings['refund_min_amount_transfer'] ?? 0);
+                $refundMinAmountPoints = (float) ($settings['refund_min_amount_points'] ?? 0);
+                $refundTermsTransfer = $settings['refund_terms_transfer'] ?? '';
+                $refundTermsPoints = $settings['refund_terms_points'] ?? '';
 
-                $shippingDeliveryEnabled = Setting::where('key', 'shipping_delivery_enabled')->value('value') === '1';
-                $paymentApiEnabled = Setting::where('key', 'payment_api_enabled')->value('value') === '1';
-                $paymentApiAdminFee = (float) (Setting::where('key', 'payment_api_admin_fee')->value('value') ?? 0);
-                $qrislyApiEnabled = Setting::where('key', 'qrisly_api_enabled')->value('value') === '1';
-                $qrislyApiAdminFee = (float) (Setting::where('key', 'qrisly_api_admin_fee')->value('value') ?? 0);
-                $komerceDeliveryUrl = Setting::where('key', 'komerce_delivery_url')->value('value') ?? 'https://api-sandbox.collaborator.komerce.id/api/v1/';
+                $shippingDeliveryEnabled = ($settings['shipping_delivery_enabled'] ?? null) === '1';
+                $paymentApiEnabled = ($settings['payment_api_enabled'] ?? null) === '1';
+                $paymentApiAdminFee = (float) ($settings['payment_api_admin_fee'] ?? 0);
+                $qrislyApiEnabled = ($settings['qrisly_api_enabled'] ?? null) === '1';
+                $qrislyApiAdminFee = (float) ($settings['qrisly_api_admin_fee'] ?? 0);
+                $komerceDeliveryUrl = $settings['komerce_delivery_url'] ?? 'https://api-sandbox.collaborator.komerce.id/api/v1/';
 
-                $selfPickupEnabled = Setting::where('key', 'self_pickup_enabled')->value('value') === '1';
-                $selfPickupFee = (float) (Setting::where('key', 'self_pickup_fee')->value('value') ?? 0);
-                $storeCourierEnabled = Setting::where('key', 'store_courier_enabled')->value('value') === '1';
-                $storeCourierType = Setting::where('key', 'store_courier_type')->value('value') ?? 'flat';
-                $storeCourierFlatFee = (float) (Setting::where('key', 'store_courier_flat_fee')->value('value') ?? 0);
-                $storeCourierPerKmFee = (float) (Setting::where('key', 'store_courier_per_km_fee')->value('value') ?? 0);
-                $storeCourierMaxRadius = (float) (Setting::where('key', 'store_courier_max_radius')->value('value') ?? 50);
-                $storeCourierRoundUp = Setting::where('key', 'store_courier_round_up')->value('value') === '1';
+                $selfPickupEnabled = ($settings['self_pickup_enabled'] ?? null) === '1';
+                $selfPickupFee = (float) ($settings['self_pickup_fee'] ?? 0);
+                $storeCourierEnabled = ($settings['store_courier_enabled'] ?? null) === '1';
+                $storeCourierType = $settings['store_courier_type'] ?? 'flat';
+                $storeCourierFlatFee = (float) ($settings['store_courier_flat_fee'] ?? 0);
+                $storeCourierPerKmFee = (float) ($settings['store_courier_per_km_fee'] ?? 0);
+                $storeCourierMaxRadius = (float) ($settings['store_courier_max_radius'] ?? 50);
+                $storeCourierRoundUp = ($settings['store_courier_round_up'] ?? null) === '1';
 
-                $tieredRatesVal = Setting::where('key', 'store_courier_tiered_rates')->value('value');
+                $tieredRatesVal = $settings['store_courier_tiered_rates'] ?? null;
                 $storeCourierTieredRates = $tieredRatesVal ? json_decode($tieredRatesVal, true) : [];
                 if (! is_array($storeCourierTieredRates)) {
                     $storeCourierTieredRates = [];
                 }
 
-                $storeAddress = Setting::where('key', 'address')->value('value') ?? '';
-                $storeProvince = Setting::where('key', 'province_name')->value('value') ?? '';
-                $storeRegency = Setting::where('key', 'regency_name')->value('value') ?? '';
-                $storeDistrict = Setting::where('key', 'district_name')->value('value') ?? '';
-                $storeVillage = Setting::where('key', 'village_name')->value('value') ?? '';
-                $storePostalCode = Setting::where('key', 'postal_code')->value('value') ?? '';
-                $storeLatitude = Setting::where('key', 'latitude')->value('value') ?? '';
-                $storeLongitude = Setting::where('key', 'longitude')->value('value') ?? '';
+                $storeAddress = $settings['address'] ?? '';
+                $storeProvince = $settings['province_name'] ?? '';
+                $storeRegency = $settings['regency_name'] ?? '';
+                $storeDistrict = $settings['district_name'] ?? '';
+                $storeVillage = $settings['village_name'] ?? '';
+                $storePostalCode = $settings['postal_code'] ?? '';
+                $storeLatitude = $settings['latitude'] ?? '';
+                $storeLongitude = $settings['longitude'] ?? '';
 
-                $storeEmail = Setting::where('key', 'store_email')->value('value') ?? '';
-                $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '';
-                $storeWhatsapp = Setting::where('key', 'store_whatsapp')->value('value') ?? '';
-                $storeInstagram = Setting::where('key', 'store_instagram')->value('value') ?? '';
-                $storeTiktok = Setting::where('key', 'store_tiktok')->value('value') ?? '';
-                $storeDescription = Setting::where('key', 'store_description')->value('value') ?? '';
+                $storeEmail = $settings['store_email'] ?? '';
+                $storePhone = $settings['store_phone'] ?? '';
+                $storeWhatsapp = $settings['store_whatsapp'] ?? '';
+                $storeInstagram = $settings['store_instagram'] ?? '';
+                $storeTiktok = $settings['store_tiktok'] ?? '';
+                $storeDescription = $settings['store_description'] ?? '';
 
                 $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
                     'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
@@ -349,51 +352,68 @@ class HandleInertiaRequests extends Middleware
             ],
             'socialMediaLinks' => $socialMediaLinks,
             'chatStickers' => $chatStickers,
-            'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer') ? [
-                'lowStockCount' => ProductStock::where('is_unlimited', false)
-                    ->where('stock', '>', 0)
-                    ->whereColumn('stock', '<=', 'min_stock')
-                    ->count(),
-                'outOfStockCount' => ProductStock::where('is_unlimited', false)
-                    ->where('stock', '<=', 0)
-                    ->count(),
-                'lowStockItems' => ProductStock::with(['product', 'variant.options'])
-                    ->where('is_unlimited', false)
-                    ->where('stock', '>', 0)
-                    ->whereColumn('stock', '<=', 'min_stock')
-                    ->orderBy('stock', 'asc')
-                    ->limit(5)
-                    ->get()
-                    ->map(fn ($ps) => [
-                        'id' => $ps->id,
-                        'product_id' => $ps->product_id,
-                        'name' => $ps->product ? $ps->product->name.($ps->variant && $ps->variant->options->count() > 0 ? ' ('.$ps->variant->options->pluck('name')->implode(', ').')' : '') : 'Unknown Product',
-                        'stock' => $ps->stock,
-                        'min_stock' => $ps->min_stock,
-                    ]),
-                'outOfStockItems' => ProductStock::with(['product', 'variant.options'])
-                    ->where('is_unlimited', false)
-                    ->where('stock', '<=', 0)
-                    ->limit(5)
-                    ->get()
-                    ->map(fn ($ps) => [
-                        'id' => $ps->id,
-                        'product_id' => $ps->product_id,
-                        'name' => $ps->product ? $ps->product->name.($ps->variant && $ps->variant->options->count() > 0 ? ' ('.$ps->variant->options->pluck('name')->implode(', ').')' : '') : 'Unknown Product',
-                        'stock' => $ps->stock,
-                    ]),
-                'transactionCounts' => [
-                    'belum_bayar' => Transaction::where('status', 'belum_bayar')->count(),
-                    'menunggu' => Transaction::where('status', 'menunggu')->count(),
-                    'diproses' => Transaction::where('status', 'diproses')->count(),
-                ],
-                'returnCounts' => [
-                    'menunggu_review' => ReturnRequest::where('status', 'menunggu_review')->count(),
-                ],
-                'refundCounts' => [
-                    'menunggu_konfirmasi' => RefundRequest::where('status', 'menunggu_konfirmasi')->count(),
-                ],
-                'notifications' => Notification::whereNull('user_id')
+            'adminNotifications' => $request->user() && ! $request->user()->hasRole('Customer')
+                ? Inertia::defer(fn () => [
+                    'lowStockCount' => ProductStock::where('is_unlimited', false)
+                        ->where('stock', '>', 0)
+                        ->whereColumn('stock', '<=', 'min_stock')
+                        ->count(),
+                    'outOfStockCount' => ProductStock::where('is_unlimited', false)
+                        ->where('stock', '<=', 0)
+                        ->count(),
+                    'lowStockItems' => ProductStock::with(['product', 'variant.options'])
+                        ->where('is_unlimited', false)
+                        ->where('stock', '>', 0)
+                        ->whereColumn('stock', '<=', 'min_stock')
+                        ->orderBy('stock', 'asc')
+                        ->limit(5)
+                        ->get()
+                        ->map(fn ($ps) => [
+                            'id' => $ps->id,
+                            'product_id' => $ps->product_id,
+                            'name' => $ps->product ? $ps->product->name.($ps->variant && $ps->variant->options->count() > 0 ? ' ('.$ps->variant->options->pluck('name')->implode(', ').')' : '') : 'Unknown Product',
+                            'stock' => $ps->stock,
+                            'min_stock' => $ps->min_stock,
+                        ]),
+                    'outOfStockItems' => ProductStock::with(['product', 'variant.options'])
+                        ->where('is_unlimited', false)
+                        ->where('stock', '<=', 0)
+                        ->limit(5)
+                        ->get()
+                        ->map(fn ($ps) => [
+                            'id' => $ps->id,
+                            'product_id' => $ps->product_id,
+                            'name' => $ps->product ? $ps->product->name.($ps->variant && $ps->variant->options->count() > 0 ? ' ('.$ps->variant->options->pluck('name')->implode(', ').')' : '') : 'Unknown Product',
+                            'stock' => $ps->stock,
+                        ]),
+                    'transactionCounts' => [
+                        'belum_bayar' => Transaction::where('status', 'belum_bayar')->count(),
+                        'menunggu' => Transaction::where('status', 'menunggu')->count(),
+                        'diproses' => Transaction::where('status', 'diproses')->count(),
+                    ],
+                    'returnCounts' => [
+                        'menunggu_review' => ReturnRequest::where('status', 'menunggu_review')->count(),
+                    ],
+                    'refundCounts' => [
+                        'menunggu_konfirmasi' => RefundRequest::where('status', 'menunggu_konfirmasi')->count(),
+                    ],
+                    'notifications' => Notification::whereNull('user_id')
+                        ->orderBy('created_at', 'desc')
+                        ->limit(10)
+                        ->get()
+                        ->map(fn ($n) => [
+                            'id' => $n->id,
+                            'title' => $n->title,
+                            'message' => $n->message,
+                            'type' => $n->type,
+                            'url' => $n->url,
+                            'is_read' => $n->is_read,
+                            'created_at' => $n->created_at->diffForHumans(),
+                            'time_raw' => $n->created_at->toIso8601String(),
+                        ]),
+                ]) : null,
+            'customerNotifications' => $request->user()
+                ? Inertia::defer(fn () => Notification::where('user_id', $request->user()->id)
                     ->orderBy('created_at', 'desc')
                     ->limit(10)
                     ->get()
@@ -406,22 +426,9 @@ class HandleInertiaRequests extends Middleware
                         'is_read' => $n->is_read,
                         'created_at' => $n->created_at->diffForHumans(),
                         'time_raw' => $n->created_at->toIso8601String(),
-                    ]),
-            ] : null,
-            'customerNotifications' => $request->user() ? Notification::where('user_id', $request->user()->id)
-                ->orderBy('created_at', 'desc')
-                ->limit(10)
-                ->get()
-                ->map(fn ($n) => [
-                    'id' => $n->id,
-                    'title' => $n->title,
-                    'message' => $n->message,
-                    'type' => $n->type,
-                    'url' => $n->url,
-                    'is_read' => $n->is_read,
-                    'created_at' => $n->created_at->diffForHumans(),
-                    'time_raw' => $n->created_at->toIso8601String(),
-                ]) : [],
+                    ])
+                    ->toArray())
+                : [],
         ];
     }
 }

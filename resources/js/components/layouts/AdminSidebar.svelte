@@ -13,6 +13,25 @@
     let isCmsOpen = $state(false);
     const user = $derived(page.props.auth?.user);
 
+    $effect(() => {
+        if (user && (window as any).Echo) {
+            const channel = (window as any).Echo.private(`user.${user.id}`)
+                .listen('.notification.updated', (event: any) => {
+                    const data = event.data || {};
+                    if (data.adminChatUnreadCount !== undefined) {
+                        (page.props as any).adminChatUnreadCount = data.adminChatUnreadCount;
+                    }
+                    if (data.adminNotifications !== undefined) {
+                        (page.props as any).adminNotifications = data.adminNotifications;
+                    }
+                });
+
+            return () => {
+                (window as any).Echo.leave(`user.${user.id}`);
+            };
+        }
+    });
+
     const adminNotifications = $derived((page.props as any).adminNotifications);
     const totalNewTransactions = $derived(
         (adminNotifications?.transactionCounts?.belum_bayar || 0) +

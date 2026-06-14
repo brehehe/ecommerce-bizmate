@@ -2230,428 +2230,6 @@
                             {/if}
                         </div>
                     </div>
-                </div>
-
-                <div class="lg:col-span-4 space-y-8">
-                    <div
-                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
-                    >
-                        <div
-                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
-                        >
-                            <div
-                                class="p-2.5 bg-purple-50 text-purple-500 rounded-xl"
-                            >
-                                <i class="ti ti-photo text-lg"></i>
-                            </div>
-                            <div>
-                                <h3
-                                    class="font-outfit font-black text-slate-800 text-base leading-none"
-                                >
-                                    Logo Toko
-                                </h3>
-                                <p
-                                    class="text-xs text-slate-400 font-medium mt-1"
-                                >
-                                    Klik kotak untuk mengganti logo
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            class="relative w-full aspect-video sm:aspect-square max-w-[240px] mx-auto rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center overflow-hidden group"
-                        >
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onchange={handleLogoChange}
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
-
-                            {#if imagePreview || settings.store_logo}
-                                <img
-                                    src={imagePreview || settings.store_logo}
-                                    alt="Logo"
-                                    class="w-full h-full object-cover"
-                                />
-                                <div
-                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center pointer-events-none"
-                                >
-                                    <div class="flex flex-col items-center">
-                                        <i
-                                            class="ti ti-photo-edit text-2xl text-white mb-1"
-                                        ></i>
-                                        <span
-                                            class="text-white font-bold text-xs"
-                                            >Ubah Logo</span
-                                        >
-                                    </div>
-                                </div>
-                            {:else}
-                                <i
-                                    class="ti ti-cloud-upload text-4xl text-slate-300 mb-2 transition-colors"
-                                ></i>
-                                <span
-                                    class="text-xs font-bold text-slate-400 transition-colors text-center px-4"
-                                    >Upload gambar JPG/PNG</span
-                                >
-                            {/if}
-                        </div>
-
-                        {#if imagePreview || settings.store_logo}
-                            <div class="flex justify-center -mt-2 mb-2">
-                                <button
-                                    type="button"
-                                    onclick={() => editCurrentImage('logo')}
-                                    class="px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-                                >
-                                    <i class="ti ti-crop text-sm"></i>
-                                    Edit Gambar Saat Ini
-                                </button>
-                            </div>
-                        {/if}
-
-                        <div
-                            class="flex items-start gap-2.5 bg-amber-50 p-3.5 rounded-2xl border border-amber-200"
-                        >
-                            <i
-                                class="ti ti-alert-triangle text-amber-500 text-base mt-0.5 shrink-0"
-                            ></i>
-                            <div>
-                                <span
-                                    class="text-[10px] font-black text-amber-700 uppercase tracking-tight block"
-                                    >Logo Wajib Format Landscape</span
-                                >
-                                <p
-                                    class="text-[10px] text-amber-700 font-semibold mt-0.5 leading-relaxed"
-                                >
-                                    Logo harus <strong
-                                        >lebih lebar dari tingginya</strong
-                                    >
-                                    (orientasi landscape).<br />
-                                    Format PNG/JPG, maks. 2MB.<br />
-                                    Resolusi rekomendasi:
-                                    <strong>1024 × 512 px</strong> (2:1) atau
-                                    <strong>1200 × 400 px</strong> (3:1).
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
-                    >
-                        <div
-                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
-                        >
-                            <div
-                                class="p-2.5 bg-pink-50 text-pink-500 rounded-xl"
-                            >
-                                <i class="ti ti-app-window text-lg"></i>
-                            </div>
-                            <div>
-                                <h3
-                                    class="font-outfit font-black text-slate-800 text-base leading-none"
-                                >
-                                    Icon Toko
-                                </h3>
-                                <p
-                                    class="text-xs text-slate-400 font-medium mt-1"
-                                >
-                                    Klik kotak untuk mengganti favicon
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            class="relative w-full aspect-square max-w-[120px] mx-auto rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center overflow-hidden group"
-                        >
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onchange={handleIconChange}
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
-
-                            {#if iconPreview || settings.store_icon}
-                                <img
-                                    src={iconPreview || settings.store_icon}
-                                    alt="Icon"
-                                    class="w-full h-full object-cover"
-                                />
-                                <div
-                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center pointer-events-none"
-                                >
-                                    <div class="flex flex-col items-center">
-                                        <i
-                                            class="ti ti-photo-edit text-2xl text-white mb-1"
-                                        ></i>
-                                        <span
-                                            class="text-white font-bold text-xs"
-                                            >Ubah Icon</span
-                                        >
-                                    </div>
-                                </div>
-                            {:else}
-                                <i
-                                    class="ti ti-cloud-upload text-3xl text-slate-300 mb-1 transition-colors"
-                                ></i>
-                                <span
-                                    class="text-[10px] font-bold text-slate-400 transition-colors text-center px-2"
-                                    >Upload Icon</span
-                                >
-                            {/if}
-                        </div>
-
-                        {#if iconPreview || settings.store_icon}
-                            <div class="flex justify-center -mt-2 mb-2">
-                                <button
-                                    type="button"
-                                    onclick={() => editCurrentImage('icon')}
-                                    class="px-3 py-1.5 border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
-                                >
-                                    <i class="ti ti-crop text-xs"></i>
-                                    Edit Gambar Saat Ini
-                                </button>
-                            </div>
-                        {/if}
-
-                        <div
-                            class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100"
-                        >
-                            <i
-                                class="ti ti-info-circle text-slate-400 text-base mt-0.5"
-                            ></i>
-                            <div>
-                                <span
-                                    class="text-[10px] font-black text-slate-700 uppercase tracking-tight block"
-                                    >Rekomendasi Dimensi Icon</span
-                                >
-                                <p
-                                    class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed"
-                                >
-                                    Disarankan menggunakan format PNG
-                                    transparan.<br />
-                                    Rasio:
-                                    <strong class="text-slate-600"
-                                        >1:1 (Persegi)</strong
-                                    >. Resolusi Minimum:
-                                    <strong class="text-slate-600"
-                                        >128 x 128 px</strong
-                                    >.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
-                    >
-                        <div
-                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
-                        >
-                            <div
-                                class="p-2.5 bg-slate-50"
-                                style="color: {secondaryColor}; background-color: {secondaryColor}1A; rounded-xl"
-                            >
-                                <i class="ti ti-palette text-lg"></i>
-                            </div>
-                            <div>
-                                <h3
-                                    class="font-outfit font-black text-slate-800 text-base leading-none"
-                                >
-                                    Warna Brand (Theme)
-                                </h3>
-                                <p
-                                    class="text-xs text-slate-400 font-medium mt-1"
-                                >
-                                    Warna branding toko.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <h4
-                                class="text-xs font-black text-slate-700 uppercase tracking-tight mb-2 block"
-                            >
-                                PILIH PRESET WARNA
-                            </h4>
-
-                            <div class="flex flex-col gap-2.5">
-                                {#each themePresets as preset}
-                                    <button
-                                        type="button"
-                                        onclick={() => setPreset(preset.id)}
-                                        class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left
-                                        {currentPreset === preset.id
-                                            ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
-                                            : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
-                                        style={currentPreset === preset.id
-                                            ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${preset.primary}33;`
-                                            : ''}
-                                    >
-                                        <div class="flex items-center gap-4">
-                                            <div class="flex -space-x-2">
-                                                <div
-                                                    class="w-6 h-6 rounded-full ring-2 ring-white z-10"
-                                                    style="background-color: {preset.primary};"
-                                                ></div>
-                                                <div
-                                                    class="w-6 h-6 rounded-full ring-2 ring-white"
-                                                    style="background-color: {preset.secondary};"
-                                                ></div>
-                                            </div>
-                                            <div>
-                                                <p
-                                                    class="font-outfit font-bold text-slate-800 text-sm leading-tight"
-                                                >
-                                                    {preset.name}
-                                                </p>
-                                                <p
-                                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5"
-                                                >
-                                                    {preset.sub}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset ===
-                                            preset.id
-                                                ? 'text-white'
-                                                : 'border-2 border-slate-200'}"
-                                            style={currentPreset === preset.id
-                                                ? `background-color: ${preset.primary};`
-                                                : ''}
-                                        >
-                                            {#if currentPreset === preset.id}
-                                                <i class="ti ti-check text-xs"
-                                                ></i>
-                                            {/if}
-                                        </div>
-                                    </button>
-                                {/each}
-
-                                <button
-                                    type="button"
-                                    class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left mt-1
-                                    {currentPreset === 'custom'
-                                        ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
-                                        : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
-                                    style={currentPreset === 'custom'
-                                        ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;`
-                                        : ''}
-                                    onclick={() => {
-                                        forcedCustom = true;
-                                    }}
-                                >
-                                    <div class="flex items-center gap-4">
-                                        <div class="flex -space-x-2">
-                                            <div
-                                                class="w-6 h-6 rounded-full ring-2 ring-white z-10"
-                                                style="background-color: {form.primary_color};"
-                                            ></div>
-                                            <div
-                                                class="w-6 h-6 rounded-full ring-2 ring-white"
-                                                style="background-color: {form.secondary_color};"
-                                            ></div>
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="font-outfit font-bold text-slate-800 text-sm leading-tight"
-                                            >
-                                                Kustom Warna Sendiri
-                                            </p>
-                                            <p
-                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5"
-                                            >
-                                                CUSTOM BRAND
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset ===
-                                        'custom'
-                                            ? 'text-white'
-                                            : 'border-2 border-slate-200'}"
-                                        style={currentPreset === 'custom'
-                                            ? `background-color: ${form.primary_color};`
-                                            : ''}
-                                    >
-                                        {#if currentPreset === 'custom'}
-                                            <i class="ti ti-check text-xs"></i>
-                                        {/if}
-                                    </div>
-                                </button>
-                            </div>
-
-                            {#if currentPreset === 'custom'}
-                                <div
-                                    class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 mt-4"
-                                    transition:slide
-                                >
-                                    <ColorPicker
-                                        id="primary_color"
-                                        label="Primary Color"
-                                        bind:value={form.primary_color}
-                                        class="font-mono uppercase"
-                                    />
-                                    <ColorPicker
-                                        id="secondary_color"
-                                        label="Secondary Color"
-                                        bind:value={form.secondary_color}
-                                        class="font-mono uppercase"
-                                    />
-                                </div>
-                            {/if}
-
-                            <div class="mt-6 border-t border-slate-100 pt-5">
-                                <h4
-                                    class="text-xs font-black text-slate-700 uppercase tracking-tight mb-3 block"
-                                >
-                                    PILIH FONT WEBSITE
-                                </h4>
-                                <div
-                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
-                                >
-                                    {#each fontOptions as font}
-                                        <button
-                                            type="button"
-                                            onclick={() => {
-                                                form.store_font = font.id;
-                                            }}
-                                            class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer text-left
-                                            {form.store_font === font.id
-                                                ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
-                                                : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
-                                        >
-                                            <span
-                                                class="font-bold text-sm text-slate-800"
-                                                style="font-family: '{font.id}', sans-serif;"
-                                            >
-                                                {font.name}
-                                            </span>
-                                            <div
-                                                class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {form.store_font ===
-                                                font.id
-                                                    ? 'text-white'
-                                                    : 'border-2 border-slate-200'}"
-                                                style={form.store_font ===
-                                                font.id
-                                                    ? `background-color: ${form.primary_color || '#0f766e'};`
-                                                    : ''}
-                                            >
-                                                {#if form.store_font === font.id}
-                                                    <i
-                                                        class="ti ti-check text-xs"
-                                                    ></i>
-                                                {/if}
-                                            </div>
-                                        </button>
-                                    {/each}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <div
                         class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
@@ -3404,6 +2982,428 @@
                             </button>
                         </div>
                     </div>
+                </div>
+                <div class="lg:col-span-4 space-y-8">
+                    <div
+                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
+                    >
+                        <div
+                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
+                        >
+                            <div
+                                class="p-2.5 bg-purple-50 text-purple-500 rounded-xl"
+                            >
+                                <i class="ti ti-photo text-lg"></i>
+                            </div>
+                            <div>
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                >
+                                    Logo Toko
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-400 font-medium mt-1"
+                                >
+                                    Klik kotak untuk mengganti logo
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="relative w-full aspect-video sm:aspect-square max-w-[240px] mx-auto rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center overflow-hidden group"
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onchange={handleLogoChange}
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+
+                            {#if imagePreview || settings.store_logo}
+                                <img
+                                    src={imagePreview || settings.store_logo}
+                                    alt="Logo"
+                                    class="w-full h-full object-cover"
+                                />
+                                <div
+                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center pointer-events-none"
+                                >
+                                    <div class="flex flex-col items-center">
+                                        <i
+                                            class="ti ti-photo-edit text-2xl text-white mb-1"
+                                        ></i>
+                                        <span
+                                            class="text-white font-bold text-xs"
+                                            >Ubah Logo</span
+                                        >
+                                    </div>
+                                </div>
+                            {:else}
+                                <i
+                                    class="ti ti-cloud-upload text-4xl text-slate-300 mb-2 transition-colors"
+                                ></i>
+                                <span
+                                    class="text-xs font-bold text-slate-400 transition-colors text-center px-4"
+                                    >Upload gambar JPG/PNG</span
+                                >
+                            {/if}
+                        </div>
+
+                        {#if imagePreview || settings.store_logo}
+                            <div class="flex justify-center -mt-2 mb-2">
+                                <button
+                                    type="button"
+                                    onclick={() => editCurrentImage('logo')}
+                                    class="px-4 py-2 border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                                >
+                                    <i class="ti ti-crop text-sm"></i>
+                                    Edit Gambar Saat Ini
+                                </button>
+                            </div>
+                        {/if}
+
+                        <div
+                            class="flex items-start gap-2.5 bg-amber-50 p-3.5 rounded-2xl border border-amber-200"
+                        >
+                            <i
+                                class="ti ti-alert-triangle text-amber-500 text-base mt-0.5 shrink-0"
+                            ></i>
+                            <div>
+                                <span
+                                    class="text-[10px] font-black text-amber-700 uppercase tracking-tight block"
+                                    >Logo Wajib Format Landscape</span
+                                >
+                                <p
+                                    class="text-[10px] text-amber-700 font-semibold mt-0.5 leading-relaxed"
+                                >
+                                    Logo harus <strong
+                                        >lebih lebar dari tingginya</strong
+                                    >
+                                    (orientasi landscape).<br />
+                                    Format PNG/JPG, maks. 2MB.<br />
+                                    Resolusi rekomendasi:
+                                    <strong>1024 × 512 px</strong> (2:1) atau
+                                    <strong>1200 × 400 px</strong> (3:1).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
+                    >
+                        <div
+                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
+                        >
+                            <div
+                                class="p-2.5 bg-pink-50 text-pink-500 rounded-xl"
+                            >
+                                <i class="ti ti-app-window text-lg"></i>
+                            </div>
+                            <div>
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                >
+                                    Icon Toko
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-400 font-medium mt-1"
+                                >
+                                    Klik kotak untuk mengganti favicon
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="relative w-full aspect-square max-w-[120px] mx-auto rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 transition cursor-pointer flex flex-col items-center justify-center overflow-hidden group"
+                        >
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onchange={handleIconChange}
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+
+                            {#if iconPreview || settings.store_icon}
+                                <img
+                                    src={iconPreview || settings.store_icon}
+                                    alt="Icon"
+                                    class="w-full h-full object-cover"
+                                />
+                                <div
+                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center pointer-events-none"
+                                >
+                                    <div class="flex flex-col items-center">
+                                        <i
+                                            class="ti ti-photo-edit text-2xl text-white mb-1"
+                                        ></i>
+                                        <span
+                                            class="text-white font-bold text-xs"
+                                            >Ubah Icon</span
+                                        >
+                                    </div>
+                                </div>
+                            {:else}
+                                <i
+                                    class="ti ti-cloud-upload text-3xl text-slate-300 mb-1 transition-colors"
+                                ></i>
+                                <span
+                                    class="text-[10px] font-bold text-slate-400 transition-colors text-center px-2"
+                                    >Upload Icon</span
+                                >
+                            {/if}
+                        </div>
+
+                        {#if iconPreview || settings.store_icon}
+                            <div class="flex justify-center -mt-2 mb-2">
+                                <button
+                                    type="button"
+                                    onclick={() => editCurrentImage('icon')}
+                                    class="px-3 py-1.5 border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 rounded-xl text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shadow-sm active:scale-95"
+                                >
+                                    <i class="ti ti-crop text-xs"></i>
+                                    Edit Gambar Saat Ini
+                                </button>
+                            </div>
+                        {/if}
+
+                        <div
+                            class="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100"
+                        >
+                            <i
+                                class="ti ti-info-circle text-slate-400 text-base mt-0.5"
+                            ></i>
+                            <div>
+                                <span
+                                    class="text-[10px] font-black text-slate-700 uppercase tracking-tight block"
+                                    >Rekomendasi Dimensi Icon</span
+                                >
+                                <p
+                                    class="text-[10px] text-slate-400 font-semibold mt-0.5 leading-relaxed"
+                                >
+                                    Disarankan menggunakan format PNG
+                                    transparan.<br />
+                                    Rasio:
+                                    <strong class="text-slate-600"
+                                        >1:1 (Persegi)</strong
+                                    >. Resolusi Minimum:
+                                    <strong class="text-slate-600"
+                                        >128 x 128 px</strong
+                                    >.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
+                    >
+                        <div
+                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
+                        >
+                            <div
+                                class="p-2.5 bg-slate-50"
+                                style="color: {secondaryColor}; background-color: {secondaryColor}1A; rounded-xl"
+                            >
+                                <i class="ti ti-palette text-lg"></i>
+                            </div>
+                            <div>
+                                <h3
+                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                >
+                                    Warna Brand (Theme)
+                                </h3>
+                                <p
+                                    class="text-xs text-slate-400 font-medium mt-1"
+                                >
+                                    Warna branding toko.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h4
+                                class="text-xs font-black text-slate-700 uppercase tracking-tight mb-2 block"
+                            >
+                                PILIH PRESET WARNA
+                            </h4>
+
+                            <div class="flex flex-col gap-2.5">
+                                {#each themePresets as preset}
+                                    <button
+                                        type="button"
+                                        onclick={() => setPreset(preset.id)}
+                                        class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left
+                                        {currentPreset === preset.id
+                                            ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
+                                            : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                        style={currentPreset === preset.id
+                                            ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${preset.primary}33;`
+                                            : ''}
+                                    >
+                                        <div class="flex items-center gap-4">
+                                            <div class="flex -space-x-2">
+                                                <div
+                                                    class="w-6 h-6 rounded-full ring-2 ring-white z-10"
+                                                    style="background-color: {preset.primary};"
+                                                ></div>
+                                                <div
+                                                    class="w-6 h-6 rounded-full ring-2 ring-white"
+                                                    style="background-color: {preset.secondary};"
+                                                ></div>
+                                            </div>
+                                            <div>
+                                                <p
+                                                    class="font-outfit font-bold text-slate-800 text-sm leading-tight"
+                                                >
+                                                    {preset.name}
+                                                </p>
+                                                <p
+                                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5"
+                                                >
+                                                    {preset.sub}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset ===
+                                            preset.id
+                                                ? 'text-white'
+                                                : 'border-2 border-slate-200'}"
+                                            style={currentPreset === preset.id
+                                                ? `background-color: ${preset.primary};`
+                                                : ''}
+                                        >
+                                            {#if currentPreset === preset.id}
+                                                <i class="ti ti-check text-xs"
+                                                ></i>
+                                            {/if}
+                                        </div>
+                                    </button>
+                                {/each}
+
+                                <button
+                                    type="button"
+                                    class="w-full flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer text-left mt-1
+                                    {currentPreset === 'custom'
+                                        ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
+                                        : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                    style={currentPreset === 'custom'
+                                        ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;`
+                                        : ''}
+                                    onclick={() => {
+                                        forcedCustom = true;
+                                    }}
+                                >
+                                    <div class="flex items-center gap-4">
+                                        <div class="flex -space-x-2">
+                                            <div
+                                                class="w-6 h-6 rounded-full ring-2 ring-white z-10"
+                                                style="background-color: {form.primary_color};"
+                                            ></div>
+                                            <div
+                                                class="w-6 h-6 rounded-full ring-2 ring-white"
+                                                style="background-color: {form.secondary_color};"
+                                            ></div>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="font-outfit font-bold text-slate-800 text-sm leading-tight"
+                                            >
+                                                Kustom Warna Sendiri
+                                            </p>
+                                            <p
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5"
+                                            >
+                                                CUSTOM BRAND
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {currentPreset ===
+                                        'custom'
+                                            ? 'text-white'
+                                            : 'border-2 border-slate-200'}"
+                                        style={currentPreset === 'custom'
+                                            ? `background-color: ${form.primary_color};`
+                                            : ''}
+                                    >
+                                        {#if currentPreset === 'custom'}
+                                            <i class="ti ti-check text-xs"></i>
+                                        {/if}
+                                    </div>
+                                </button>
+                            </div>
+
+                            {#if currentPreset === 'custom'}
+                                <div
+                                    class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 mt-4"
+                                    transition:slide
+                                >
+                                    <ColorPicker
+                                        id="primary_color"
+                                        label="Primary Color"
+                                        bind:value={form.primary_color}
+                                        class="font-mono uppercase"
+                                    />
+                                    <ColorPicker
+                                        id="secondary_color"
+                                        label="Secondary Color"
+                                        bind:value={form.secondary_color}
+                                        class="font-mono uppercase"
+                                    />
+                                </div>
+                            {/if}
+
+                            <div class="mt-6 border-t border-slate-100 pt-5">
+                                <h4
+                                    class="text-xs font-black text-slate-700 uppercase tracking-tight mb-3 block"
+                                >
+                                    PILIH FONT WEBSITE
+                                </h4>
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                >
+                                    {#each fontOptions as font}
+                                        <button
+                                            type="button"
+                                            onclick={() => {
+                                                form.store_font = font.id;
+                                            }}
+                                            class="w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all cursor-pointer text-left
+                                            {form.store_font === font.id
+                                                ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
+                                                : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
+                                        >
+                                            <span
+                                                class="font-bold text-sm text-slate-800"
+                                                style="font-family: '{font.id}', sans-serif;"
+                                            >
+                                                {font.name}
+                                            </span>
+                                            <div
+                                                class="w-5 h-5 rounded-full flex items-center justify-center transition-colors {form.store_font ===
+                                                font.id
+                                                    ? 'text-white'
+                                                    : 'border-2 border-slate-200'}"
+                                                style={form.store_font ===
+                                                font.id
+                                                    ? `background-color: ${form.primary_color || '#0f766e'};`
+                                                    : ''}
+                                            >
+                                                {#if form.store_font === font.id}
+                                                    <i
+                                                        class="ti ti-check text-xs"
+                                                    ></i>
+                                                {/if}
+                                            </div>
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </form>

@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\ChatMessageRead;
+use App\Events\ChatMessageSent;
+use App\Events\NotificationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Chat;
 use App\Models\ChatMessage;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -74,6 +78,17 @@ class ChatController extends Controller
             ->where('sender_type', 'user')
             ->where('is_read', false)
             ->update(['is_read' => true]);
+
+        $admins = User::whereHas('roles', fn ($q) => $q->where('name', '!=', 'Customer'))
+            ->orWhereDoesntHave('roles')
+            ->get();
+
+        foreach ($admins as $admin) {
+            broadcast(new NotificationUpdated($admin->id));
+        }
+
+        $readIds = $chat->messages()->where('is_read', true)->pluck('id')->toArray();
+        broadcast(new ChatMessageRead($readIds, $chat->id))->toOthers();
 
         $chatData = [
             'id' => $chat->id,
@@ -213,7 +228,13 @@ class ChatController extends Controller
 
         $chat->update(['last_message_at' => now()]);
 
-        return response()->json($this->formatMessage($msg), 201);
+        $formatted = $this->formatMessage($msg);
+        broadcast(new ChatMessageSent($formatted, $chat->id))->toOthers();
+
+        broadcast(new NotificationUpdated($chat->user_id));
+
+        return response()->json($formatted, 201);
+
     }
 
     /**

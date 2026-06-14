@@ -4,6 +4,7 @@
     import { onMount, onDestroy } from 'svelte';
     import { showToast } from '@/utils/toast';
 
+
     let {
         chat = {
             id: 0,
@@ -146,58 +147,53 @@
 
     function startPolling() {
         stopPolling();
-        pollingInterval = setInterval(async () => {
-            if (!chat.id) return;
-            const lastMsgId =
-                messages.length > 0 ? messages[messages.length - 1].id : 0;
-            try {
-                const response = await fetch(
-                    `/admin/chats/${chat.id}/poll?after_id=${lastMsgId}`,
-                    {
-                        headers: { Accept: 'application/json' },
-                    },
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    const newMsgs = Array.isArray(data)
-                        ? data
-                        : data.messages || [];
-                    const readIds = Array.isArray(data)
-                        ? []
-                        : data.read_ids || [];
+        if (!chat.id || !(window as any).Echo) return;
 
-                    if (newMsgs.length > 0) {
-                        messages = [...messages, ...newMsgs];
+        (window as any).Echo.private(`chat.${chat.id}`)
+            .listen('.message.sent', (event: any) => {
+                const newMsg = event.messageData;
+                if (newMsg) {
+                    const existingIds = new Set(messages.map((m) => m.id));
+                    if (!existingIds.has(newMsg.id)) {
+                        messages = [...messages, newMsg];
                         setTimeout(scrollToBottom, 50);
-                    }
 
-                    if (readIds.length > 0) {
-                        messages = messages.map((m: any) => {
-                            if (readIds.includes(m.id) && !m.is_read) {
-                                return { ...m, is_read: true };
-                            }
-                            return m;
+                        // Reload Inertia props to update thread list & total unread count on sidebar
+                        router.reload({
+                            only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
+                            preserveScroll: true,
                         });
                     }
-
-                    // Reload Inertia props to update thread list & total unread count on sidebar
-                    router.reload({
-                        only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
-                        preserveScroll: true,
-                    });
                 }
-            } catch (err) {
-                console.error('Error polling messages:', err);
-            }
-        }, 2000);
+            })
+            .listen('.messages.read', (event: any) => {
+                const readIds = event.readIds || [];
+                if (readIds.length > 0) {
+                    let readChanged = false;
+                    messages = messages.map((m: any) => {
+                        if (readIds.includes(m.id) && !m.is_read) {
+                            readChanged = true;
+                            return { ...m, is_read: true };
+                        }
+                        return m;
+                    });
+
+                    if (readChanged) {
+                        router.reload({
+                            only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
+                            preserveScroll: true,
+                        });
+                    }
+                }
+            });
     }
 
     function stopPolling() {
-        if (pollingInterval) {
-            clearInterval(pollingInterval);
-            pollingInterval = null;
+        if (chat.id && (window as any).Echo) {
+            (window as any).Echo.leave(`chat.${chat.id}`);
         }
     }
+
 
     async function sendReply() {
         const text = replyInput.trim();

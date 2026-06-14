@@ -5,6 +5,8 @@
     import { showToast } from '@/utils/toast';
     import OfflineDetector from '@/components/OfflineDetector.svelte';
 
+
+
     const shownFlashIds = new Set();
 
     let {
@@ -116,10 +118,38 @@
     );
     let chatMessages = $state<any[]>([]);
     let chatInput = $state('');
-    let chatInterval: any = null;
-    let chatListInterval: any = null;
     let chatListLoading = $state(false);
     let chatMessagesLoading = $state(false);
+
+    $effect(() => {
+        if (auth && (window as any).Echo) {
+            const channel = (window as any).Echo.private(`user.${auth.id}`)
+                .listen('.notification.updated', (event: any) => {
+                    const data = event.data || {};
+                    let unreadChanged = false;
+                    if (data.chatUnreadCount !== undefined) {
+                        if ((page.props as any).chatUnreadCount !== data.chatUnreadCount) {
+                            unreadChanged = true;
+                        }
+                        (page.props as any).chatUnreadCount = data.chatUnreadCount;
+                    }
+                    if (data.cartCount !== undefined) {
+                        (page.props as any).cartCount = data.cartCount;
+                    }
+                    if (data.customerNotifications !== undefined) {
+                        (page.props as any).customerNotifications = data.customerNotifications;
+                    }
+
+                    if (unreadChanged && desktopChatOpen) {
+                        fetchChatList(true);
+                    }
+                });
+
+            return () => {
+                (window as any).Echo.leave(`user.${auth.id}`);
+            };
+        }
+    });
 
     async function toggleDesktopChat() {
         if (!auth) {
@@ -129,14 +159,12 @@
         desktopChatOpen = !desktopChatOpen;
         if (desktopChatOpen) {
             await fetchChatList();
-            startChatListPolling();
             if (activeChatId) {
                 await fetchChatMessages();
                 startChatPolling();
             }
         } else {
             stopChatPolling();
-            stopChatListPolling();
         }
     }
 
@@ -188,56 +216,39 @@
 
     function startChatPolling() {
         stopChatPolling();
-        chatInterval = setInterval(async () => {
-            if (!activeChatId) return;
-            const lastMsgId =
-                chatMessages.length > 0
-                    ? chatMessages[chatMessages.length - 1].id
-                    : 0;
-            try {
-                const response = await fetch(
-                    `/chats/${activeChatId}/messages?after_id=${lastMsgId}`,
-                    {
-                        headers: { Accept: 'application/json' },
-                    },
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    const newMsgs = Array.isArray(data)
-                        ? data
-                        : data.messages || [];
-                    if (newMsgs.length > 0) {
-                        chatMessages = [...chatMessages, ...newMsgs];
+        if (!activeChatId || !(window as any).Echo) return;
+
+        (window as any).Echo.private(`chat.${activeChatId}`)
+            .listen('.message.sent', (event: any) => {
+                const newMsg = event.messageData;
+                if (newMsg) {
+                    const existingIds = new Set(chatMessages.map((m) => m.id));
+                    if (!existingIds.has(newMsg.id)) {
+                        chatMessages = [...chatMessages, newMsg];
                         setTimeout(scrollMiniChatToBottom, 50);
                         fetchChatList(true);
                     }
                 }
-            } catch (err) {
-                console.error('Error polling chat messages:', err);
-            }
-        }, 5000);
+            })
+            .listen('.messages.read', (event: any) => {
+                const readIds = event.readIds || [];
+                if (readIds.length > 0) {
+                    chatMessages = chatMessages.map((m: any) => {
+                        if (readIds.includes(m.id) && !m.is_read) {
+                            return { ...m, is_read: true };
+                        }
+                        return m;
+                    });
+                }
+            });
     }
 
     function stopChatPolling() {
-        if (chatInterval) {
-            clearInterval(chatInterval);
-            chatInterval = null;
+        if (activeChatId && (window as any).Echo) {
+            (window as any).Echo.leave(`chat.${activeChatId}`);
         }
     }
 
-    function startChatListPolling() {
-        stopChatListPolling();
-        chatListInterval = setInterval(async () => {
-            await fetchChatList(true);
-        }, 10000);
-    }
-
-    function stopChatListPolling() {
-        if (chatListInterval) {
-            clearInterval(chatListInterval);
-            chatListInterval = null;
-        }
-    }
 
     let stickerModalOpen = $state(false);
     let emojiPickerOpen = $state(false);
@@ -1978,7 +1989,7 @@
     {/if}
 
     <!-- ====== MAIN CONTENT ====== -->
-    <main class="flex-grow flex flex-col">
+    <main class="flex-grow flex flex-col transition-all duration-300">
         {@render children()}
     </main>
 
