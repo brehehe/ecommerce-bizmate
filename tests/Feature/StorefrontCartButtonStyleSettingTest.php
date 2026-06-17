@@ -56,3 +56,29 @@ test('admin can save storefront cart button style setting', function () {
         'value' => 'icon',
     ]);
 });
+
+test('admin settings page returns show_checkout_settings from configuration', function () {
+    $admin = User::factory()->create();
+
+    // Default should be true
+    config(['app.show_checkout_settings' => true]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.settings.edit'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('env_keys.show_checkout_settings', true)
+    );
+
+    // Set config to false
+    config(['app.show_checkout_settings' => false]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.settings.edit'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('env_keys.show_checkout_settings', false)
+    );
+});

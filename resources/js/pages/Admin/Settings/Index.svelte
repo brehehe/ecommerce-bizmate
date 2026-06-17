@@ -2234,6 +2234,7 @@
                     <div
                         class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
                     >
+                        {#if env_keys.show_checkout_settings !== false}
                         <div
                             class="flex items-center gap-3 border-b border-slate-100 pb-4"
                         >
@@ -2256,8 +2257,10 @@
                                 </p>
                             </div>
                         </div>
+                        {/if}
 
                         <div class="space-y-5">
+                            {#if env_keys.show_checkout_settings !== false}
                             <div class="space-y-3.5">
                                 <span
                                     class="text-xs font-black text-slate-700 uppercase tracking-tight block"
@@ -2795,6 +2798,7 @@
                             </div>
 
                             <div class="h-px bg-slate-100"></div>
+                            {/if}
 
                             <div class="space-y-3.5">
                                 <span

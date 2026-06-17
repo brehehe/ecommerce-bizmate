@@ -36,6 +36,7 @@ class SettingController extends Controller
             'shipping_delivery_key' => (bool) config('app.rajaongkir.has_shipping_delivery_key_env', false),
             'payment_api_key' => (bool) config('app.rajaongkir.has_payment_api_key_env', false),
             'qrisly_api_key' => (bool) config('app.rajaongkir.has_qrisly_api_key_env', false),
+            'show_checkout_settings' => (bool) config('app.show_checkout_settings', true),
         ];
 
         return Inertia::render('Admin/Settings/Index', [

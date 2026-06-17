@@ -152,6 +152,7 @@ return [
     */
     'pwa_install_enabled' => (bool) env('PWA_INSTALL_ENABLED', true),
     'pickup_enabled' => (bool) env('PICKUP_ENABLED', true),
+    'show_checkout_settings' => (bool) env('SHOW_CHECKOUT_SETTINGS', true),
 
     'rajaongkir' => [
         'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),
