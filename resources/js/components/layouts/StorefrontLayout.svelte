@@ -222,12 +222,32 @@
             .listen('.message.sent', (event: any) => {
                 const newMsg = event.messageData;
                 if (newMsg) {
+                    // Check if the message is already present
                     const existingIds = new Set(chatMessages.map((m) => m.id));
-                    if (!existingIds.has(newMsg.id)) {
-                        chatMessages = [...chatMessages, newMsg];
-                        setTimeout(scrollMiniChatToBottom, 50);
-                        fetchChatList(true);
+                    if (existingIds.has(newMsg.id)) {
+                        return;
                     }
+
+                    // Check if there is an optimistic temporary message matching this new message
+                    const optimisticIndex = chatMessages.findIndex(
+                        (m) =>
+                            m.id < 0 &&
+                            m.sender_type === newMsg.sender_type &&
+                            m.sender_id === newMsg.sender_id &&
+                            (m.body === newMsg.body || m.attachment_type === newMsg.attachment_type)
+                    );
+
+                    if (optimisticIndex !== -1) {
+                        // Replace the optimistic message with the real one
+                        chatMessages = chatMessages.map((m, idx) =>
+                            idx === optimisticIndex ? newMsg : m
+                        );
+                    } else {
+                        // Append the message
+                        chatMessages = [...chatMessages, newMsg];
+                    }
+                    setTimeout(scrollMiniChatToBottom, 50);
+                    fetchChatList(true);
                 }
             })
             .listen('.messages.read', (event: any) => {
@@ -524,9 +544,15 @@
 
             if (response.ok) {
                 const newMsg = await response.json();
-                chatMessages = chatMessages.map((m) =>
-                    m.id === tempId ? newMsg : m,
-                );
+                // Check if the message was already added by the WebSocket listener
+                const alreadyExists = chatMessages.some((m) => m.id === newMsg.id);
+                if (alreadyExists) {
+                    chatMessages = chatMessages.filter((m) => m.id !== tempId);
+                } else {
+                    chatMessages = chatMessages.map((m) =>
+                        m.id === tempId ? newMsg : m,
+                    );
+                }
             }
         } catch (err) {
             console.error('Error sending sticker:', err);
@@ -660,9 +686,15 @@
 
             if (response.ok) {
                 const newMsg = await response.json();
-                chatMessages = chatMessages.map((m) =>
-                    m.id === tempId ? newMsg : m,
-                );
+                // Check if the message was already added by the WebSocket listener
+                const alreadyExists = chatMessages.some((m) => m.id === newMsg.id);
+                if (alreadyExists) {
+                    chatMessages = chatMessages.filter((m) => m.id !== tempId);
+                } else {
+                    chatMessages = chatMessages.map((m) =>
+                        m.id === tempId ? newMsg : m,
+                    );
+                }
                 fetchChatList(true);
             } else {
                 chatMessages = chatMessages.filter((m) => m.id !== tempId);
@@ -726,9 +758,15 @@
 
             if (response.ok) {
                 const realMsg = await response.json();
-                chatMessages = chatMessages.map((m) =>
-                    m.id === tempId ? realMsg : m,
-                );
+                // Check if the message was already added by the WebSocket listener
+                const alreadyExists = chatMessages.some((m) => m.id === realMsg.id);
+                if (alreadyExists) {
+                    chatMessages = chatMessages.filter((m) => m.id !== tempId);
+                } else {
+                    chatMessages = chatMessages.map((m) =>
+                        m.id === tempId ? realMsg : m,
+                    );
+                }
                 fetchChatList(true);
             } else {
                 chatMessages = chatMessages.filter((m) => m.id !== tempId);

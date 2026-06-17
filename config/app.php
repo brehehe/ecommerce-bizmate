@@ -151,6 +151,7 @@ return [
     |
     */
     'pwa_install_enabled' => (bool) env('PWA_INSTALL_ENABLED', true),
+    'pickup_enabled' => (bool) env('PICKUP_ENABLED', true),
 
     'rajaongkir' => [
         'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),
@@ -159,6 +160,12 @@ return [
         'payment_api_key' => env('PAYMENT_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
         'qrisly_api_key' => env('QRISLY_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
         'delivery_url' => env('KOMERCE_DELIVERY_URL', 'https://api-sandbox.collaborator.komerce.id/api/v1/'),
+        'has_url_env' => env('RAJAONGKIR_URL') !== null,
+        'has_shipping_cost_env' => env('RAJAONGKIR_SHIPPING_COST_KEY') !== null,
+        'has_delivery_url_env' => env('KOMERCE_DELIVERY_URL') !== null,
+        'has_shipping_delivery_key_env' => env('SHIPPING_DELIVERY_API_KEY') !== null,
+        'has_payment_api_key_env' => env('PAYMENT_API_KEY') !== null,
+        'has_qrisly_api_key_env' => env('QRISLY_API_KEY') !== null,
     ],
 
     'xendit' => [

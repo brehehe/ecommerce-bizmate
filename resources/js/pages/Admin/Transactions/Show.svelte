@@ -1574,7 +1574,7 @@
                             </div>
                         </div>
                     {:else if transaction.shipping_courier !== 'self_pickup' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier'}
-                        {#if transaction.booking_code || (transaction.status !== 'batal' && transaction.status !== 'selesai')}
+                        {#if (storeSettings.pickup_enabled !== false && (transaction.status !== 'batal' && transaction.status !== 'selesai')) || transaction.booking_code}
                             <!-- Komerce/Biteship Shipping Delivery Dashboard -->
                             <div
                                 class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
@@ -1679,7 +1679,7 @@
                                                 Cetak Label Pengiriman
                                             </a>
                                             <!-- Request Pickup -->
-                                            {#if ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
+                                            {#if storeSettings.pickup_enabled !== false && ['diproses', 'dikemas', 'out_for_pickup'].includes(transaction.status)}
                                                 <button
                                                     onclick={() => {
                                                         if (biteshipEnabled) {

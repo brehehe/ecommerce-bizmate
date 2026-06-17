@@ -12,6 +12,7 @@ use App\Models\ReturnRequest;
 use App\Models\Setting;
 use App\Models\SocialMedia;
 use App\Models\Transaction;
+use App\Services\KomerceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -78,6 +79,7 @@ class HandleInertiaRequests extends Middleware
         $checkoutLocked = (bool) config('app.checkout_locked', false);
         $checkoutLockedMessage = config('app.checkout_locked_message', 'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.');
         $pwaInstallEnabled = (bool) config('app.pwa_install_enabled', true);
+        $pickupEnabled = (bool) config('app.pickup_enabled', true);
         $operationalHours = [];
 
         $refundPointsEnabled = false;
@@ -171,7 +173,7 @@ class HandleInertiaRequests extends Middleware
                 $paymentApiAdminFee = (float) ($settings['payment_api_admin_fee'] ?? 0);
                 $qrislyApiEnabled = ($settings['qrisly_api_enabled'] ?? null) === '1';
                 $qrislyApiAdminFee = (float) ($settings['qrisly_api_admin_fee'] ?? 0);
-                $komerceDeliveryUrl = $settings['komerce_delivery_url'] ?? 'https://api-sandbox.collaborator.komerce.id/api/v1/';
+                $komerceDeliveryUrl = KomerceService::getSetting('komerce_delivery_url', 'app.rajaongkir.delivery_url');
 
                 $selfPickupEnabled = ($settings['self_pickup_enabled'] ?? null) === '1';
                 $selfPickupFee = (float) ($settings['self_pickup_fee'] ?? 0);
@@ -309,6 +311,7 @@ class HandleInertiaRequests extends Middleware
                 'checkout_locked' => $checkoutLocked,
                 'checkout_locked_message' => $checkoutLockedMessage,
                 'pwa_install_enabled' => $pwaInstallEnabled,
+                'pickup_enabled' => $pickupEnabled,
 
                 'refund_points_enabled' => $refundPointsEnabled,
                 'refund_transfer_days' => $refundTransferDays,

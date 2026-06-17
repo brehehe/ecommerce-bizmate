@@ -19,6 +19,10 @@ class KomerceShipmentController extends Controller
      */
     public function storeShipment(Transaction $transaction)
     {
+        if (! config('app.pickup_enabled', true)) {
+            return back()->with('error', 'Layanan pengiriman API sedang dinonaktifkan.');
+        }
+
         if (BiteshipService::isEnabled()) {
             $address = $transaction->customerAddress;
             if (! $address) {
@@ -89,6 +93,10 @@ class KomerceShipmentController extends Controller
      */
     public function requestPickup(Transaction $transaction, Request $request)
     {
+        if (! config('app.pickup_enabled', true)) {
+            return back()->with('error', 'Layanan pengiriman API sedang dinonaktifkan.');
+        }
+
         if (! in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
             return back()->with('error', 'Pesanan tidak eligible untuk pickup (status harus Diproses, Dikemas, atau Out for Pickup).');
         }
@@ -260,6 +268,10 @@ class KomerceShipmentController extends Controller
      */
     public function cancelShipment(Transaction $transaction)
     {
+        if (! config('app.pickup_enabled', true)) {
+            return back()->with('error', 'Layanan pengiriman API sedang dinonaktifkan.');
+        }
+
         if (! $transaction->booking_code) {
             return back()->with('error', 'Kode booking pengiriman tidak ditemukan.');
         }
@@ -303,6 +315,10 @@ class KomerceShipmentController extends Controller
      */
     public function trackShipment(Transaction $transaction)
     {
+        if (! config('app.pickup_enabled', true)) {
+            return response()->json(['error' => 'Layanan pengiriman API sedang dinonaktifkan.'], 403);
+        }
+
         $waybill = $transaction->tracking_number;
         if (! $waybill) {
             return response()->json(['error' => 'Resi pengiriman belum tersedia.'], 400);
@@ -338,6 +354,10 @@ class KomerceShipmentController extends Controller
      */
     public function getOrderDetail(Transaction $transaction): JsonResponse
     {
+        if (! config('app.pickup_enabled', true)) {
+            return response()->json(['error' => 'Layanan pengiriman API sedang dinonaktifkan.'], 403);
+        }
+
         if (! $transaction->booking_code) {
             return response()->json(['error' => 'Kode booking pengiriman belum tersedia.'], 400);
         }

@@ -17,8 +17,24 @@ class KomerceService
     /**
      * Resolve configuration setting or config fallback.
      */
-    private static function getSetting(string $key, ?string $configFallback = null): ?string
+    public static function getSetting(string $key, ?string $configFallback = null): ?string
     {
+        $envKeyMap = [
+            'rajaongkir_url' => ['env' => 'app.rajaongkir.has_url_env', 'config' => 'app.rajaongkir.url'],
+            'rajaongkir_shipping_cost' => ['env' => 'app.rajaongkir.has_shipping_cost_env', 'config' => 'app.rajaongkir.shipping_cost'],
+            'komerce_delivery_url' => ['env' => 'app.rajaongkir.has_delivery_url_env', 'config' => 'app.rajaongkir.delivery_url'],
+            'shipping_delivery_key' => ['env' => 'app.rajaongkir.has_shipping_delivery_key_env', 'config' => 'app.rajaongkir.shipping_delivery_key'],
+            'payment_api_key' => ['env' => 'app.rajaongkir.has_payment_api_key_env', 'config' => 'app.rajaongkir.payment_api_key'],
+            'qrisly_api_key' => ['env' => 'app.rajaongkir.has_qrisly_api_key_env', 'config' => 'app.rajaongkir.qrisly_api_key'],
+        ];
+
+        if (isset($envKeyMap[$key])) {
+            $map = $envKeyMap[$key];
+            if (config($map['env'])) {
+                return config($map['config']);
+            }
+        }
+
         $settingVal = Setting::where('key', $key)->value('value');
         if (! empty($settingVal)) {
             return $settingVal;

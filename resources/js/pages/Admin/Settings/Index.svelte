@@ -17,7 +17,7 @@
     import ColorPicker from '@/components/ui/ColorPicker.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
 
-    let { settings = {} } = $props();
+    let { settings = {}, env_keys = {} } = $props();
 
     // svelte-ignore state_referenced_locally
     const form = useForm({
@@ -2326,27 +2326,53 @@
                                 >
                                     Konfigurasi Rajaongkir
                                 </span>
-                                <Input
-                                    id="input-rajaongkir-url"
-                                    bind:value={form.rajaongkir_url}
-                                    label="Rajaongkir Base URL"
-                                    placeholder="Contoh: https://rajaongkir.komerce.id/api/v1/"
-                                    required={true}
-                                />
-                                <Input
-                                    id="input-rajaongkir-shipping-cost"
-                                    bind:value={form.rajaongkir_shipping_cost}
-                                    label="Raja Ongkir Shipping Cost"
-                                    placeholder="Masukkan Shipping Cost Key"
-                                    required={true}
-                                />
-                                <Input
-                                    id="input-komerce-delivery-url"
-                                    bind:value={form.komerce_delivery_url}
-                                    label="Komerce Delivery Base URL"
-                                    placeholder="Contoh: https://api-sandbox.collaborator.komerce.id/api/v1/"
-                                    required={true}
-                                />
+                                <div class="space-y-1">
+                                    <Input
+                                        id="input-rajaongkir-url"
+                                        bind:value={form.rajaongkir_url}
+                                        label="Rajaongkir Base URL"
+                                        placeholder="Contoh: https://rajaongkir.komerce.id/api/v1/"
+                                        required={!env_keys.rajaongkir_url}
+                                        readonly={env_keys.rajaongkir_url}
+                                    />
+                                    {#if env_keys.rajaongkir_url}
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
+                                            <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
+                                        </span>
+                                    {/if}
+                                </div>
+
+                                <div class="space-y-1">
+                                    <Input
+                                        id="input-rajaongkir-shipping-cost"
+                                        bind:value={form.rajaongkir_shipping_cost}
+                                        label="Raja Ongkir Shipping Cost"
+                                        placeholder="Masukkan Shipping Cost Key"
+                                        required={!env_keys.rajaongkir_shipping_cost}
+                                        readonly={env_keys.rajaongkir_shipping_cost}
+                                    />
+                                    {#if env_keys.rajaongkir_shipping_cost}
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
+                                            <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
+                                        </span>
+                                    {/if}
+                                </div>
+
+                                <div class="space-y-1">
+                                    <Input
+                                        id="input-komerce-delivery-url"
+                                        bind:value={form.komerce_delivery_url}
+                                        label="Komerce Delivery Base URL"
+                                        placeholder="Contoh: https://api-sandbox.collaborator.komerce.id/api/v1/"
+                                        required={!env_keys.komerce_delivery_url}
+                                        readonly={env_keys.komerce_delivery_url}
+                                    />
+                                    {#if env_keys.komerce_delivery_url}
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
+                                            <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
+                                        </span>
+                                    {/if}
+                                </div>
 
                                 <div class="h-px bg-slate-100 my-2"></div>
 
@@ -2631,15 +2657,23 @@
                                         <div
                                             class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
                                         >
-                                            <Input
-                                                id="input-shipping-delivery-key"
-                                                bind:value={
-                                                    form.shipping_delivery_key
-                                                }
-                                                label="Shipping Delivery API Key"
-                                                placeholder="Masukkan Shipping Delivery API Key"
-                                                required={true}
-                                            />
+                                            <div class="space-y-1">
+                                                <Input
+                                                    id="input-shipping-delivery-key"
+                                                    bind:value={
+                                                        form.shipping_delivery_key
+                                                    }
+                                                    label="Shipping Delivery API Key"
+                                                    placeholder="Masukkan Shipping Delivery API Key"
+                                                    required={!env_keys.shipping_delivery_key}
+                                                    readonly={env_keys.shipping_delivery_key}
+                                                />
+                                                {#if env_keys.shipping_delivery_key}
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
+                                                        <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
+                                                    </span>
+                                                {/if}
+                                            </div>
                                         </div>
                                     {/if}
                                 </div>
@@ -2688,15 +2722,23 @@
                                         <div
                                             class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
                                         >
-                                            <Input
-                                                id="input-payment-api-key"
-                                                bind:value={
-                                                    form.payment_api_key
-                                                }
-                                                label="Payment API Key"
-                                                placeholder="Masukkan Payment API Key"
-                                                required={true}
-                                            />
+                                            <div class="space-y-1">
+                                                <Input
+                                                    id="input-payment-api-key"
+                                                    bind:value={
+                                                        form.payment_api_key
+                                                    }
+                                                    label="Payment API Key"
+                                                    placeholder="Masukkan Payment API Key"
+                                                    required={!env_keys.payment_api_key}
+                                                    readonly={env_keys.payment_api_key}
+                                                />
+                                                {#if env_keys.payment_api_key}
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
+                                                        <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
+                                                    </span>
+                                                {/if}
+                                            </div>
                                             <InputCurrency
                                                 id="input-payment-api-admin-fee"
                                                 bind:value={
@@ -2723,13 +2765,21 @@
                                         <div
                                             class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
                                         >
-                                            <Input
-                                                id="input-qrisly-api-key"
-                                                bind:value={form.qrisly_api_key}
-                                                label="QRISLY API Key"
-                                                placeholder="Masukkan QRISLY API Key"
-                                                required={true}
-                                            />
+                                            <div class="space-y-1">
+                                                <Input
+                                                    id="input-qrisly-api-key"
+                                                    bind:value={form.qrisly_api_key}
+                                                    label="QRISLY API Key"
+                                                    placeholder="Masukkan QRISLY API Key"
+                                                    required={!env_keys.qrisly_api_key}
+                                                    readonly={env_keys.qrisly_api_key}
+                                                />
+                                                {#if env_keys.qrisly_api_key}
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
+                                                        <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
+                                                    </span>
+                                                {/if}
+                                            </div>
                                             <InputCurrency
                                                 id="input-qrisly-api-admin-fee"
                                                 bind:value={
