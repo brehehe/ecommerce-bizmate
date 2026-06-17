@@ -469,6 +469,11 @@ test('Komerce APIs propagate actual errors and disable staging fallbacks in prod
     Setting::updateOrCreate(['key' => 'shipping_delivery_key'], ['value' => 'mock_key']);
     Setting::updateOrCreate(['key' => 'komerce_delivery_url'], ['value' => 'https://api.collaborator.komerce.id/api/v1/']);
 
+    config([
+        'app.rajaongkir.delivery_url' => 'https://api.collaborator.komerce.id/api/v1/',
+        'app.rajaongkir.shipping_delivery_key' => 'mock_key',
+    ]);
+
     Http::fake([
         'https://api.collaborator.komerce.id/order/api/v1/orders/print-label*' => Http::response([
             'meta' => ['message' => 'Label generation failed', 'code' => 500, 'status' => 'error'],
