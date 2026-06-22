@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\ChatSticker;
@@ -746,7 +747,7 @@ class MasterDataController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $path = $request->file('image')->store('chat-stickers', 'public');
+        $path = ImageHelper::compressAndStore($request->file('image'), 'chat-stickers', 'public');
         $maxOrder = ChatSticker::max('order') ?? 0;
 
         ChatSticker::create([
@@ -774,7 +775,7 @@ class MasterDataController extends Controller
 
         if ($request->hasFile('image')) {
             Storage::disk('public')->delete($chatSticker->image_path);
-            $chatSticker->image_path = $request->file('image')->store('chat-stickers', 'public');
+            $chatSticker->image_path = ImageHelper::compressAndStore($request->file('image'), 'chat-stickers', 'public');
         }
 
         $chatSticker->update([
@@ -806,5 +807,169 @@ class MasterDataController extends Controller
         $chatSticker->update(['is_active' => ! $chatSticker->is_active]);
 
         return back()->with('success', 'Status stiker berhasil diubah.');
+    }
+
+    /**
+     * Bulk delete admins.
+     */
+    public function bulkDeleteAdmins(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:users,id',
+        ]);
+
+        $ids = $request->input('ids');
+        $successCount = 0;
+        $errors = [];
+
+        \DB::transaction(function () use ($ids, &$successCount, &$errors) {
+            foreach ($ids as $id) {
+                $user = User::find($id);
+                if ($user) {
+                    if ($user->hasRole('Super Admin')) {
+                        $errors[] = "Super Admin '{$user->name}' tidak dapat dihapus.";
+
+                        continue;
+                    }
+                    if (auth()->id() === $user->id) {
+                        $errors[] = 'Anda tidak dapat menghapus akun Anda sendiri.';
+
+                        continue;
+                    }
+                    $user->delete();
+                    $successCount++;
+                }
+            }
+        });
+
+        if (! empty($errors)) {
+            $msg = implode(' ', $errors);
+            if ($successCount > 0) {
+                return back()->with('success', "{$successCount} admin berhasil dihapus. Namun: {$msg}");
+            }
+
+            return back()->with('error', $msg);
+        }
+
+        return back()->with('success', 'Admin terpilih berhasil dihapus.');
+    }
+
+    /**
+     * Bulk delete customers.
+     */
+    public function bulkDeleteCustomers(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:users,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            User::whereIn('id', $ids)->delete();
+        });
+
+        return back()->with('success', 'Pelanggan terpilih berhasil dihapus.');
+    }
+
+    /**
+     * Bulk delete payment methods.
+     */
+    public function bulkDeletePaymentMethods(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:payment_methods,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            PaymentMethod::whereIn('id', $ids)->delete();
+        });
+
+        return back()->with('success', 'Metode pembayaran terpilih berhasil dihapus.');
+    }
+
+    /**
+     * Bulk delete couriers.
+     */
+    public function bulkDeleteCouriers(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:couriers,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            Courier::whereIn('id', $ids)->delete();
+        });
+
+        return back()->with('success', 'Kurir terpilih berhasil dihapus.');
+    }
+
+    /**
+     * Bulk delete brands.
+     */
+    public function bulkDeleteBrands(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:brands,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            Brand::whereIn('id', $ids)->delete();
+        });
+
+        return back()->with('success', 'Brand terpilih berhasil dihapus.');
+    }
+
+    /**
+     * Bulk delete social media links.
+     */
+    public function bulkDeleteSocialMedia(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:social_media,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            SocialMedia::whereIn('id', $ids)->delete();
+        });
+
+        return back()->with('success', 'Akun media sosial terpilih berhasil dihapus.');
+    }
+
+    /**
+     * Bulk delete chat stickers.
+     */
+    public function bulkDeleteStickers(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:chat_stickers,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            $stickers = ChatSticker::whereIn('id', $ids)->get();
+            foreach ($stickers as $sticker) {
+                Storage::disk('public')->delete($sticker->image_path);
+                $sticker->delete();
+            }
+        });
+
+        return back()->with('success', 'Stiker terpilih berhasil dihapus.');
     }
 }

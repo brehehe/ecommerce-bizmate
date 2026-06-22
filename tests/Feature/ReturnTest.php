@@ -524,3 +524,198 @@ test('admin can process replacement barang', function () {
     expect($replacementTx->items)->toHaveCount(1);
     expect($replacementTx->items->first()->quantity)->toBe(1);
 });
+
+test('admin can approve multiple return requests', function () {
+    Role::firstOrCreate(['name' => 'Customer', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Administrator', 'guard_name' => 'web']);
+
+    [
+        'transaction' => $transaction1,
+        'customer' => $customer1,
+        'admin' => $admin,
+        'product' => $product,
+    ] = createSelesaiTransaction();
+
+    // Create a second customer
+    $customer2 = User::factory()->create();
+
+    // Create a second transaction for customer2 using the same product and address labels
+    $address2 = CustomerAddress::create([
+        'user_id' => $customer2->id,
+        'receiver_name' => 'Customer Test 2',
+        'phone_number' => '08000000002',
+        'label' => 'Kantor',
+        'full_address' => 'Jl. Test 2',
+        'is_primary' => true,
+    ]);
+
+    $paymentMethod = PaymentMethod::first();
+
+    $transaction2 = Transaction::create([
+        'transaction_number' => 'TRX-TEST-00002',
+        'user_id' => $customer2->id,
+        'customer_address_id' => $address2->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'selesai',
+        'subtotal' => 200000,
+        'discount_amount' => 0,
+        'shipping_fee' => 15000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 215000,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+    ]);
+
+    $returnReq1 = ReturnRequest::create([
+        'return_number' => ReturnRequest::generateNumber().'1',
+        'transaction_id' => $transaction1->id,
+        'user_id' => $customer1->id,
+        'status' => 'menunggu_review',
+        'type' => 'refund',
+        'reason' => 'Cacat 1',
+        'refund_amount' => 100000,
+    ]);
+
+    $returnReq2 = ReturnRequest::create([
+        'return_number' => ReturnRequest::generateNumber().'2',
+        'transaction_id' => $transaction2->id,
+        'user_id' => $customer2->id,
+        'status' => 'menunggu_review',
+        'type' => 'refund',
+        'reason' => 'Cacat 2',
+        'refund_amount' => 100000,
+    ]);
+
+    $response = $this->actingAs($admin)->post('/admin/returns/bulk-approve', [
+        'ids' => [$returnReq1->id, $returnReq2->id],
+        'notes_admin' => 'Bulk approved note',
+    ]);
+
+    $response->assertRedirect();
+    $returnReq1->refresh();
+    $returnReq2->refresh();
+    $transaction1->refresh();
+    $transaction2->refresh();
+
+    expect($returnReq1->status)->toBe('disetujui');
+    expect($returnReq2->status)->toBe('disetujui');
+    expect($returnReq1->notes_admin)->toBe('Bulk approved note');
+    expect($returnReq2->notes_admin)->toBe('Bulk approved note');
+    expect($transaction1->return_status)->toBe('disetujui');
+    expect($transaction2->return_status)->toBe('disetujui');
+});
+
+test('admin can bulk confirm receipt of returned items and restore stock', function () {
+    Role::firstOrCreate(['name' => 'Customer', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Administrator', 'guard_name' => 'web']);
+
+    [
+        'transaction' => $transaction1,
+        'customer' => $customer1,
+        'admin' => $admin,
+        'product' => $product,
+        'txItem' => $txItem1
+    ] = createSelesaiTransaction();
+
+    $customer2 = User::factory()->create();
+
+    $address2 = CustomerAddress::create([
+        'user_id' => $customer2->id,
+        'receiver_name' => 'Customer Test 2',
+        'phone_number' => '08000000002',
+        'label' => 'Kantor',
+        'full_address' => 'Jl. Test 2',
+        'is_primary' => true,
+    ]);
+
+    $paymentMethod = PaymentMethod::first();
+
+    $transaction2 = Transaction::create([
+        'transaction_number' => 'TRX-TEST-00002',
+        'user_id' => $customer2->id,
+        'customer_address_id' => $address2->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'selesai',
+        'subtotal' => 200000,
+        'discount_amount' => 0,
+        'shipping_fee' => 15000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 215000,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+    ]);
+
+    $txItem2 = TransactionItem::create([
+        'transaction_id' => $transaction2->id,
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'product_sku' => $product->sku,
+        'quantity' => 2,
+        'hpp' => 60000,
+        'harga_jual' => 100000,
+        'diskon_item' => 0,
+        'harga_akhir' => 100000,
+        'subtotal' => 200000,
+    ]);
+
+    $returnReq1 = ReturnRequest::create([
+        'return_number' => ReturnRequest::generateNumber().'1',
+        'transaction_id' => $transaction1->id,
+        'user_id' => $customer1->id,
+        'status' => 'barang_dikirim_customer',
+        'type' => 'refund',
+        'reason' => 'Cacat 1',
+        'refund_amount' => 100000,
+    ]);
+
+    $returnReq1->items()->create([
+        'transaction_item_id' => $txItem1->id,
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'quantity_returned' => 1,
+        'unit_price' => 100000,
+        'refund_subtotal' => 100000,
+    ]);
+
+    $returnReq2 = ReturnRequest::create([
+        'return_number' => ReturnRequest::generateNumber().'2',
+        'transaction_id' => $transaction2->id,
+        'user_id' => $customer2->id,
+        'status' => 'barang_dikirim_customer',
+        'type' => 'refund',
+        'reason' => 'Cacat 2',
+        'refund_amount' => 100000,
+    ]);
+
+    $returnReq2->items()->create([
+        'transaction_item_id' => $txItem2->id,
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'quantity_returned' => 2,
+        'unit_price' => 100000,
+        'refund_subtotal' => 200000,
+    ]);
+
+    $stock = ProductStock::where('product_id', $product->id)->first();
+    $stockBefore = $stock->stock; // 5
+
+    $response = $this->actingAs($admin)->post('/admin/returns/bulk-confirm-receipt', [
+        'ids' => [$returnReq1->id, $returnReq2->id],
+        'stock_action' => 'active',
+    ]);
+
+    $response->assertRedirect();
+    $returnReq1->refresh();
+    $returnReq2->refresh();
+    $transaction1->refresh();
+    $transaction2->refresh();
+    $stock->refresh();
+
+    expect($returnReq1->status)->toBe('barang_diterima_toko');
+    expect($returnReq2->status)->toBe('barang_diterima_toko');
+    expect($transaction1->return_status)->toBe('barang_diterima_toko');
+    expect($transaction2->return_status)->toBe('barang_diterima_toko');
+    expect($stock->stock)->toBe($stockBefore + 3); // 1 + 2
+});

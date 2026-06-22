@@ -232,6 +232,160 @@ class RefundController extends Controller
     }
 
     /**
+     * Approve multiple cancellation/refund requests.
+     */
+    public function bulkApprove(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:refund_requests,id',
+            'notes_admin' => 'nullable|string|max:500',
+        ]);
+
+        $refunds = RefundRequest::with(['transaction', 'user'])
+            ->whereIn('id', $request->ids)
+            ->where('status', 'menunggu_konfirmasi')
+            ->get();
+
+        if ($refunds->isEmpty()) {
+            return back()->with('error', 'Tidak ada pengajuan layak disetujui yang dipilih.');
+        }
+
+        $count = 0;
+        foreach ($refunds as $refund) {
+            $transaction = $refund->transaction;
+
+            if ($transaction->status === 'batal') {
+                continue;
+            }
+
+            DB::transaction(function () use ($request, $refund, $transaction) {
+                // 1. Restore stock
+                $this->restoreStock($transaction, $request->user());
+
+                // 2. Cancel transaction
+                $transaction->update([
+                    'status' => 'batal',
+                    'cancel_reason' => 'Pengajuan Pembatalan Disetujui: '.$refund->reason,
+                    'cancelled_at' => now(),
+                ]);
+
+                $refundStatus = 'disetujui';
+                $refundedAt = null;
+
+                // 3. Process refund based on method
+                if ($refund->refund_method === 'poin') {
+                    $coinConversionRate = (float) (Setting::where('key', 'coin_conversion_rate')->value('value') ?? 1);
+                    $coinsToCredit = (int) ($refund->refund_amount / $coinConversionRate);
+
+                    $user = $refund->user;
+                    if ($user) {
+                        $user->increment('coins_balance', $coinsToCredit);
+                        CoinHistory::create([
+                            'user_id' => $user->id,
+                            'transaction_id' => $transaction->id,
+                            'amount' => $coinsToCredit,
+                            'type' => 'refund',
+                            'description' => 'Refund pembatalan transaksi #'.$transaction->transaction_number.' ke Koin Toko',
+                        ]);
+                    }
+
+                    $refundStatus = 'selesai';
+                    $refundedAt = now();
+
+                    // Notify customer of points credit
+                    try {
+                        Notification::create([
+                            'user_id' => $refund->user_id,
+                            'title' => 'Refund Koin Berhasil dikreditkan',
+                            'message' => 'Refund berupa koin untuk transaksi #'.$transaction->transaction_number.' sebesar '.number_format($coinsToCredit, 0, ',', '.').' koin telah berhasil dikreditkan ke saldo koin Anda.',
+                            'type' => 'refund_completed',
+                            'url' => '/refunds/'.$refund->id,
+                            'is_read' => false,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Fail silently
+                    }
+                } else {
+                    // Bank Transfer refund
+                    try {
+                        Notification::create([
+                            'user_id' => $refund->user_id,
+                            'title' => 'Pengajuan Pembatalan Disetujui',
+                            'message' => 'Pengajuan pembatalan untuk transaksi #'.$transaction->transaction_number.' telah disetujui. Refund transfer bank sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' sedang diproses.',
+                            'type' => 'refund_approved',
+                            'url' => '/refunds/'.$refund->id,
+                            'is_read' => false,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Fail silently
+                    }
+                }
+
+                // 4. Update refund request
+                $refund->update([
+                    'status' => $refundStatus,
+                    'notes_admin' => $request->notes_admin,
+                    'processed_by' => $request->user()->id,
+                    'processed_at' => now(),
+                    'refunded_at' => $refundedAt,
+                ]);
+            });
+
+            $count++;
+        }
+
+        return back()->with('success', "Berhasil menyetujui {$count} pengajuan pembatalan.");
+    }
+
+    /**
+     * Mark multiple bank transfer refunds as completed.
+     */
+    public function bulkComplete(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:refund_requests,id',
+        ]);
+
+        $refunds = RefundRequest::with('transaction')
+            ->whereIn('id', $request->ids)
+            ->where('status', 'disetujui')
+            ->where('refund_method', 'transfer')
+            ->get();
+
+        if ($refunds->isEmpty()) {
+            return back()->with('error', 'Tidak ada pengajuan layak diselesaikan yang dipilih.');
+        }
+
+        $count = 0;
+        foreach ($refunds as $refund) {
+            $refund->update([
+                'status' => 'selesai',
+                'refunded_at' => now(),
+            ]);
+
+            // Notify customer
+            try {
+                Notification::create([
+                    'user_id' => $refund->user_id,
+                    'title' => 'Refund Berhasil Ditransfer',
+                    'message' => 'Dana refund sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
+                    'type' => 'refund_completed',
+                    'url' => '/refunds/'.$refund->id,
+                    'is_read' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // Fail silently
+            }
+
+            $count++;
+        }
+
+        return back()->with('success', "Berhasil menyelesaikan {$count} transfer refund.");
+    }
+
+    /**
      * Helper method to restore stock when transaction is cancelled.
      */
     private function restoreStock(Transaction $transaction, $adminUser): void

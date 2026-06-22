@@ -8,6 +8,8 @@
     import Select from '@/components/ui/Select.svelte';
     import Input from '@/components/ui/Input.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
+    import { fade } from 'svelte/transition';
+    import { bulkDelete as paymentMethodBulkDelete } from '@/routes/admin/master-data/payment-methods';
 
     let { paymentMethods = { data: [], links: [], total: 0 }, filters = {} } =
         $props();
@@ -30,7 +32,9 @@
     let isEditing = $state(false);
     let editId = $state(null);
     let deleteModalOpen = $state(false);
+    let deleteBulkModalOpen = $state(false);
     let itemToDelete = $state(null);
+    let submittingBulkDelete = $state(false);
 
     const form = useForm({
         name: '',
@@ -149,6 +153,31 @@
         deleteModalOpen = true;
     }
 
+    function executeBulkDelete() {
+        if (selectedMethods.length === 0) return;
+        submittingBulkDelete = true;
+        router.post(
+            paymentMethodBulkDelete.url(),
+            {
+                ids: selectedMethods,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedMethods = [];
+                    deleteBulkModalOpen = false;
+                },
+                onError: (err) => {
+                    const first = Object.values(err)[0] || 'Gagal menghapus metode pembayaran terpilih.';
+                    showToast(first, 'error');
+                },
+                onFinish: () => {
+                    submittingBulkDelete = false;
+                }
+            }
+        );
+    }
+
     function executeDelete() {
         if (!itemToDelete) return;
 
@@ -251,6 +280,39 @@
                         />
                     </div>
                 </div>
+
+                <!-- Bulk Actions Bar -->
+                {#if selectedMethods.length > 0}
+                    <div
+                        transition:fade={{ duration: 150 }}
+                        class="px-6 py-4 bg-brand-blueLight/30 border-b border-slate-150 flex items-center justify-between gap-4 flex-wrap"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-slate-555 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-checkbox text-brand-blueRoyal text-sm"></i>
+                                {selectedMethods.length} Metode Terpilih
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button
+                                onclick={() => {
+                                    selectedMethods = [];
+                                }}
+                                class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-555 font-bold rounded-xl text-xs transition uppercase tracking-wider font-outfit cursor-pointer"
+                            >
+                                Batal Pilihan
+                            </button>
+                            <button
+                                onclick={() => (deleteBulkModalOpen = true)}
+                                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-red-500/20 uppercase tracking-wider font-outfit flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="ti ti-trash"></i>
+                                Hapus Terpilih
+                            </button>
+                        </div>
+                    </div>
+                {/if}
 
                 {#if paymentMethods.data.length === 0}
                     <div
@@ -623,6 +685,52 @@
                     class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition"
                 >
                     Ya, Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Bulk Delete Confirmation Modal -->
+{#if deleteBulkModalOpen}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+            class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onclick={() => (deleteBulkModalOpen = false)}
+            onkeypress={() => (deleteBulkModalOpen = false)}
+            role="button"
+            tabindex="0"
+        ></div>
+
+        <div
+            class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+        >
+            <div
+                class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+            >
+                <i class="ti ti-alert-triangle"></i>
+            </div>
+            <h4
+                class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+            >
+                Hapus {selectedMethods.length} Metode Pembayaran Terpilih?
+            </h4>
+            <p class="text-sm text-center text-slate-555 font-medium mb-8">
+                Apakah Anda yakin ingin menghapus <strong>{selectedMethods.length} metode pembayaran</strong> yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div class="flex items-center gap-3">
+                <button
+                    onclick={() => (deleteBulkModalOpen = false)}
+                    class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer"
+                >
+                    Batal
+                </button>
+                <button
+                    onclick={executeBulkDelete}
+                    disabled={submittingBulkDelete}
+                    class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition cursor-pointer disabled:opacity-50"
+                >
+                    {submittingBulkDelete ? 'Memproses...' : 'Ya, Hapus Semua'}
                 </button>
             </div>
         </div>

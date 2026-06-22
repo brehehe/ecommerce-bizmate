@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class CategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('categories', 'public');
+            $path = ImageHelper::compressAndStore($request->file('image'), 'categories', 'public');
             $validated['image'] = '/storage/'.$path;
         }
 
@@ -59,7 +60,7 @@ class CategoryController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('categories', 'public');
+            $path = ImageHelper::compressAndStore($request->file('image'), 'categories', 'public');
             $validated['image'] = '/storage/'.$path;
         } else {
             // Keep existing image if not uploading a new one, unless changing to icon

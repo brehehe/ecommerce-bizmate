@@ -1,6 +1,7 @@
 <script>
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { page, useForm, Link, router } from '@inertiajs/svelte';
+    import { showToast } from '@/utils/toast';
     import {
         store as adminProductsStore,
         index as adminProductsIndex,
@@ -3105,15 +3106,75 @@
         document.getElementById('multi-photo-input').click();
     }
 
-    function handlePhotoUpload(event) {
-        const files = Array.from(event.target.files);
-        files.forEach((file) => {
+    function compressImageIfNeeded(file) {
+        return new Promise((resolve, reject) => {
+            if (!file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (err) => reject(err);
+                reader.readAsDataURL(file);
+                return;
+            }
+
+            const sizeLimit = 5 * 1024 * 1024; // 5MB
+            if (file.size <= sizeLimit) {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (err) => reject(err);
+                reader.readAsDataURL(file);
+                return;
+            }
+
             const reader = new FileReader();
-            reader.onload = (e) => {
-                uploadedPhotos = [...uploadedPhotos, e.target.result];
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    const maxDim = 2048;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        reject(new Error('Gagal mendapatkan 2D context canvas.'));
+                        return;
+                    }
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    resolve(compressedDataUrl);
+                };
+                img.onerror = (err) => reject(err);
+                img.src = event.target.result;
             };
+            reader.onerror = (err) => reject(err);
             reader.readAsDataURL(file);
         });
+    }
+
+    async function handlePhotoUpload(event) {
+        const files = Array.from(event.target.files);
+        try {
+            const promises = files.map(file => compressImageIfNeeded(file));
+            const results = await Promise.all(promises);
+            uploadedPhotos = [...uploadedPhotos, ...results];
+        } catch (error) {
+            console.error('Error processing upload:', error);
+            showToast('Gagal memproses beberapa gambar.', 'error');
+        }
     }
 
     function removePhoto(index) {

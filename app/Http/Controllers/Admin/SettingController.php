@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Services\KomerceService;
@@ -47,11 +48,16 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
+        $request->validate([
+            'store_logo' => 'nullable|image|max:2048',
+            'store_icon' => 'nullable|image|max:2048',
+        ]);
+
         $data = $request->except(['_token', 'store_logo', 'store_icon']);
 
         // Handle File Uploads (like Logo)
         if ($request->hasFile('store_logo')) {
-            $path = $request->file('store_logo')->store('logos', 'public');
+            $path = ImageHelper::compressAndStore($request->file('store_logo'), 'logos', 'public');
             Setting::updateOrCreate(
                 ['key' => 'store_logo'],
                 ['value' => '/storage/'.$path]
@@ -59,7 +65,7 @@ class SettingController extends Controller
         }
 
         if ($request->hasFile('store_icon')) {
-            $path = $request->file('store_icon')->store('logos', 'public');
+            $path = ImageHelper::compressAndStore($request->file('store_icon'), 'logos', 'public');
             Setting::updateOrCreate(
                 ['key' => 'store_icon'],
                 ['value' => '/storage/'.$path]

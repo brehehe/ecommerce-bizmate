@@ -7,6 +7,8 @@
     import Select from '@/components/ui/Select.svelte';
     import Input from '@/components/ui/Input.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
+    import { fade } from 'svelte/transition';
+    import { bulkDelete as stickerBulkDelete } from '@/routes/admin/master-data/stickers';
 
     let { stickers = { data: [], links: [], total: 0 }, filters = {} } = $props();
 
@@ -16,12 +18,21 @@
     let perPage = $state(filters.perPage || 20);
     let searchTimeout: any;
 
+    // Checkbox state
+    let selectedStickers = $state<string[]>([]);
+    let selectAll = $derived(
+        selectedStickers.length === stickers.data.length &&
+            stickers.data.length > 0,
+    );
+
     // Modal state
     let isModalOpen = $state(false);
     let isEditing = $state(false);
     let editId = $state<string | null>(null);
     let deleteModalOpen = $state(false);
+    let deleteBulkModalOpen = $state(false);
     let itemToDelete = $state<any>(null);
+    let submittingBulkDelete = $state(false);
 
     // Image preview
     let imagePreview = $state<string | null>(null);
@@ -33,6 +44,22 @@
         category: '',
         is_active: true,
     });
+
+    function toggleSelectAll() {
+        if (selectAll) {
+            selectedStickers = [];
+        } else {
+            selectedStickers = stickers.data.map((s: any) => s.id);
+        }
+    }
+
+    function toggleSelect(id: string) {
+        if (selectedStickers.includes(id)) {
+            selectedStickers = selectedStickers.filter((sId) => sId !== id);
+        } else {
+            selectedStickers = [...selectedStickers, id];
+        }
+    }
 
     function updateQuery() {
         router.get(
@@ -125,6 +152,31 @@
         deleteModalOpen = true;
     }
 
+    function executeBulkDelete() {
+        if (selectedStickers.length === 0) return;
+        submittingBulkDelete = true;
+        router.post(
+            stickerBulkDelete.url(),
+            {
+                ids: selectedStickers,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedStickers = [];
+                    deleteBulkModalOpen = false;
+                },
+                onError: (err) => {
+                    const first = Object.values(err)[0] || 'Gagal menghapus stiker terpilih.';
+                    showToast(first, 'error');
+                },
+                onFinish: () => {
+                    submittingBulkDelete = false;
+                }
+            }
+        );
+    }
+
     function executeDelete() {
         if (!itemToDelete) { return; }
         router.delete(`/admin/master-data/stickers/${itemToDelete.id}`, {
@@ -172,7 +224,7 @@
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden">
                 <!-- Filters -->
                 <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-slate-50/20">
-                    <div class="shrink-0 w-full sm:w-32">
+                    <div class="shrink-0 flex items-center gap-3">
                         <Select
                             bind:value={perPage}
                             options={[
@@ -182,6 +234,17 @@
                             ]}
                             onchange={handlePerPageChange}
                         />
+                        {#if stickers.data.length > 0}
+                            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-500 font-outfit uppercase select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={selectAll}
+                                    onchange={toggleSelectAll}
+                                    class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
+                                />
+                                Pilih Semua
+                            </label>
+                        {/if}
                     </div>
                     <div class="flex-grow sm:max-w-md w-full sm:ml-auto">
                         <Input
@@ -194,6 +257,39 @@
                     </div>
                 </div>
 
+                <!-- Bulk Actions Bar -->
+                {#if selectedStickers.length > 0}
+                    <div
+                        transition:fade={{ duration: 150 }}
+                        class="px-6 py-4 bg-brand-blueLight/30 border-b border-slate-150 flex items-center justify-between gap-4 flex-wrap"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-slate-555 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-checkbox text-brand-blueRoyal text-sm"></i>
+                                {selectedStickers.length} Stiker Terpilih
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button
+                                onclick={() => {
+                                    selectedStickers = [];
+                                }}
+                                class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-555 font-bold rounded-xl text-xs transition uppercase tracking-wider font-outfit cursor-pointer"
+                            >
+                                Batal Pilihan
+                            </button>
+                            <button
+                                onclick={() => (deleteBulkModalOpen = true)}
+                                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-red-500/20 uppercase tracking-wider font-outfit flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="ti ti-trash"></i>
+                                Hapus Terpilih
+                            </button>
+                        </div>
+                    </div>
+                {/if}
+
                 {#if stickers.data.length === 0}
                     <div class="py-16 text-center text-slate-400 font-bold font-outfit">
                         <i class="ti ti-sticker text-5xl block mb-3 text-slate-300"></i>
@@ -204,7 +300,17 @@
                     <div class="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                         {#each stickers.data as sticker (sticker.id)}
                             {@const isActive = sticker.is_active ?? true}
-                            <div class="group relative bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex flex-col items-center p-3 gap-2 transition hover:shadow-md {!isActive ? 'opacity-50' : ''}">
+                            {@const isSelected = selectedStickers.includes(sticker.id)}
+                            <div class="group relative bg-slate-50 rounded-2xl border {isSelected ? 'border-brand-blueRoyal bg-brand-blueRoyal/5' : 'border-slate-200'} overflow-hidden flex flex-col items-center p-3 gap-2 transition hover:shadow-md {!isActive ? 'opacity-50' : ''}">
+                                <!-- Checkbox -->
+                                <div class="absolute top-2 left-2 z-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onchange={() => toggleSelect(sticker.id)}
+                                        class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer shadow bg-white"
+                                    />
+                                </div>
                                 <!-- Preview image -->
                                 <div class="w-full aspect-square flex items-center justify-center rounded-xl overflow-hidden bg-white border border-slate-100">
                                     <img
@@ -387,6 +493,52 @@
                 </button>
                 <button onclick={executeDelete} class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition">
                     Ya, Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Bulk Delete Confirmation Modal -->
+{#if deleteBulkModalOpen}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+            class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+            onclick={() => (deleteBulkModalOpen = false)}
+            onkeypress={() => (deleteBulkModalOpen = false)}
+            role="button"
+            tabindex="0"
+        ></div>
+
+        <div
+            class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+        >
+            <div
+                class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+            >
+                <i class="ti ti-alert-triangle"></i>
+            </div>
+            <h4
+                class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+            >
+                Hapus {selectedStickers.length} Stiker Terpilih?
+            </h4>
+            <p class="text-sm text-center text-slate-555 font-medium mb-8">
+                Apakah Anda yakin ingin menghapus <strong>{selectedStickers.length} stiker</strong> yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div class="flex items-center gap-3">
+                <button
+                    onclick={() => (deleteBulkModalOpen = false)}
+                    class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer"
+                >
+                    Batal
+                </button>
+                <button
+                    onclick={executeBulkDelete}
+                    disabled={submittingBulkDelete}
+                    class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition cursor-pointer disabled:opacity-50"
+                >
+                    {submittingBulkDelete ? 'Memproses...' : 'Ya, Hapus Semua'}
                 </button>
             </div>
         </div>

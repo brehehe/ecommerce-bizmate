@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Mail\OrderConfirmation;
 use App\Models\CartItem;
 use App\Models\CoinHistory;
@@ -949,10 +950,10 @@ class CheckoutController extends Controller
         }
 
         $request->validate([
-            'proof_image' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'proof_image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $path = $request->file('proof_image')->store('payments/proofs', 'public');
+        $path = ImageHelper::compressAndStore($request->file('proof_image'), 'payments/proofs', 'public');
 
         $payment = $transaction->payment;
         if (! $payment) {

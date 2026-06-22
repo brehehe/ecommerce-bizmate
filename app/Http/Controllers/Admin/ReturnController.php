@@ -488,4 +488,140 @@ class ReturnController extends Controller
 
         return back()->with('success', 'Retur berhasil diselesaikan.');
     }
+
+    /**
+     * Approve multiple return requests.
+     */
+    public function bulkApprove(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:returns,id',
+            'notes_admin' => 'nullable|string|max:500',
+        ]);
+
+        $returns = ReturnRequest::with('transaction')
+            ->whereIn('id', $request->ids)
+            ->where('status', 'menunggu_review')
+            ->get();
+
+        if ($returns->isEmpty()) {
+            return back()->with('error', 'Tidak ada pengajuan retur layak disetujui yang dipilih.');
+        }
+
+        $count = 0;
+        foreach ($returns as $return) {
+            $return->update([
+                'status' => 'disetujui',
+                'approved_by' => $request->user()->id,
+                'approved_at' => now(),
+                'notes_admin' => $request->notes_admin,
+            ]);
+
+            $return->transaction->update(['return_status' => 'disetujui']);
+
+            // Notify customer
+            try {
+                $typeLabel = $return->type === 'refund' ? 'pengembalian dana' : 'penggantian barang';
+                Notification::create([
+                    'user_id' => $return->user_id,
+                    'title' => 'Pengajuan Retur Disetujui',
+                    'message' => 'Pengajuan retur Anda (#'.$return->return_number.') untuk '.$typeLabel.' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
+                    'type' => 'return_approved',
+                    'url' => '/transactions/'.$return->transaction_id,
+                    'is_read' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // Fail silently
+            }
+            $count++;
+        }
+
+        return back()->with('success', "Berhasil menyetujui {$count} pengajuan retur.");
+    }
+
+    /**
+     * Confirm receipt of multiple returned items.
+     */
+    public function bulkConfirmReceipt(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:returns,id',
+            'stock_action' => 'required|in:active,damaged',
+        ]);
+
+        $returns = ReturnRequest::with(['transaction', 'items'])
+            ->whereIn('id', $request->ids)
+            ->where('status', 'barang_dikirim_customer')
+            ->get();
+
+        if ($returns->isEmpty()) {
+            return back()->with('error', 'Tidak ada pengajuan retur layak yang dipilih.');
+        }
+
+        $stockAction = $request->stock_action;
+        $count = 0;
+
+        foreach ($returns as $return) {
+            $return->update([
+                'status' => 'barang_diterima_toko',
+                'received_by' => $request->user()->id,
+                'received_at' => now(),
+            ]);
+
+            $return->transaction->update(['return_status' => 'barang_diterima_toko']);
+
+            // Restore stock for returned items
+            $return->load('items');
+            foreach ($return->items as $item) {
+                $stockRecord = $item->product_variant_id
+                    ? ProductStock::where('product_variant_id', $item->product_variant_id)->first()
+                    : ProductStock::where('product_id', $item->product_id)->whereNull('product_variant_id')->first();
+
+                if ($stockRecord && ! $stockRecord->is_unlimited) {
+                    $stockBefore = $stockRecord->stock;
+
+                    if ($stockAction === 'active') {
+                        $stockAfter = $stockBefore + $item->quantity_returned;
+                        $stockRecord->update(['stock' => $stockAfter]);
+                        $notes = 'Retur barang (kembali ke stok aktif) - '.$return->return_number;
+                    } else {
+                        $stockAfter = $stockBefore;
+                        $notes = 'Retur barang (rusak/tidak dikembalikan ke stok) - '.$return->return_number;
+                    }
+
+                    StockMovement::create([
+                        'product_id' => $item->product_id,
+                        'product_variant_id' => $item->product_variant_id,
+                        'transaction_id' => $return->transaction_id,
+                        'type' => 'retur',
+                        'quantity' => $stockAction === 'active' ? $item->quantity_returned : 0,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'notes' => $notes,
+                        'created_by' => $request->user()->id,
+                    ]);
+                }
+            }
+
+            // Notify customer
+            try {
+                Notification::create([
+                    'user_id' => $return->user_id,
+                    'title' => 'Barang Retur Diterima',
+                    'message' => 'Barang retur Anda (#'.$return->return_number.') telah diterima oleh toko. Admin sedang memproses '.($return->type === 'refund' ? 'pengembalian dana' : 'pengiriman barang pengganti').'.',
+                    'type' => 'return_received',
+                    'url' => '/transactions/'.$return->transaction_id,
+                    'is_read' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // Fail silently
+            }
+
+            $count++;
+        }
+
+        return back()->with('success', "Berhasil mengonfirmasi penerimaan {$count} barang retur.");
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Notification;
 use App\Models\ReturnItem;
 use App\Models\ReturnMedia;
@@ -75,14 +76,25 @@ class ReturnController extends Controller
             'items.*.transaction_item_id' => 'required|uuid|exists:transaction_items,id',
             'items.*.quantity_returned' => 'required|integer|min:1',
             'media' => 'required|array|min:1',
-            'media.*' => 'required|file|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi|max:51200',
+            'media.*' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi',
+                function ($attribute, $value, $fail) {
+                    $isImage = str_starts_with($value->getMimeType(), 'image/');
+                    if ($isImage && $value->getSize() > 2048 * 1024) {
+                        $fail('Ukuran file gambar bukti retur maksimal 2MB.');
+                    } elseif (! $isImage && $value->getSize() > 51200 * 1024) {
+                        $fail('Ukuran file video bukti retur maksimal 50MB.');
+                    }
+                },
+            ],
         ], [
             'type.required' => 'Pilih jenis retur.',
             'reason.required' => 'Alasan retur wajib diisi.',
             'items.required' => 'Pilih minimal satu produk untuk diretur.',
             'media.required' => 'Upload minimal satu foto/video bukti retur.',
             'media.*.mimes' => 'File harus berupa gambar (JPG, PNG, WEBP) atau video (MP4, MOV, AVI).',
-            'media.*.max' => 'Ukuran file maksimal 50MB.',
         ]);
 
         $transaction->load('items');
@@ -135,7 +147,11 @@ class ReturnController extends Controller
             if ($request->hasFile('media')) {
                 foreach ($request->file('media') as $file) {
                     $fileType = str_starts_with($file->getMimeType(), 'video/') ? 'video' : 'image';
-                    $path = $file->store('returns/'.$returnRequest->id, 'public');
+                    if ($fileType === 'image') {
+                        $path = ImageHelper::compressAndStore($file, 'returns/'.$returnRequest->id, 'public');
+                    } else {
+                        $path = $file->store('returns/'.$returnRequest->id, 'public');
+                    }
 
                     ReturnMedia::create([
                         'return_id' => $returnRequest->id,

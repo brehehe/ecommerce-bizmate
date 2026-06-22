@@ -339,3 +339,186 @@ test('admin can complete transfer refund', function () {
     expect($refundRequest->status)->toBe('selesai');
     expect($refundRequest->refunded_at)->not->toBeNull();
 });
+
+test('admin can approve multiple refund requests with bank transfer', function () {
+    Role::firstOrCreate(['name' => 'Customer', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Administrator', 'guard_name' => 'web']);
+
+    [
+        'transaction' => $transaction1,
+        'customer' => $customer1,
+        'admin' => $admin,
+        'product' => $product,
+    ] = createTransactionWithStatus('menunggu');
+
+    $customer2 = User::factory()->create();
+    $customer2->assignRole('Customer');
+
+    $address2 = CustomerAddress::create([
+        'user_id' => $customer2->id,
+        'receiver_name' => 'Jane Doe',
+        'phone_number' => '08123456780',
+        'label' => 'Rumah',
+        'full_address' => 'Gedung B, Lt 3, Jakarta',
+        'is_primary' => true,
+    ]);
+
+    $paymentMethod = PaymentMethod::first();
+
+    $transaction2 = Transaction::create([
+        'transaction_number' => 'TRX-'.time().'-2',
+        'user_id' => $customer2->id,
+        'customer_address_id' => $address2->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'menunggu',
+        'subtotal' => 1500000,
+        'discount_amount' => 0,
+        'shipping_fee' => 20000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 1520000,
+        'shipping_courier' => 'sicepat',
+        'shipping_service' => 'REG',
+    ]);
+
+    $txItem2 = TransactionItem::create([
+        'transaction_id' => $transaction2->id,
+        'product_id' => $product->id,
+        'product_name' => $product->name,
+        'product_sku' => $product->sku,
+        'quantity' => 1,
+        'hpp' => 1000000,
+        'harga_jual' => 1500000,
+        'diskon_item' => 0,
+        'harga_akhir' => 1500000,
+        'subtotal' => 1500000,
+    ]);
+
+    $refundRequest1 = RefundRequest::create([
+        'refund_number' => RefundRequest::generateNumber().'1',
+        'transaction_id' => $transaction1->id,
+        'user_id' => $customer1->id,
+        'status' => 'menunggu_konfirmasi',
+        'refund_method' => 'transfer',
+        'reason' => 'Alasan pembatalan 1.',
+        'bank_name' => 'BCA',
+        'account_number' => '8888777766',
+        'account_name' => 'John Doe',
+        'refund_amount' => $transaction1->grand_total,
+    ]);
+
+    $refundRequest2 = RefundRequest::create([
+        'refund_number' => RefundRequest::generateNumber().'2',
+        'transaction_id' => $transaction2->id,
+        'user_id' => $customer2->id,
+        'status' => 'menunggu_konfirmasi',
+        'refund_method' => 'transfer',
+        'reason' => 'Alasan pembatalan 2.',
+        'bank_name' => 'Mandiri',
+        'account_number' => '1111222233',
+        'account_name' => 'Jane Doe',
+        'refund_amount' => $transaction2->grand_total,
+    ]);
+
+    $stock = ProductStock::where('product_id', $product->id)->first();
+    $stockBefore = $stock->stock; // 10
+
+    $response = $this->actingAs($admin)->post('/admin/refunds/bulk-approve', [
+        'ids' => [$refundRequest1->id, $refundRequest2->id],
+        'notes_admin' => 'Bulk approved transfer note',
+    ]);
+
+    $response->assertRedirect();
+    $refundRequest1->refresh();
+    $refundRequest2->refresh();
+    $transaction1->refresh();
+    $transaction2->refresh();
+    $stock->refresh();
+
+    expect($refundRequest1->status)->toBe('disetujui');
+    expect($refundRequest2->status)->toBe('disetujui');
+    expect($transaction1->status)->toBe('batal');
+    expect($transaction2->status)->toBe('batal');
+
+    expect($stock->stock)->toBe($stockBefore + 2);
+});
+
+test('admin can complete multiple bank transfer refunds', function () {
+    Role::firstOrCreate(['name' => 'Customer', 'guard_name' => 'web']);
+    Role::firstOrCreate(['name' => 'Administrator', 'guard_name' => 'web']);
+
+    [
+        'transaction' => $transaction1,
+        'customer' => $customer1,
+        'admin' => $admin,
+    ] = createTransactionWithStatus('menunggu');
+
+    $customer2 = User::factory()->create();
+    $customer2->assignRole('Customer');
+
+    $address2 = CustomerAddress::create([
+        'user_id' => $customer2->id,
+        'receiver_name' => 'Jane Doe',
+        'phone_number' => '08123456780',
+        'label' => 'Rumah',
+        'full_address' => 'Gedung B, Lt 3, Jakarta',
+        'is_primary' => true,
+    ]);
+
+    $paymentMethod = PaymentMethod::first();
+
+    $transaction2 = Transaction::create([
+        'transaction_number' => 'TRX-'.time().'-2',
+        'user_id' => $customer2->id,
+        'customer_address_id' => $address2->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'menunggu',
+        'subtotal' => 1500000,
+        'discount_amount' => 0,
+        'shipping_fee' => 20000,
+        'shipping_discount' => 0,
+        'admin_fee' => 0,
+        'grand_total' => 1520000,
+        'shipping_courier' => 'sicepat',
+        'shipping_service' => 'REG',
+    ]);
+
+    $refundRequest1 = RefundRequest::create([
+        'refund_number' => RefundRequest::generateNumber().'1',
+        'transaction_id' => $transaction1->id,
+        'user_id' => $customer1->id,
+        'status' => 'disetujui',
+        'refund_method' => 'transfer',
+        'reason' => 'Alasan pembatalan 1.',
+        'bank_name' => 'BCA',
+        'account_number' => '8888777766',
+        'account_name' => 'John Doe',
+        'refund_amount' => $transaction1->grand_total,
+    ]);
+
+    $refundRequest2 = RefundRequest::create([
+        'refund_number' => RefundRequest::generateNumber().'2',
+        'transaction_id' => $transaction2->id,
+        'user_id' => $customer2->id,
+        'status' => 'disetujui',
+        'refund_method' => 'transfer',
+        'reason' => 'Alasan pembatalan 2.',
+        'bank_name' => 'Mandiri',
+        'account_number' => '1111222233',
+        'account_name' => 'Jane Doe',
+        'refund_amount' => $transaction2->grand_total,
+    ]);
+
+    $response = $this->actingAs($admin)->post('/admin/refunds/bulk-complete', [
+        'ids' => [$refundRequest1->id, $refundRequest2->id],
+    ]);
+
+    $response->assertRedirect();
+    $refundRequest1->refresh();
+    $refundRequest2->refresh();
+
+    expect($refundRequest1->status)->toBe('selesai');
+    expect($refundRequest2->status)->toBe('selesai');
+    expect($refundRequest1->refunded_at)->not->toBeNull();
+    expect($refundRequest2->refunded_at)->not->toBeNull();
+});

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
@@ -13,6 +14,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ProductController extends Controller
@@ -157,6 +159,8 @@ class ProductController extends Controller
             'model_3d_usdz_file' => 'nullable|file|max:51200',
         ]);
 
+        $this->validateBase64Images($request);
+
         $categoryIds = $validated['category_ids'];
         $brandIds = $validated['brand_ids'] ?? [];
 
@@ -259,6 +263,7 @@ class ProductController extends Controller
                     $photoBase64 = substr($photoBase64, strpos($photoBase64, ',') + 1);
                     $type = strtolower($type[1]);
                     $photoBase64 = base64_decode(str_replace(' ', '+', $photoBase64));
+                    $photoBase64 = ImageHelper::compress($photoBase64, $type, 75);
                     $filename = 'product_'.$product->id.'_'.time().'_'.$index.'.'.$type;
                     Storage::disk('public')->put('products/'.$filename, $photoBase64);
 
@@ -292,6 +297,7 @@ class ProductController extends Controller
                         $imgBase64 = substr($optData['image'], strpos($optData['image'], ',') + 1);
                         $type = strtolower($type[1]);
                         $imgBase64 = base64_decode(str_replace(' ', '+', $imgBase64));
+                        $imgBase64 = ImageHelper::compress($imgBase64, $type, 75);
                         $filename = 'opt_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
                         Storage::disk('public')->put('products/'.$filename, $imgBase64);
                         $imagePath = 'storage/products/'.$filename;
@@ -370,7 +376,7 @@ class ProductController extends Controller
             }
         }
 
-        return redirect()->route('admin.products.index')->with('success', 'Product created successfully.');
+        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
 
     public function edit(Product $product)
@@ -449,6 +455,8 @@ class ProductController extends Controller
             'model_3d_usdz_url' => 'nullable|string',
             'model_3d_usdz_file' => 'nullable|file|max:51200',
         ]);
+
+        $this->validateBase64Images($request);
 
         $categoryIds = $validated['category_ids'];
         $brandIds = $validated['brand_ids'] ?? [];
@@ -583,6 +591,7 @@ class ProductController extends Controller
                 $photoBase64 = substr($photo, strpos($photo, ',') + 1);
                 $type = strtolower($type[1]);
                 $photoBase64 = base64_decode(str_replace(' ', '+', $photoBase64));
+                $photoBase64 = ImageHelper::compress($photoBase64, $type, 75);
                 $filename = 'product_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
                 Storage::disk('public')->put('products/'.$filename, $photoBase64);
                 $path = 'storage/products/'.$filename;
@@ -665,6 +674,7 @@ class ProductController extends Controller
                         $imgBase64 = substr($optData['image'], strpos($optData['image'], ',') + 1);
                         $type = strtolower($type[1]);
                         $imgBase64 = base64_decode(str_replace(' ', '+', $imgBase64));
+                        $imgBase64 = ImageHelper::compress($imgBase64, $type, 75);
                         $filename = 'opt_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
                         Storage::disk('public')->put('products/'.$filename, $imgBase64);
                         $imagePath = 'storage/products/'.$filename;
@@ -826,14 +836,35 @@ class ProductController extends Controller
             $variant->delete();
         });
 
-        return redirect()->route('admin.products.index')->with('success', 'Product updated successfully.');
+        return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
     public function destroy(Product $product)
     {
         $product->delete();
 
-        return redirect()->back()->with('success', 'Product deleted successfully.');
+        return redirect()->back()->with('success', 'Produk berhasil dihapus.');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:products,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            foreach ($ids as $id) {
+                $product = Product::find($id);
+                if ($product) {
+                    $product->delete();
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', 'Produk terpilih berhasil dihapus.');
     }
 
     public function toggleActive(Product $product)
@@ -1408,5 +1439,43 @@ class ProductController extends Controller
         });
 
         return redirect()->back()->with('success', count($request->input('products')).' produk berhasil di-import.');
+    }
+
+    /**
+     * Validate base64 images to ensure they are under 2MB.
+     */
+    private function validateBase64Images(Request $request): void
+    {
+        if ($request->has('photos')) {
+            foreach ($request->input('photos') as $photo) {
+                if (preg_match('/^data:image\/(\w+);base64,/', $photo)) {
+                    $base64Data = substr($photo, strpos($photo, ',') + 1);
+                    $decodedSize = strlen(base64_decode($base64Data));
+                    if ($decodedSize > 2 * 1024 * 1024) {
+                        throw ValidationException::withMessages([
+                            'photos' => ['Ukuran gambar produk maksimal 2MB.'],
+                        ]);
+                    }
+                }
+            }
+        }
+
+        if ($request->has('variations')) {
+            foreach ($request->input('variations') as $vData) {
+                if (! empty($vData['options'])) {
+                    foreach ($vData['options'] as $optData) {
+                        if (! empty($optData['image']) && preg_match('/^data:image\/(\w+);base64,/', $optData['image'])) {
+                            $base64Data = substr($optData['image'], strpos($optData['image'], ',') + 1);
+                            $decodedSize = strlen(base64_decode($base64Data));
+                            if ($decodedSize > 2 * 1024 * 1024) {
+                                throw ValidationException::withMessages([
+                                    'variations' => ['Ukuran gambar opsi varian maksimal 2MB.'],
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

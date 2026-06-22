@@ -1,6 +1,7 @@
 <script lang="ts">
     import { page, useForm } from '@inertiajs/svelte';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
+    import { showToast } from '@/utils/toast';
 
     let {
         heroBanners = [],
@@ -92,37 +93,111 @@
         }
     }
 
-    function handleHeroFileChange(index: number, e: Event) {
+    function validateImageOrientation(file: File, expected: 'landscape' | 'portrait'): Promise<boolean> {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                const width = img.width;
+                const height = img.height;
+                URL.revokeObjectURL(img.src);
+                
+                if (expected === 'landscape' && width <= height) {
+                    showToast('Gambar harus landscape (lebar > tinggi).', 'error');
+                    resolve(false);
+                } else if (expected === 'portrait' && height <= width) {
+                    showToast('Gambar harus portrait (tinggi > lebar).', 'error');
+                    resolve(false);
+                } else {
+                    resolve(true);
+                }
+            };
+            img.onerror = () => {
+                showToast('Gagal memuat data gambar.', 'error');
+                resolve(false);
+            };
+        });
+    }
+
+    async function handleHeroFileChange(index: number, e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                target.value = '';
+                return;
+            }
+            
+            const isValid = await validateImageOrientation(file, 'landscape');
+            if (!isValid) {
+                target.value = '';
+                return;
+            }
+
             form.hero_files[index] = file;
             form.hero_banners[index].image = URL.createObjectURL(file);
         }
     }
 
-    function handleSideFileChange(index: number, e: Event) {
+    async function handleSideFileChange(index: number, e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                target.value = '';
+                return;
+            }
+
+            const isValid = await validateImageOrientation(file, 'portrait');
+            if (!isValid) {
+                target.value = '';
+                return;
+            }
+
             form.side_files[index] = file;
             form.side_banners[index].image = URL.createObjectURL(file);
         }
     }
 
-    function handleMiddleWideFileChange(e: Event) {
+    async function handleMiddleWideFileChange(e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                target.value = '';
+                return;
+            }
+
+            const isValid = await validateImageOrientation(file, 'landscape');
+            if (!isValid) {
+                target.value = '';
+                return;
+            }
+
             form.middle_wide_file = file;
             form.middle_wide_banner.image = URL.createObjectURL(file);
         }
     }
 
-    function handlePopupFileChange(e: Event) {
+    async function handlePopupFileChange(e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                target.value = '';
+                return;
+            }
+
+            const isValid = await validateImageOrientation(file, 'portrait');
+            if (!isValid) {
+                target.value = '';
+                return;
+            }
+
             form.popup_file = file;
             form.popup_banner.image = URL.createObjectURL(file);
         }

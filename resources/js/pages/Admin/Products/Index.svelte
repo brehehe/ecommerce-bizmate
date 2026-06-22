@@ -392,6 +392,7 @@
         edit as adminProductsEdit,
         destroy as adminProductsDestroy,
         toggleActive as adminProductsToggleActive,
+        bulkDelete as adminProductsBulkDelete,
     } from '@/routes/admin/products';
 
     let {
@@ -411,6 +412,85 @@
     let filterStatus = $state(filters.status || 'all');
 
     let currentViewMode = $state('list'); // 'list' or 'grid'
+
+    // Selection & Modal States
+    let selectedProducts = $state([]);
+    let deleteBulkModalOpen = $state(false);
+    let deleteSingleModalOpen = $state(false);
+    let productToDelete = $state(null);
+    let submittingBulkDelete = $state(false);
+    let submittingSingleDelete = $state(false);
+
+    let selectAll = $derived(
+        selectedProducts.length === products.data.length && products.data.length > 0,
+    );
+
+    function toggleSelectAll() {
+        if (selectAll) {
+            selectedProducts = [];
+        } else {
+            selectedProducts = products.data.map((p) => p.id);
+        }
+    }
+
+    function toggleSelect(id) {
+        if (selectedProducts.includes(id)) {
+            selectedProducts = selectedProducts.filter((pId) => pId !== id);
+        } else {
+            selectedProducts = [...selectedProducts, id];
+        }
+    }
+
+    function confirmDeleteProduct(product) {
+        productToDelete = product;
+        deleteSingleModalOpen = true;
+    }
+
+    function executeSingleDelete() {
+        if (!productToDelete) return;
+        submittingSingleDelete = true;
+        router.delete(adminProductsDestroy.url({ product: productToDelete.id }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                selectedProducts = selectedProducts.filter((id) => id !== productToDelete.id);
+                deleteSingleModalOpen = false;
+                productToDelete = null;
+            },
+            onError: (err) => {
+                const first = Object.values(err)[0] || 'Gagal menghapus produk.';
+                showToast(first, 'error');
+            },
+            onFinish: () => {
+                submittingSingleDelete = false;
+            }
+        });
+    }
+
+    function executeBulkDelete() {
+        if (selectedProducts.length === 0) return;
+        submittingBulkDelete = true;
+
+        router.post(
+            adminProductsBulkDelete.url(),
+            {
+                ids: selectedProducts,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedProducts = [];
+                    deleteBulkModalOpen = false;
+                },
+                onError: (err) => {
+                    const first = Object.values(err)[0] || 'Gagal menghapus produk terpilih.';
+                    showToast(first, 'error');
+                },
+                onFinish: () => {
+                    submittingBulkDelete = false;
+                }
+            }
+        );
+    }
 
     let categoryOptions = $derived(
         categories.map((c) => ({ id: c.id, name: c.name })),
@@ -454,11 +534,7 @@
     }
 
     function deleteProduct(product) {
-        if (confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-            router.delete(adminProductsDestroy.url({ product: product.id }), {
-                preserveScroll: true,
-            });
-        }
+        confirmDeleteProduct(product);
     }
 
     function getStockInfo(product, masterStockInfo = null) {
@@ -702,6 +778,39 @@
                     </div>
                 </div>
 
+                <!-- Bulk Actions Bar -->
+                {#if selectedProducts.length > 0}
+                    <div
+                        transition:fade={{ duration: 150 }}
+                        class="px-6 py-4 bg-brand-blueLight/30 border-b border-slate-150 flex items-center justify-between gap-4 flex-wrap"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-slate-550 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-checkbox text-brand-blueRoyal text-sm"></i>
+                                {selectedProducts.length} Produk Terpilih
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button
+                                onclick={() => {
+                                    selectedProducts = [];
+                                }}
+                                class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-550 font-bold rounded-xl text-xs transition uppercase tracking-wider font-outfit cursor-pointer"
+                            >
+                                Batal Pilihan
+                            </button>
+                            <button
+                                onclick={() => (deleteBulkModalOpen = true)}
+                                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs transition shadow-lg shadow-red-500/20 uppercase tracking-wider font-outfit flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="ti ti-trash"></i>
+                                Hapus Terpilih
+                            </button>
+                        </div>
+                    </div>
+                {/if}
+
                 <!-- Table List View Container -->
                 <div
                     class="overflow-x-auto flex-grow custom-scrollbar {currentViewMode ===
@@ -718,7 +827,9 @@
                                     class="px-3 xl:px-4 py-4 w-10 border-b border-slate-100"
                                     ><input
                                         type="checkbox"
-                                        class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal"
+                                        checked={selectAll}
+                                        onchange={toggleSelectAll}
+                                        class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                     /></th
                                 >
                                 <th
@@ -771,12 +882,14 @@
                                     <tr
                                         class="table-row-hover transition {!product.active
                                             ? 'bg-slate-50/30'
-                                            : ''}"
+                                            : ''} {selectedProducts.includes(product.id) ? 'bg-brand-blueRoyal/5' : ''}"
                                     >
                                         <td class="px-3 xl:px-4 py-4"
                                             ><input
                                                 type="checkbox"
-                                                class="rounded border-slate-300 text-brand-blueRoyal"
+                                                checked={selectedProducts.includes(product.id)}
+                                                onchange={() => toggleSelect(product.id)}
+                                                class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             /></td
                                         >
                                         <td class="px-3 xl:px-4 py-4">
@@ -1253,12 +1366,19 @@
                             {@const hasVariants =
                                 product.variants && product.variants.length > 0}
                             <div
-                                class="rounded-3xl border border-slate-200 bg-white hover:shadow-card hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden relative group p-4 space-y-4"
+                                class="rounded-3xl border bg-white hover:shadow-card hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden relative group p-4 space-y-4 {selectedProducts.includes(product.id) ? 'ring-2 ring-brand-blueRoyal/30 border-brand-blueRoyal bg-brand-blueRoyal/[0.01]' : 'border-slate-200'}"
                             >
                                 <!-- Image Container -->
                                 <div
                                     class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100"
                                 >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedProducts.includes(product.id)}
+                                        onchange={() => toggleSelect(product.id)}
+                                        class="absolute top-3 left-3 z-10 w-5 h-5 rounded-md border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 bg-white/95 shadow-soft cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
+                                        aria-label={`Pilih ${product.name}`}
+                                    />
                                     <img
                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500 {!product.active
                                             ? 'opacity-60 grayscale'
@@ -1269,7 +1389,7 @@
 
                                     {#if product.categories && product.categories.length > 0}
                                         <span
-                                            class="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-600 shadow-soft"
+                                            class="absolute top-3 left-10 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-600 shadow-soft"
                                         >
                                             {product.categories[0].name}
                                             {#if product.categories.length > 1}
@@ -1282,7 +1402,7 @@
                                         </span>
                                     {:else}
                                         <span
-                                            class="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 shadow-soft"
+                                            class="absolute top-3 left-10 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 shadow-soft"
                                         >
                                             -
                                         </span>
@@ -3013,6 +3133,99 @@
                         {:else}
                             <i class="ti ti-check text-sm"></i> Proses Import
                         {/if}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Single Delete Confirmation Modal -->
+    {#if deleteSingleModalOpen}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+                class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                onclick={() => (deleteSingleModalOpen = false)}
+                onkeypress={() => (deleteSingleModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div
+                class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+            >
+                <div
+                    class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+                >
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <h4
+                    class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+                >
+                    Hapus Produk?
+                </h4>
+                <p class="text-sm text-center text-slate-550 font-medium mb-8">
+                    Produk <strong>{productToDelete?.name}</strong> akan dihapus secara
+                    permanen dari sistem. Tindakan ini tidak dapat dibatalkan.
+                </p>
+                <div class="flex items-center gap-3">
+                    <button
+                        onclick={() => (deleteSingleModalOpen = false)}
+                        class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={executeSingleDelete}
+                        disabled={submittingSingleDelete}
+                        class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition cursor-pointer disabled:opacity-50"
+                    >
+                        {submittingSingleDelete ? 'Memproses...' : 'Ya, Hapus'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Bulk Delete Confirmation Modal -->
+    {#if deleteBulkModalOpen}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+                class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                onclick={() => (deleteBulkModalOpen = false)}
+                onkeypress={() => (deleteBulkModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div
+                class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+            >
+                <div
+                    class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+                >
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <h4
+                    class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+                >
+                    Hapus {selectedProducts.length} Produk Terpilih?
+                </h4>
+                <p class="text-sm text-center text-slate-550 font-medium mb-8">
+                    Apakah Anda yakin ingin menghapus <strong>{selectedProducts.length} produk</strong> yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat dibatalkan.
+                </p>
+                <div class="flex items-center gap-3">
+                    <button
+                        onclick={() => (deleteBulkModalOpen = false)}
+                        class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={executeBulkDelete}
+                        disabled={submittingBulkDelete}
+                        class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition cursor-pointer disabled:opacity-50"
+                    >
+                        {submittingBulkDelete ? 'Memproses...' : 'Ya, Hapus Semua'}
                     </button>
                 </div>
             </div>

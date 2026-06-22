@@ -87,6 +87,124 @@
         refund_diproses: { bg: '#cffafe', text: '#0e7490' },
         selesai: { bg: '#dcfce7', text: '#166534' },
     };
+
+    // Selection state
+    let selectedIds = $state<number[]>([]);
+
+    const selectableReturns = $derived(
+        (returns?.data ?? []).filter(
+            (r: any) => r.status === 'menunggu_review' || r.status === 'barang_dikirim_customer'
+        )
+    );
+
+    const allSelected = $derived(
+        selectableReturns.length > 0 &&
+            selectedIds.length === selectableReturns.length
+    );
+
+    const countPendingReview = $derived(
+        (returns?.data ?? []).filter(
+            (r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_review'
+        ).length
+    );
+
+    const countShipped = $derived(
+        (returns?.data ?? []).filter(
+            (r: any) => selectedIds.includes(r.id) && r.status === 'barang_dikirim_customer'
+        ).length
+    );
+
+    function toggleSelect(id: number) {
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter((x) => x !== id);
+        } else {
+            selectedIds = [...selectedIds, id];
+        }
+    }
+
+    function toggleSelectAll() {
+        if (allSelected) {
+            selectedIds = [];
+        } else {
+            selectedIds = selectableReturns.map((r: any) => r.id);
+        }
+    }
+
+    let submittingBulkApprove = $state(false);
+    let bulkNotesAdmin = $state('');
+
+    function submitBulkApprove() {
+        const pendingReviewIds = (returns?.data ?? [])
+            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_review')
+            .map((r: any) => r.id);
+
+        if (pendingReviewIds.length === 0) return;
+
+        if (!confirm(`Apakah Anda yakin ingin menyetujui ${pendingReviewIds.length} pengajuan retur secara massal?`)) {
+            return;
+        }
+
+        submittingBulkApprove = true;
+        router.post(
+            '/admin/returns/bulk-approve',
+            {
+                ids: pendingReviewIds,
+                notes_admin: bulkNotesAdmin.trim() || null,
+            },
+            {
+                onSuccess: () => {
+                    selectedIds = [];
+                    bulkNotesAdmin = '';
+                    showToast('Pengajuan retur berhasil disetujui secara massal.');
+                },
+                onError: (err: any) => {
+                    showToast(err.message || 'Terjadi kesalahan.', 'error');
+                },
+                onFinish: () => {
+                    submittingBulkApprove = false;
+                },
+            }
+        );
+    }
+
+    // Modal state for bulk confirm receipt
+    let showReceiptModal = $state(false);
+    let stockAction = $state<'active' | 'damaged'>('active');
+    let submittingBulkReceipt = $state(false);
+
+    function openReceiptModal() {
+        showReceiptModal = true;
+    }
+
+    function submitBulkReceipt() {
+        const shippedIds = (returns?.data ?? [])
+            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'barang_dikirim_customer')
+            .map((r: any) => r.id);
+
+        if (shippedIds.length === 0) return;
+
+        submittingBulkReceipt = true;
+        router.post(
+            '/admin/returns/bulk-confirm-receipt',
+            {
+                ids: shippedIds,
+                stock_action: stockAction,
+            },
+            {
+                onSuccess: () => {
+                    selectedIds = [];
+                    showReceiptModal = false;
+                    showToast('Konfirmasi penerimaan barang berhasil diproses secara massal.');
+                },
+                onError: (err: any) => {
+                    showToast(err.message || 'Terjadi kesalahan.', 'error');
+                },
+                onFinish: () => {
+                    submittingBulkReceipt = false;
+                },
+            }
+        );
+    }
 </script>
 
 <AdminLayout>
@@ -211,6 +329,66 @@
                 </div>
             </div>
 
+            <!-- Bulk action bar (when items selected) -->
+            {#if selectedIds.length > 0}
+                <div
+                    class="bg-white rounded-2xl border border-slate-200 shadow-md px-5 py-4 flex items-center gap-4 flex-wrap"
+                >
+                    <span class="text-sm font-bold text-slate-700">
+                        <i
+                            class="ti ti-checkbox text-base mr-1"
+                            style="color:{primary}"
+                        ></i>
+                        {selectedIds.length} pengajuan retur dipilih
+                    </span>
+
+                    <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+
+                    <div class="flex items-center gap-3 flex-wrap">
+                        {#if countPendingReview > 0}
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    bind:value={bulkNotesAdmin}
+                                    placeholder="Catatan persetujuan massal..."
+                                    class="px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white w-48 sm:w-64"
+                                />
+                                <button
+                                    onclick={submitBulkApprove}
+                                    disabled={submittingBulkApprove}
+                                    class="px-4 py-1.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 flex items-center gap-1.5"
+                                    style="background:{primary}"
+                                >
+                                    <i class="ti ti-check text-sm"></i>
+                                    Setujui Massal ({countPendingReview})
+                                </button>
+                            </div>
+                        {/if}
+
+                        {#if countShipped > 0}
+                            <button
+                                onclick={openReceiptModal}
+                                class="px-4 py-1.5 rounded-xl text-xs font-bold text-white transition hover:bg-opacity-90 flex items-center gap-1.5"
+                                style="background:{secondary}"
+                            >
+                                <i class="ti ti-package-import text-sm"></i>
+                                Konfirmasi Penerimaan Massal ({countShipped})
+                            </button>
+                        {/if}
+                    </div>
+
+                    <button
+                        onclick={() => {
+                            selectedIds = [];
+                            bulkNotesAdmin = '';
+                        }}
+                        class="text-xs text-slate-400 hover:text-slate-600 font-bold ml-auto"
+                    >
+                        Batalkan Pilihan
+                    </button>
+                </div>
+            {/if}
+
             <!-- Table -->
             <div
                 class="bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden"
@@ -233,6 +411,15 @@
                                 <tr
                                     class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
                                 >
+                                    <th class="py-5 px-4 w-12 text-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={allSelected}
+                                            onchange={toggleSelectAll}
+                                            class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
+                                            disabled={selectableReturns.length === 0}
+                                        />
+                                    </th>
                                     <th class="py-5 px-4">No. Retur</th>
                                     <th class="py-5 px-4">Customer</th>
                                     <th class="py-5 px-4">Transaksi</th>
@@ -254,6 +441,22 @@
                                     <tr
                                         class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100"
                                     >
+                                        <td class="py-5 px-4 w-12 text-center">
+                                            {#if ret.status === 'menunggu_review' || ret.status === 'barang_dikirim_customer'}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(ret.id)}
+                                                    onchange={() => toggleSelect(ret.id)}
+                                                    class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
+                                                />
+                                            {:else}
+                                                <input
+                                                    type="checkbox"
+                                                    disabled
+                                                    class="rounded border-slate-200 text-slate-200 w-4 h-4 cursor-not-allowed opacity-30"
+                                                />
+                                            {/if}
+                                        </td>
                                         <td class="py-5 px-4">
                                             <p
                                                 class="font-bold text-slate-800 font-mono text-xs"
@@ -393,6 +596,94 @@
         </div>
     </div>
 </AdminLayout>
+
+<!-- Bulk Confirm Receipt Modal -->
+{#if showReceiptModal}
+    <div
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in"
+    >
+        <div
+            class="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-md overflow-hidden animate-scale-up"
+        >
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2">
+                        <i class="ti ti-package-import text-xl" style="color:{secondary}"></i>
+                        Penerimaan Barang Retur Massal
+                    </h3>
+                    <button
+                        onclick={() => showReceiptModal = false}
+                        class="text-slate-400 hover:text-slate-600 transition"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
+                </div>
+
+                <p class="text-xs text-slate-500 font-bold mb-6 uppercase tracking-wider">
+                    Konfirmasi penerimaan barang untuk {countShipped} retur terpilih.
+                </p>
+
+                <div class="space-y-4 mb-6">
+                    <p class="text-xs font-bold text-slate-700 uppercase tracking-widest font-outfit">
+                        Tindakan Terhadap Stok:
+                    </p>
+                    <label
+                        class="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition"
+                    >
+                        <input
+                            type="radio"
+                            name="stock_action_bulk"
+                            value="active"
+                            bind:group={stockAction}
+                            class="mt-0.5 rounded-full border-slate-300 text-slate-900 focus:ring-slate-500"
+                        />
+                        <div>
+                            <p class="text-xs font-black text-slate-800">Kembalikan ke Stok Aktif</p>
+                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                                Menambah kuantitas produk kembali ke stok aktif yang dapat dijual.
+                            </p>
+                        </div>
+                    </label>
+
+                    <label
+                        class="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition"
+                    >
+                        <input
+                            type="radio"
+                            name="stock_action_bulk"
+                            value="damaged"
+                            bind:group={stockAction}
+                            class="mt-0.5 rounded-full border-slate-300 text-slate-900 focus:ring-slate-500"
+                        />
+                        <div>
+                            <p class="text-xs font-black text-slate-800">Tulis Sebagai Rusak</p>
+                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">
+                                Barang rusak/tidak layak jual. Stok aktif produk tidak akan bertambah.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button
+                        onclick={() => showReceiptModal = false}
+                        class="flex-1 py-3 rounded-2xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition uppercase tracking-wider font-outfit"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={submitBulkReceipt}
+                        disabled={submittingBulkReceipt}
+                        class="flex-1 py-3 rounded-2xl text-xs font-bold text-white transition disabled:opacity-50 uppercase tracking-wider font-outfit"
+                        style="background:{secondary}"
+                    >
+                        {submittingBulkReceipt ? 'Memproses...' : 'Konfirmasi'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <!-- Toast -->
 {#if toastVisible}

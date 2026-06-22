@@ -69,6 +69,134 @@
         ditolak: { bg: '#fee2e2', text: '#991b1b' },
         selesai: { bg: '#dcfce7', text: '#166534' },
     };
+
+    // Toast state
+    let toastMsg = $state('');
+    let toastType = $state<'success' | 'error'>('success');
+    let toastVisible = $state(false);
+    let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function showToast(msg: string, type: 'success' | 'error' = 'success') {
+        toastMsg = msg;
+        toastType = type;
+        toastVisible = true;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            toastVisible = false;
+        }, 3500);
+    }
+
+    // Selection state
+    let selectedIds = $state<number[]>([]);
+
+    const selectableRefunds = $derived(
+        (refunds?.data ?? []).filter(
+            (r: any) => r.status === 'menunggu_konfirmasi' || (r.status === 'disetujui' && r.refund_method === 'transfer')
+        )
+    );
+
+    const allSelected = $derived(
+        selectableRefunds.length > 0 &&
+            selectedIds.length === selectableRefunds.length
+    );
+
+    const countPendingConfirm = $derived(
+        (refunds?.data ?? []).filter(
+            (r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_konfirmasi'
+        ).length
+    );
+
+    const countApprovedTransfer = $derived(
+        (refunds?.data ?? []).filter(
+            (r: any) => selectedIds.includes(r.id) && r.status === 'disetujui' && r.refund_method === 'transfer'
+        ).length
+    );
+
+    function toggleSelect(id: number) {
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter((x) => x !== id);
+        } else {
+            selectedIds = [...selectedIds, id];
+        }
+    }
+
+    function toggleSelectAll() {
+        if (allSelected) {
+            selectedIds = [];
+        } else {
+            selectedIds = selectableRefunds.map((r: any) => r.id);
+        }
+    }
+
+    let submittingBulkApprove = $state(false);
+    let submittingBulkComplete = $state(false);
+    let bulkNotesAdmin = $state('');
+
+    function submitBulkApprove() {
+        const pendingConfirmIds = (refunds?.data ?? [])
+            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_konfirmasi')
+            .map((r: any) => r.id);
+
+        if (pendingConfirmIds.length === 0) return;
+
+        if (!confirm(`Apakah Anda yakin ingin menyetujui ${pendingConfirmIds.length} pengajuan pembatalan secara massal?`)) {
+            return;
+        }
+
+        submittingBulkApprove = true;
+        router.post(
+            '/admin/refunds/bulk-approve',
+            {
+                ids: pendingConfirmIds,
+                notes_admin: bulkNotesAdmin.trim() || null,
+            },
+            {
+                onSuccess: () => {
+                    selectedIds = [];
+                    bulkNotesAdmin = '';
+                    showToast('Pengajuan pembatalan berhasil disetujui secara massal.');
+                },
+                onError: (err: any) => {
+                    showToast(err.message || 'Terjadi kesalahan.', 'error');
+                },
+                onFinish: () => {
+                    submittingBulkApprove = false;
+                },
+            }
+        );
+    }
+
+    function submitBulkComplete() {
+        const approvedTransferIds = (refunds?.data ?? [])
+            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'disetujui' && r.refund_method === 'transfer')
+            .map((r: any) => r.id);
+
+        if (approvedTransferIds.length === 0) return;
+
+        if (!confirm(`Apakah Anda yakin ingin menyelesaikan transfer refund untuk ${approvedTransferIds.length} transaksi secara massal?`)) {
+            return;
+        }
+
+        submittingBulkComplete = true;
+        router.post(
+            '/admin/refunds/bulk-complete',
+            {
+                ids: approvedTransferIds,
+            },
+            {
+                onSuccess: () => {
+                    selectedIds = [];
+                    showToast('Transfer refund massal berhasil diselesaikan.');
+                },
+                onError: (err: any) => {
+                    showToast(err.message || 'Terjadi kesalahan.', 'error');
+                },
+                onFinish: () => {
+                    submittingBulkComplete = false;
+                },
+            }
+        );
+    }
 </script>
 
 <AdminLayout>
@@ -192,6 +320,67 @@
                 </div>
             </div>
 
+            <!-- Bulk action bar (when items selected) -->
+            {#if selectedIds.length > 0}
+                <div
+                    class="bg-white rounded-2xl border border-slate-200 shadow-md px-5 py-4 flex items-center gap-4 flex-wrap"
+                >
+                    <span class="text-sm font-bold text-slate-700">
+                        <i
+                            class="ti ti-checkbox text-base mr-1"
+                            style="color:{primary}"
+                        ></i>
+                        {selectedIds.length} pengajuan refund/pembatalan dipilih
+                    </span>
+
+                    <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+
+                    <div class="flex items-center gap-3 flex-wrap">
+                        {#if countPendingConfirm > 0}
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    bind:value={bulkNotesAdmin}
+                                    placeholder="Catatan persetujuan massal..."
+                                    class="px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white w-48 sm:w-64"
+                                />
+                                <button
+                                    onclick={submitBulkApprove}
+                                    disabled={submittingBulkApprove}
+                                    class="px-4 py-1.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 flex items-center gap-1.5"
+                                    style="background:{primary}"
+                                >
+                                    <i class="ti ti-check text-sm"></i>
+                                    Setujui Massal ({countPendingConfirm})
+                                </button>
+                            </div>
+                        {/if}
+
+                        {#if countApprovedTransfer > 0}
+                            <button
+                                onclick={submitBulkComplete}
+                                disabled={submittingBulkComplete}
+                                class="px-4 py-1.5 rounded-xl text-xs font-bold text-white transition disabled:opacity-50 flex items-center gap-1.5"
+                                style="background:{secondary}"
+                            >
+                                <i class="ti ti-circle-check text-sm"></i>
+                                Selesaikan Transfer Massal ({countApprovedTransfer})
+                            </button>
+                        {/if}
+                    </div>
+
+                    <button
+                        onclick={() => {
+                            selectedIds = [];
+                            bulkNotesAdmin = '';
+                        }}
+                        class="text-xs text-slate-400 hover:text-slate-600 font-bold ml-auto"
+                    >
+                        Batalkan Pilihan
+                    </button>
+                </div>
+            {/if}
+
             <!-- Table -->
             <div
                 class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden"
@@ -214,6 +403,15 @@
                                 <tr
                                     class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
                                 >
+                                    <th class="py-5 px-4 w-12 text-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={allSelected}
+                                            onchange={toggleSelectAll}
+                                            class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
+                                            disabled={selectableRefunds.length === 0}
+                                        />
+                                    </th>
                                     <th class="py-5 px-4">No. Refund</th>
                                     <th class="py-5 px-4">Customer</th>
                                     <th class="py-5 px-4">Transaksi Asal</th>
@@ -234,6 +432,22 @@
                                     <tr
                                         class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100"
                                     >
+                                        <td class="py-5 px-4 w-12 text-center">
+                                            {#if ref.status === 'menunggu_konfirmasi' || (ref.status === 'disetujui' && ref.refund_method === 'transfer')}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(ref.id)}
+                                                    onchange={() => toggleSelect(ref.id)}
+                                                    class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
+                                                />
+                                            {:else}
+                                                <input
+                                                    type="checkbox"
+                                                    disabled
+                                                    class="rounded border-slate-200 text-slate-200 w-4 h-4 cursor-not-allowed opacity-30"
+                                                />
+                                            {/if}
+                                        </td>
                                         <td class="py-5 px-4">
                                             <p
                                                 class="font-bold text-slate-800 font-mono text-xs"
@@ -362,6 +576,21 @@
         </div>
     </div>
 </AdminLayout>
+
+<!-- Toast -->
+{#if toastVisible}
+    <div
+        class="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-bold"
+        style="background:{toastType === 'success' ? '#22c55e' : '#ef4444'};"
+    >
+        <i
+            class="ti {toastType === 'success'
+                ? 'ti-circle-check'
+                : 'ti-alert-circle'} text-base"
+        ></i>
+        {toastMsg}
+    </div>
+{/if}
 
 <style>
     .scrollbar-none::-webkit-scrollbar {

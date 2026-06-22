@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\ChatMessageRead;
 use App\Events\ChatMessageSent;
 use App\Events\NotificationUpdated;
+use App\Helpers\ImageHelper;
 use App\Models\Chat;
 use App\Models\ChatMessage;
 use App\Models\Transaction;
@@ -238,7 +239,7 @@ class ChatController extends Controller
             'body' => 'nullable|string|max:5000',
             'attachment_type' => 'nullable|in:product,image',
             'attachment_data' => 'nullable',
-            'image' => 'nullable|file|image|max:5120',
+            'image' => 'nullable|file|image|max:2048',
         ]);
 
         // If no body and no attachment, reject
@@ -255,7 +256,7 @@ class ChatController extends Controller
 
         // Handle image upload
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('chat-images', 'public');
+            $path = ImageHelper::compressAndStore($request->file('image'), 'chat-images', 'public');
             $attachmentType = 'image';
             $attachmentData = ['url' => Storage::url($path), 'path' => $path];
         }

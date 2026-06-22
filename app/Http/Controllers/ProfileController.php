@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\CoinHistory;
 use App\Models\CustomerBankAccount;
 use App\Models\Setting;
@@ -68,7 +69,7 @@ class ProfileController extends Controller
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
+            $path = ImageHelper::compressAndStore($request->file('avatar'), 'avatars', 'public');
             $user->avatar = $path;
         }
 
@@ -162,7 +163,7 @@ class ProfileController extends Controller
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
+            $path = ImageHelper::compressAndStore($request->file('avatar'), 'avatars', 'public');
             $user->avatar = $path;
         }
 

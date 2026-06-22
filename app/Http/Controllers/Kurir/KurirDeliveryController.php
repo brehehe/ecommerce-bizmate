@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Kurir;
 
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Mail\DeliveryArrived;
 use App\Models\Notification;
@@ -27,7 +28,7 @@ class KurirDeliveryController extends Controller
         $request->validate([
             'action' => 'required|in:pickup,delivering,arrived',
             'delivery_photos' => 'nullable|array',
-            'delivery_photos.*' => 'image|max:5120',
+            'delivery_photos.*' => 'image|max:2048',
         ]);
 
         // Guard: only store_courier transactions
@@ -92,7 +93,7 @@ class KurirDeliveryController extends Controller
         if ($request->hasFile('delivery_photos')) {
             $photos = [];
             foreach ($request->file('delivery_photos') as $file) {
-                $photos[] = $file->store('delivery_photos', 'public');
+                $photos[] = ImageHelper::compressAndStore($file, 'delivery_photos', 'public');
             }
             $updateData['delivery_photos'] = $photos;
         }

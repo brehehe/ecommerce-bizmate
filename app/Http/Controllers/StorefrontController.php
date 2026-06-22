@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ImageHelper;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Notification;
@@ -2095,7 +2096,19 @@ class StorefrontController extends Controller
             'comment' => 'nullable|string|max:1000',
             'is_anonymous' => 'nullable|boolean',
             'files' => 'nullable|array',
-            'files.*' => 'required|file|mimes:jpeg,png,jpg,gif,svg,mp4,mov,avi,webp|max:20480',
+            'files.*' => [
+                'required',
+                'file',
+                'mimes:jpeg,png,jpg,gif,svg,mp4,mov,avi,webp',
+                function ($attribute, $value, $fail) {
+                    $isImage = str_starts_with($value->getMimeType(), 'image/');
+                    if ($isImage && $value->getSize() > 2048 * 1024) {
+                        $fail('Ukuran file gambar ulasan maksimal 2MB.');
+                    } elseif (! $isImage && $value->getSize() > 20480 * 1024) {
+                        $fail('Ukuran file video ulasan maksimal 20MB.');
+                    }
+                },
+            ],
         ]);
 
         // Check if already reviewed
@@ -2112,7 +2125,12 @@ class StorefrontController extends Controller
         $mediaPaths = [];
         if ($request->hasFile('files')) {
             foreach ($request->file('files') as $file) {
-                $path = $file->store('reviews', 'public');
+                $isImage = str_starts_with($file->getMimeType(), 'image/');
+                if ($isImage) {
+                    $path = ImageHelper::compressAndStore($file, 'reviews', 'public');
+                } else {
+                    $path = $file->store('reviews', 'public');
+                }
                 $mediaPaths[] = '/storage/'.$path;
             }
         }

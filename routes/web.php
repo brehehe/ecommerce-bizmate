@@ -175,6 +175,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Products
     Route::get('/products/import/template', [ProductController::class, 'downloadImportTemplate'])->name('products.import.template');
     Route::post('/products/import', [ProductController::class, 'importProducts'])->name('products.import');
+    Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulk-delete');
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
     Route::resource('products', ProductController::class)->except(['show']);
 
@@ -193,6 +194,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Master Data Management
     Route::get('/master-data/admins', [MasterDataController::class, 'admins'])->name('master-data.admins');
     Route::post('/master-data/admins', [MasterDataController::class, 'storeAdmin'])->name('master-data.admins.store');
+    Route::post('/master-data/admins/bulk-delete', [MasterDataController::class, 'bulkDeleteAdmins'])->name('master-data.admins.bulk-delete');
     Route::put('/master-data/admins/{user}', [MasterDataController::class, 'updateAdmin'])->name('master-data.admins.update');
     Route::delete('/master-data/admins/{user}', [MasterDataController::class, 'destroyAdmin'])->name('master-data.admins.destroy');
     Route::post('/master-data/admins/{user}/toggle-active', [MasterDataController::class, 'toggleActiveAdmin'])->name('master-data.admins.toggle-active');
@@ -200,24 +202,28 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     Route::get('/master-data/customers', [MasterDataController::class, 'customers'])->name('master-data.customers');
     Route::post('/master-data/customers', [MasterDataController::class, 'storeCustomer'])->name('master-data.customers.store');
+    Route::post('/master-data/customers/bulk-delete', [MasterDataController::class, 'bulkDeleteCustomers'])->name('master-data.customers.bulk-delete');
     Route::put('/master-data/customers/{user}', [MasterDataController::class, 'updateCustomer'])->name('master-data.customers.update');
     Route::delete('/master-data/customers/{user}', [MasterDataController::class, 'destroyCustomer'])->name('master-data.customers.destroy');
     Route::post('/master-data/customers/{user}/toggle-active', [MasterDataController::class, 'toggleActiveCustomer'])->name('master-data.customers.toggle-active');
 
     Route::get('/master-data/payment-methods', [MasterDataController::class, 'paymentMethods'])->name('master-data.payment-methods');
     Route::post('/master-data/payment-methods', [MasterDataController::class, 'storePaymentMethod'])->name('master-data.payment-methods.store');
+    Route::post('/master-data/payment-methods/bulk-delete', [MasterDataController::class, 'bulkDeletePaymentMethods'])->name('master-data.payment-methods.bulk-delete');
     Route::put('/master-data/payment-methods/{paymentMethod}', [MasterDataController::class, 'updatePaymentMethod'])->name('master-data.payment-methods.update');
     Route::delete('/master-data/payment-methods/{paymentMethod}', [MasterDataController::class, 'destroyPaymentMethod'])->name('master-data.payment-methods.destroy');
     Route::post('/master-data/payment-methods/{paymentMethod}/toggle-active', [MasterDataController::class, 'toggleActivePaymentMethod'])->name('master-data.payment-methods.toggle-active');
 
     Route::get('/master-data/couriers', [MasterDataController::class, 'couriers'])->name('master-data.couriers');
     Route::post('/master-data/couriers', [MasterDataController::class, 'storeCourier'])->name('master-data.couriers.store');
+    Route::post('/master-data/couriers/bulk-delete', [MasterDataController::class, 'bulkDeleteCouriers'])->name('master-data.couriers.bulk-delete');
     Route::put('/master-data/couriers/{courier}', [MasterDataController::class, 'updateCourier'])->name('master-data.couriers.update');
     Route::delete('/master-data/couriers/{courier}', [MasterDataController::class, 'destroyCourier'])->name('master-data.couriers.destroy');
     Route::post('/master-data/couriers/{courier}/toggle-active', [MasterDataController::class, 'toggleActiveCourier'])->name('master-data.couriers.toggle-active');
 
     Route::get('/master-data/brands', [MasterDataController::class, 'brands'])->name('master-data.brands');
     Route::post('/master-data/brands', [MasterDataController::class, 'storeBrand'])->name('master-data.brands.store');
+    Route::post('/master-data/brands/bulk-delete', [MasterDataController::class, 'bulkDeleteBrands'])->name('master-data.brands.bulk-delete');
     Route::put('/master-data/brands/{brand}', [MasterDataController::class, 'updateBrand'])->name('master-data.brands.update');
     Route::delete('/master-data/brands/{brand}', [MasterDataController::class, 'destroyBrand'])->name('master-data.brands.destroy');
     Route::post('/master-data/brands/{brand}/toggle-active', [MasterDataController::class, 'toggleActiveBrand'])->name('master-data.brands.toggle-active');
@@ -225,6 +231,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Social Media
     Route::get('/master-data/social-media', [MasterDataController::class, 'socialMedia'])->name('master-data.social-media');
     Route::post('/master-data/social-media', [MasterDataController::class, 'storeSocialMedia'])->name('master-data.social-media.store');
+    Route::post('/master-data/social-media/bulk-delete', [MasterDataController::class, 'bulkDeleteSocialMedia'])->name('master-data.social-media.bulk-delete');
     Route::put('/master-data/social-media/{socialMedia}', [MasterDataController::class, 'updateSocialMedia'])->name('master-data.social-media.update');
     Route::delete('/master-data/social-media/{socialMedia}', [MasterDataController::class, 'destroySocialMedia'])->name('master-data.social-media.destroy');
     Route::post('/master-data/social-media/{socialMedia}/toggle-active', [MasterDataController::class, 'toggleActiveSocialMedia'])->name('master-data.social-media.toggle-active');
@@ -235,6 +242,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Stickers (Chat)
     Route::get('/master-data/stickers', [MasterDataController::class, 'stickers'])->name('master-data.stickers');
     Route::post('/master-data/stickers', [MasterDataController::class, 'storeSticker'])->name('master-data.stickers.store');
+    Route::post('/master-data/stickers/bulk-delete', [MasterDataController::class, 'bulkDeleteStickers'])->name('master-data.stickers.bulk-delete');
     Route::put('/master-data/stickers/{chatSticker}', [MasterDataController::class, 'updateSticker'])->name('master-data.stickers.update');
     Route::delete('/master-data/stickers/{chatSticker}', [MasterDataController::class, 'destroySticker'])->name('master-data.stickers.destroy');
     Route::post('/master-data/stickers/{chatSticker}/toggle-active', [MasterDataController::class, 'toggleActiveSticker'])->name('master-data.stickers.toggle-active');
@@ -277,9 +285,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // Returns (Admin)
     Route::get('/returns', [AdminReturnController::class, 'index'])->name('returns.index');
+    Route::post('/returns/bulk-approve', [AdminReturnController::class, 'bulkApprove'])->name('returns.bulk-approve');
+    Route::post('/returns/bulk-confirm-receipt', [AdminReturnController::class, 'bulkConfirmReceipt'])->name('returns.bulk-confirm-receipt');
 
     // Refunds (Admin)
     Route::get('/refunds', [AdminRefundController::class, 'index'])->name('refunds.index');
+    Route::post('/refunds/bulk-approve', [AdminRefundController::class, 'bulkApprove'])->name('refunds.bulk-approve');
+    Route::post('/refunds/bulk-complete', [AdminRefundController::class, 'bulkComplete'])->name('refunds.bulk-complete');
     Route::get('/refunds/{refund}', [AdminRefundController::class, 'show'])->name('refunds.show');
     Route::post('/refunds/{refund}/approve', [AdminRefundController::class, 'approve'])->name('refunds.approve');
     Route::post('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->name('refunds.reject');
