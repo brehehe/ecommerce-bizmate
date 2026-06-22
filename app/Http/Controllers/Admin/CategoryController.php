@@ -6,6 +6,7 @@ use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -27,8 +28,31 @@ class CategoryController extends Controller
             'slug' => ['required', 'string', 'max:255', Rule::unique('categories', 'slug')->whereNull('deleted_at')],
             'media_type' => ['required', 'in:icon,image'],
             'icon' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'image' => [
+                Rule::requiredIf(fn () => $request->media_type === 'image'),
+                'nullable',
+                'image',
+                'max:2048',
+                function ($attribute, $value, $fail) {
+                    if ($value instanceof UploadedFile) {
+                        $size = getimagesize($value->getRealPath());
+                        if ($size) {
+                            $width = $size[0];
+                            $height = $size[1];
+                            if ($height < $width) {
+                                $fail('Gambar harus memiliki rasio 1:1 (persegi) atau portrait (tinggi lebih besar atau sama dengan lebar).');
+                            }
+                        } else {
+                            $fail('File yang diupload bukan gambar yang valid.');
+                        }
+                    }
+                },
+            ],
             'parent_id' => ['nullable', 'exists:categories,id'],
+        ], [
+            'image.required_if' => 'Gambar wajib diunggah saat tipe media visual adalah gambar.',
+            'image.image' => 'File harus berupa gambar.',
+            'image.max' => 'Ukuran gambar tidak boleh lebih dari 2MB.',
         ]);
 
         if ($request->hasFile('image')) {
@@ -55,8 +79,31 @@ class CategoryController extends Controller
             'slug' => ['required', 'string', 'max:255', Rule::unique('categories', 'slug')->ignore($category->id)->whereNull('deleted_at')],
             'media_type' => ['required', 'in:icon,image'],
             'icon' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:2048'],
+            'image' => [
+                Rule::requiredIf(fn () => $request->media_type === 'image' && ! $category->image),
+                'nullable',
+                'image',
+                'max:2048',
+                function ($attribute, $value, $fail) {
+                    if ($value instanceof UploadedFile) {
+                        $size = getimagesize($value->getRealPath());
+                        if ($size) {
+                            $width = $size[0];
+                            $height = $size[1];
+                            if ($height < $width) {
+                                $fail('Gambar harus memiliki rasio 1:1 (persegi) atau portrait (tinggi lebih besar atau sama dengan lebar).');
+                            }
+                        } else {
+                            $fail('File yang diupload bukan gambar yang valid.');
+                        }
+                    }
+                },
+            ],
             'parent_id' => ['nullable', 'exists:categories,id'],
+        ], [
+            'image.required_if' => 'Gambar wajib diunggah saat tipe media visual adalah gambar.',
+            'image.image' => 'File harus berupa gambar.',
+            'image.max' => 'Ukuran gambar tidak boleh lebih dari 2MB.',
         ]);
 
         if ($request->hasFile('image')) {
