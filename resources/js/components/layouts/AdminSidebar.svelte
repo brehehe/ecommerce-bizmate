@@ -11,20 +11,24 @@
     let isMasterDataOpen = $state(false);
     let isReportsOpen = $state(false);
     let isCmsOpen = $state(false);
+    let sidebarContainer = $state<HTMLElement | null>(null);
     const user = $derived(page.props.auth?.user);
 
     $effect(() => {
         if (user && (window as any).Echo) {
-            const channel = (window as any).Echo.private(`user.${user.id}`)
-                .listen('.notification.updated', (event: any) => {
-                    const data = event.data || {};
-                    if (data.adminChatUnreadCount !== undefined) {
-                        (page.props as any).adminChatUnreadCount = data.adminChatUnreadCount;
-                    }
-                    if (data.adminNotifications !== undefined) {
-                        (page.props as any).adminNotifications = data.adminNotifications;
-                    }
-                });
+            const channel = (window as any).Echo.private(
+                `user.${user.id}`,
+            ).listen('.notification.updated', (event: any) => {
+                const data = event.data || {};
+                if (data.adminChatUnreadCount !== undefined) {
+                    (page.props as any).adminChatUnreadCount =
+                        data.adminChatUnreadCount;
+                }
+                if (data.adminNotifications !== undefined) {
+                    (page.props as any).adminNotifications =
+                        data.adminNotifications;
+                }
+            });
 
             return () => {
                 (window as any).Echo.leave(`user.${user.id}`);
@@ -101,6 +105,59 @@
             isCmsOpen = true;
         }
     });
+
+    $effect(() => {
+        // Track page.url and dropdown open states reactively
+        const url = page.url;
+        const catalog = isCatalogOpen;
+        const master = isMasterDataOpen;
+        const reports = isReportsOpen;
+        const cms = isCmsOpen;
+
+        const timer = setTimeout(() => {
+            if (sidebarContainer) {
+                const currentPath = url.split('?')[0];
+                const anchors = sidebarContainer.querySelectorAll('a[href]');
+                let activeAnchor: HTMLAnchorElement | null = null;
+
+                // 1. Try exact path match
+                for (const a of anchors) {
+                    const htmlAnchor = a as HTMLAnchorElement;
+                    const path = htmlAnchor.pathname || new URL(htmlAnchor.href, window.location.origin).pathname;
+                    if (path === currentPath) {
+                        activeAnchor = htmlAnchor;
+                        break;
+                    }
+                }
+
+                // 2. Try prefix match if no exact match (excluding general dashboard/admin paths)
+                if (!activeAnchor) {
+                    for (const a of anchors) {
+                        const htmlAnchor = a as HTMLAnchorElement;
+                        const path = htmlAnchor.pathname || new URL(htmlAnchor.href, window.location.origin).pathname;
+                        if (
+                            path &&
+                            path !== '/admin' &&
+                            path !== '/admin/dashboard' &&
+                            currentPath.startsWith(path)
+                        ) {
+                            activeAnchor = htmlAnchor;
+                            break;
+                        }
+                    }
+                }
+
+                if (activeAnchor) {
+                    activeAnchor.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                    });
+                }
+            }
+        }, 150);
+
+        return () => clearTimeout(timer);
+    });
 </script>
 
 <aside
@@ -138,7 +195,10 @@
         </div>
     </div>
 
-    <div class="flex-grow overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
+    <div
+        bind:this={sidebarContainer}
+        class="flex-grow overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar"
+    >
         <div
             class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-2"
         >
@@ -519,7 +579,7 @@
                             ? `color: ${primaryColor};`
                             : ''}
                     ></i>
-                    <span>Manajemen Toko</span>
+                    <span>Manajemen Produk</span>
                 </a>
             </div>
             <div class="relative">
@@ -1046,7 +1106,9 @@
                             >
                                 <i
                                     class="ti ti-sticker text-lg group-hover:scale-110 transition"
-                                    style={isActive('/admin/master-data/stickers')
+                                    style={isActive(
+                                        '/admin/master-data/stickers',
+                                    )
                                         ? `color: ${primaryColor};`
                                         : ''}
                                 ></i>
@@ -1055,7 +1117,6 @@
                         </div>
                     </div>
                 {/if}
-
             </div>
             <!-- Konten (CMS) Dropdown -->
             <div class="flex flex-col space-y-1">

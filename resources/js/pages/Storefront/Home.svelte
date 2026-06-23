@@ -536,7 +536,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->
-    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
+    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3">
                 <!-- Main slider (left, 2/3 width) -->
@@ -553,12 +553,19 @@
                             class="absolute inset-0 transition-opacity duration-700 {i ===
                             activeHero
                                 ? 'opacity-100 z-10'
-                                : 'opacity-0 z-0'} w-full h-full text-left"
+                                : 'opacity-0 z-0'} w-full h-full text-left overflow-hidden flex items-center justify-center bg-slate-950"
                         >
+                            <!-- Blurred background of the same image to fill edges if ratio doesn't match -->
+                            <img
+                                src={banner.image}
+                                alt=""
+                                class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105 select-none pointer-events-none"
+                            />
+                            <!-- Main crisp image containing full visual without cut-off -->
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-full object-cover"
+                                class="relative z-10 max-w-full max-h-full object-contain"
                             />
                         </button>
                     {/each}
@@ -607,12 +614,19 @@
                     {#each sideBanners as banner}
                         <button
                             onclick={() => (activeLightboxImage = banner.image)}
-                            class="flex-1 rounded-2xl overflow-hidden block bg-slate-100 aspect-[2.1/1] w-full relative text-left"
+                            class="flex-1 rounded-2xl overflow-hidden block bg-slate-950 aspect-[2.1/1] w-full relative text-left"
                         >
+                            <!-- Blurred background of the same image to fill edges if ratio doesn't match -->
+                            <img
+                                src={banner.image}
+                                alt=""
+                                class="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-105 select-none pointer-events-none"
+                            />
+                            <!-- Main crisp image containing full visual without cut-off -->
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-full object-cover hover:scale-105 transition duration-300"
+                                class="relative z-10 w-full h-full object-contain hover:scale-105 transition duration-300"
                             />
                         </button>
                     {/each}
@@ -665,21 +679,24 @@
      SECTION 3: KATEGORI
 ═══════════════════════════════════════════════════ -->
     {#if categories.length > 0}
-        <section id="categories-section" class="mt-2 px-3 sm:px-5 lg:px-8">
+        <section id="categories-section" class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
             <div
                 class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm"
             >
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-4">
-                    <h2
-                        class="font-outfit font-black text-base sm:text-lg text-slate-800"
-                    >
-                        Kategori
-                    </h2>
+                    <div>
+                        <h2
+                            class="font-outfit font-bold text-base sm:text-lg text-slate-800 tracking-tight flex items-center gap-2"
+                        >
+                            <i class="ti ti-layout-grid text-xl" style="color: {primary};"></i>
+                            Kategori Pilihan
+                        </h2>
+                    </div>
                     <Link
                         href="/search"
                         prefetch
-                        class="text-xs font-bold flex items-center gap-1"
+                        class="text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-slate-50 transition shrink-0 whitespace-nowrap"
                         style="color: {primary};"
                     >
                         Lihat Semua <i class="ti ti-arrow-right text-xs"></i>
@@ -697,26 +714,20 @@
                                 class="flex flex-col items-center gap-2 group cursor-pointer w-16 sm:w-20"
                             >
                                 <div
-                                    class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-sm transition group-hover:scale-110 group-hover:shadow-md border border-slate-100/50"
-                                    style="background: linear-gradient(135deg, {withOpacity(
-                                        primary,
-                                        0.08,
-                                    )}, {withOpacity(
-                                        secondary,
-                                        0.08,
-                                    )}); color: {primary};"
+                                    class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center border border-slate-100 bg-slate-50/70 transition-all duration-300 group-hover:scale-105 group-hover:bg-white group-hover:border-slate-200 group-hover:shadow-sm"
+                                    style="color: {primary};"
                                 >
                                     {#if cat.image}
                                         <img
                                             src={cat.image}
                                             alt={cat.name}
-                                            class="w-9 h-9 object-contain"
+                                            class="w-10 h-10 object-contain"
                                         />
                                     {:else}
                                         <i
                                             class="ti {getCategoryIcon(
                                                 cat,
-                                            )} text-2xl"
+                                            )} text-2xl sm:text-3xl"
                                             style="color: {primary};"
                                         ></i>
                                     {/if}
@@ -738,7 +749,7 @@
      SECTION 4: FLASH SALE
     ═══════════════════════════════════════════════════ -->
     {#if activeFlashSale}
-        <section class="mt-2 px-3 sm:px-5 lg:px-8">
+        <section class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
             <div
                 class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden shadow-sm"
             >
@@ -995,41 +1006,26 @@
      SECTION 6: PRODUK TERLARIS
 ═══════════════════════════════════════════════════ -->
     {#if bestSellerProducts.length > 0}
-        <section id="bestsellers-section" class="mt-2 px-3 sm:px-5 lg:px-8">
+        <section id="bestsellers-section" class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
             <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
                 <div
-                    class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100"
+                    class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-slate-100"
                 >
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
-                            style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                primary,
-                                0.65,
-                            )});"
+                    <div>
+                        <h2
+                            class="font-outfit font-bold text-base sm:text-lg text-slate-800 tracking-tight flex items-center gap-2"
                         >
-                            <i class="ti ti-trending-up text-lg"></i>
-                        </div>
-                        <div>
-                            <h2
-                                class="font-outfit font-black text-base sm:text-lg text-slate-800"
-                            >
-                                Produk Terlaris
-                            </h2>
-                            <p
-                                class="text-[10px] text-slate-400 font-bold uppercase tracking-wider"
-                            >
-                                Paling Banyak Dibeli
-                            </p>
-                        </div>
+                            <i class="ti ti-trending-up text-xl" style="color: {primary};"></i>
+                            Produk Terlaris
+                        </h2>
                     </div>
                     <Link
                         href="/produk-terlaris"
                         prefetch
-                        class="text-xs font-bold flex items-center gap-1"
+                        class="text-xs font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-slate-50 transition shrink-0 whitespace-nowrap"
                         style="color: {primary};"
                     >
-                        Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
+                        Lihat Semua <i class="ti ti-arrow-right text-xs"></i>
                     </Link>
                 </div>
                 <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
@@ -1056,7 +1052,7 @@
                             <Link
                                 href={`/products/${product.slug || product.id}`}
                                 prefetch
-                                class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0 flex flex-col h-full"
+                                class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200/80 hover:shadow-xl hover:shadow-slate-100 hover:-translate-y-1 rounded-xl overflow-hidden transition-all duration-300 group cursor-pointer shrink-0 flex flex-col h-full"
                             >
                                 <div
                                     class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
@@ -1080,26 +1076,25 @@
                                     {/if}
                                     {#if isPromo && discountPercentage > 0}
                                         <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md"
+                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-md"
                                             style="background-color: {secondary};"
                                         >
                                             -{discountPercentage}%
                                         </span>
                                     {/if}
                                 </div>
-                                <div class="p-3 flex-1 flex flex-col">
+                                <div class="p-3 flex-1 flex flex-col justify-between">
                                     <div>
                                         <p
-                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
-                                            style="color: {primary};"
+                                            class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 line-clamp-1"
                                         >
                                             {product.category?.name || 'PRODUK'}
                                         </p>
                                         <div
-                                            class="h-[2.5rem] overflow-hidden mb-1"
+                                            class="h-[2.5rem] overflow-hidden mb-1.5"
                                         >
                                             <p
-                                                class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                class="text-xs sm:text-sm font-semibold leading-snug line-clamp-2"
                                                 style="color: #1e293b;"
                                             >
                                                 {product.name}
@@ -1113,7 +1108,7 @@
                                                     class="ti ti-star-filled text-amber-500 text-[10px]"
                                                 ></i>
                                                 <span
-                                                    class="text-[10px] text-slate-500 font-bold"
+                                                    class="text-[10px] text-slate-500 font-semibold"
                                                     >{avgRating.toFixed(
                                                         1,
                                                     )}</span
@@ -1124,22 +1119,21 @@
                                                 >
                                             {/if}
                                         </div>
-                                        <hr class="border-slate-100 my-2" />
-                                        <div class="mb-0">
+                                    </div>
+                                    <div class="mt-3">
+                                        <p
+                                            class="text-sm sm:text-base font-bold leading-tight"
+                                            style="color: {secondary};"
+                                        >
+                                            {formatPrice(price)}
+                                        </p>
+                                        {#if isPromo && originalPrice > price}
                                             <p
-                                                class="text-sm sm:text-base font-black leading-tight"
-                                                style="color: {secondary};"
+                                                class="text-[10px] sm:text-xs text-slate-400 line-through font-normal mt-1"
                                             >
-                                                {formatPrice(price)}
+                                                {formatPrice(originalPrice)}
                                             </p>
-                                            {#if isPromo && originalPrice > price}
-                                                <p
-                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
-                                                >
-                                                    {formatPrice(originalPrice)}
-                                                </p>
-                                            {/if}
-                                        </div>
+                                        {/if}
                                     </div>
                                 </div>
                             </Link>
@@ -1153,27 +1147,30 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 7: BANNER WIDE (full width promo)
 ═══════════════════════════════════════════════════ -->
-    <section class="px-3 sm:px-5 lg:px-8 mt-4 mb-4">
+    <section class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
         <div
-            class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
+            class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:scale-[1.005] transition-all duration-300"
         >
             {#if middleWide.link && middleWide.link !== '#'}
-                <Link href={middleWide.link} class="block w-full">
+                <Link
+                    href={middleWide.link}
+                    class="block w-full relative overflow-hidden"
+                >
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        class="w-full h-auto block hover:opacity-95 transition duration-300"
                     />
                 </Link>
             {:else}
                 <button
                     onclick={() => (activeLightboxImage = middleWide.image)}
-                    class="block w-full text-left"
+                    class="block w-full text-left relative overflow-hidden cursor-pointer"
                 >
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        class="w-full h-auto block hover:opacity-95 transition duration-300"
                     />
                 </button>
             {/if}
@@ -1183,10 +1180,23 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)
 ═══════════════════════════════════════════════════ -->
-    <section id="recommendations-section" class="mt-2 px-3 sm:px-5 lg:px-8">
+    <section id="recommendations-section" class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
         <div class="max-w-6xl mx-auto bg-transparent shadow-none">
+            <div class="flex items-center justify-between mb-4 px-1">
+                <div>
+                    <h2
+                        class="font-outfit font-bold text-base sm:text-lg text-slate-800 tracking-tight flex items-center gap-2"
+                    >
+                        <i class="ti ti-sparkles text-xl animate-pulse" style="color: {primary};"></i>
+                        Rekomendasi Untukmu
+                    </h2>
+                    <p class="text-xs text-slate-400 font-medium mt-0.5">
+                        Koleksi produk pilihan terbaik khusus untuk Anda
+                    </p>
+                </div>
+            </div>
             <!-- Masonry-style grid -->
-            <div class="py-3 px-0">
+            <div class="pb-3 px-0">
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                 >
@@ -1212,7 +1222,7 @@
                             ? (product.review_count ?? 0)
                             : 0}
                         <div
-                            class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
+                            class="relative group bg-white border border-slate-100 hover:border-slate-200/80 hover:shadow-xl hover:shadow-slate-100 hover:-translate-y-1 rounded-xl overflow-hidden transition-all duration-300 flex flex-col h-full"
                         >
                             <Link
                                 href={isReal
@@ -1248,7 +1258,7 @@
                                     {/if}
                                     {#if isReal && isPromo && discountPercentage > 0}
                                         <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-md shadow-sm"
                                             style="background-color: {secondary};"
                                         >
                                             -{discountPercentage}%
@@ -1261,17 +1271,16 @@
                                     {#if isReal}
                                         <div>
                                             <p
-                                                class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
-                                                style="color: {primary};"
+                                                class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 line-clamp-1"
                                             >
                                                 {product.category?.name ||
                                                     'PRODUK'}
                                             </p>
                                             <div
-                                                class="h-[2.5rem] overflow-hidden mb-1"
+                                                class="h-[2.5rem] overflow-hidden mb-1.5"
                                             >
                                                 <p
-                                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                    class="text-xs sm:text-sm font-semibold leading-snug line-clamp-2"
                                                     style="color: #1e293b;"
                                                 >
                                                     {product.name}
@@ -1285,7 +1294,7 @@
                                                         class="ti ti-star-filled text-amber-500 text-[10px]"
                                                     ></i>
                                                     <span
-                                                        class="text-[10px] text-slate-500 font-bold"
+                                                        class="text-[10px] text-slate-500 font-semibold"
                                                         >{avgRating.toFixed(
                                                             1,
                                                         )}</span
@@ -1296,24 +1305,23 @@
                                                     >
                                                 {/if}
                                             </div>
-                                            <hr class="border-slate-100 my-2" />
-                                            <div class="mb-1">
+                                        </div>
+                                        <div class="mt-3">
+                                            <p
+                                                class="text-sm sm:text-base font-bold leading-tight"
+                                                style="color: {secondary};"
+                                            >
+                                                {formatPrice(price)}
+                                            </p>
+                                            {#if isPromo && originalPrice > price}
                                                 <p
-                                                    class="text-sm sm:text-base font-black leading-tight"
-                                                    style="color: {secondary};"
+                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-normal mt-1"
                                                 >
-                                                    {formatPrice(price)}
+                                                    {formatPrice(
+                                                        originalPrice,
+                                                    )}
                                                 </p>
-                                                {#if isPromo && originalPrice > price}
-                                                    <p
-                                                        class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
-                                                    >
-                                                        {formatPrice(
-                                                            originalPrice,
-                                                        )}
-                                                    </p>
-                                                {/if}
-                                            </div>
+                                            {/if}
                                         </div>
                                     {:else}
                                         <div
@@ -1568,7 +1576,7 @@
         >
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
-                class="relative max-w-sm w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col group"
+                class="relative w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col group transition-all duration-300 {popupBanner.orientation === 'landscape' ? 'max-w-md' : 'max-w-sm'}"
                 onclick={(e) => e.stopPropagation()}
                 transition:scale={{ duration: 400, start: 0.95 }}
             >
@@ -1585,7 +1593,7 @@
                 <Link
                     href={popupBanner.link || '#'}
                     onclick={() => (showPopup = false)}
-                    class="block w-full overflow-hidden aspect-[4/5] bg-slate-100 relative"
+                    class="block w-full overflow-hidden bg-slate-100 relative {popupBanner.orientation === 'landscape' ? 'aspect-[16/9]' : 'aspect-[4/5]'}"
                 >
                     <img
                         src={popupBanner.image}

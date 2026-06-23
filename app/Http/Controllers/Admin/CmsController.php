@@ -137,6 +137,7 @@ class CmsController extends Controller
                 'alt' => $popupInput['alt'] ?? '',
                 'link' => $popupInput['link'] ?? '#',
                 'is_active' => filter_var($popupInput['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'orientation' => $popupInput['orientation'] ?? 'portrait',
             ];
 
             Setting::updateOrCreate(

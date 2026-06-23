@@ -145,7 +145,7 @@
             url: '/admin/products',
         },
         {
-            title: '8. Manajemen Toko',
+            title: '8. Manajemen Produk',
             description:
                 'Kelola harga jual, harga promo coret, stok barang, dan persediaan pengaman minimum secara massal untuk efisiensi operasional harian.',
             url: '/admin/store/prices',

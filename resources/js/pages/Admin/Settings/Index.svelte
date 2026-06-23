@@ -1058,7 +1058,7 @@
                 enableHighAccuracy: true,
                 timeout: 10000,
                 maximumAge: 0,
-            }
+            },
         );
     }
 
@@ -1468,7 +1468,8 @@
                                         class="px-4 py-2.5 bg-sky-50 hover:bg-sky-100 disabled:opacity-50 disabled:cursor-not-allowed text-sky-700 rounded-lg font-bold text-sm transition flex items-center gap-2 shrink-0 border border-sky-100"
                                     >
                                         {#if isFetchingLocation}
-                                            <i class="ti ti-loader animate-spin"></i>
+                                            <i class="ti ti-loader animate-spin"
+                                            ></i>
                                         {:else}
                                             <i class="ti ti-device-gps"></i>
                                         {/if}
@@ -2235,32 +2236,32 @@
                         class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-6"
                     >
                         {#if env_keys.show_checkout_settings !== false}
-                        <div
-                            class="flex items-center gap-3 border-b border-slate-100 pb-4"
-                        >
                             <div
-                                class="p-2.5 bg-indigo-50 text-indigo-500 rounded-xl"
+                                class="flex items-center gap-3 border-b border-slate-100 pb-4"
                             >
-                                <i class="ti ti-shopping-cart-discount text-lg"
-                                ></i>
-                            </div>
-                            <div>
-                                <h3
-                                    class="font-outfit font-black text-slate-800 text-base leading-none"
+                                <div
+                                    class="p-2.5 bg-indigo-50 text-indigo-500 rounded-xl"
                                 >
-                                    Checkout & Ongkir
-                                </h3>
-                                <p
-                                    class="text-xs text-slate-400 font-medium mt-1"
-                                >
-                                    Konfigurasi metode kirim & bayar.
-                                </p>
+                                    <i
+                                        class="ti ti-shopping-cart-discount text-lg"
+                                    ></i>
+                                </div>
+                                <div>
+                                    <h3
+                                        class="font-outfit font-black text-slate-800 text-base leading-none"
+                                    >
+                                        Checkout & Ongkir
+                                    </h3>
+                                    <p
+                                        class="text-xs text-slate-400 font-medium mt-1"
+                                    >
+                                        Konfigurasi metode kirim & bayar.
+                                    </p>
+                                </div>
                             </div>
-                        </div>
                         {/if}
 
                         <div class="space-y-5">
-                            {#if env_keys.show_checkout_settings !== false}
                             <div class="space-y-3.5">
                                 <span
                                     class="text-xs font-black text-slate-700 uppercase tracking-tight block"
@@ -2308,10 +2309,10 @@
                                     required={true}
                                 />
                             </div>
+                            {#if env_keys.show_checkout_settings !== false}
+                                <div class="h-px bg-slate-100"></div>
 
-                            <div class="h-px bg-slate-100"></div>
-
-                            <!-- <div class="space-y-3.5">
+                                <!-- <div class="space-y-3.5">
                                 <span
                                     class="text-xs font-black text-slate-700 uppercase tracking-tight block"
                                     >Metode Pembayaran</span
@@ -2323,310 +2324,181 @@
                                 />
                             </div> -->
 
-                            <div class="space-y-3.5">
-                                <span
-                                    class="text-xs font-black text-slate-700 uppercase tracking-tight block"
-                                >
-                                    Konfigurasi Rajaongkir
-                                </span>
-                                <div class="space-y-1">
-                                    <Input
-                                        id="input-rajaongkir-url"
-                                        bind:value={form.rajaongkir_url}
-                                        label="Rajaongkir Base URL"
-                                        placeholder="Contoh: https://rajaongkir.komerce.id/api/v1/"
-                                        required={!env_keys.rajaongkir_url}
-                                        readonly={env_keys.rajaongkir_url}
-                                    />
-                                    {#if env_keys.rajaongkir_url}
-                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
-                                            <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
-                                        </span>
-                                    {/if}
-                                </div>
+                                <div class="space-y-3.5">
+                                    <span
+                                        class="text-xs font-black text-slate-700 uppercase tracking-tight block"
+                                    >
+                                        Konfigurasi Rajaongkir
+                                    </span>
+                                    <div class="space-y-1">
+                                        <Input
+                                            id="input-rajaongkir-url"
+                                            bind:value={form.rajaongkir_url}
+                                            label="Rajaongkir Base URL"
+                                            placeholder="Contoh: https://rajaongkir.komerce.id/api/v1/"
+                                            required={!env_keys.rajaongkir_url}
+                                            readonly={env_keys.rajaongkir_url}
+                                        />
+                                        {#if env_keys.rajaongkir_url}
+                                            <span
+                                                class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50"
+                                            >
+                                                <i class="ti ti-lock text-xs"
+                                                ></i> Ditentukan oleh .env
+                                            </span>
+                                        {/if}
+                                    </div>
 
-                                <div class="space-y-1">
-                                    <Input
-                                        id="input-rajaongkir-shipping-cost"
-                                        bind:value={form.rajaongkir_shipping_cost}
-                                        label="Raja Ongkir Shipping Cost"
-                                        placeholder="Masukkan Shipping Cost Key"
-                                        required={!env_keys.rajaongkir_shipping_cost}
-                                        readonly={env_keys.rajaongkir_shipping_cost}
-                                    />
-                                    {#if env_keys.rajaongkir_shipping_cost}
-                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
-                                            <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
-                                        </span>
-                                    {/if}
-                                </div>
+                                    <div class="space-y-1">
+                                        <Input
+                                            id="input-rajaongkir-shipping-cost"
+                                            bind:value={
+                                                form.rajaongkir_shipping_cost
+                                            }
+                                            label="Raja Ongkir Shipping Cost"
+                                            placeholder="Masukkan Shipping Cost Key"
+                                            required={!env_keys.rajaongkir_shipping_cost}
+                                            readonly={env_keys.rajaongkir_shipping_cost}
+                                        />
+                                        {#if env_keys.rajaongkir_shipping_cost}
+                                            <span
+                                                class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50"
+                                            >
+                                                <i class="ti ti-lock text-xs"
+                                                ></i> Ditentukan oleh .env
+                                            </span>
+                                        {/if}
+                                    </div>
 
-                                <div class="space-y-1">
-                                    <Input
-                                        id="input-komerce-delivery-url"
-                                        bind:value={form.komerce_delivery_url}
-                                        label="Komerce Delivery Base URL"
-                                        placeholder="Contoh: https://api-sandbox.collaborator.komerce.id/api/v1/"
-                                        required={!env_keys.komerce_delivery_url}
-                                        readonly={env_keys.komerce_delivery_url}
-                                    />
-                                    {#if env_keys.komerce_delivery_url}
-                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
-                                            <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
-                                        </span>
-                                    {/if}
-                                </div>
+                                    <div class="space-y-1">
+                                        <Input
+                                            id="input-komerce-delivery-url"
+                                            bind:value={
+                                                form.komerce_delivery_url
+                                            }
+                                            label="Komerce Delivery Base URL"
+                                            placeholder="Contoh: https://api-sandbox.collaborator.komerce.id/api/v1/"
+                                            required={!env_keys.komerce_delivery_url}
+                                            readonly={env_keys.komerce_delivery_url}
+                                        />
+                                        {#if env_keys.komerce_delivery_url}
+                                            <span
+                                                class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50"
+                                            >
+                                                <i class="ti ti-lock text-xs"
+                                                ></i> Ditentukan oleh .env
+                                            </span>
+                                        {/if}
+                                    </div>
 
-                                <div class="h-px bg-slate-100 my-2"></div>
+                                    <div class="h-px bg-slate-100 my-2"></div>
 
-                                <!-- Self Pickup Settings -->
-                                <div class="space-y-2">
-                                    <Toggle
-                                        bind:checked={form.self_pickup_enabled}
-                                        label="Aktifkan Pengambilan di Toko (Self-Pickup)"
-                                        icon="ti-building-store"
-                                    />
-                                    {#if form.self_pickup_enabled}
-                                        <div
-                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
-                                        >
-                                            <InputCurrency
-                                                id="input-self-pickup-fee"
-                                                bind:value={
-                                                    form.self_pickup_fee
-                                                }
-                                                label="Biaya Penanganan Ambil di Toko"
-                                                placeholder="Contoh: 0"
-                                                required={true}
-                                            />
-                                        </div>
-                                    {/if}
-                                </div>
-
-                                <div class="h-px bg-slate-100 my-2"></div>
-
-                                <!-- Store Courier Settings -->
-                                <div class="space-y-2">
-                                    <Toggle
-                                        bind:checked={
-                                            form.store_courier_enabled
-                                        }
-                                        label="Aktifkan Kurir Toko"
-                                        icon="ti-truck-delivery"
-                                    />
-                                    {#if form.store_courier_enabled}
-                                        <div
-                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-3"
-                                        >
-                                            <div class="space-y-1">
-                                                <label
-                                                    for="store-courier-type"
-                                                    class="text-xs font-bold text-slate-500 uppercase tracking-wider block"
-                                                >
-                                                    Metode Perhitungan Biaya
-                                                </label>
-                                                <select
-                                                    id="store-courier-type"
-                                                    bind:value={
-                                                        form.store_courier_type
-                                                    }
-                                                    class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
-                                                >
-                                                    <option value="flat"
-                                                        >Tarif Flat (Sama Rata)</option
-                                                    >
-                                                    <option value="radius"
-                                                        >Tarif Berdasarkan
-                                                        Radius (per Km)</option
-                                                    >
-                                                    <option
-                                                        value="radius_tiered"
-                                                        >Tarif Berdasarkan
-                                                        Radius Bertingkat
-                                                        (Tiered)</option
-                                                    >
-                                                </select>
-                                            </div>
-
-                                            {#if form.store_courier_type !== 'flat'}
-                                                <Toggle
-                                                    bind:checked={
-                                                        form.store_courier_round_up
-                                                    }
-                                                    label="Bulatkan Jarak Ke Atas"
-                                                    description="Bulatkan jarak pengiriman di bawah 1 km atau kelipatan pecahan ke kilometer terdekat (misal: 0,2 km dibulatkan menjadi 1 km)."
-                                                    icon="ti-arrows-sort"
-                                                />
-                                            {/if}
-
-                                            {#if form.store_courier_type === 'flat'}
+                                    <!-- Self Pickup Settings -->
+                                    <div class="space-y-2">
+                                        <Toggle
+                                            bind:checked={
+                                                form.self_pickup_enabled
+                                            }
+                                            label="Aktifkan Pengambilan di Toko (Self-Pickup)"
+                                            icon="ti-building-store"
+                                        />
+                                        {#if form.self_pickup_enabled}
+                                            <div
+                                                class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                            >
                                                 <InputCurrency
-                                                    id="input-store-courier-flat-fee"
+                                                    id="input-self-pickup-fee"
                                                     bind:value={
-                                                        form.store_courier_flat_fee
+                                                        form.self_pickup_fee
                                                     }
-                                                    label="Biaya Pengiriman Flat"
-                                                    placeholder="Contoh: 15000"
+                                                    label="Biaya Penanganan Ambil di Toko"
+                                                    placeholder="Contoh: 0"
                                                     required={true}
                                                 />
-                                            {:else if form.store_courier_type === 'radius'}
-                                                <div
-                                                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
-                                                >
-                                                    <InputCurrency
-                                                        id="input-store-courier-per-km-fee"
+                                            </div>
+                                        {/if}
+                                    </div>
+
+                                    <div class="h-px bg-slate-100 my-2"></div>
+
+                                    <!-- Store Courier Settings -->
+                                    <div class="space-y-2">
+                                        <Toggle
+                                            bind:checked={
+                                                form.store_courier_enabled
+                                            }
+                                            label="Aktifkan Kurir Toko"
+                                            icon="ti-truck-delivery"
+                                        />
+                                        {#if form.store_courier_enabled}
+                                            <div
+                                                class="pl-6 border-l-2 border-slate-100 mt-2 space-y-3"
+                                            >
+                                                <div class="space-y-1">
+                                                    <label
+                                                        for="store-courier-type"
+                                                        class="text-xs font-bold text-slate-500 uppercase tracking-wider block"
+                                                    >
+                                                        Metode Perhitungan Biaya
+                                                    </label>
+                                                    <select
+                                                        id="store-courier-type"
                                                         bind:value={
-                                                            form.store_courier_per_km_fee
+                                                            form.store_courier_type
                                                         }
-                                                        label="Biaya per Kilometer"
-                                                        placeholder="Contoh: 3000"
-                                                        required={true}
-                                                    />
-                                                    <Input
-                                                        id="input-store-courier-max-radius"
-                                                        type="number"
-                                                        bind:value={
-                                                            form.store_courier_max_radius
-                                                        }
-                                                        label="Radius Maksimal Pengiriman (Km)"
-                                                        placeholder="Contoh: 25"
-                                                        min="1"
-                                                        required={true}
-                                                    />
+                                                        class="w-full px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white transition"
+                                                    >
+                                                        <option value="flat"
+                                                            >Tarif Flat (Sama
+                                                            Rata)</option
+                                                        >
+                                                        <option value="radius"
+                                                            >Tarif Berdasarkan
+                                                            Radius (per Km)</option
+                                                        >
+                                                        <option
+                                                            value="radius_tiered"
+                                                            >Tarif Berdasarkan
+                                                            Radius Bertingkat
+                                                            (Tiered)</option
+                                                        >
+                                                    </select>
                                                 </div>
-                                            {:else if form.store_courier_type === 'radius_tiered'}
-                                                <div class="space-y-4">
-                                                    <div
-                                                        class="flex justify-between items-center"
-                                                    >
-                                                        <span
-                                                            class="text-xs font-bold text-slate-500 uppercase tracking-wider block"
-                                                        >
-                                                            Aturan Jarak & Biaya
-                                                            (Bertingkat)
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            onclick={addCourierTier}
-                                                            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition flex items-center gap-1 cursor-pointer font-sans"
-                                                        >
-                                                            <i
-                                                                class="ti ti-plus"
-                                                            ></i> Tambah Tingkatan
-                                                        </button>
-                                                    </div>
 
-                                                    {#if form.store_courier_tiered_rates.length === 0}
-                                                        <div
-                                                            class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans"
-                                                        >
-                                                            <i
-                                                                class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"
-                                                            ></i>
-                                                            <span
-                                                                class="text-[11px] font-bold text-slate-500"
-                                                                >Belum Ada
-                                                                Aturan Tingkatan</span
-                                                            >
-                                                            <p
-                                                                class="text-[9px] text-slate-400 mt-0.5 leading-none"
-                                                            >
-                                                                Klik "+ Tambah
-                                                                Tingkatan" untuk
-                                                                membuat aturan
-                                                                baru.
-                                                            </p>
-                                                        </div>
-                                                    {:else}
-                                                        <div
-                                                            class="space-y-3 font-sans"
-                                                        >
-                                                            {#each form.store_courier_tiered_rates as tier, index}
-                                                                <div
-                                                                    class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm"
-                                                                    transition:slide
-                                                                >
-                                                                    <div
-                                                                        class="flex-grow grid grid-cols-2 gap-3.5"
-                                                                    >
-                                                                        <div
-                                                                            class="space-y-1"
-                                                                        >
-                                                                            <span
-                                                                                class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
-                                                                                >Jarak
-                                                                                Maksimal
-                                                                                (Km)</span
-                                                                            >
-                                                                            <div
-                                                                                class="relative"
-                                                                            >
-                                                                                <input
-                                                                                    type="number"
-                                                                                    min="0.1"
-                                                                                    step="0.1"
-                                                                                    bind:value={
-                                                                                        tier.max_distance
-                                                                                    }
-                                                                                    class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
-                                                                                    placeholder="Contoh: 5"
-                                                                                    required
-                                                                                />
-                                                                                <span
-                                                                                    class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans"
-                                                                                    >Km</span
-                                                                                >
-                                                                            </div>
-                                                                        </div>
-                                                                        <div
-                                                                            class="space-y-1"
-                                                                        >
-                                                                            <span
-                                                                                class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
-                                                                                >Biaya
-                                                                                Pengiriman</span
-                                                                            >
-                                                                            <div
-                                                                                class="relative"
-                                                                            >
-                                                                                <span
-                                                                                    class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold"
-                                                                                    >Rp</span
-                                                                                >
-                                                                                <input
-                                                                                    type="number"
-                                                                                    min="0"
-                                                                                    bind:value={
-                                                                                        tier.fee
-                                                                                    }
-                                                                                    class="w-full pl-9 pr-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
-                                                                                    placeholder="Contoh: 10000"
-                                                                                    required
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <button
-                                                                        type="button"
-                                                                        onclick={() =>
-                                                                            removeCourierTier(
-                                                                                index,
-                                                                            )}
-                                                                        class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition self-end cursor-pointer"
-                                                                        title="Hapus Aturan"
-                                                                    >
-                                                                        <i
-                                                                            class="ti ti-trash text-sm"
-                                                                        ></i>
-                                                                    </button>
-                                                                </div>
-                                                            {/each}
-                                                        </div>
-                                                    {/if}
+                                                {#if form.store_courier_type !== 'flat'}
+                                                    <Toggle
+                                                        bind:checked={
+                                                            form.store_courier_round_up
+                                                        }
+                                                        label="Bulatkan Jarak Ke Atas"
+                                                        description="Bulatkan jarak pengiriman di bawah 1 km atau kelipatan pecahan ke kilometer terdekat (misal: 0,2 km dibulatkan menjadi 1 km)."
+                                                        icon="ti-arrows-sort"
+                                                    />
+                                                {/if}
 
+                                                {#if form.store_courier_type === 'flat'}
+                                                    <InputCurrency
+                                                        id="input-store-courier-flat-fee"
+                                                        bind:value={
+                                                            form.store_courier_flat_fee
+                                                        }
+                                                        label="Biaya Pengiriman Flat"
+                                                        placeholder="Contoh: 15000"
+                                                        required={true}
+                                                    />
+                                                {:else if form.store_courier_type === 'radius'}
                                                     <div
-                                                        class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"
+                                                        class="grid grid-cols-1 md:grid-cols-2 gap-4"
                                                     >
+                                                        <InputCurrency
+                                                            id="input-store-courier-per-km-fee"
+                                                            bind:value={
+                                                                form.store_courier_per_km_fee
+                                                            }
+                                                            label="Biaya per Kilometer"
+                                                            placeholder="Contoh: 3000"
+                                                            required={true}
+                                                        />
                                                         <Input
                                                             id="input-store-courier-max-radius"
                                                             type="number"
@@ -2639,165 +2511,340 @@
                                                             required={true}
                                                         />
                                                     </div>
+                                                {:else if form.store_courier_type === 'radius_tiered'}
+                                                    <div class="space-y-4">
+                                                        <div
+                                                            class="flex justify-between items-center"
+                                                        >
+                                                            <span
+                                                                class="text-xs font-bold text-slate-500 uppercase tracking-wider block"
+                                                            >
+                                                                Aturan Jarak &
+                                                                Biaya
+                                                                (Bertingkat)
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                onclick={addCourierTier}
+                                                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition flex items-center gap-1 cursor-pointer font-sans"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-plus"
+                                                                ></i> Tambah Tingkatan
+                                                            </button>
+                                                        </div>
+
+                                                        {#if form.store_courier_tiered_rates.length === 0}
+                                                            <div
+                                                                class="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-white font-sans"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-info-circle text-slate-300 text-2xl mb-1.5 block"
+                                                                ></i>
+                                                                <span
+                                                                    class="text-[11px] font-bold text-slate-500"
+                                                                    >Belum Ada
+                                                                    Aturan
+                                                                    Tingkatan</span
+                                                                >
+                                                                <p
+                                                                    class="text-[9px] text-slate-400 mt-0.5 leading-none"
+                                                                >
+                                                                    Klik "+
+                                                                    Tambah
+                                                                    Tingkatan"
+                                                                    untuk
+                                                                    membuat
+                                                                    aturan baru.
+                                                                </p>
+                                                            </div>
+                                                        {:else}
+                                                            <div
+                                                                class="space-y-3 font-sans"
+                                                            >
+                                                                {#each form.store_courier_tiered_rates as tier, index}
+                                                                    <div
+                                                                        class="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200/50 shadow-sm"
+                                                                        transition:slide
+                                                                    >
+                                                                        <div
+                                                                            class="flex-grow grid grid-cols-2 gap-3.5"
+                                                                        >
+                                                                            <div
+                                                                                class="space-y-1"
+                                                                            >
+                                                                                <span
+                                                                                    class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
+                                                                                    >Jarak
+                                                                                    Maksimal
+                                                                                    (Km)</span
+                                                                                >
+                                                                                <div
+                                                                                    class="relative"
+                                                                                >
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        min="0.1"
+                                                                                        step="0.1"
+                                                                                        bind:value={
+                                                                                            tier.max_distance
+                                                                                        }
+                                                                                        class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
+                                                                                        placeholder="Contoh: 5"
+                                                                                        required
+                                                                                    />
+                                                                                    <span
+                                                                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px] font-bold font-sans"
+                                                                                        >Km</span
+                                                                                    >
+                                                                                </div>
+                                                                            </div>
+                                                                            <div
+                                                                                class="space-y-1"
+                                                                            >
+                                                                                <span
+                                                                                    class="text-[9px] font-black text-slate-400 uppercase tracking-wider block"
+                                                                                    >Biaya
+                                                                                    Pengiriman</span
+                                                                                >
+                                                                                <div
+                                                                                    class="relative"
+                                                                                >
+                                                                                    <span
+                                                                                        class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold"
+                                                                                        >Rp</span
+                                                                                    >
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        min="0"
+                                                                                        bind:value={
+                                                                                            tier.fee
+                                                                                        }
+                                                                                        class="w-full pl-9 pr-3.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:outline-none transition font-sans"
+                                                                                        placeholder="Contoh: 10000"
+                                                                                        required
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onclick={() =>
+                                                                                removeCourierTier(
+                                                                                    index,
+                                                                                )}
+                                                                            class="p-2.5 text-rose-500 hover:bg-rose-50 rounded-xl transition self-end cursor-pointer"
+                                                                            title="Hapus Aturan"
+                                                                        >
+                                                                            <i
+                                                                                class="ti ti-trash text-sm"
+
+                                                                            ></i>
+                                                                        </button>
+                                                                    </div>
+                                                                {/each}
+                                                            </div>
+                                                        {/if}
+
+                                                        <div
+                                                            class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2"
+                                                        >
+                                                            <Input
+                                                                id="input-store-courier-max-radius"
+                                                                type="number"
+                                                                bind:value={
+                                                                    form.store_courier_max_radius
+                                                                }
+                                                                label="Radius Maksimal Pengiriman (Km)"
+                                                                placeholder="Contoh: 25"
+                                                                min="1"
+                                                                required={true}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                {/if}
+                                            </div>
+                                        {/if}
+                                    </div>
+
+                                    <div class="h-px bg-slate-100 my-2"></div>
+
+                                    <!-- Shipping Delivery Settings -->
+                                    <div class="space-y-2">
+                                        <Toggle
+                                            bind:checked={
+                                                form.shipping_delivery_enabled
+                                            }
+                                            label="Aktifkan Shipping Delivery API"
+                                            icon="ti-truck"
+                                        />
+                                        {#if form.shipping_delivery_enabled}
+                                            <div
+                                                class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                            >
+                                                <div class="space-y-1">
+                                                    <Input
+                                                        id="input-shipping-delivery-key"
+                                                        bind:value={
+                                                            form.shipping_delivery_key
+                                                        }
+                                                        label="Shipping Delivery API Key"
+                                                        placeholder="Masukkan Shipping Delivery API Key"
+                                                        required={!env_keys.shipping_delivery_key}
+                                                        readonly={env_keys.shipping_delivery_key}
+                                                    />
+                                                    {#if env_keys.shipping_delivery_key}
+                                                        <span
+                                                            class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50"
+                                                        >
+                                                            <i
+                                                                class="ti ti-lock text-xs"
+                                                            ></i> Ditentukan oleh
+                                                            .env
+                                                        </span>
+                                                    {/if}
                                                 </div>
-                                            {/if}
-                                        </div>
-                                    {/if}
-                                </div>
+                                            </div>
+                                        {/if}
+                                    </div>
 
-                                <div class="h-px bg-slate-100 my-2"></div>
+                                    <div class="h-px bg-slate-100 my-2"></div>
 
-                                <!-- Shipping Delivery Settings -->
-                                <div class="space-y-2">
-                                    <Toggle
-                                        bind:checked={
-                                            form.shipping_delivery_enabled
-                                        }
-                                        label="Aktifkan Shipping Delivery API"
-                                        icon="ti-truck"
-                                    />
-                                    {#if form.shipping_delivery_enabled}
-                                        <div
-                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
-                                        >
-                                            <div class="space-y-1">
+                                    <!-- Biteship Shipping Settings -->
+                                    <div class="space-y-2">
+                                        <Toggle
+                                            bind:checked={form.biteship_enabled}
+                                            label="Aktifkan Biteship Shipping API"
+                                            icon="ti-truck-delivery"
+                                        />
+                                        {#if form.biteship_enabled}
+                                            <div
+                                                class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                            >
                                                 <Input
-                                                    id="input-shipping-delivery-key"
+                                                    id="input-biteship-url"
                                                     bind:value={
-                                                        form.shipping_delivery_key
+                                                        form.biteship_url
                                                     }
-                                                    label="Shipping Delivery API Key"
-                                                    placeholder="Masukkan Shipping Delivery API Key"
-                                                    required={!env_keys.shipping_delivery_key}
-                                                    readonly={env_keys.shipping_delivery_key}
+                                                    label="Biteship Base URL"
+                                                    placeholder="Contoh: https://api.biteship.com/v1/"
+                                                    required={true}
                                                 />
-                                                {#if env_keys.shipping_delivery_key}
-                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
-                                                        <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
-                                                    </span>
-                                                {/if}
-                                            </div>
-                                        </div>
-                                    {/if}
-                                </div>
-
-                                <div class="h-px bg-slate-100 my-2"></div>
-
-                                 <!-- Biteship Shipping Settings -->
-                                 <div class="space-y-2">
-                                     <Toggle
-                                         bind:checked={form.biteship_enabled}
-                                         label="Aktifkan Biteship Shipping API"
-                                         icon="ti-truck-delivery"
-                                     />
-                                     {#if form.biteship_enabled}
-                                         <div
-                                             class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
-                                         >
-                                             <Input
-                                                 id="input-biteship-url"
-                                                 bind:value={form.biteship_url}
-                                                 label="Biteship Base URL"
-                                                 placeholder="Contoh: https://api.biteship.com/v1/"
-                                                 required={true}
-                                             />
-                                             <Input
-                                                 id="input-biteship-secret-key"
-                                                 bind:value={form.biteship_secret_key}
-                                                 label="Biteship Secret Key / Token"
-                                                 placeholder="biteship_live.xxx / biteship_test.xxx"
-                                                 required={true}
-                                             />
-                                         </div>
-                                     {/if}
-                                 </div>
-
-                                 <div class="h-px bg-slate-100 my-2"></div>
-
-                                <!-- Payment API Settings -->
-                                <div class="space-y-2">
-                                    <Toggle
-                                        bind:checked={form.payment_api_enabled}
-                                        label="Aktifkan Payment API"
-                                        icon="ti-credit-card"
-                                    />
-                                    {#if form.payment_api_enabled}
-                                        <div
-                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
-                                        >
-                                            <div class="space-y-1">
                                                 <Input
-                                                    id="input-payment-api-key"
+                                                    id="input-biteship-secret-key"
                                                     bind:value={
-                                                        form.payment_api_key
+                                                        form.biteship_secret_key
                                                     }
-                                                    label="Payment API Key"
-                                                    placeholder="Masukkan Payment API Key"
-                                                    required={!env_keys.payment_api_key}
-                                                    readonly={env_keys.payment_api_key}
+                                                    label="Biteship Secret Key / Token"
+                                                    placeholder="biteship_live.xxx / biteship_test.xxx"
+                                                    required={true}
                                                 />
-                                                {#if env_keys.payment_api_key}
-                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
-                                                        <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
-                                                    </span>
-                                                {/if}
                                             </div>
-                                            <InputCurrency
-                                                id="input-payment-api-admin-fee"
-                                                bind:value={
-                                                    form.payment_api_admin_fee
-                                                }
-                                                label="Biaya Admin Payment API"
-                                                placeholder="Contoh: 2500"
-                                                required={true}
-                                            />
-                                        </div>
-                                    {/if}
+                                        {/if}
+                                    </div>
+
+                                    <div class="h-px bg-slate-100 my-2"></div>
+
+                                    <!-- Payment API Settings -->
+                                    <div class="space-y-2">
+                                        <Toggle
+                                            bind:checked={
+                                                form.payment_api_enabled
+                                            }
+                                            label="Aktifkan Payment API"
+                                            icon="ti-credit-card"
+                                        />
+                                        {#if form.payment_api_enabled}
+                                            <div
+                                                class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                            >
+                                                <div class="space-y-1">
+                                                    <Input
+                                                        id="input-payment-api-key"
+                                                        bind:value={
+                                                            form.payment_api_key
+                                                        }
+                                                        label="Payment API Key"
+                                                        placeholder="Masukkan Payment API Key"
+                                                        required={!env_keys.payment_api_key}
+                                                        readonly={env_keys.payment_api_key}
+                                                    />
+                                                    {#if env_keys.payment_api_key}
+                                                        <span
+                                                            class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50"
+                                                        >
+                                                            <i
+                                                                class="ti ti-lock text-xs"
+                                                            ></i> Ditentukan oleh
+                                                            .env
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                                <InputCurrency
+                                                    id="input-payment-api-admin-fee"
+                                                    bind:value={
+                                                        form.payment_api_admin_fee
+                                                    }
+                                                    label="Biaya Admin Payment API"
+                                                    placeholder="Contoh: 2500"
+                                                    required={true}
+                                                />
+                                            </div>
+                                        {/if}
+                                    </div>
+
+                                    <div class="h-px bg-slate-100 my-2"></div>
+
+                                    <!-- QRISLY API Settings -->
+                                    <div class="space-y-2">
+                                        <Toggle
+                                            bind:checked={
+                                                form.qrisly_api_enabled
+                                            }
+                                            label="Aktifkan QRISLY API"
+                                            icon="ti-qrcode"
+                                        />
+                                        {#if form.qrisly_api_enabled}
+                                            <div
+                                                class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
+                                            >
+                                                <div class="space-y-1">
+                                                    <Input
+                                                        id="input-qrisly-api-key"
+                                                        bind:value={
+                                                            form.qrisly_api_key
+                                                        }
+                                                        label="QRISLY API Key"
+                                                        placeholder="Masukkan QRISLY API Key"
+                                                        required={!env_keys.qrisly_api_key}
+                                                        readonly={env_keys.qrisly_api_key}
+                                                    />
+                                                    {#if env_keys.qrisly_api_key}
+                                                        <span
+                                                            class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50"
+                                                        >
+                                                            <i
+                                                                class="ti ti-lock text-xs"
+                                                            ></i> Ditentukan oleh
+                                                            .env
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                                <InputCurrency
+                                                    id="input-qrisly-api-admin-fee"
+                                                    bind:value={
+                                                        form.qrisly_api_admin_fee
+                                                    }
+                                                    label="Biaya Admin QRISLY API"
+                                                    placeholder="Contoh: 1000"
+                                                    required={true}
+                                                />
+                                            </div>
+                                        {/if}
+                                    </div>
                                 </div>
 
-                                <div class="h-px bg-slate-100 my-2"></div>
-
-                                <!-- QRISLY API Settings -->
-                                <div class="space-y-2">
-                                    <Toggle
-                                        bind:checked={form.qrisly_api_enabled}
-                                        label="Aktifkan QRISLY API"
-                                        icon="ti-qrcode"
-                                    />
-                                    {#if form.qrisly_api_enabled}
-                                        <div
-                                            class="pl-6 border-l-2 border-slate-100 mt-2 space-y-2"
-                                        >
-                                            <div class="space-y-1">
-                                                <Input
-                                                    id="input-qrisly-api-key"
-                                                    bind:value={form.qrisly_api_key}
-                                                    label="QRISLY API Key"
-                                                    placeholder="Masukkan QRISLY API Key"
-                                                    required={!env_keys.qrisly_api_key}
-                                                    readonly={env_keys.qrisly_api_key}
-                                                />
-                                                {#if env_keys.qrisly_api_key}
-                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100/50">
-                                                        <i class="ti ti-lock text-xs"></i> Ditentukan oleh .env
-                                                    </span>
-                                                {/if}
-                                            </div>
-                                            <InputCurrency
-                                                id="input-qrisly-api-admin-fee"
-                                                bind:value={
-                                                    form.qrisly_api_admin_fee
-                                                }
-                                                label="Biaya Admin QRISLY API"
-                                                placeholder="Contoh: 1000"
-                                                required={true}
-                                            />
-                                        </div>
-                                    {/if}
-                                </div>
-                            </div>
-
-                            <div class="h-px bg-slate-100"></div>
+                                <div class="h-px bg-slate-100"></div>
                             {/if}
 
                             <div class="space-y-3.5">
@@ -3457,7 +3504,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </form>

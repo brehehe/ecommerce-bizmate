@@ -44,11 +44,18 @@
             alt: 'Flash Sale Promo',
             link: '#',
         },
-        popup_banner: popupBanner || {
+        popup_banner: popupBanner ? {
+            image: popupBanner.image || '',
+            alt: popupBanner.alt || 'Promo Spesial',
+            link: popupBanner.link || '#',
+            is_active: !!popupBanner.is_active,
+            orientation: popupBanner.orientation || 'portrait',
+        } : {
             image: '',
             alt: 'Promo Spesial',
             link: '#',
             is_active: false,
+            orientation: 'portrait',
         },
         hero_files: {} as Record<number, File>,
         side_files: {} as Record<number, File>,
@@ -93,6 +100,8 @@
         }
     }
 
+    let uploadErrors = $state<Record<string, string>>({});
+
     function validateImageOrientation(file: File, expected: 'landscape' | 'portrait'): Promise<boolean> {
         return new Promise((resolve) => {
             const img = new Image();
@@ -103,17 +112,14 @@
                 URL.revokeObjectURL(img.src);
                 
                 if (expected === 'landscape' && width <= height) {
-                    showToast('Gambar harus landscape (lebar > tinggi).', 'error');
                     resolve(false);
                 } else if (expected === 'portrait' && height <= width) {
-                    showToast('Gambar harus portrait (tinggi > lebar).', 'error');
                     resolve(false);
                 } else {
                     resolve(true);
                 }
             };
             img.onerror = () => {
-                showToast('Gagal memuat data gambar.', 'error');
                 resolve(false);
             };
         });
@@ -122,15 +128,19 @@
     async function handleHeroFileChange(index: number, e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
+        const key = `hero_${index}`;
+        delete uploadErrors[key];
+
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
             
             const isValid = await validateImageOrientation(file, 'landscape');
             if (!isValid) {
+                uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).';
                 target.value = '';
                 return;
             }
@@ -143,15 +153,19 @@
     async function handleSideFileChange(index: number, e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
+        const key = `side_${index}`;
+        delete uploadErrors[key];
+
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
 
             const isValid = await validateImageOrientation(file, 'portrait');
             if (!isValid) {
+                uploadErrors[key] = 'Gambar harus potret (tinggi > lebar).';
                 target.value = '';
                 return;
             }
@@ -164,15 +178,19 @@
     async function handleMiddleWideFileChange(e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
+        const key = 'middle_wide';
+        delete uploadErrors[key];
+
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
 
             const isValid = await validateImageOrientation(file, 'landscape');
             if (!isValid) {
+                uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).';
                 target.value = '';
                 return;
             }
@@ -185,15 +203,23 @@
     async function handlePopupFileChange(e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
+        const key = 'popup';
+        delete uploadErrors[key];
+
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                showToast('Ukuran gambar banner tidak boleh melebihi 2MB.', 'error');
+                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
 
-            const isValid = await validateImageOrientation(file, 'portrait');
+            const expectedOrientation = form.popup_banner.orientation || 'portrait';
+            const isValid = await validateImageOrientation(file, expectedOrientation);
             if (!isValid) {
+                const message = expectedOrientation === 'portrait' 
+                    ? 'Gambar harus potret (tinggi > lebar).' 
+                    : 'Gambar harus lanskap (lebar > tinggi).';
+                uploadErrors[key] = message;
                 target.value = '';
                 return;
             }
@@ -206,6 +232,7 @@
     function clearPopupBanner() {
         form.popup_banner.image = '';
         form.popup_file = null;
+        delete uploadErrors['popup'];
     }
 
     function submit() {
@@ -374,6 +401,12 @@
                                                 >
                                             </label>
                                         {/if}
+                                        {#if uploadErrors[`hero_${index}`] || form.errors[`hero_files.${index}`]}
+                                            <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg">
+                                                <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
+                                                <span>{uploadErrors[`hero_${index}`] || form.errors[`hero_files.${index}`]}</span>
+                                            </div>
+                                        {/if}
                                     </div>
 
                                     <!-- Fields -->
@@ -518,6 +551,12 @@
                                                 >
                                             </label>
                                         {/if}
+                                        {#if uploadErrors[`side_${index}`] || form.errors[`side_files.${index}`]}
+                                            <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg">
+                                                <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
+                                                <span>{uploadErrors[`side_${index}`] || form.errors[`side_files.${index}`]}</span>
+                                            </div>
+                                        {/if}
                                     </div>
 
                                     <!-- Fields -->
@@ -635,6 +674,12 @@
                                         >
                                     </label>
                                 {/if}
+                                {#if uploadErrors['middle_wide'] || form.errors['middle_wide_file']}
+                                    <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg">
+                                        <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
+                                        <span>{uploadErrors['middle_wide'] || form.errors['middle_wide_file']}</span>
+                                    </div>
+                                {/if}
                             </div>
 
                             <!-- Fields -->
@@ -734,7 +779,7 @@
                             <div class="md:col-span-4">
                                 {#if form.popup_banner.image}
                                     <div
-                                        class="relative rounded-xl overflow-hidden aspect-square border border-slate-200 shadow-sm bg-white group/preview max-w-[150px] mx-auto md:mx-0"
+                                        class="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white group/preview max-w-[150px] mx-auto md:mx-0 {form.popup_banner.orientation === 'landscape' ? 'aspect-[16/9]' : 'aspect-[4/5]'}"
                                     >
                                         <img
                                             src={form.popup_banner.image}
@@ -755,7 +800,7 @@
                                     </div>
                                 {:else}
                                     <label
-                                        class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white aspect-square flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop max-w-[150px] mx-auto md:mx-0"
+                                        class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop max-w-[150px] mx-auto md:mx-0 {form.popup_banner.orientation === 'landscape' ? 'aspect-[16/9]' : 'aspect-[4/5]'}"
                                     >
                                         <input
                                             type="file"
@@ -772,10 +817,39 @@
                                         >
                                     </label>
                                 {/if}
+                                {#if uploadErrors['popup'] || form.errors['popup_file']}
+                                    <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg max-w-[150px] mx-auto md:mx-0">
+                                        <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
+                                        <span>{uploadErrors['popup'] || form.errors['popup_file']}</span>
+                                    </div>
+                                {/if}
                             </div>
 
                             <!-- Fields -->
                             <div class="md:col-span-8 space-y-3">
+                                <div>
+                                    <p
+                                        class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
+                                    >
+                                        Orientasi Gambar Popup
+                                    </p>
+                                    <div class="grid grid-cols-2 gap-3 mb-2">
+                                        <label class="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                                            <input type="radio" name="popup_orientation" value="portrait" bind:group={form.popup_banner.orientation} class="text-blue-600 focus:ring-blue-500" />
+                                            <div class="flex flex-col">
+                                                <span class="text-xs font-bold text-slate-800">Potret</span>
+                                                <span class="text-[9px] text-slate-400">Rasio 4:5 (Vertikal)</span>
+                                            </div>
+                                        </label>
+                                        <label class="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
+                                            <input type="radio" name="popup_orientation" value="landscape" bind:group={form.popup_banner.orientation} class="text-blue-600 focus:ring-blue-500" />
+                                            <div class="flex flex-col">
+                                                <span class="text-xs font-bold text-slate-800">Lanskap</span>
+                                                <span class="text-[9px] text-slate-400">Rasio 16:9 (Horizontal)</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                                 <div>
                                     <p
                                         class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1"
