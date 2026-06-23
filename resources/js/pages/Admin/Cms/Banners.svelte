@@ -44,19 +44,21 @@
             alt: 'Flash Sale Promo',
             link: '#',
         },
-        popup_banner: popupBanner ? {
-            image: popupBanner.image || '',
-            alt: popupBanner.alt || 'Promo Spesial',
-            link: popupBanner.link || '#',
-            is_active: !!popupBanner.is_active,
-            orientation: popupBanner.orientation || 'portrait',
-        } : {
-            image: '',
-            alt: 'Promo Spesial',
-            link: '#',
-            is_active: false,
-            orientation: 'portrait',
-        },
+        popup_banner: popupBanner
+            ? {
+                  image: popupBanner.image || '',
+                  alt: popupBanner.alt || 'Promo Spesial',
+                  link: popupBanner.link || '#',
+                  is_active: !!popupBanner.is_active,
+                  orientation: popupBanner.orientation || 'portrait',
+              }
+            : {
+                  image: '',
+                  alt: 'Promo Spesial',
+                  link: '#',
+                  is_active: false,
+                  orientation: 'portrait',
+              },
         hero_files: {} as Record<number, File>,
         side_files: {} as Record<number, File>,
         middle_wide_file: null as File | null,
@@ -102,7 +104,10 @@
 
     let uploadErrors = $state<Record<string, string>>({});
 
-    function validateImageOrientation(file: File, expected: 'landscape' | 'portrait'): Promise<boolean> {
+    function validateImageOrientation(
+        file: File,
+        expected: 'landscape' | 'portrait',
+    ): Promise<boolean> {
         return new Promise((resolve) => {
             const img = new Image();
             img.src = URL.createObjectURL(file);
@@ -110,7 +115,7 @@
                 const width = img.width;
                 const height = img.height;
                 URL.revokeObjectURL(img.src);
-                
+
                 if (expected === 'landscape' && width <= height) {
                     resolve(false);
                 } else if (expected === 'portrait' && height <= width) {
@@ -133,11 +138,12 @@
 
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
+                uploadErrors[key] =
+                    'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
-            
+
             const isValid = await validateImageOrientation(file, 'landscape');
             if (!isValid) {
                 uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).';
@@ -158,7 +164,8 @@
 
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
+                uploadErrors[key] =
+                    'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
@@ -183,7 +190,8 @@
 
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
+                uploadErrors[key] =
+                    'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
@@ -208,17 +216,23 @@
 
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                uploadErrors[key] = 'Ukuran gambar banner tidak boleh melebihi 2MB.';
+                uploadErrors[key] =
+                    'Ukuran gambar banner tidak boleh melebihi 2MB.';
                 target.value = '';
                 return;
             }
 
-            const expectedOrientation = form.popup_banner.orientation || 'portrait';
-            const isValid = await validateImageOrientation(file, expectedOrientation);
+            const expectedOrientation =
+                form.popup_banner.orientation || 'portrait';
+            const isValid = await validateImageOrientation(
+                file,
+                expectedOrientation,
+            );
             if (!isValid) {
-                const message = expectedOrientation === 'portrait' 
-                    ? 'Gambar harus potret (tinggi > lebar).' 
-                    : 'Gambar harus lanskap (lebar > tinggi).';
+                const message =
+                    expectedOrientation === 'portrait'
+                        ? 'Gambar harus potret (tinggi > lebar).'
+                        : 'Gambar harus lanskap (lebar > tinggi).';
                 uploadErrors[key] = message;
                 target.value = '';
                 return;
@@ -402,9 +416,20 @@
                                             </label>
                                         {/if}
                                         {#if uploadErrors[`hero_${index}`] || form.errors[`hero_files.${index}`]}
-                                            <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                                                <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
-                                                <span>{uploadErrors[`hero_${index}`] || form.errors[`hero_files.${index}`]}</span>
+                                            <div
+                                                class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
+                                            >
+                                                <i
+                                                    class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                                ></i>
+                                                <span
+                                                    >{uploadErrors[
+                                                        `hero_${index}`
+                                                    ] ||
+                                                        form.errors[
+                                                            `hero_files.${index}`
+                                                        ]}</span
+                                                >
                                             </div>
                                         {/if}
                                     </div>
@@ -552,9 +577,20 @@
                                             </label>
                                         {/if}
                                         {#if uploadErrors[`side_${index}`] || form.errors[`side_files.${index}`]}
-                                            <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                                                <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
-                                                <span>{uploadErrors[`side_${index}`] || form.errors[`side_files.${index}`]}</span>
+                                            <div
+                                                class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
+                                            >
+                                                <i
+                                                    class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                                ></i>
+                                                <span
+                                                    >{uploadErrors[
+                                                        `side_${index}`
+                                                    ] ||
+                                                        form.errors[
+                                                            `side_files.${index}`
+                                                        ]}</span
+                                                >
                                             </div>
                                         {/if}
                                     </div>
@@ -675,9 +711,18 @@
                                     </label>
                                 {/if}
                                 {#if uploadErrors['middle_wide'] || form.errors['middle_wide_file']}
-                                    <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                                        <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
-                                        <span>{uploadErrors['middle_wide'] || form.errors['middle_wide_file']}</span>
+                                    <div
+                                        class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
+                                    >
+                                        <i
+                                            class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                        ></i>
+                                        <span
+                                            >{uploadErrors['middle_wide'] ||
+                                                form.errors[
+                                                    'middle_wide_file'
+                                                ]}</span
+                                        >
                                     </div>
                                 {/if}
                             </div>
@@ -779,7 +824,11 @@
                             <div class="md:col-span-4">
                                 {#if form.popup_banner.image}
                                     <div
-                                        class="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white group/preview max-w-[150px] mx-auto md:mx-0 {form.popup_banner.orientation === 'landscape' ? 'aspect-[16/9]' : 'aspect-[4/5]'}"
+                                        class="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-white group/preview max-w-[150px] mx-auto md:mx-0 {form
+                                            .popup_banner.orientation ===
+                                        'landscape'
+                                            ? 'aspect-[16/9]'
+                                            : 'aspect-[4/5]'}"
                                     >
                                         <img
                                             src={form.popup_banner.image}
@@ -800,7 +849,11 @@
                                     </div>
                                 {:else}
                                     <label
-                                        class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop max-w-[150px] mx-auto md:mx-0 {form.popup_banner.orientation === 'landscape' ? 'aspect-[16/9]' : 'aspect-[4/5]'}"
+                                        class="rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white flex flex-col items-center justify-center cursor-pointer p-4 transition group/drop max-w-[150px] mx-auto md:mx-0 {form
+                                            .popup_banner.orientation ===
+                                        'landscape'
+                                            ? 'aspect-[16/9]'
+                                            : 'aspect-[4/5]'}"
                                     >
                                         <input
                                             type="file"
@@ -818,9 +871,16 @@
                                     </label>
                                 {/if}
                                 {#if uploadErrors['popup'] || form.errors['popup_file']}
-                                    <div class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg max-w-[150px] mx-auto md:mx-0">
-                                        <i class="ti ti-alert-circle text-xs shrink-0 mt-0.5"></i>
-                                        <span>{uploadErrors['popup'] || form.errors['popup_file']}</span>
+                                    <div
+                                        class="mt-2 text-[10px] font-bold text-rose-500 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg max-w-[150px] mx-auto md:mx-0"
+                                    >
+                                        <i
+                                            class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                        ></i>
+                                        <span
+                                            >{uploadErrors['popup'] ||
+                                                form.errors['popup_file']}</span
+                                        >
                                     </div>
                                 {/if}
                             </div>
@@ -834,18 +894,52 @@
                                         Orientasi Gambar Popup
                                     </p>
                                     <div class="grid grid-cols-2 gap-3 mb-2">
-                                        <label class="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
-                                            <input type="radio" name="popup_orientation" value="portrait" bind:group={form.popup_banner.orientation} class="text-blue-600 focus:ring-blue-500" />
+                                        <label
+                                            class="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="popup_orientation"
+                                                value="portrait"
+                                                bind:group={
+                                                    form.popup_banner
+                                                        .orientation
+                                                }
+                                                class="text-blue-600 focus:ring-blue-500"
+                                            />
                                             <div class="flex flex-col">
-                                                <span class="text-xs font-bold text-slate-800">Potret</span>
-                                                <span class="text-[9px] text-slate-400">Rasio 4:5 (Vertikal)</span>
+                                                <span
+                                                    class="text-xs font-bold text-slate-800"
+                                                    >Potret</span
+                                                >
+                                                <span
+                                                    class="text-[9px] text-slate-400"
+                                                    >Rasio 4:5 (Vertikal)</span
+                                                >
                                             </div>
                                         </label>
-                                        <label class="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition">
-                                            <input type="radio" name="popup_orientation" value="landscape" bind:group={form.popup_banner.orientation} class="text-blue-600 focus:ring-blue-500" />
+                                        <label
+                                            class="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="popup_orientation"
+                                                value="landscape"
+                                                bind:group={
+                                                    form.popup_banner
+                                                        .orientation
+                                                }
+                                                class="text-blue-600 focus:ring-blue-500"
+                                            />
                                             <div class="flex flex-col">
-                                                <span class="text-xs font-bold text-slate-800">Lanskap</span>
-                                                <span class="text-[9px] text-slate-400">Rasio 16:9 (Horizontal)</span>
+                                                <span
+                                                    class="text-xs font-bold text-slate-800"
+                                                    >Lanskap</span
+                                                >
+                                                <span
+                                                    class="text-[9px] text-slate-400"
+                                                    >Rasio 16:9 (Horizontal)</span
+                                                >
                                             </div>
                                         </label>
                                     </div>

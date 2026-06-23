@@ -3384,12 +3384,17 @@
 
                     const ctx = canvas.getContext('2d');
                     if (!ctx) {
-                        reject(new Error('Gagal mendapatkan 2D context canvas.'));
+                        reject(
+                            new Error('Gagal mendapatkan 2D context canvas.'),
+                        );
                         return;
                     }
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    const compressedDataUrl = canvas.toDataURL(
+                        'image/jpeg',
+                        0.7,
+                    );
                     resolve(compressedDataUrl);
                 };
                 img.onerror = (err) => reject(err);
@@ -3403,7 +3408,7 @@
     async function handlePhotoUpload(event) {
         const files = Array.from(event.target.files);
         try {
-            const promises = files.map(file => compressImageIfNeeded(file));
+            const promises = files.map((file) => compressImageIfNeeded(file));
             const results = await Promise.all(promises);
             uploadedPhotos = [...uploadedPhotos, ...results];
         } catch (error) {

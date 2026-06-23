@@ -4,7 +4,6 @@
     import { onMount, onDestroy } from 'svelte';
     import { showToast } from '@/utils/toast';
 
-
     let {
         chat = {
             id: 0,
@@ -49,7 +48,9 @@
         const groups: Record<string, any[]> = {};
         for (const s of stickersList) {
             const cat = s.category || 'Umum';
-            if (!groups[cat]) { groups[cat] = []; }
+            if (!groups[cat]) {
+                groups[cat] = [];
+            }
             groups[cat].push(s);
         }
         return groups;
@@ -57,17 +58,224 @@
 
     // Common emoji list
     const emojiList = [
-        '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙',
-        '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
-        '😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐',
-        '😕','😟','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','😈','👿','💀','☠️','💩',
-        '🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾',
-        '👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎',
-        '✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','👀','👁️',
-        '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️',
-        '⭐','🌟','✨','💫','🔥','💥','❄️','🌈','☁️','⛅','🌤️','🌥️','🌦️','🌧️','⛈️','🌩️','🌨️','🌊','💧','💦',
-        '🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🥦','🥕','🌽','🍕','🍔','🍟','🌮','🌯','🍜','🍱',
-        '🎁','🎂','🎉','🎊','🎈','🎀','🏆','🥇','🥈','🥉','🎖️','🏅','🎗️','🎟️','🎫','🎪','🎭','🎨','🎬','🎤',
+        '😀',
+        '😃',
+        '😄',
+        '😁',
+        '😆',
+        '😅',
+        '🤣',
+        '😂',
+        '🙂',
+        '🙃',
+        '😉',
+        '😊',
+        '😇',
+        '🥰',
+        '😍',
+        '🤩',
+        '😘',
+        '😗',
+        '☺️',
+        '😚',
+        '😙',
+        '😋',
+        '😛',
+        '😜',
+        '🤪',
+        '😝',
+        '🤑',
+        '🤗',
+        '🤭',
+        '🤫',
+        '🤔',
+        '🤐',
+        '🤨',
+        '😐',
+        '😑',
+        '😶',
+        '😏',
+        '😒',
+        '🙄',
+        '😬',
+        '🤥',
+        '😔',
+        '😪',
+        '🤤',
+        '😴',
+        '😷',
+        '🤒',
+        '🤕',
+        '🤢',
+        '🤮',
+        '🤧',
+        '🥵',
+        '🥶',
+        '🥴',
+        '😵',
+        '🤯',
+        '🤠',
+        '🥳',
+        '😎',
+        '🤓',
+        '🧐',
+        '😕',
+        '😟',
+        '🙁',
+        '☹️',
+        '😣',
+        '😖',
+        '😫',
+        '😩',
+        '🥺',
+        '😢',
+        '😭',
+        '😤',
+        '😠',
+        '😡',
+        '🤬',
+        '😈',
+        '👿',
+        '💀',
+        '☠️',
+        '💩',
+        '🤡',
+        '👹',
+        '👺',
+        '👻',
+        '👽',
+        '👾',
+        '🤖',
+        '😺',
+        '😸',
+        '😹',
+        '😻',
+        '😼',
+        '😽',
+        '🙀',
+        '😿',
+        '😾',
+        '👋',
+        '🤚',
+        '🖐️',
+        '✋',
+        '🖖',
+        '👌',
+        '🤌',
+        '🤏',
+        '✌️',
+        '🤞',
+        '🤟',
+        '🤘',
+        '🤙',
+        '👈',
+        '👉',
+        '👆',
+        '🖕',
+        '👇',
+        '☝️',
+        '👍',
+        '👎',
+        '✊',
+        '👊',
+        '🤛',
+        '🤜',
+        '👏',
+        '🙌',
+        '👐',
+        '🤲',
+        '🤝',
+        '🙏',
+        '💪',
+        '🦾',
+        '🦿',
+        '🦵',
+        '🦶',
+        '👂',
+        '🦻',
+        '👃',
+        '👀',
+        '👁️',
+        '❤️',
+        '🧡',
+        '💛',
+        '💚',
+        '💙',
+        '💜',
+        '🖤',
+        '🤍',
+        '🤎',
+        '💔',
+        '❣️',
+        '💕',
+        '💞',
+        '💓',
+        '💗',
+        '💖',
+        '💘',
+        '💝',
+        '💟',
+        '☮️',
+        '⭐',
+        '🌟',
+        '✨',
+        '💫',
+        '🔥',
+        '💥',
+        '❄️',
+        '🌈',
+        '☁️',
+        '⛅',
+        '🌤️',
+        '🌥️',
+        '🌦️',
+        '🌧️',
+        '⛈️',
+        '🌩️',
+        '🌨️',
+        '🌊',
+        '💧',
+        '💦',
+        '🍎',
+        '🍊',
+        '🍋',
+        '🍇',
+        '🍓',
+        '🍒',
+        '🍑',
+        '🥭',
+        '🍍',
+        '🥥',
+        '🥦',
+        '🥕',
+        '🌽',
+        '🍕',
+        '🍔',
+        '🍟',
+        '🌮',
+        '🌯',
+        '🍜',
+        '🍱',
+        '🎁',
+        '🎂',
+        '🎉',
+        '🎊',
+        '🎈',
+        '🎀',
+        '🏆',
+        '🥇',
+        '🥈',
+        '🥉',
+        '🎖️',
+        '🏅',
+        '🎗️',
+        '🎟️',
+        '🎫',
+        '🎪',
+        '🎭',
+        '🎨',
+        '🎬',
+        '🎤',
     ];
 
     function insertEmoji(emoji: string) {
@@ -160,7 +368,11 @@
 
                         // Reload Inertia props to update thread list & total unread count on sidebar
                         router.reload({
-                            only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
+                            only: [
+                                'chats',
+                                'totalUnread',
+                                'adminChatUnreadCount',
+                            ],
                             preserveScroll: true,
                         });
                     }
@@ -180,7 +392,11 @@
 
                     if (readChanged) {
                         router.reload({
-                            only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
+                            only: [
+                                'chats',
+                                'totalUnread',
+                                'adminChatUnreadCount',
+                            ],
                             preserveScroll: true,
                         });
                     }
@@ -193,7 +409,6 @@
             (window as any).Echo.leave(`chat.${chat.id}`);
         }
     }
-
 
     async function sendReply() {
         const text = replyInput.trim();
@@ -920,7 +1135,12 @@
                                                             '[STICKER]',
                                                             '',
                                                         )}
-                                                    {@const stickerData = stickersList.find((s: any) => s.id === stickerId)}
+                                                    {@const stickerData =
+                                                        stickersList.find(
+                                                            (s: any) =>
+                                                                s.id ===
+                                                                stickerId,
+                                                        )}
                                                     <div
                                                         class="relative py-1 select-none"
                                                     >
@@ -931,7 +1151,10 @@
                                                                 class="w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform hover:scale-105 duration-200"
                                                             />
                                                         {:else}
-                                                            <span class="text-2xl">✨</span>
+                                                            <span
+                                                                class="text-2xl"
+                                                                >✨</span
+                                                            >
                                                         {/if}
                                                     </div>
                                                 {:else}
@@ -1032,7 +1255,8 @@
                                 </button>
 
                                 <button
-                                    onclick={() => (emojiPickerOpen = !emojiPickerOpen)}
+                                    onclick={() =>
+                                        (emojiPickerOpen = !emojiPickerOpen)}
                                     class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 border border-slate-200 transition cursor-pointer shrink-0"
                                     aria-label="Emoji"
                                     title="Sisipkan Emoji"
@@ -1320,10 +1544,16 @@
                     class="grid grid-cols-2 gap-4 py-2 flex-grow overflow-y-auto custom-scrollbar pb-6 sm:pb-0"
                 >
                     {#if stickersList.length === 0}
-                        <div class="col-span-2 py-10 text-center text-slate-400">
-                            <i class="ti ti-sticker text-4xl block mb-2 text-slate-200"></i>
+                        <div
+                            class="col-span-2 py-10 text-center text-slate-400"
+                        >
+                            <i
+                                class="ti ti-sticker text-4xl block mb-2 text-slate-200"
+                            ></i>
                             <p class="text-xs font-bold">Belum ada stiker.</p>
-                            <p class="text-[10px] text-slate-300 mt-1">Tambahkan di Master Data → Stiker Chat</p>
+                            <p class="text-[10px] text-slate-300 mt-1">
+                                Tambahkan di Master Data → Stiker Chat
+                            </p>
                         </div>
                     {:else}
                         {#each stickersList as sticker}
@@ -1365,10 +1595,14 @@
             <div
                 class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-5 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[60vh]"
             >
-                <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"></div>
+                <div
+                    class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+                ></div>
 
                 <div class="flex items-center justify-between mb-3 shrink-0">
-                    <h4 class="font-outfit font-black text-base text-slate-800 flex items-center gap-2">
+                    <h4
+                        class="font-outfit font-black text-base text-slate-800 flex items-center gap-2"
+                    >
                         <i class="ti ti-mood-smile text-amber-500"></i>
                         Emoji
                     </h4>
@@ -1397,4 +1631,3 @@
         </div>
     {/if}
 </AdminLayout>
-

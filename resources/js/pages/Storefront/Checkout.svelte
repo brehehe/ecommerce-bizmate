@@ -606,7 +606,9 @@
                 return acc;
             }
             const w =
-                (item.productVariant ?? item.product_variant)?.weight ?? item.product?.weight ?? 1000;
+                (item.productVariant ?? item.product_variant)?.weight ??
+                item.product?.weight ??
+                1000;
             return acc + w * item.quantity;
         }, 0),
     );
@@ -938,7 +940,9 @@
         const times: { name: string; endTime: Date }[] = [];
         const seen = new Set<string>();
         for (const item of cartItems as any[]) {
-            const src = (item.productVariant ?? item.product_variant ?? item.product) as any;
+            const src = (item.productVariant ??
+                item.product_variant ??
+                item.product) as any;
             if (src?.promo_end_time && src?.is_promo && src?.promo_type) {
                 const key = src.promo_end_time;
                 if (!seen.has(key)) {
@@ -1283,7 +1287,8 @@
                         <div class="divide-y divide-slate-100">
                             {#each cartItems as item}
                                 {@const product = item.product}
-                                {@const variant = item.productVariant ?? item.product_variant}
+                                {@const variant =
+                                    item.productVariant ?? item.product_variant}
                                 {@const imgUrl = getCartItemImage(item)}
                                 <div class="px-4 py-3.5">
                                     <div class="flex gap-3">
@@ -1528,13 +1533,21 @@
                                     <div
                                         class="mb-3 relative courier-select-container"
                                     >
-                                        <div class="flex items-center justify-between mb-2">
-                                            <p class="text-xs font-semibold text-slate-500">
+                                        <div
+                                            class="flex items-center justify-between mb-2"
+                                        >
+                                            <p
+                                                class="text-xs font-semibold text-slate-500"
+                                            >
                                                 Pilih Kurir
                                             </p>
                                             {#if totalWeightGrams > 0}
-                                                <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                                                    Berat: {(totalWeightGrams / 1000).toFixed(2)} kg ({totalWeightGrams.toLocaleString()}g)
+                                                <span
+                                                    class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full"
+                                                >
+                                                    Berat: {(
+                                                        totalWeightGrams / 1000
+                                                    ).toFixed(2)} kg ({totalWeightGrams.toLocaleString()}g)
                                                 </span>
                                             {/if}
                                         </div>
@@ -1647,7 +1660,8 @@
                                                             <span
                                                                 >{courierLabels[
                                                                     courier
-                                                                ] ?? courier.toUpperCase()}</span
+                                                                ] ??
+                                                                    courier.toUpperCase()}</span
                                                             >
                                                             {#if selectedCourier === courier}
                                                                 <i
@@ -1663,7 +1677,9 @@
                                                                 class="ti ti-search-off text-lg text-slate-300"
                                                             ></i>
                                                             <span
-                                                                >{searchCourierQuery ? `Kurir "${searchCourierQuery}" tidak ditemukan` : 'Semua kurir tidak tersedia untuk alamat ini'}</span
+                                                                >{searchCourierQuery
+                                                                    ? `Kurir "${searchCourierQuery}" tidak ditemukan`
+                                                                    : 'Semua kurir tidak tersedia untuk alamat ini'}</span
                                                             >
                                                         </div>
                                                     {/each}
@@ -1700,11 +1716,13 @@
                                         >
                                             <i
                                                 class="ti ti-alert-circle text-base"
-                                             ></i>
+                                            ></i>
                                             <span>{shippingError}</span>
                                         </div>
                                     {:else if shippingOptions.length > 0}
-                                        <div class="space-y-2 mt-3 max-h-[350px] overflow-y-auto scrollbar-thin pr-1">
+                                        <div
+                                            class="space-y-2 mt-3 max-h-[350px] overflow-y-auto scrollbar-thin pr-1"
+                                        >
                                             {#each shippingOptions as opt}
                                                 <button
                                                     onclick={() =>

@@ -5,8 +5,6 @@
     import { showToast } from '@/utils/toast';
     import OfflineDetector from '@/components/OfflineDetector.svelte';
 
-
-
     const shownFlashIds = new Set();
 
     let {
@@ -61,7 +59,8 @@
     }
     const auth = $derived(page.props.auth?.user);
     const isSuperAdmin = $derived(
-        page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin') || false
+        page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin') ||
+            false,
     );
     const storeName = $derived(
         (page.props as any).storeName ||
@@ -101,7 +100,9 @@
     let showInstallGuideModal = $state(false);
     let isIOS = $state(false);
 
-    const isPwaInstallEnabled = $derived((page.props as any).settings?.pwa_install_enabled !== false);
+    const isPwaInstallEnabled = $derived(
+        (page.props as any).settings?.pwa_install_enabled !== false,
+    );
 
     const cartCount = $derived((page.props as any).cartCount || 0);
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
@@ -126,27 +127,32 @@
 
     $effect(() => {
         if (auth && (window as any).Echo) {
-            const channel = (window as any).Echo.private(`user.${auth.id}`)
-                .listen('.notification.updated', (event: any) => {
-                    const data = event.data || {};
-                    let unreadChanged = false;
-                    if (data.chatUnreadCount !== undefined) {
-                        if ((page.props as any).chatUnreadCount !== data.chatUnreadCount) {
-                            unreadChanged = true;
-                        }
-                        (page.props as any).chatUnreadCount = data.chatUnreadCount;
+            const channel = (window as any).Echo.private(
+                `user.${auth.id}`,
+            ).listen('.notification.updated', (event: any) => {
+                const data = event.data || {};
+                let unreadChanged = false;
+                if (data.chatUnreadCount !== undefined) {
+                    if (
+                        (page.props as any).chatUnreadCount !==
+                        data.chatUnreadCount
+                    ) {
+                        unreadChanged = true;
                     }
-                    if (data.cartCount !== undefined) {
-                        (page.props as any).cartCount = data.cartCount;
-                    }
-                    if (data.customerNotifications !== undefined) {
-                        (page.props as any).customerNotifications = data.customerNotifications;
-                    }
+                    (page.props as any).chatUnreadCount = data.chatUnreadCount;
+                }
+                if (data.cartCount !== undefined) {
+                    (page.props as any).cartCount = data.cartCount;
+                }
+                if (data.customerNotifications !== undefined) {
+                    (page.props as any).customerNotifications =
+                        data.customerNotifications;
+                }
 
-                    if (unreadChanged && desktopChatOpen) {
-                        fetchChatList(true);
-                    }
-                });
+                if (unreadChanged && desktopChatOpen) {
+                    fetchChatList(true);
+                }
+            });
 
             return () => {
                 (window as any).Echo.leave(`user.${auth.id}`);
@@ -237,13 +243,14 @@
                             m.id < 0 &&
                             m.sender_type === newMsg.sender_type &&
                             m.sender_id === newMsg.sender_id &&
-                            (m.body === newMsg.body || m.attachment_type === newMsg.attachment_type)
+                            (m.body === newMsg.body ||
+                                m.attachment_type === newMsg.attachment_type),
                     );
 
                     if (optimisticIndex !== -1) {
                         // Replace the optimistic message with the real one
                         chatMessages = chatMessages.map((m, idx) =>
-                            idx === optimisticIndex ? newMsg : m
+                            idx === optimisticIndex ? newMsg : m,
                         );
                     } else {
                         // Append the message
@@ -271,7 +278,6 @@
             (window as any).Echo.leave(`chat.${activeChatId}`);
         }
     }
-
 
     let stickerModalOpen = $state(false);
     let emojiPickerOpen = $state(false);
@@ -548,7 +554,9 @@
             if (response.ok) {
                 const newMsg = await response.json();
                 // Check if the message was already added by the WebSocket listener
-                const alreadyExists = chatMessages.some((m) => m.id === newMsg.id);
+                const alreadyExists = chatMessages.some(
+                    (m) => m.id === newMsg.id,
+                );
                 if (alreadyExists) {
                     chatMessages = chatMessages.filter((m) => m.id !== tempId);
                 } else {
@@ -690,7 +698,9 @@
             if (response.ok) {
                 const newMsg = await response.json();
                 // Check if the message was already added by the WebSocket listener
-                const alreadyExists = chatMessages.some((m) => m.id === newMsg.id);
+                const alreadyExists = chatMessages.some(
+                    (m) => m.id === newMsg.id,
+                );
                 if (alreadyExists) {
                     chatMessages = chatMessages.filter((m) => m.id !== tempId);
                 } else {
@@ -762,7 +772,9 @@
             if (response.ok) {
                 const realMsg = await response.json();
                 // Check if the message was already added by the WebSocket listener
-                const alreadyExists = chatMessages.some((m) => m.id === realMsg.id);
+                const alreadyExists = chatMessages.some(
+                    (m) => m.id === realMsg.id,
+                );
                 if (alreadyExists) {
                     chatMessages = chatMessages.filter((m) => m.id !== tempId);
                 } else {
@@ -926,11 +938,14 @@
     });
 
     onMount(() => {
-        isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+        isIOS =
+            /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+            !(window as any).MSStream;
 
         if (!isPwaInstallEnabled) return;
 
-        const isDismissed = localStorage.getItem('pwa_install_prompt_dismissed') === 'true';
+        const isDismissed =
+            localStorage.getItem('pwa_install_prompt_dismissed') === 'true';
 
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
@@ -946,7 +961,10 @@
             localStorage.setItem('pwa_install_prompt_dismissed', 'true');
         };
 
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener(
+            'beforeinstallprompt',
+            handleBeforeInstallPrompt,
+        );
         window.addEventListener('appinstalled', handleAppInstalled);
 
         // Fallback display after a small delay if not dismissed and not already triggered
@@ -956,13 +974,19 @@
             }, 3000);
             return () => {
                 clearTimeout(timer);
-                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+                window.removeEventListener(
+                    'beforeinstallprompt',
+                    handleBeforeInstallPrompt,
+                );
                 window.removeEventListener('appinstalled', handleAppInstalled);
             };
         }
 
         return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener(
+                'beforeinstallprompt',
+                handleBeforeInstallPrompt,
+            );
             window.removeEventListener('appinstalled', handleAppInstalled);
         };
     });
@@ -1314,7 +1338,10 @@
                 </div>
 
                 <!-- Search bar (desktop) -->
-                <form onsubmit={handleSearch} class="flex-grow max-w-3xl lg:max-w-4xl mx-6">
+                <form
+                    onsubmit={handleSearch}
+                    class="flex-grow max-w-3xl lg:max-w-4xl mx-6"
+                >
                     <div class="relative">
                         <input
                             type="text"
@@ -1343,7 +1370,9 @@
                             aria-label="Poin Saya"
                         >
                             <i class="ti ti-coins text-xl"></i>
-                            <span class="text-[9px] font-bold text-white/80 mt-0.5">
+                            <span
+                                class="text-[9px] font-bold text-white/80 mt-0.5"
+                            >
                                 {#if auth}
                                     {formatNumber(auth.coins_balance || 0)} Poin
                                 {:else}
@@ -4099,11 +4128,20 @@
         class="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 max-w-sm bg-white/95 backdrop-blur-md border border-slate-100 rounded-2xl shadow-xl p-4 z-[99999] flex items-center gap-3 animate-in slide-in-from-bottom duration-300"
     >
         <!-- Store Icon -->
-        <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 shadow-2xs">
+        <div
+            class="w-12 h-12 rounded-xl overflow-hidden bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 shadow-2xs"
+        >
             {#if storeIcon}
-                <img src={formatMiniChatImagePath(storeIcon)} alt={storeAppName} class="w-full h-full object-cover" />
+                <img
+                    src={formatMiniChatImagePath(storeIcon)}
+                    alt={storeAppName}
+                    class="w-full h-full object-cover"
+                />
             {:else}
-                <div class="w-full h-full flex items-center justify-center text-white font-black text-lg" style="background-color: {primary};">
+                <div
+                    class="w-full h-full flex items-center justify-center text-white font-black text-lg"
+                    style="background-color: {primary};"
+                >
                     {storeAppName.charAt(0).toUpperCase()}
                 </div>
             {/if}
@@ -4111,8 +4149,16 @@
 
         <!-- Content -->
         <div class="flex-grow min-w-0">
-            <h4 class="font-outfit font-black text-xs text-slate-800 leading-tight">Instal Aplikasi {storeAppName}</h4>
-            <p class="text-[10px] text-slate-500 font-medium leading-normal mt-0.5">Tambahkan ke layar utama untuk akses cepat dan nyaman!</p>
+            <h4
+                class="font-outfit font-black text-xs text-slate-800 leading-tight"
+            >
+                Instal Aplikasi {storeAppName}
+            </h4>
+            <p
+                class="text-[10px] text-slate-500 font-medium leading-normal mt-0.5"
+            >
+                Tambahkan ke layar utama untuk akses cepat dan nyaman!
+            </p>
         </div>
 
         <!-- Actions -->
@@ -4150,10 +4196,16 @@
         <div
             class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-6 sm:p-8 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col"
         >
-            <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"></div>
+            <div
+                class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+            ></div>
 
-            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 shrink-0">
-                <h4 class="font-outfit font-black text-base text-slate-800 flex items-center gap-2">
+            <div
+                class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 shrink-0"
+            >
+                <h4
+                    class="font-outfit font-black text-base text-slate-800 flex items-center gap-2"
+                >
                     <i class="ti ti-download text-amber-500 text-lg"></i>
                     Petunjuk Instalasi
                 </h4>
@@ -4169,25 +4221,86 @@
             <div class="space-y-4 text-xs font-bold text-slate-600">
                 {#if isIOS}
                     <div class="flex gap-3 items-start">
-                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">1</span>
-                        <p class="leading-relaxed">Buka browser <span class="text-slate-800">Safari</span> pada iPhone/iPad Anda.</p>
+                        <span
+                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0"
+                            style="background-color: {withOpacity(
+                                primary,
+                                0.1,
+                            )}; color: {primary};">1</span
+                        >
+                        <p class="leading-relaxed">
+                            Buka browser <span class="text-slate-800"
+                                >Safari</span
+                            > pada iPhone/iPad Anda.
+                        </p>
                     </div>
                     <div class="flex gap-3 items-start">
-                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">2</span>
-                        <p class="leading-relaxed">Ketuk tombol <span class="text-slate-800">Bagikan</span> (icon kotak dengan panah atas <i class="ti ti-share text-base inline-block align-middle"></i>).</p>
+                        <span
+                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0"
+                            style="background-color: {withOpacity(
+                                primary,
+                                0.1,
+                            )}; color: {primary};">2</span
+                        >
+                        <p class="leading-relaxed">
+                            Ketuk tombol <span class="text-slate-800"
+                                >Bagikan</span
+                            >
+                            (icon kotak dengan panah atas
+                            <i
+                                class="ti ti-share text-base inline-block align-middle"
+                            ></i>).
+                        </p>
                     </div>
                     <div class="flex gap-3 items-start">
-                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">3</span>
-                        <p class="leading-relaxed">Geser ke bawah dan pilih opsi <span class="text-slate-800">"Tambahkan ke Layar Utama"</span> (Add to Home Screen).</p>
+                        <span
+                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0"
+                            style="background-color: {withOpacity(
+                                primary,
+                                0.1,
+                            )}; color: {primary};">3</span
+                        >
+                        <p class="leading-relaxed">
+                            Geser ke bawah dan pilih opsi <span
+                                class="text-slate-800"
+                                >"Tambahkan ke Layar Utama"</span
+                            > (Add to Home Screen).
+                        </p>
                     </div>
                 {:else}
                     <div class="flex gap-3 items-start">
-                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">1</span>
-                        <p class="leading-relaxed">Ketuk icon menu <span class="text-slate-800">titik tiga (<i class="ti ti-dots-vertical text-base inline-block align-middle"></i>)</span> di pojok kanan atas browser.</p>
+                        <span
+                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0"
+                            style="background-color: {withOpacity(
+                                primary,
+                                0.1,
+                            )}; color: {primary};">1</span
+                        >
+                        <p class="leading-relaxed">
+                            Ketuk icon menu <span class="text-slate-800"
+                                >titik tiga (<i
+                                    class="ti ti-dots-vertical text-base inline-block align-middle"
+                                ></i>)</span
+                            > di pojok kanan atas browser.
+                        </p>
                     </div>
                     <div class="flex gap-3 items-start">
-                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0" style="background-color: {withOpacity(primary, 0.1)}; color: {primary};">2</span>
-                        <p class="leading-relaxed">Pilih opsi <span class="text-slate-800">"Instal aplikasi"</span> atau <span class="text-slate-800">"Tambahkan ke Layar Utama"</span>.</p>
+                        <span
+                            class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] shrink-0"
+                            style="background-color: {withOpacity(
+                                primary,
+                                0.1,
+                            )}; color: {primary};">2</span
+                        >
+                        <p class="leading-relaxed">
+                            Pilih opsi <span class="text-slate-800"
+                                >"Instal aplikasi"</span
+                            >
+                            atau
+                            <span class="text-slate-800"
+                                >"Tambahkan ke Layar Utama"</span
+                            >.
+                        </p>
                     </div>
                 {/if}
             </div>
@@ -4196,7 +4309,10 @@
                 onclick={() => {
                     showInstallGuideModal = false;
                     showInstallBanner = false;
-                    localStorage.setItem('pwa_install_prompt_dismissed', 'true');
+                    localStorage.setItem(
+                        'pwa_install_prompt_dismissed',
+                        'true',
+                    );
                 }}
                 class="mt-6 w-full py-3 rounded-2xl text-xs font-black text-white transition active:scale-95 cursor-pointer shadow-xs text-center"
                 style="background-color: {primary};"
@@ -4216,13 +4332,19 @@
         title="Ke Panel Admin"
         aria-label="Panel Admin"
     >
-        <i class="ti ti-shield-check text-2xl transition-transform group-hover:scale-110"></i>
+        <i
+            class="ti ti-shield-check text-2xl transition-transform group-hover:scale-110"
+        ></i>
         <!-- Tooltip -->
-        <div class="absolute right-16 bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-slate-800">
+        <div
+            class="absolute right-16 bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-slate-800"
+        >
             Kembali ke Panel Admin
         </div>
         <!-- Pulse ring -->
-        <span class="absolute inset-0 rounded-full bg-violet-500/20 animate-ping pointer-events-none"></span>
+        <span
+            class="absolute inset-0 rounded-full bg-violet-500/20 animate-ping pointer-events-none"
+        ></span>
     </a>
 {/if}
 

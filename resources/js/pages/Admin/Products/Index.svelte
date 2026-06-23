@@ -422,7 +422,8 @@
     let submittingSingleDelete = $state(false);
 
     let selectAll = $derived(
-        selectedProducts.length === products.data.length && products.data.length > 0,
+        selectedProducts.length === products.data.length &&
+            products.data.length > 0,
     );
 
     function toggleSelectAll() {
@@ -449,21 +450,27 @@
     function executeSingleDelete() {
         if (!productToDelete) return;
         submittingSingleDelete = true;
-        router.delete(adminProductsDestroy.url({ product: productToDelete.id }), {
-            preserveScroll: true,
-            onSuccess: () => {
-                selectedProducts = selectedProducts.filter((id) => id !== productToDelete.id);
-                deleteSingleModalOpen = false;
-                productToDelete = null;
+        router.delete(
+            adminProductsDestroy.url({ product: productToDelete.id }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedProducts = selectedProducts.filter(
+                        (id) => id !== productToDelete.id,
+                    );
+                    deleteSingleModalOpen = false;
+                    productToDelete = null;
+                },
+                onError: (err) => {
+                    const first =
+                        Object.values(err)[0] || 'Gagal menghapus produk.';
+                    showToast(first, 'error');
+                },
+                onFinish: () => {
+                    submittingSingleDelete = false;
+                },
             },
-            onError: (err) => {
-                const first = Object.values(err)[0] || 'Gagal menghapus produk.';
-                showToast(first, 'error');
-            },
-            onFinish: () => {
-                submittingSingleDelete = false;
-            }
-        });
+        );
     }
 
     function executeBulkDelete() {
@@ -482,13 +489,15 @@
                     deleteBulkModalOpen = false;
                 },
                 onError: (err) => {
-                    const first = Object.values(err)[0] || 'Gagal menghapus produk terpilih.';
+                    const first =
+                        Object.values(err)[0] ||
+                        'Gagal menghapus produk terpilih.';
                     showToast(first, 'error');
                 },
                 onFinish: () => {
                     submittingBulkDelete = false;
-                }
-            }
+                },
+            },
         );
     }
 
@@ -785,8 +794,12 @@
                         class="px-6 py-4 bg-brand-blueLight/30 border-b border-slate-150 flex items-center justify-between gap-4 flex-wrap"
                     >
                         <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-slate-550 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5">
-                                <i class="ti ti-checkbox text-brand-blueRoyal text-sm"></i>
+                            <span
+                                class="text-xs font-bold text-slate-550 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5"
+                            >
+                                <i
+                                    class="ti ti-checkbox text-brand-blueRoyal text-sm"
+                                ></i>
                                 {selectedProducts.length} Produk Terpilih
                             </span>
                         </div>
@@ -882,13 +895,20 @@
                                     <tr
                                         class="table-row-hover transition {!product.active
                                             ? 'bg-slate-50/30'
-                                            : ''} {selectedProducts.includes(product.id) ? 'bg-brand-blueRoyal/5' : ''}"
+                                            : ''} {selectedProducts.includes(
+                                            product.id,
+                                        )
+                                            ? 'bg-brand-blueRoyal/5'
+                                            : ''}"
                                     >
                                         <td class="px-3 xl:px-4 py-4"
                                             ><input
                                                 type="checkbox"
-                                                checked={selectedProducts.includes(product.id)}
-                                                onchange={() => toggleSelect(product.id)}
+                                                checked={selectedProducts.includes(
+                                                    product.id,
+                                                )}
+                                                onchange={() =>
+                                                    toggleSelect(product.id)}
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             /></td
                                         >
@@ -1366,7 +1386,11 @@
                             {@const hasVariants =
                                 product.variants && product.variants.length > 0}
                             <div
-                                class="rounded-3xl border bg-white hover:shadow-card hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden relative group p-4 space-y-4 {selectedProducts.includes(product.id) ? 'ring-2 ring-brand-blueRoyal/30 border-brand-blueRoyal bg-brand-blueRoyal/[0.01]' : 'border-slate-200'}"
+                                class="rounded-3xl border bg-white hover:shadow-card hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden relative group p-4 space-y-4 {selectedProducts.includes(
+                                    product.id,
+                                )
+                                    ? 'ring-2 ring-brand-blueRoyal/30 border-brand-blueRoyal bg-brand-blueRoyal/[0.01]'
+                                    : 'border-slate-200'}"
                             >
                                 <!-- Image Container -->
                                 <div
@@ -1374,8 +1398,11 @@
                                 >
                                     <input
                                         type="checkbox"
-                                        checked={selectedProducts.includes(product.id)}
-                                        onchange={() => toggleSelect(product.id)}
+                                        checked={selectedProducts.includes(
+                                            product.id,
+                                        )}
+                                        onchange={() =>
+                                            toggleSelect(product.id)}
                                         class="absolute top-3 left-3 z-10 w-5 h-5 rounded-md border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 bg-white/95 shadow-soft cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
                                         aria-label={`Pilih ${product.name}`}
                                     />
@@ -3211,7 +3238,10 @@
                     Hapus {selectedProducts.length} Produk Terpilih?
                 </h4>
                 <p class="text-sm text-center text-slate-550 font-medium mb-8">
-                    Apakah Anda yakin ingin menghapus <strong>{selectedProducts.length} produk</strong> yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat dibatalkan.
+                    Apakah Anda yakin ingin menghapus <strong
+                        >{selectedProducts.length} produk</strong
+                    > yang terpilih secara permanen dari sistem? Tindakan ini tidak
+                    dapat dibatalkan.
                 </p>
                 <div class="flex items-center gap-3">
                     <button
@@ -3225,7 +3255,9 @@
                         disabled={submittingBulkDelete}
                         class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition cursor-pointer disabled:opacity-50"
                     >
-                        {submittingBulkDelete ? 'Memproses...' : 'Ya, Hapus Semua'}
+                        {submittingBulkDelete
+                            ? 'Memproses...'
+                            : 'Ya, Hapus Semua'}
                     </button>
                 </div>
             </div>

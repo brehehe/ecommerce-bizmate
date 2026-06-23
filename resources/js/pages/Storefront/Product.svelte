@@ -3007,9 +3007,7 @@
 
                         <!-- Desktop Live Calculation & Min Purchase Alert -->
                         {#if !hasVariations || fullySelected}
-                            <div
-                                class="py-2.5 flex items-center gap-5 mt-2"
-                            >
+                            <div class="py-2.5 flex items-center gap-5 mt-2">
                                 <span
                                     class="text-sm text-slate-500 w-28 shrink-0 font-medium"
                                     >Subtotal</span

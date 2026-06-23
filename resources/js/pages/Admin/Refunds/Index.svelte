@@ -91,25 +91,32 @@
 
     const selectableRefunds = $derived(
         (refunds?.data ?? []).filter(
-            (r: any) => r.status === 'menunggu_konfirmasi' || (r.status === 'disetujui' && r.refund_method === 'transfer')
-        )
+            (r: any) =>
+                r.status === 'menunggu_konfirmasi' ||
+                (r.status === 'disetujui' && r.refund_method === 'transfer'),
+        ),
     );
 
     const allSelected = $derived(
         selectableRefunds.length > 0 &&
-            selectedIds.length === selectableRefunds.length
+            selectedIds.length === selectableRefunds.length,
     );
 
     const countPendingConfirm = $derived(
         (refunds?.data ?? []).filter(
-            (r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_konfirmasi'
-        ).length
+            (r: any) =>
+                selectedIds.includes(r.id) &&
+                r.status === 'menunggu_konfirmasi',
+        ).length,
     );
 
     const countApprovedTransfer = $derived(
         (refunds?.data ?? []).filter(
-            (r: any) => selectedIds.includes(r.id) && r.status === 'disetujui' && r.refund_method === 'transfer'
-        ).length
+            (r: any) =>
+                selectedIds.includes(r.id) &&
+                r.status === 'disetujui' &&
+                r.refund_method === 'transfer',
+        ).length,
     );
 
     function toggleSelect(id: number) {
@@ -134,12 +141,20 @@
 
     function submitBulkApprove() {
         const pendingConfirmIds = (refunds?.data ?? [])
-            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_konfirmasi')
+            .filter(
+                (r: any) =>
+                    selectedIds.includes(r.id) &&
+                    r.status === 'menunggu_konfirmasi',
+            )
             .map((r: any) => r.id);
 
         if (pendingConfirmIds.length === 0) return;
 
-        if (!confirm(`Apakah Anda yakin ingin menyetujui ${pendingConfirmIds.length} pengajuan pembatalan secara massal?`)) {
+        if (
+            !confirm(
+                `Apakah Anda yakin ingin menyetujui ${pendingConfirmIds.length} pengajuan pembatalan secara massal?`,
+            )
+        ) {
             return;
         }
 
@@ -154,7 +169,9 @@
                 onSuccess: () => {
                     selectedIds = [];
                     bulkNotesAdmin = '';
-                    showToast('Pengajuan pembatalan berhasil disetujui secara massal.');
+                    showToast(
+                        'Pengajuan pembatalan berhasil disetujui secara massal.',
+                    );
                 },
                 onError: (err: any) => {
                     showToast(err.message || 'Terjadi kesalahan.', 'error');
@@ -162,18 +179,27 @@
                 onFinish: () => {
                     submittingBulkApprove = false;
                 },
-            }
+            },
         );
     }
 
     function submitBulkComplete() {
         const approvedTransferIds = (refunds?.data ?? [])
-            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'disetujui' && r.refund_method === 'transfer')
+            .filter(
+                (r: any) =>
+                    selectedIds.includes(r.id) &&
+                    r.status === 'disetujui' &&
+                    r.refund_method === 'transfer',
+            )
             .map((r: any) => r.id);
 
         if (approvedTransferIds.length === 0) return;
 
-        if (!confirm(`Apakah Anda yakin ingin menyelesaikan transfer refund untuk ${approvedTransferIds.length} transaksi secara massal?`)) {
+        if (
+            !confirm(
+                `Apakah Anda yakin ingin menyelesaikan transfer refund untuk ${approvedTransferIds.length} transaksi secara massal?`,
+            )
+        ) {
             return;
         }
 
@@ -194,7 +220,7 @@
                 onFinish: () => {
                     submittingBulkComplete = false;
                 },
-            }
+            },
         );
     }
 </script>
@@ -409,7 +435,8 @@
                                             checked={allSelected}
                                             onchange={toggleSelectAll}
                                             class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
-                                            disabled={selectableRefunds.length === 0}
+                                            disabled={selectableRefunds.length ===
+                                                0}
                                         />
                                     </th>
                                     <th class="py-5 px-4">No. Refund</th>
@@ -436,8 +463,11 @@
                                             {#if ref.status === 'menunggu_konfirmasi' || (ref.status === 'disetujui' && ref.refund_method === 'transfer')}
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedIds.includes(ref.id)}
-                                                    onchange={() => toggleSelect(ref.id)}
+                                                    checked={selectedIds.includes(
+                                                        ref.id,
+                                                    )}
+                                                    onchange={() =>
+                                                        toggleSelect(ref.id)}
                                                     class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
                                                 />
                                             {:else}

@@ -146,7 +146,8 @@
     }
 
     function confirmDelete(admin) {
-        const isAdminSuper = admin.roles && admin.roles.some((r) => r.name === 'Super Admin');
+        const isAdminSuper =
+            admin.roles && admin.roles.some((r) => r.name === 'Super Admin');
         if (isAdminSuper && superAdminCount <= 1) {
             showToast('Minimal harus tersisa satu Super Admin.', 'error');
             return;
@@ -171,13 +172,15 @@
                     deleteBulkModalOpen = false;
                 },
                 onError: (err) => {
-                    const first = Object.values(err)[0] || 'Gagal menghapus admin terpilih.';
+                    const first =
+                        Object.values(err)[0] ||
+                        'Gagal menghapus admin terpilih.';
                     showToast(first, 'error');
                 },
                 onFinish: () => {
                     submittingBulkDelete = false;
-                }
-            }
+                },
+            },
         );
     }
 
@@ -386,8 +389,12 @@
                         class="px-6 py-4 bg-brand-blueLight/30 border-b border-slate-150 flex items-center justify-between gap-4 flex-wrap"
                     >
                         <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-slate-550 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5">
-                                <i class="ti ti-checkbox text-brand-blueRoyal text-sm"></i>
+                            <span
+                                class="text-xs font-bold text-slate-550 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5"
+                            >
+                                <i
+                                    class="ti ti-checkbox text-brand-blueRoyal text-sm"
+                                ></i>
                                 {selectedAdmins.length} Admin Terpilih
                             </span>
                         </div>
@@ -857,7 +864,10 @@
                 Hapus {selectedAdmins.length} Admin Terpilih?
             </h4>
             <p class="text-sm text-center text-slate-550 font-medium mb-8">
-                Apakah Anda yakin ingin menghapus <strong>{selectedAdmins.length} admin</strong> yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus <strong
+                    >{selectedAdmins.length} admin</strong
+                > yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat
+                dibatalkan.
             </p>
             <div class="flex items-center gap-3">
                 <button

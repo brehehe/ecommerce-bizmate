@@ -522,41 +522,68 @@
     function translateBiteshipDesc(desc) {
         if (!desc) return '';
         const descLower = desc.toLowerCase();
-        
+
         if (descLower.includes('confirmed') && descLower.includes('notified')) {
             return 'Pesanan kurir terkonfirmasi. Kurir telah dinotifikasi untuk menjemput paket.';
         }
-        if (descLower.includes('allocated') && descLower.includes('ready to pick up')) {
+        if (
+            descLower.includes('allocated') &&
+            descLower.includes('ready to pick up')
+        ) {
             return 'Kurir telah dialokasikan dan bersiap untuk menjemput paket.';
         }
         if (descLower.includes('on the way to pick up')) {
             return 'Kurir sedang dalam perjalanan menuju lokasi penjemputan.';
         }
-        if (descLower.includes('picked') || descLower.includes('dijemput') || descLower.includes('diserahkan')) {
+        if (
+            descLower.includes('picked') ||
+            descLower.includes('dijemput') ||
+            descLower.includes('diserahkan')
+        ) {
             return 'Paket telah diambil oleh kurir.';
         }
-        if (descLower.includes('in transit') || descLower.includes('on the way to the destination')) {
+        if (
+            descLower.includes('in transit') ||
+            descLower.includes('on the way to the destination')
+        ) {
             return 'Paket sedang dalam perjalanan ke alamat penerima.';
         }
-        if (descLower.includes('dropping off') || descLower.includes('on the way to customer')) {
+        if (
+            descLower.includes('dropping off') ||
+            descLower.includes('on the way to customer')
+        ) {
             return 'Kurir sedang dalam perjalanan mengirimkan paket ke pelanggan.';
         }
-        if (descLower.includes('delivered') || descLower.includes('diterima') || descLower.includes('sampai')) {
+        if (
+            descLower.includes('delivered') ||
+            descLower.includes('diterima') ||
+            descLower.includes('sampai')
+        ) {
             return 'Paket telah berhasil diterima oleh penerima.';
         }
         if (descLower.includes('returned') || descLower.includes('kembali')) {
             return 'Paket berhasil dikembalikan ke pengirim.';
         }
-        if (descLower.includes('cancelled') || descLower.includes('batal') || descLower.includes('canceled')) {
+        if (
+            descLower.includes('cancelled') ||
+            descLower.includes('batal') ||
+            descLower.includes('canceled')
+        ) {
             return 'Pengiriman dibatalkan.';
         }
         if (descLower.includes('rejected') || descLower.includes('ditolak')) {
             return 'Pengiriman ditolak.';
         }
-        if (descLower.includes('courier not found') || descLower.includes('couriernotfound')) {
+        if (
+            descLower.includes('courier not found') ||
+            descLower.includes('couriernotfound')
+        ) {
             return 'Pengiriman dibatalkan karena tidak ada kurir yang tersedia.';
         }
-        if (descLower.includes('on hold') || descLower.includes('ditangguhkan')) {
+        if (
+            descLower.includes('on hold') ||
+            descLower.includes('ditangguhkan')
+        ) {
             return 'Pengiriman ditangguhkan sementara.';
         }
         if (descLower.includes('disposed')) {
@@ -576,10 +603,12 @@
             );
             const data = await resp.json();
             if (resp.ok && data.success) {
-                trackingTimeline = (data.history || []).map(step => ({
-                    ...step,
-                    desc: translateBiteshipDesc(step.desc)
-                })).reverse();
+                trackingTimeline = (data.history || [])
+                    .map((step) => ({
+                        ...step,
+                        desc: translateBiteshipDesc(step.desc),
+                    }))
+                    .reverse();
             } else {
                 trackingErr = data.error ?? 'Gagal memuat history tracking.';
             }
@@ -639,16 +668,22 @@
                 {
                     onSuccess: () => {
                         showPickupModal = false;
-                        showToast('Request pickup Biteship berhasil diproses.', 'success');
+                        showToast(
+                            'Request pickup Biteship berhasil diproses.',
+                            'success',
+                        );
                     },
                     onError: (err: any) => {
                         const first = Object.values(err)[0] as string;
-                        showToast(first ?? 'Gagal mengajukan request pickup.', 'error');
+                        showToast(
+                            first ?? 'Gagal mengajukan request pickup.',
+                            'error',
+                        );
                     },
                     onFinish: () => {
                         bookingLoading = false;
                     },
-                }
+                },
             );
             return;
         }
@@ -1574,7 +1609,7 @@
                             </div>
                         </div>
                     {:else if transaction.shipping_courier !== 'self_pickup' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier'}
-                        {#if (storeSettings.pickup_enabled !== false && (transaction.status !== 'batal' && transaction.status !== 'selesai')) || transaction.booking_code}
+                        {#if (storeSettings.pickup_enabled !== false && transaction.status !== 'batal' && transaction.status !== 'selesai') || transaction.booking_code}
                             <!-- Komerce/Biteship Shipping Delivery Dashboard -->
                             <div
                                 class="bg-white rounded-3xl border border-slate-200/80 shadow-card p-6"
@@ -1589,7 +1624,9 @@
                                             class="ti ti-truck text-lg"
                                             style="color:{primary}"
                                         ></i>
-                                        {biteshipEnabled ? 'Biteship Shipping' : 'Komerce Shipping'}
+                                        {biteshipEnabled
+                                            ? 'Biteship Shipping'
+                                            : 'Komerce Shipping'}
                                     </h3>
                                     {#if transaction.booking_code}
                                         <span
@@ -1612,7 +1649,9 @@
                                             class="text-xs text-slate-500 leading-relaxed"
                                         >
                                             Pesan kurir pengiriman secara
-                                            otomatis melalui integrasi {biteshipEnabled ? 'Biteship' : 'Komerce'}
+                                            otomatis melalui integrasi {biteshipEnabled
+                                                ? 'Biteship'
+                                                : 'Komerce'}
                                             Delivery.
                                         </p>
                                         <button
@@ -1708,7 +1747,9 @@
                                                     <i
                                                         class="ti ti-trash text-sm text-red-500"
                                                     ></i>
-                                                    Batalkan Booking {biteshipEnabled ? 'Biteship' : 'Komerce'}
+                                                    Batalkan Booking {biteshipEnabled
+                                                        ? 'Biteship'
+                                                        : 'Komerce'}
                                                 </button>
                                             {/if}
                                         </div>
@@ -1765,23 +1806,31 @@
                                                             >
                                                                 <div
                                                                     class="absolute -left-[16.5px] top-1 w-2 h-2 rounded-full border border-white"
-                                                                    class:bg-blue-600={idx === 0}
-                                                                    class:bg-slate-300={idx > 0}
-                                                                    class:shadow-[0_0_6px_rgba(37,99,235,0.4)]={idx === 0}
+                                                                    class:bg-blue-600={idx ===
+                                                                        0}
+                                                                    class:bg-slate-300={idx >
+                                                                        0}
+                                                                    class:shadow-[0_0_6px_rgba(37,99,235,0.4)]={idx ===
+                                                                        0}
                                                                 ></div>
                                                                 <div>
                                                                     <p
                                                                         class="text-[9px] font-bold"
-                                                                        class:text-blue-600={idx === 0}
-                                                                        class:text-slate-400={idx > 0}
+                                                                        class:text-blue-600={idx ===
+                                                                            0}
+                                                                        class:text-slate-400={idx >
+                                                                            0}
                                                                     >
                                                                         {step.date}
                                                                     </p>
                                                                     <p
                                                                         class="text-[11px] mt-0.5 leading-snug"
-                                                                        class:font-semibold={idx === 0}
-                                                                        class:text-slate-800={idx === 0}
-                                                                        class:text-slate-600={idx > 0}
+                                                                        class:font-semibold={idx ===
+                                                                            0}
+                                                                        class:text-slate-800={idx ===
+                                                                            0}
+                                                                        class:text-slate-600={idx >
+                                                                            0}
                                                                     >
                                                                         {step.desc}
                                                                     </p>

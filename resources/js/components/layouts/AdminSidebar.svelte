@@ -123,7 +123,10 @@
                 // 1. Try exact path match
                 for (const a of anchors) {
                     const htmlAnchor = a as HTMLAnchorElement;
-                    const path = htmlAnchor.pathname || new URL(htmlAnchor.href, window.location.origin).pathname;
+                    const path =
+                        htmlAnchor.pathname ||
+                        new URL(htmlAnchor.href, window.location.origin)
+                            .pathname;
                     if (path === currentPath) {
                         activeAnchor = htmlAnchor;
                         break;
@@ -134,7 +137,10 @@
                 if (!activeAnchor) {
                     for (const a of anchors) {
                         const htmlAnchor = a as HTMLAnchorElement;
-                        const path = htmlAnchor.pathname || new URL(htmlAnchor.href, window.location.origin).pathname;
+                        const path =
+                            htmlAnchor.pathname ||
+                            new URL(htmlAnchor.href, window.location.origin)
+                                .pathname;
                         if (
                             path &&
                             path !== '/admin' &&

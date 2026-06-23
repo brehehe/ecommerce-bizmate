@@ -50,7 +50,9 @@
 
     function toggleSelect(id: string) {
         if (selectedSocialMedia.includes(id)) {
-            selectedSocialMedia = selectedSocialMedia.filter((sId) => sId !== id);
+            selectedSocialMedia = selectedSocialMedia.filter(
+                (sId) => sId !== id,
+            );
         } else {
             selectedSocialMedia = [...selectedSocialMedia, id];
         }
@@ -261,13 +263,15 @@
                     deleteBulkModalOpen = false;
                 },
                 onError: (err) => {
-                    const first = Object.values(err)[0] || 'Gagal menghapus media sosial terpilih.';
+                    const first =
+                        Object.values(err)[0] ||
+                        'Gagal menghapus media sosial terpilih.';
                     showToast(first, 'error');
                 },
                 onFinish: () => {
                     submittingBulkDelete = false;
-                }
-            }
+                },
+            },
         );
     }
 
@@ -511,8 +515,12 @@
                         class="px-6 py-4 bg-brand-blueLight/30 border-b border-slate-150 flex items-center justify-between gap-4 flex-wrap"
                     >
                         <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-slate-555 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5">
-                                <i class="ti ti-checkbox text-brand-blueRoyal text-sm"></i>
+                            <span
+                                class="text-xs font-bold text-slate-555 bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-soft font-outfit uppercase tracking-wider flex items-center gap-1.5"
+                            >
+                                <i
+                                    class="ti ti-checkbox text-brand-blueRoyal text-sm"
+                                ></i>
                                 {selectedSocialMedia.length} Sosmed Terpilih
                             </span>
                         </div>
@@ -590,7 +598,9 @@
                                             ? 'opacity-40 bg-slate-50'
                                             : ''} {isDragOver
                                             ? 'bg-blue-50/40 border-t-2 border-t-blue-200'
-                                            : ''} {selectedSocialMedia.includes(item.id)
+                                            : ''} {selectedSocialMedia.includes(
+                                            item.id,
+                                        )
                                             ? 'bg-brand-blueRoyal/5'
                                             : ''}"
                                         draggable={true}
@@ -601,11 +611,17 @@
                                         ondrop={(e) => handleDrop(e, item.id)}
                                         ondragend={handleDragEnd}
                                     >
-                                        <td class="py-5 px-6 text-center" onclick={(e) => e.stopPropagation()}>
+                                        <td
+                                            class="py-5 px-6 text-center"
+                                            onclick={(e) => e.stopPropagation()}
+                                        >
                                             <input
                                                 type="checkbox"
-                                                checked={selectedSocialMedia.includes(item.id)}
-                                                onchange={() => toggleSelect(item.id)}
+                                                checked={selectedSocialMedia.includes(
+                                                    item.id,
+                                                )}
+                                                onchange={() =>
+                                                    toggleSelect(item.id)}
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             />
                                         </td>
@@ -1028,7 +1044,10 @@
                 Hapus {selectedSocialMedia.length} Sosmed Terpilih?
             </h4>
             <p class="text-sm text-center text-slate-555 font-medium mb-8">
-                Apakah Anda yakin ingin menghapus <strong>{selectedSocialMedia.length} akun media sosial</strong> yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus <strong
+                    >{selectedSocialMedia.length} akun media sosial</strong
+                > yang terpilih secara permanen dari sistem? Tindakan ini tidak dapat
+                dibatalkan.
             </p>
             <div class="flex items-center gap-3">
                 <button

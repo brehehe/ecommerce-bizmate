@@ -93,25 +93,30 @@
 
     const selectableReturns = $derived(
         (returns?.data ?? []).filter(
-            (r: any) => r.status === 'menunggu_review' || r.status === 'barang_dikirim_customer'
-        )
+            (r: any) =>
+                r.status === 'menunggu_review' ||
+                r.status === 'barang_dikirim_customer',
+        ),
     );
 
     const allSelected = $derived(
         selectableReturns.length > 0 &&
-            selectedIds.length === selectableReturns.length
+            selectedIds.length === selectableReturns.length,
     );
 
     const countPendingReview = $derived(
         (returns?.data ?? []).filter(
-            (r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_review'
-        ).length
+            (r: any) =>
+                selectedIds.includes(r.id) && r.status === 'menunggu_review',
+        ).length,
     );
 
     const countShipped = $derived(
         (returns?.data ?? []).filter(
-            (r: any) => selectedIds.includes(r.id) && r.status === 'barang_dikirim_customer'
-        ).length
+            (r: any) =>
+                selectedIds.includes(r.id) &&
+                r.status === 'barang_dikirim_customer',
+        ).length,
     );
 
     function toggleSelect(id: number) {
@@ -135,12 +140,20 @@
 
     function submitBulkApprove() {
         const pendingReviewIds = (returns?.data ?? [])
-            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'menunggu_review')
+            .filter(
+                (r: any) =>
+                    selectedIds.includes(r.id) &&
+                    r.status === 'menunggu_review',
+            )
             .map((r: any) => r.id);
 
         if (pendingReviewIds.length === 0) return;
 
-        if (!confirm(`Apakah Anda yakin ingin menyetujui ${pendingReviewIds.length} pengajuan retur secara massal?`)) {
+        if (
+            !confirm(
+                `Apakah Anda yakin ingin menyetujui ${pendingReviewIds.length} pengajuan retur secara massal?`,
+            )
+        ) {
             return;
         }
 
@@ -155,7 +168,9 @@
                 onSuccess: () => {
                     selectedIds = [];
                     bulkNotesAdmin = '';
-                    showToast('Pengajuan retur berhasil disetujui secara massal.');
+                    showToast(
+                        'Pengajuan retur berhasil disetujui secara massal.',
+                    );
                 },
                 onError: (err: any) => {
                     showToast(err.message || 'Terjadi kesalahan.', 'error');
@@ -163,7 +178,7 @@
                 onFinish: () => {
                     submittingBulkApprove = false;
                 },
-            }
+            },
         );
     }
 
@@ -178,7 +193,11 @@
 
     function submitBulkReceipt() {
         const shippedIds = (returns?.data ?? [])
-            .filter((r: any) => selectedIds.includes(r.id) && r.status === 'barang_dikirim_customer')
+            .filter(
+                (r: any) =>
+                    selectedIds.includes(r.id) &&
+                    r.status === 'barang_dikirim_customer',
+            )
             .map((r: any) => r.id);
 
         if (shippedIds.length === 0) return;
@@ -194,7 +213,9 @@
                 onSuccess: () => {
                     selectedIds = [];
                     showReceiptModal = false;
-                    showToast('Konfirmasi penerimaan barang berhasil diproses secara massal.');
+                    showToast(
+                        'Konfirmasi penerimaan barang berhasil diproses secara massal.',
+                    );
                 },
                 onError: (err: any) => {
                     showToast(err.message || 'Terjadi kesalahan.', 'error');
@@ -202,7 +223,7 @@
                 onFinish: () => {
                     submittingBulkReceipt = false;
                 },
-            }
+            },
         );
     }
 </script>
@@ -417,7 +438,8 @@
                                             checked={allSelected}
                                             onchange={toggleSelectAll}
                                             class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
-                                            disabled={selectableReturns.length === 0}
+                                            disabled={selectableReturns.length ===
+                                                0}
                                         />
                                     </th>
                                     <th class="py-5 px-4">No. Retur</th>
@@ -445,8 +467,11 @@
                                             {#if ret.status === 'menunggu_review' || ret.status === 'barang_dikirim_customer'}
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedIds.includes(ret.id)}
-                                                    onchange={() => toggleSelect(ret.id)}
+                                                    checked={selectedIds.includes(
+                                                        ret.id,
+                                                    )}
+                                                    onchange={() =>
+                                                        toggleSelect(ret.id)}
                                                     class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
                                                 />
                                             {:else}
@@ -607,24 +632,33 @@
         >
             <div class="p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2">
-                        <i class="ti ti-package-import text-xl" style="color:{secondary}"></i>
+                    <h3
+                        class="font-outfit font-black text-lg text-slate-800 flex items-center gap-2"
+                    >
+                        <i
+                            class="ti ti-package-import text-xl"
+                            style="color:{secondary}"
+                        ></i>
                         Penerimaan Barang Retur Massal
                     </h3>
                     <button
-                        onclick={() => showReceiptModal = false}
+                        onclick={() => (showReceiptModal = false)}
                         class="text-slate-400 hover:text-slate-600 transition"
                     >
                         <i class="ti ti-x text-lg"></i>
                     </button>
                 </div>
 
-                <p class="text-xs text-slate-500 font-bold mb-6 uppercase tracking-wider">
+                <p
+                    class="text-xs text-slate-500 font-bold mb-6 uppercase tracking-wider"
+                >
                     Konfirmasi penerimaan barang untuk {countShipped} retur terpilih.
                 </p>
 
                 <div class="space-y-4 mb-6">
-                    <p class="text-xs font-bold text-slate-700 uppercase tracking-widest font-outfit">
+                    <p
+                        class="text-xs font-bold text-slate-700 uppercase tracking-widest font-outfit"
+                    >
                         Tindakan Terhadap Stok:
                     </p>
                     <label
@@ -638,9 +672,14 @@
                             class="mt-0.5 rounded-full border-slate-300 text-slate-900 focus:ring-slate-500"
                         />
                         <div>
-                            <p class="text-xs font-black text-slate-800">Kembalikan ke Stok Aktif</p>
-                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">
-                                Menambah kuantitas produk kembali ke stok aktif yang dapat dijual.
+                            <p class="text-xs font-black text-slate-800">
+                                Kembalikan ke Stok Aktif
+                            </p>
+                            <p
+                                class="text-[11px] text-slate-400 font-medium mt-0.5"
+                            >
+                                Menambah kuantitas produk kembali ke stok aktif
+                                yang dapat dijual.
                             </p>
                         </div>
                     </label>
@@ -656,9 +695,14 @@
                             class="mt-0.5 rounded-full border-slate-300 text-slate-900 focus:ring-slate-500"
                         />
                         <div>
-                            <p class="text-xs font-black text-slate-800">Tulis Sebagai Rusak</p>
-                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">
-                                Barang rusak/tidak layak jual. Stok aktif produk tidak akan bertambah.
+                            <p class="text-xs font-black text-slate-800">
+                                Tulis Sebagai Rusak
+                            </p>
+                            <p
+                                class="text-[11px] text-slate-400 font-medium mt-0.5"
+                            >
+                                Barang rusak/tidak layak jual. Stok aktif produk
+                                tidak akan bertambah.
                             </p>
                         </div>
                     </label>
@@ -666,7 +710,7 @@
 
                 <div class="flex items-center gap-3">
                     <button
-                        onclick={() => showReceiptModal = false}
+                        onclick={() => (showReceiptModal = false)}
                         class="flex-1 py-3 rounded-2xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 transition uppercase tracking-wider font-outfit"
                     >
                         Batal

@@ -5,7 +5,6 @@
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
 
-
     let { chats = [], transactions = [] } = $props();
 
     const page = usePage();
@@ -143,7 +142,6 @@
             (window as any).Echo.leave(`chat.${activeChatId}`);
         }
     }
-
 
     function scrollToBottom() {
         const el = document.querySelector('.chat-messages-container');
@@ -321,17 +319,224 @@
 
     // Common emoji list
     const emojiList = [
-        '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙',
-        '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
-        '😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐',
-        '😕','😟','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','😈','👿','💀','☠️','💩',
-        '🤡','👹','👺','👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾',
-        '👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎',
-        '✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','👀','👁️',
-        '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️',
-        '⭐','🌟','✨','💫','🔥','💥','❄️','🌈','☁️','⛅','🌤️','🌥️','🌦️','🌧️','⛈️','🌩️','🌨️','🌊','💧','💦',
-        '🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥','🥦','🥕','🌽','🍕','🍔','🍟','🌮','🌯','🍜','🍱',
-        '🎁','🎂','🎉','🎊','🎈','🎀','🏆','🥇','🥈','🥉','🎖️','🏅','🎗️','🎟️','🎫','🎪','🎭','🎨','🎬','🎤',
+        '😀',
+        '😃',
+        '😄',
+        '😁',
+        '😆',
+        '😅',
+        '🤣',
+        '😂',
+        '🙂',
+        '🙃',
+        '😉',
+        '😊',
+        '😇',
+        '🥰',
+        '😍',
+        '🤩',
+        '😘',
+        '😗',
+        '☺️',
+        '😚',
+        '😙',
+        '😋',
+        '😛',
+        '😜',
+        '🤪',
+        '😝',
+        '🤑',
+        '🤗',
+        '🤭',
+        '🤫',
+        '🤔',
+        '🤐',
+        '🤨',
+        '😐',
+        '😑',
+        '😶',
+        '😏',
+        '😒',
+        '🙄',
+        '😬',
+        '🤥',
+        '😔',
+        '😪',
+        '🤤',
+        '😴',
+        '😷',
+        '🤒',
+        '🤕',
+        '🤢',
+        '🤮',
+        '🤧',
+        '🥵',
+        '🥶',
+        '🥴',
+        '😵',
+        '🤯',
+        '🤠',
+        '🥳',
+        '😎',
+        '🤓',
+        '🧐',
+        '😕',
+        '😟',
+        '🙁',
+        '☹️',
+        '😣',
+        '😖',
+        '😫',
+        '😩',
+        '🥺',
+        '😢',
+        '😭',
+        '😤',
+        '😠',
+        '😡',
+        '🤬',
+        '😈',
+        '👿',
+        '💀',
+        '☠️',
+        '💩',
+        '🤡',
+        '👹',
+        '👺',
+        '👻',
+        '👽',
+        '👾',
+        '🤖',
+        '😺',
+        '😸',
+        '😹',
+        '😻',
+        '😼',
+        '😽',
+        '🙀',
+        '😿',
+        '😾',
+        '👋',
+        '🤚',
+        '🖐️',
+        '✋',
+        '🖖',
+        '👌',
+        '🤌',
+        '🤏',
+        '✌️',
+        '🤞',
+        '🤟',
+        '🤘',
+        '🤙',
+        '👈',
+        '👉',
+        '👆',
+        '🖕',
+        '👇',
+        '☝️',
+        '👍',
+        '👎',
+        '✊',
+        '👊',
+        '🤛',
+        '🤜',
+        '👏',
+        '🙌',
+        '👐',
+        '🤲',
+        '🤝',
+        '🙏',
+        '💪',
+        '🦾',
+        '🦿',
+        '🦵',
+        '🦶',
+        '👂',
+        '🦻',
+        '👃',
+        '👀',
+        '👁️',
+        '❤️',
+        '🧡',
+        '💛',
+        '💚',
+        '💙',
+        '💜',
+        '🖤',
+        '🤍',
+        '🤎',
+        '💔',
+        '❣️',
+        '💕',
+        '💞',
+        '💓',
+        '💗',
+        '💖',
+        '💘',
+        '💝',
+        '💟',
+        '☮️',
+        '⭐',
+        '🌟',
+        '✨',
+        '💫',
+        '🔥',
+        '💥',
+        '❄️',
+        '🌈',
+        '☁️',
+        '⛅',
+        '🌤️',
+        '🌥️',
+        '🌦️',
+        '🌧️',
+        '⛈️',
+        '🌩️',
+        '🌨️',
+        '🌊',
+        '💧',
+        '💦',
+        '🍎',
+        '🍊',
+        '🍋',
+        '🍇',
+        '🍓',
+        '🍒',
+        '🍑',
+        '🥭',
+        '🍍',
+        '🥥',
+        '🥦',
+        '🥕',
+        '🌽',
+        '🍕',
+        '🍔',
+        '🍟',
+        '🌮',
+        '🌯',
+        '🍜',
+        '🍱',
+        '🎁',
+        '🎂',
+        '🎉',
+        '🎊',
+        '🎈',
+        '🎀',
+        '🏆',
+        '🥇',
+        '🥈',
+        '🥉',
+        '🎖️',
+        '🏅',
+        '🎗️',
+        '🎟️',
+        '🎫',
+        '🎪',
+        '🎭',
+        '🎨',
+        '🎬',
+        '🎤',
     ];
 
     function insertEmoji(emoji: string) {
@@ -961,35 +1166,45 @@
                                                         </button>
                                                     </div>
                                                 {/if}
+                                            {:else if msg.body.startsWith('[STICKER]')}
+                                                {@const stickerId =
+                                                    msg.body.replace(
+                                                        '[STICKER]',
+                                                        '',
+                                                    )}
+                                                {@const stickerData =
+                                                    stickersList.find(
+                                                        (s: any) =>
+                                                            s.id === stickerId,
+                                                    )}
+                                                <div
+                                                    class="relative py-1 select-none"
+                                                >
+                                                    {#if stickerData}
+                                                        <img
+                                                            src={stickerData.url}
+                                                            alt={stickerData.name}
+                                                            class="w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform hover:scale-105 duration-200"
+                                                        />
+                                                    {:else}
+                                                        <span class="text-2xl"
+                                                            >✨</span
+                                                        >
+                                                    {/if}
+                                                </div>
                                             {:else}
-                                                {#if msg.body.startsWith('[STICKER]')}
-                                                    {@const stickerId = msg.body.replace('[STICKER]', '')}
-                                                    {@const stickerData = stickersList.find((s: any) => s.id === stickerId)}
-                                                    <div class="relative py-1 select-none">
-                                                        {#if stickerData}
-                                                            <img
-                                                                src={stickerData.url}
-                                                                alt={stickerData.name}
-                                                                class="w-24 h-24 sm:w-28 sm:h-28 object-contain transition-transform hover:scale-105 duration-200"
-                                                            />
-                                                        {:else}
-                                                            <span class="text-2xl">✨</span>
-                                                        {/if}
-                                                    </div>
-                                                {:else}
-                                                    <div
-                                                        class="max-w-full break-words px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
-                                                        'user'
-                                                            ? 'rounded-tr-sm text-white'
-                                                            : 'rounded-tl-sm text-slate-800 bg-white'}"
-                                                        style="background-color: {msg.sender_type ===
-                                                        'user'
-                                                            ? primary
-                                                            : 'white'}; overflow-wrap: anywhere;"
-                                                    >
-                                                        {msg.body}
-                                                    </div>
-                                                {/if}
+                                                <div
+                                                    class="max-w-full break-words px-4 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm {msg.sender_type ===
+                                                    'user'
+                                                        ? 'rounded-tr-sm text-white'
+                                                        : 'rounded-tl-sm text-slate-800 bg-white'}"
+                                                    style="background-color: {msg.sender_type ===
+                                                    'user'
+                                                        ? primary
+                                                        : 'white'}; overflow-wrap: anywhere;"
+                                                >
+                                                    {msg.body}
+                                                </div>
                                             {/if}
                                         {/if}
                                     </div>
@@ -1068,7 +1283,8 @@
                                 </button>
 
                                 <button
-                                    onclick={() => (emojiPickerOpen = !emojiPickerOpen)}
+                                    onclick={() =>
+                                        (emojiPickerOpen = !emojiPickerOpen)}
                                     class="text-slate-400 hover:text-slate-600 w-10 h-10 flex items-center justify-center rounded-full transition hover:bg-slate-100 cursor-pointer shrink-0 {emojiPickerOpen
                                         ? 'bg-slate-100 text-slate-600'
                                         : ''}"
@@ -1161,8 +1377,6 @@
                                             >Stiker</span
                                         >
                                     </button>
-
-
                                 </div>
                             </div>
                         {/if}
@@ -1465,8 +1679,12 @@
                     class="grid grid-cols-2 gap-4 py-2 flex-grow overflow-y-auto custom-scrollbar pb-6 sm:pb-0"
                 >
                     {#if stickersList.length === 0}
-                        <div class="col-span-2 py-10 text-center text-slate-400">
-                            <i class="ti ti-sticker text-4xl block mb-2 text-slate-200"></i>
+                        <div
+                            class="col-span-2 py-10 text-center text-slate-400"
+                        >
+                            <i
+                                class="ti ti-sticker text-4xl block mb-2 text-slate-200"
+                            ></i>
                             <p class="text-xs font-bold">Belum ada stiker.</p>
                         </div>
                     {:else}
@@ -1509,10 +1727,14 @@
             <div
                 class="bg-white rounded-t-[2.25rem] sm:rounded-[2rem] p-5 max-w-sm w-full relative z-10 shadow-2xl animate-in fade-in slide-in-from-bottom sm:zoom-in duration-200 flex flex-col max-h-[60vh]"
             >
-                <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"></div>
+                <div
+                    class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-4 sm:hidden shrink-0"
+                ></div>
 
                 <div class="flex items-center justify-between mb-3 shrink-0">
-                    <h4 class="font-outfit font-black text-base text-slate-800 flex items-center gap-2">
+                    <h4
+                        class="font-outfit font-black text-base text-slate-800 flex items-center gap-2"
+                    >
                         <i class="ti ti-mood-smile text-amber-500"></i>
                         Emoji
                     </h4>
@@ -1541,4 +1763,3 @@
         </div>
     {/if}
 </StorefrontLayout>
-

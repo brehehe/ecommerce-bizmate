@@ -184,7 +184,10 @@
         const file = e.target.files[0];
         if (file) {
             if (file.size > 2 * 1024 * 1024) {
-                form.setError('image', 'Ukuran gambar tidak boleh lebih dari 2MB.');
+                form.setError(
+                    'image',
+                    'Ukuran gambar tidak boleh lebih dari 2MB.',
+                );
                 form.image = null;
                 imagePreview = null;
                 e.target.value = '';
@@ -195,7 +198,10 @@
             img.src = URL.createObjectURL(file);
             img.onload = () => {
                 if (img.height < img.width) {
-                    form.setError('image', 'Gambar harus memiliki rasio 1:1 (persegi) atau portrait (tinggi lebih besar atau sama dengan lebar).');
+                    form.setError(
+                        'image',
+                        'Gambar harus memiliki rasio 1:1 (persegi) atau portrait (tinggi lebih besar atau sama dengan lebar).',
+                    );
                     form.image = null;
                     imagePreview = null;
                     e.target.value = '';
@@ -241,11 +247,17 @@
     function submit() {
         if (form.media_type === 'image') {
             if (!isEditing && !form.image) {
-                form.setError('image', 'Gambar wajib diunggah saat tipe media visual adalah gambar.');
+                form.setError(
+                    'image',
+                    'Gambar wajib diunggah saat tipe media visual adalah gambar.',
+                );
                 return;
             }
             if (isEditing && !form.image && !imagePreview) {
-                form.setError('image', 'Gambar wajib diunggah saat tipe media visual adalah gambar.');
+                form.setError(
+                    'image',
+                    'Gambar wajib diunggah saat tipe media visual adalah gambar.',
+                );
                 return;
             }
         }
@@ -595,7 +607,10 @@
                             <div class="flex bg-slate-100 p-1 rounded-xl">
                                 <button
                                     type="button"
-                                    onclick={() => { form.media_type = 'icon'; form.clearErrors('image'); }}
+                                    onclick={() => {
+                                        form.media_type = 'icon';
+                                        form.clearErrors('image');
+                                    }}
                                     class="flex-1 py-2 text-xs font-bold rounded-lg transition {form.media_type ===
                                     'icon'
                                         ? 'bg-white text-brand-blueRoyal shadow-sm'
@@ -605,7 +620,10 @@
                                 </button>
                                 <button
                                     type="button"
-                                    onclick={() => { form.media_type = 'image'; form.clearErrors('image'); }}
+                                    onclick={() => {
+                                        form.media_type = 'image';
+                                        form.clearErrors('image');
+                                    }}
                                     class="flex-1 py-2 text-xs font-bold rounded-lg transition {form.media_type ===
                                     'image'
                                         ? 'bg-white text-brand-blueRoyal shadow-sm'
@@ -690,7 +708,9 @@
                                 <p
                                     class="block text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-outfit"
                                 >
-                                    Upload Gambar <span class="text-rose-500">*</span>
+                                    Upload Gambar <span class="text-rose-500"
+                                        >*</span
+                                    >
                                 </p>
                                 <div class="flex items-center gap-4">
                                     {#if imagePreview}
@@ -717,7 +737,8 @@
                                 <p
                                     class="text-[10px] text-slate-400 font-medium mt-2"
                                 >
-                                    Maksimal 2MB. Wajib rasio 1:1 (persegi) atau portrait (tinggi >= lebar).
+                                    Maksimal 2MB. Wajib rasio 1:1 (persegi) atau
+                                    portrait (tinggi >= lebar).
                                 </p>
                                 {#if form.errors.image}
                                     <p class="text-xs text-red-500 mt-1">

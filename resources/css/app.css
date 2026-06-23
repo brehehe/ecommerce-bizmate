@@ -30,11 +30,16 @@
 
 /* Custom SPA Progress Bar */
 #nprogress .bar {
-    background: linear-gradient(to right, var(--dynamic-primary, var(--color-brand-blueRoyal)), var(--dynamic-secondary, var(--color-brand-orange))) !important;
+    background: linear-gradient(
+        to right,
+        var(--dynamic-primary, var(--color-brand-blueRoyal)),
+        var(--dynamic-secondary, var(--color-brand-orange))
+    ) !important;
     height: 3px !important;
 }
 
 #nprogress .peg {
-    box-shadow: 0 0 10px var(--dynamic-secondary, var(--color-brand-orange)), 0 0 5px var(--dynamic-secondary, var(--color-brand-orange)) !important;
+    box-shadow:
+        0 0 10px var(--dynamic-secondary, var(--color-brand-orange)),
+        0 0 5px var(--dynamic-secondary, var(--color-brand-orange)) !important;
 }
-

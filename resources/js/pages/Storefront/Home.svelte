@@ -536,7 +536,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->
-    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0">
+    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3">
                 <!-- Main slider (left, 2/3 width) -->
@@ -553,19 +553,12 @@
                             class="absolute inset-0 transition-opacity duration-700 {i ===
                             activeHero
                                 ? 'opacity-100 z-10'
-                                : 'opacity-0 z-0'} w-full h-full text-left overflow-hidden flex items-center justify-center bg-slate-950"
+                                : 'opacity-0 z-0'} w-full h-full text-left"
                         >
-                            <!-- Blurred background of the same image to fill edges if ratio doesn't match -->
-                            <img
-                                src={banner.image}
-                                alt=""
-                                class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105 select-none pointer-events-none"
-                            />
-                            <!-- Main crisp image containing full visual without cut-off -->
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="relative z-10 max-w-full max-h-full object-contain"
+                                class="w-full h-full object-cover"
                             />
                         </button>
                     {/each}
@@ -614,19 +607,12 @@
                     {#each sideBanners as banner}
                         <button
                             onclick={() => (activeLightboxImage = banner.image)}
-                            class="flex-1 rounded-2xl overflow-hidden block bg-slate-950 aspect-[2.1/1] w-full relative text-left"
+                            class="flex-1 rounded-2xl overflow-hidden block bg-slate-100 aspect-[2.1/1] w-full relative text-left"
                         >
-                            <!-- Blurred background of the same image to fill edges if ratio doesn't match -->
-                            <img
-                                src={banner.image}
-                                alt=""
-                                class="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-105 select-none pointer-events-none"
-                            />
-                            <!-- Main crisp image containing full visual without cut-off -->
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="relative z-10 w-full h-full object-contain hover:scale-105 transition duration-300"
+                                class="w-full h-full object-cover hover:scale-105 transition duration-300"
                             />
                         </button>
                     {/each}
@@ -679,7 +665,10 @@
      SECTION 3: KATEGORI
 ═══════════════════════════════════════════════════ -->
     {#if categories.length > 0}
-        <section id="categories-section" class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
+        <section
+            id="categories-section"
+            class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8"
+        >
             <div
                 class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm"
             >
@@ -689,7 +678,10 @@
                         <h2
                             class="font-outfit font-bold text-base sm:text-lg text-slate-800 tracking-tight flex items-center gap-2"
                         >
-                            <i class="ti ti-layout-grid text-xl" style="color: {primary};"></i>
+                            <i
+                                class="ti ti-layout-grid text-xl"
+                                style="color: {primary};"
+                            ></i>
                             Kategori Pilihan
                         </h2>
                     </div>
@@ -1006,7 +998,10 @@
      SECTION 6: PRODUK TERLARIS
 ═══════════════════════════════════════════════════ -->
     {#if bestSellerProducts.length > 0}
-        <section id="bestsellers-section" class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
+        <section
+            id="bestsellers-section"
+            class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8"
+        >
             <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
                 <div
                     class="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-slate-100"
@@ -1015,7 +1010,10 @@
                         <h2
                             class="font-outfit font-bold text-base sm:text-lg text-slate-800 tracking-tight flex items-center gap-2"
                         >
-                            <i class="ti ti-trending-up text-xl" style="color: {primary};"></i>
+                            <i
+                                class="ti ti-trending-up text-xl"
+                                style="color: {primary};"
+                            ></i>
                             Produk Terlaris
                         </h2>
                     </div>
@@ -1028,7 +1026,9 @@
                         Lihat Semua <i class="ti ti-arrow-right text-xs"></i>
                     </Link>
                 </div>
-                <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
+                <div
+                    class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin"
+                >
                     <div
                         class="flex gap-4.5 {bestSellerProducts.length < 5
                             ? 'justify-start sm:justify-center w-full'
@@ -1041,10 +1041,12 @@
                             {@const price = isPromo
                                 ? product.promo_price
                                 : (product.product_price?.price ?? 0)}
-                            {@const originalPrice =
-                                isPromo ? product.original_price : 0}
-                            {@const discountPercentage =
-                                isPromo ? product.discount_percentage : 0}
+                            {@const originalPrice = isPromo
+                                ? product.original_price
+                                : 0}
+                            {@const discountPercentage = isPromo
+                                ? product.discount_percentage
+                                : 0}
                             {@const avgRating = product.avg_rating
                                 ? Number(product.avg_rating)
                                 : null}
@@ -1083,7 +1085,9 @@
                                         </span>
                                     {/if}
                                 </div>
-                                <div class="p-3 flex-1 flex flex-col justify-between">
+                                <div
+                                    class="p-3 flex-1 flex flex-col justify-between"
+                                >
                                     <div>
                                         <p
                                             class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 line-clamp-1"
@@ -1144,50 +1148,49 @@
         </section>
     {/if}
 
-    <!-- ═══════════════════════════════════════════════════
-     SECTION 7: BANNER WIDE (full width promo)
-═══════════════════════════════════════════════════ -->
     <section class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
         <div
-            class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:scale-[1.005] transition-all duration-300"
+            class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:scale-[1.005] transition-all duration-300 aspect-[3.5/1] sm:aspect-[4.5/1]"
         >
             {#if middleWide.link && middleWide.link !== '#'}
-                <Link
-                    href={middleWide.link}
-                    class="block w-full relative overflow-hidden"
-                >
+                <Link href={middleWide.link} class="block w-full">
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="w-full h-auto block hover:opacity-95 transition duration-300"
+                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
                     />
                 </Link>
             {:else}
                 <button
                     onclick={() => (activeLightboxImage = middleWide.image)}
-                    class="block w-full text-left relative overflow-hidden cursor-pointer"
+                    class="block w-full text-left"
                 >
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="w-full h-auto block hover:opacity-95 transition duration-300"
+                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
                     />
                 </button>
             {/if}
         </div>
     </section>
-
     <!-- ═══════════════════════════════════════════════════
      SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)
 ═══════════════════════════════════════════════════ -->
-    <section id="recommendations-section" class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
+    <section
+        id="recommendations-section"
+        class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8"
+    >
         <div class="max-w-6xl mx-auto bg-transparent shadow-none">
             <div class="flex items-center justify-between mb-4 px-1">
                 <div>
                     <h2
                         class="font-outfit font-bold text-base sm:text-lg text-slate-800 tracking-tight flex items-center gap-2"
                     >
-                        <i class="ti ti-sparkles text-xl animate-pulse" style="color: {primary};"></i>
+                        <i
+                            class="ti ti-sparkles text-xl animate-pulse"
+                            style="color: {primary};"
+                        ></i>
                         Rekomendasi Untukmu
                     </h2>
                     <p class="text-xs text-slate-400 font-medium mt-0.5">
@@ -1317,9 +1320,7 @@
                                                 <p
                                                     class="text-[10px] sm:text-xs text-slate-400 line-through font-normal mt-1"
                                                 >
-                                                    {formatPrice(
-                                                        originalPrice,
-                                                    )}
+                                                    {formatPrice(originalPrice)}
                                                 </p>
                                             {/if}
                                         </div>
@@ -1576,7 +1577,10 @@
         >
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
-                class="relative w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col group transition-all duration-300 {popupBanner.orientation === 'landscape' ? 'max-w-md' : 'max-w-sm'}"
+                class="relative w-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 flex flex-col group transition-all duration-300 {popupBanner.orientation ===
+                'landscape'
+                    ? 'max-w-md'
+                    : 'max-w-sm'}"
                 onclick={(e) => e.stopPropagation()}
                 transition:scale={{ duration: 400, start: 0.95 }}
             >
@@ -1593,7 +1597,10 @@
                 <Link
                     href={popupBanner.link || '#'}
                     onclick={() => (showPopup = false)}
-                    class="block w-full overflow-hidden bg-slate-100 relative {popupBanner.orientation === 'landscape' ? 'aspect-[16/9]' : 'aspect-[4/5]'}"
+                    class="block w-full overflow-hidden bg-slate-100 relative {popupBanner.orientation ===
+                    'landscape'
+                        ? 'aspect-[16/9]'
+                        : 'aspect-[4/5]'}"
                 >
                     <img
                         src={popupBanner.image}
