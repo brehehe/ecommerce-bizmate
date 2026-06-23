@@ -307,7 +307,7 @@
                         type="submit"
                         id="btn-kurir-login"
                         disabled={form.processing}
-                        class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white transition-all hover:shadow-xl hover:-translate-y-0.5 focus:outline-none focus:ring-4 disabled:opacity-70 disabled:hover:translate-y-0 uppercase tracking-wider active:scale-[0.98]"
+                        class="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white transition-all hover:shadow-xl focus:outline-none focus:ring-4 disabled:opacity-70 disabled:hover:translate-y-0 uppercase tracking-wider"
                         style="background: linear-gradient(135deg, {primaryColor}, #1e40af); font-family: 'Outfit', sans-serif;"
                     >
                         {#if form.processing}

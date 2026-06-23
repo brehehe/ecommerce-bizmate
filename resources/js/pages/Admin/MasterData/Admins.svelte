@@ -14,6 +14,8 @@
         users = { data: [], links: [], total: 0 },
         roles = [],
         filters = {},
+        superAdminCount = 0,
+        activeSuperAdminCount = 0,
     } = $props();
 
     // svelte-ignore state_referenced_locally
@@ -144,8 +146,9 @@
     }
 
     function confirmDelete(admin) {
-        if (admin.roles && admin.roles.some((r) => r.name === 'Super Admin')) {
-            showToast('Super Admin tidak dapat dihapus.', 'error');
+        const isAdminSuper = admin.roles && admin.roles.some((r) => r.name === 'Super Admin');
+        if (isAdminSuper && superAdminCount <= 1) {
+            showToast('Minimal harus tersisa satu Super Admin.', 'error');
             return;
         }
         itemToDelete = admin;
@@ -643,9 +646,9 @@
 
         <button
             onclick={() => admin && toggleStatus(admin)}
-            disabled={isSuperAdmin}
+            disabled={isSuperAdmin && isActive && activeSuperAdminCount <= 1}
             class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
-                {isSuperAdmin
+                {isSuperAdmin && isActive && activeSuperAdminCount <= 1
                 ? 'text-slate-300 cursor-not-allowed'
                 : isActive
                   ? 'text-amber-600 hover:bg-amber-50'
@@ -669,9 +672,9 @@
 
         <button
             onclick={() => admin && confirmDelete(admin)}
-            disabled={isSuperAdmin}
+            disabled={isSuperAdmin && superAdminCount <= 1}
             class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition text-left
-                {isSuperAdmin
+                {isSuperAdmin && superAdminCount <= 1
                 ? 'text-slate-300 cursor-not-allowed'
                 : 'text-rose-600 hover:bg-rose-50'}"
         >

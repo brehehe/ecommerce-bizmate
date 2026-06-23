@@ -106,29 +106,6 @@ class StorefrontController extends Controller
             ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
             ->values();
 
-        // If there are fewer than 10 best sellers, pad with latest active products
-        if ($bestSellerProducts->count() < 10) {
-            $excludeIds = $bestSellerProducts->pluck('id')->all();
-            $pad = Product::with([
-                'category',
-                'productPrice',
-                'productStock',
-                'images',
-                'variants.productPrice',
-                'variants.options',
-                'variants.productStock',
-                'variations.options',
-            ])
-                ->withAvg('reviews as avg_rating', 'rating')
-                ->withCount('reviews as review_count')
-                ->where('active', true)
-                ->whereNotIn('id', $excludeIds)
-                ->latest()
-                ->take(10 - $bestSellerProducts->count())
-                ->get();
-            $bestSellerProducts = $bestSellerProducts->concat($pad);
-        }
-
         $activeFlashSale = Promotion::with([
             'items.product.productPrice',
             'items.product.images',

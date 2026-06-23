@@ -57,6 +57,9 @@ class MasterDataController extends Controller
         // Roles for the dropdown when adding an admin (excluding Customer)
         $roles = Role::where('name', '!=', 'Customer')->get();
 
+        $superAdminCount = User::role('Super Admin')->count();
+        $activeSuperAdminCount = User::role('Super Admin')->where('is_active', true)->count();
+
         return Inertia::render('Admin/MasterData/Admins', [
             'users' => $admins,
             'roles' => $roles,
@@ -65,6 +68,8 @@ class MasterDataController extends Controller
                 'role' => $request->role,
                 'perPage' => $perPage,
             ],
+            'superAdminCount' => $superAdminCount,
+            'activeSuperAdminCount' => $activeSuperAdminCount,
         ]);
     }
 
@@ -103,6 +108,13 @@ class MasterDataController extends Controller
             'role' => 'required|string|exists:roles,name',
         ]);
 
+        if ($user->hasRole('Super Admin') && $validated['role'] !== 'Super Admin') {
+            $superAdminCount = User::role('Super Admin')->count();
+            if ($superAdminCount <= 1) {
+                return back()->withErrors(['role' => 'Role Super Admin tidak dapat diubah karena harus tersisa minimal satu Super Admin.']);
+            }
+        }
+
         $user->update([
             'name' => $validated['name'],
         ]);
@@ -123,7 +135,10 @@ class MasterDataController extends Controller
     public function destroyAdmin(User $user)
     {
         if ($user->hasRole('Super Admin')) {
-            return back()->with('error', 'Super Admin tidak dapat dihapus.');
+            $superAdminCount = User::role('Super Admin')->count();
+            if ($superAdminCount <= 1) {
+                return back()->with('error', 'Super Admin tidak dapat dihapus karena harus tersisa minimal satu Super Admin.');
+            }
         }
 
         if (auth()->id() === $user->id) {
@@ -141,7 +156,12 @@ class MasterDataController extends Controller
     public function toggleActiveAdmin(User $user)
     {
         if ($user->hasRole('Super Admin')) {
-            return back()->with('error', 'Status Super Admin tidak dapat diubah.');
+            if ($user->is_active) {
+                $activeSuperAdminCount = User::role('Super Admin')->where('is_active', true)->count();
+                if ($activeSuperAdminCount <= 1) {
+                    return back()->with('error', 'Status Super Admin tidak dapat dinonaktifkan karena harus tersisa minimal satu Super Admin aktif.');
+                }
+            }
         }
 
         $user->update(['is_active' => ! $user->is_active]);
@@ -823,14 +843,24 @@ class MasterDataController extends Controller
         $successCount = 0;
         $errors = [];
 
-        \DB::transaction(function () use ($ids, &$successCount, &$errors) {
+        $totalSuperAdmins = User::role('Super Admin')->count();
+        $superAdminsToDelete = User::whereIn('id', $ids)->role('Super Admin')->pluck('id')->toArray();
+        $mustKeepId = null;
+
+        if (count($superAdminsToDelete) >= $totalSuperAdmins && $totalSuperAdmins > 0) {
+            $mustKeepId = $superAdminsToDelete[0];
+        }
+
+        \DB::transaction(function () use ($ids, $mustKeepId, &$successCount, &$errors) {
             foreach ($ids as $id) {
                 $user = User::find($id);
                 if ($user) {
                     if ($user->hasRole('Super Admin')) {
-                        $errors[] = "Super Admin '{$user->name}' tidak dapat dihapus.";
+                        if ($user->id === $mustKeepId) {
+                            $errors[] = "Super Admin '{$user->name}' tidak dapat dihapus karena harus tersisa minimal satu Super Admin.";
 
-                        continue;
+                            continue;
+                        }
                     }
                     if (auth()->id() === $user->id) {
                         $errors[] = 'Anda tidak dapat menghapus akun Anda sendiri.';

@@ -60,6 +60,9 @@
         return `#${cleanHex}${alphaHex}`;
     }
     const auth = $derived(page.props.auth?.user);
+    const isSuperAdmin = $derived(
+        page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin') || false
+    );
     const storeName = $derived(
         (page.props as any).storeName ||
             (page.props as any).settings?.store_name ||
@@ -4202,6 +4205,25 @@
             </button>
         </div>
     </div>
+{/if}
+
+<!-- Floating Admin Panel Shortcut (Super Admin Only) -->
+{#if isSuperAdmin}
+    <a
+        href="/admin/master-data/admins"
+        class="fixed bottom-6 md:bottom-24 right-6 z-50 w-14 h-14 flex items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer group"
+        style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border: 2px solid rgba(255, 255, 255, 0.2);"
+        title="Ke Panel Admin"
+        aria-label="Panel Admin"
+    >
+        <i class="ti ti-shield-check text-2xl transition-transform group-hover:scale-110"></i>
+        <!-- Tooltip -->
+        <div class="absolute right-16 bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-md border border-slate-800">
+            Kembali ke Panel Admin
+        </div>
+        <!-- Pulse ring -->
+        <span class="absolute inset-0 rounded-full bg-violet-500/20 animate-ping pointer-events-none"></span>
+    </a>
 {/if}
 
 <OfflineDetector />

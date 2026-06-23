@@ -35,7 +35,7 @@ class LoginController extends Controller
             $request->session()->regenerate();
 
             if (! $user->hasRole('Customer')) {
-                return redirect()->intended('/admin/dashboard');
+                return redirect()->intended('/admin');
             }
 
             return redirect()->intended('/');
