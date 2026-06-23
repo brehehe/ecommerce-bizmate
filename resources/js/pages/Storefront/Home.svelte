@@ -1039,37 +1039,28 @@
                             : ''}"
                         style="width: max-content; min-width: 100%;"
                     >
-                        {#each bestSellerProducts.length > 0 ? bestSellerProducts : Array(8) as product, i}
-                            {@const isReal = bestSellerProducts.length > 0}
-                            {@const img = isReal ? getProductImage(product) : null}
-                            {@const isPromo = isReal && product.is_promo}
-                            {@const price = isReal
-                                ? isPromo
-                                    ? product.promo_price
-                                    : (product.product_price?.price ?? 0)
-                                : 0}
+                        {#each bestSellerProducts as product, i}
+                            {@const img = getProductImage(product)}
+                            {@const isPromo = product.is_promo}
+                            {@const price = isPromo
+                                ? product.promo_price
+                                : (product.product_price?.price ?? 0)}
                             {@const originalPrice =
-                                isReal && isPromo ? product.original_price : 0}
+                                isPromo ? product.original_price : 0}
                             {@const discountPercentage =
-                                isReal && isPromo ? product.discount_percentage : 0}
-                            {@const avgRating = isReal
-                                ? product.avg_rating
-                                    ? Number(product.avg_rating)
-                                    : null
+                                isPromo ? product.discount_percentage : 0}
+                            {@const avgRating = product.avg_rating
+                                ? Number(product.avg_rating)
                                 : null}
-                            {@const reviewCount = isReal
-                                ? (product.review_count ?? 0)
-                                : 0}
+                            {@const reviewCount = product.review_count ?? 0}
                             <Link
-                                href={isReal
-                                    ? `/products/${product.slug || product.id}`
-                                    : '#'}
+                                href={`/products/${product.slug || product.id}`}
                                 prefetch
                                 class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0 flex flex-col h-full"
                             >
                                 <div
                                     class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
-                                    >
+                                >
                                     {#if img}
                                         <img
                                             src={img}
@@ -1080,10 +1071,6 @@
                                                     '/noimage/image.png';
                                             }}
                                         />
-                                    {:else if !isReal}
-                                        <div
-                                            class="w-full h-full bg-slate-200 animate-pulse"
-                                        ></div>
                                     {:else}
                                         <img
                                             src="/noimage/image.png"
@@ -1091,7 +1078,7 @@
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
-                                    {#if isReal && isPromo && discountPercentage > 0}
+                                    {#if isPromo && discountPercentage > 0}
                                         <span
                                             class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md"
                                             style="background-color: {secondary};"
@@ -1101,82 +1088,59 @@
                                     {/if}
                                 </div>
                                 <div class="p-3 flex-1 flex flex-col">
-                                    {#if isReal}
-                                        <div>
-                                            <p
-                                                class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
-                                                style="color: {primary};"
-                                            >
-                                                {product.category?.name || 'PRODUK'}
-                                            </p>
-                                            <div
-                                                class="h-[2.5rem] overflow-hidden mb-1"
-                                            >
-                                                <p
-                                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                    style="color: #1e293b;"
-                                                >
-                                                    {product.name}
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-1 mt-1 h-4"
-                                            >
-                                                {#if avgRating !== null && reviewCount > 0}
-                                                    <i
-                                                        class="ti ti-star-filled text-amber-500 text-[10px]"
-                                                    ></i>
-                                                    <span
-                                                        class="text-[10px] text-slate-500 font-bold"
-                                                        >{avgRating.toFixed(
-                                                            1,
-                                                        )}</span
-                                                    >
-                                                    <span
-                                                        class="text-[10px] text-slate-400"
-                                                        >({reviewCount})</span
-                                                    >
-                                                    <!-- {:else}
-                                                    <span
-                                                        class="text-[10px] text-slate-400 italic"
-                                                        >Belum ada ulasan</span
-                                                    > -->
-                                                {/if}
-                                            </div>
-                                            <hr class="border-slate-100 my-2" />
-                                            <div class="mb-0">
-                                                <p
-                                                    class="text-sm sm:text-base font-black leading-tight"
-                                                    style="color: {secondary};"
-                                                >
-                                                    {formatPrice(price)}
-                                                </p>
-                                                {#if isPromo && originalPrice > price}
-                                                    <p
-                                                        class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
-                                                    >
-                                                        {formatPrice(originalPrice)}
-                                                    </p>
-                                                {/if}
-                                            </div>
-                                        </div>
-                                    {:else}
-                                        <div
-                                            class="space-y-1.5 animate-pulse flex-1 flex flex-col justify-between"
+                                    <div>
+                                        <p
+                                            class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
+                                            style="color: {primary};"
                                         >
-                                            <div class="space-y-1.5">
-                                                <div
-                                                    class="h-3 bg-slate-200 rounded w-full"
-                                                ></div>
-                                                <div
-                                                    class="h-3 bg-slate-200 rounded w-3/4"
-                                                ></div>
-                                            </div>
-                                            <div
-                                                class="h-8 bg-slate-200 rounded-xl w-full mt-2"
-                                            ></div>
+                                            {product.category?.name || 'PRODUK'}
+                                        </p>
+                                        <div
+                                            class="h-[2.5rem] overflow-hidden mb-1"
+                                        >
+                                            <p
+                                                class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                                style="color: #1e293b;"
+                                            >
+                                                {product.name}
+                                            </p>
                                         </div>
-                                    {/if}
+                                        <div
+                                            class="flex items-center gap-1 mt-1 h-4"
+                                        >
+                                            {#if avgRating !== null && reviewCount > 0}
+                                                <i
+                                                    class="ti ti-star-filled text-amber-500 text-[10px]"
+                                                ></i>
+                                                <span
+                                                    class="text-[10px] text-slate-500 font-bold"
+                                                    >{avgRating.toFixed(
+                                                        1,
+                                                    )}</span
+                                                >
+                                                <span
+                                                    class="text-[10px] text-slate-400"
+                                                    >({reviewCount})</span
+                                                >
+                                            {/if}
+                                        </div>
+                                        <hr class="border-slate-100 my-2" />
+                                        <div class="mb-0">
+                                            <p
+                                                class="text-sm sm:text-base font-black leading-tight"
+                                                style="color: {secondary};"
+                                            >
+                                                {formatPrice(price)}
+                                            </p>
+                                            {#if isPromo && originalPrice > price}
+                                                <p
+                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                >
+                                                    {formatPrice(originalPrice)}
+                                                </p>
+                                            {/if}
+                                        </div>
+                                    </div>
                                 </div>
                             </Link>
                         {/each}
