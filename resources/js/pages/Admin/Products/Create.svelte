@@ -3782,13 +3782,13 @@
                         </div>
                     </div>
                     <div class="space-y-4">
-                        <Input
+                        <!-- <Input
                             bind:value={form.summary}
                             id="summary"
                             label="Ringkasan Singkat"
                             placeholder="Satu kalimat tentang produk..."
                             error={form.errors.summary}
-                        />
+                        /> -->
                         <RichEditor
                             bind:value={form.description}
                             id="description"
