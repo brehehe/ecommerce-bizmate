@@ -8,6 +8,7 @@
         update as adminCategoriesUpdate,
         destroy as adminCategoriesDestroy,
         reorder as adminCategoriesReorder,
+        bulkDelete as adminCategoriesBulkDelete,
     } from '@/routes/admin/categories';
     import Input from '@/components/ui/Input.svelte';
 
@@ -159,6 +160,83 @@
     // Delete Modal State
     let deleteModalOpen = $state(false);
     let deleteCategoryId = $state(null);
+    let deleteBulkModalOpen = $state(false);
+    let submittingBulkDelete = $state(false);
+
+    // Checkbox state
+    let selectedCategories = $state<string[]>([]);
+    
+    // Get all category IDs (parents + children)
+    const allCategoryIds = $derived([
+        ...categories.map((c: any) => c.id),
+        ...categories.flatMap((c: any) => c.children?.map((sub: any) => sub.id) || []),
+    ]);
+
+    const selectAll = $derived(
+        selectedCategories.length === allCategoryIds.length &&
+            allCategoryIds.length > 0,
+    );
+
+    function toggleSelectAll() {
+        if (selectAll) {
+            selectedCategories = [];
+        } else {
+            selectedCategories = [...allCategoryIds];
+        }
+    }
+
+    function toggleSelect(id: string) {
+        const parentCat = categories.find((c: any) => c.id === id);
+        if (parentCat) {
+            if (selectedCategories.includes(id)) {
+                const childIds = parentCat.children?.map((c: any) => c.id) || [];
+                selectedCategories = selectedCategories.filter(
+                    (item) => item !== id && !childIds.includes(item)
+                );
+            } else {
+                const childIds = parentCat.children?.map((c: any) => c.id) || [];
+                selectedCategories = [...new Set([...selectedCategories, id, ...childIds])];
+            }
+        } else {
+            if (selectedCategories.includes(id)) {
+                selectedCategories = selectedCategories.filter((item) => item !== id);
+                const parent = categories.find((c: any) => c.children?.some((sub: any) => sub.id === id));
+                if (parent && selectedCategories.includes(parent.id)) {
+                    selectedCategories = selectedCategories.filter((item) => item !== parent.id);
+                }
+            } else {
+                selectedCategories = [...selectedCategories, id];
+            }
+        }
+    }
+
+    function executeBulkDelete() {
+        if (selectedCategories.length === 0) return;
+        submittingBulkDelete = true;
+        router.post(
+            adminCategoriesBulkDelete.url(),
+            {
+                ids: selectedCategories,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedCategories = [];
+                    deleteBulkModalOpen = false;
+                    showToast('Kategori terpilih berhasil dihapus!', 'success');
+                },
+                onError: (err: any) => {
+                    const first =
+                        Object.values(err || {})[0] ||
+                        'Gagal menghapus kategori terpilih.';
+                    showToast(first, 'error');
+                },
+                onFinish: () => {
+                    submittingBulkDelete = false;
+                },
+            },
+        );
+    }
 
     const form = useForm({
         _method: 'post',
@@ -381,6 +459,40 @@
                         </p>
                     </div>
 
+                    <!-- Bulk Actions Bar -->
+                    {#if categories.length > 0}
+                        <div class="flex items-center justify-between border-t border-b border-slate-100 py-3 bg-slate-50/20 px-4 rounded-xl -mx-4">
+                            <div class="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    checked={selectAll}
+                                    onchange={toggleSelectAll}
+                                    class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
+                                />
+                                <span class="text-xs font-bold text-slate-600 font-outfit uppercase tracking-wider">
+                                    Pilih Semua ({selectedCategories.length} terpilih)
+                                </span>
+                            </div>
+                            {#if selectedCategories.length > 0}
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        onclick={() => (selectedCategories = [])}
+                                        class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-555 font-bold rounded-lg text-[10px] transition uppercase tracking-wider font-outfit cursor-pointer bg-white"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        onclick={() => (deleteBulkModalOpen = true)}
+                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg text-[10px] transition shadow-md shadow-red-500/20 uppercase tracking-wider font-outfit flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <i class="ti ti-trash"></i>
+                                        Hapus Terpilih
+                                    </button>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+
                     <div
                         class="space-y-3"
                         use:sortable={{
@@ -396,6 +508,12 @@
                             >
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedCategories.includes(category.id)}
+                                            onchange={() => toggleSelect(category.id)}
+                                            class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
+                                        />
                                         <span class="text-slate-400 cursor-move"
                                             ><i
                                                 class="ti ti-grip-vertical text-lg"
@@ -465,6 +583,12 @@
                                                 <div
                                                     class="flex items-center gap-3"
                                                 >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedCategories.includes(sub.id)}
+                                                        onchange={() => toggleSelect(sub.id)}
+                                                        class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
+                                                    />
                                                     <span
                                                         class="text-slate-300 cursor-move-sub hover:text-slate-500 transition"
                                                         ><i
@@ -837,6 +961,53 @@
                         class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition"
                     >
                         Ya, Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Bulk Delete Confirmation Modal -->
+    {#if deleteBulkModalOpen}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+                class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                onclick={() => (deleteBulkModalOpen = false)}
+                onkeypress={() => (deleteBulkModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div
+                class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200"
+            >
+                <div
+                    class="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-3xl mb-5 mx-auto"
+                >
+                    <i class="ti ti-alert-triangle"></i>
+                </div>
+                <h4
+                    class="font-outfit font-black text-xl text-center text-slate-800 mb-2"
+                >
+                    Hapus {selectedCategories.length} Kategori Terpilih?
+                </h4>
+                <p class="text-sm text-center text-slate-500 font-medium mb-8">
+                    Data kategori yang terpilih beserta subkategori di bawahnya (jika ada)
+                    akan ikut terhapus secara permanen dan tidak dapat dikembalikan.
+                </p>
+                <div class="flex items-center gap-3">
+                    <button
+                        onclick={() => (deleteBulkModalOpen = false)}
+                        class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onclick={executeBulkDelete}
+                        disabled={submittingBulkDelete}
+                        class="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-500/30 transition cursor-pointer disabled:opacity-50"
+                    >
+                        {submittingBulkDelete ? 'Memproses...' : 'Ya, Hapus Semua'}
                     </button>
                 </div>
             </div>

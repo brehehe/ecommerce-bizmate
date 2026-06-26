@@ -128,9 +128,34 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
-        $category->delete();
+        \DB::transaction(function () use ($category) {
+            $category->children()->delete();
+            $category->delete();
+        });
 
         return back()->with('success', 'Kategori berhasil dihapus.');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:categories,id',
+        ]);
+
+        $ids = $request->input('ids');
+
+        \DB::transaction(function () use ($ids) {
+            foreach ($ids as $id) {
+                $category = Category::find($id);
+                if ($category) {
+                    $category->children()->delete();
+                    $category->delete();
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', 'Kategori terpilih berhasil dihapus.');
     }
 
     public function reorder(Request $request)

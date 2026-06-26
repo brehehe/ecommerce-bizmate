@@ -237,3 +237,50 @@ test('admin can update category with a square/portrait image', function () {
     expect($category->image)->not->toBeNull();
     expect($category->icon)->toBeNull();
 });
+
+test('admin can delete category and its subcategories are cascadingly soft-deleted', function () {
+    $admin = User::factory()->create();
+
+    $parent = Category::create([
+        'name' => 'Main Category',
+        'slug' => 'main-category',
+        'icon' => 'ti-folder',
+    ]);
+
+    $child = Category::create([
+        'name' => 'Sub Category',
+        'slug' => 'sub-category',
+        'icon' => 'ti-folder',
+        'parent_id' => $parent->id,
+    ]);
+
+    $response = $this->actingAs($admin)->delete(route('admin.categories.destroy', $parent));
+
+    $response->assertRedirect();
+    $this->assertSoftDeleted('categories', ['id' => $parent->id]);
+    $this->assertSoftDeleted('categories', ['id' => $child->id]);
+});
+
+test('admin can bulk delete categories', function () {
+    $admin = User::factory()->create();
+
+    $cat1 = Category::create([
+        'name' => 'Category 1',
+        'slug' => 'category-1',
+        'icon' => 'ti-folder',
+    ]);
+
+    $cat2 = Category::create([
+        'name' => 'Category 2',
+        'slug' => 'category-2',
+        'icon' => 'ti-folder',
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('admin.categories.bulk-delete'), [
+        'ids' => [$cat1->id, $cat2->id],
+    ]);
+
+    $response->assertRedirect();
+    $this->assertSoftDeleted('categories', ['id' => $cat1->id]);
+    $this->assertSoftDeleted('categories', ['id' => $cat2->id]);
+});

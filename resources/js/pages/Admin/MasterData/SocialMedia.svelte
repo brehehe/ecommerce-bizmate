@@ -749,7 +749,7 @@
 
 <!-- Add / Edit Modal -->
 {#if isModalOpen}
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
@@ -757,15 +757,15 @@
             onclick={closeModal}
         ></div>
         <div
-            class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg relative z-10 transform transition-all duration-300 overflow-hidden animate-in fade-in zoom-in duration-200"
+            class="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-lg relative z-10 transform transition-all duration-300 overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh] sm:max-h-[85vh]"
         >
             <!-- Modal Header -->
             <div
-                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0"
             >
                 <div class="flex items-center gap-3">
                     <div
-                        class="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+                        class="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0"
                         style="background-color: {getPlatformColor(
                             form.platform,
                         )};"
@@ -789,166 +789,169 @@
                 </button>
             </div>
 
-            <!-- Modal Body -->
-            <form onsubmit={saveSocialMedia} class="p-6 space-y-4">
-                <!-- Platform Selector -->
-                <div>
-                    <span
-                        class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
-                    >
-                        Platform <span class="text-red-500">*</span>
-                    </span>
-                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {#each platformOptions as opt}
-                            <button
-                                type="button"
-                                onclick={() => (form.platform = opt.id)}
-                                class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition text-xs font-bold {form.platform ===
-                                opt.id
-                                    ? 'border-transparent text-white shadow-lg scale-105'
-                                    : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-slate-50'}"
-                                style={form.platform === opt.id
-                                    ? `background-color: ${opt.color}; border-color: ${opt.color};`
-                                    : ''}
-                            >
-                                <i class="ti {opt.icon} text-xl"></i>
-                                <span
-                                    class="text-[10px] leading-tight text-center"
-                                    >{opt.name}</span
-                                >
-                            </button>
-                        {/each}
-                    </div>
-                    {#if form.errors.platform}
-                        <p class="text-xs text-red-500 mt-1">
-                            {form.errors.platform}
-                        </p>
-                    {/if}
-                </div>
-
-                <!-- Label -->
-                <Input
-                    id="input-social-label"
-                    bind:value={form.label}
-                    label="Label / Nama Tampil"
-                    placeholder="Contoh: Instagram Toko Kami"
-                    required={true}
-                    error={form.errors.label}
-                />
-
-                <!-- URL / Handle -->
-                <div>
-                    <label
-                        for="input-social-url"
-                        class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
-                    >
-                        URL / Username / Nomor <span class="text-red-500"
-                            >*</span
+            <!-- Modal Form -->
+            <form onsubmit={saveSocialMedia} class="flex flex-col flex-grow min-h-0 overflow-hidden">
+                <!-- Scrollable Body -->
+                <div class="p-6 overflow-y-auto flex-grow space-y-4 min-h-0">
+                    <!-- Platform Selector -->
+                    <div>
+                        <span
+                            class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
                         >
-                    </label>
-                    {#if form.platform === 'instagram' || form.platform === 'tiktok' || form.platform === 'twitter' || form.platform === 'youtube'}
-                        <div class="flex">
-                            <span
-                                class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl"
-                                >@</span
-                            >
-                            <input
-                                id="input-social-url"
-                                bind:value={form.url}
-                                type="text"
-                                placeholder="username_toko"
-                                class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
-                                    .errors.url
-                                    ? 'border-red-400'
-                                    : ''}"
-                            />
+                            Platform <span class="text-red-500">*</span>
+                        </span>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {#each platformOptions as opt}
+                                <button
+                                    type="button"
+                                    onclick={() => (form.platform = opt.id)}
+                                    class="flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition text-xs font-bold {form.platform ===
+                                    opt.id
+                                        ? 'border-transparent text-white shadow-lg scale-105'
+                                        : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-slate-50'}"
+                                    style={form.platform === opt.id
+                                        ? `background-color: ${opt.color}; border-color: ${opt.color};`
+                                        : ''}
+                                >
+                                    <i class="ti {opt.icon} text-xl"></i>
+                                    <span
+                                        class="text-[10px] leading-tight text-center"
+                                        >{opt.name}</span
+                                    >
+                                </button>
+                            {/each}
                         </div>
-                    {:else if form.platform === 'whatsapp'}
-                        <div class="flex">
-                            <span
-                                class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl"
-                                >+</span
-                            >
-                            <input
-                                id="input-social-url"
-                                bind:value={form.url}
-                                type="text"
-                                placeholder="6281234567890"
-                                class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
-                                    .errors.url
-                                    ? 'border-red-400'
-                                    : ''}"
-                            />
-                        </div>
-                    {:else}
-                        <input
-                            id="input-social-url"
-                            bind:value={form.url}
-                            type="text"
-                            placeholder="https://..."
-                            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
-                                .errors.url
-                                ? 'border-red-400'
-                                : ''}"
-                        />
-                    {/if}
-                    {#if form.errors.url}
-                        <p class="text-xs text-red-500 mt-1">
-                            {form.errors.url}
-                        </p>
-                    {:else}
-                        <p class="text-[10px] text-slate-400 mt-1">
-                            {#if form.platform === 'instagram' || form.platform === 'tiktok'}
-                                Masukkan username tanpa @ (contoh: <code
-                                    >bizmate.official</code
-                                >)
-                            {:else if form.platform === 'whatsapp'}
-                                Nomor lengkap dengan kode negara, tanpa +
-                                (contoh: <code>6281234567890</code>)
-                            {:else if form.platform === 'twitter'}
-                                Username Twitter/X tanpa @ (contoh: <code
-                                    >bizmate_id</code
-                                >)
-                            {:else if form.platform === 'youtube'}
-                                Username channel YouTube (contoh: <code
-                                    >BizmateOfficial</code
-                                >)
-                            {:else if form.platform === 'telegram'}
-                                Username Telegram tanpa @ (contoh: <code
-                                    >bizmatechannel</code
-                                >)
-                            {:else}
-                                URL lengkap (contoh: <code
-                                    >https://shopee.co.id/bizmate</code
-                                >)
-                            {/if}
-                        </p>
-                    {/if}
-                </div>
+                        {#if form.errors.platform}
+                            <p class="text-xs text-red-500 mt-1">
+                                {form.errors.platform}
+                            </p>
+                        {/if}
+                    </div>
 
-                <!-- Order -->
-                <Input
-                    id="input-social-order"
-                    bind:value={form.order}
-                    type="number"
-                    label="Urutan Tampil"
-                    placeholder="0"
-                    error={form.errors.order}
-                />
-
-                <!-- Status Toggle -->
-                <div class="pt-1">
-                    <Toggle
-                        bind:checked={form.is_active}
-                        label="Tampilkan di Storefront"
-                        description="Jika aktif, akun ini akan muncul di footer halaman storefront toko."
-                        icon="ti-eye"
+                    <!-- Label -->
+                    <Input
+                        id="input-social-label"
+                        bind:value={form.label}
+                        label="Label / Nama Tampil"
+                        placeholder="Contoh: Instagram Toko Kami"
+                        required={true}
+                        error={form.errors.label}
                     />
+
+                    <!-- URL / Handle -->
+                    <div>
+                        <label
+                            for="input-social-url"
+                            class="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider"
+                        >
+                            URL / Username / Nomor <span class="text-red-500"
+                                >*</span
+                            >
+                        </label>
+                        {#if form.platform === 'instagram' || form.platform === 'tiktok' || form.platform === 'twitter' || form.platform === 'youtube'}
+                            <div class="flex">
+                                <span
+                                    class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl"
+                                    >@</span
+                                >
+                                <input
+                                    id="input-social-url"
+                                    bind:value={form.url}
+                                    type="text"
+                                    placeholder="username_toko"
+                                    class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
+                                        .errors.url
+                                        ? 'border-red-400'
+                                        : ''}"
+                                />
+                            </div>
+                        {:else if form.platform === 'whatsapp'}
+                            <div class="flex">
+                                <span
+                                    class="inline-flex items-center px-3 text-xs font-bold text-slate-500 bg-slate-100 border border-r-0 border-slate-200 rounded-l-xl"
+                                    >+</span
+                                >
+                                <input
+                                    id="input-social-url"
+                                    bind:value={form.url}
+                                    type="text"
+                                    placeholder="6281234567890"
+                                    class="flex-1 px-3 py-2.5 text-sm border border-slate-200 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
+                                        .errors.url
+                                        ? 'border-red-400'
+                                        : ''}"
+                                />
+                            </div>
+                        {:else}
+                            <input
+                                id="input-social-url"
+                                bind:value={form.url}
+                                type="text"
+                                placeholder="https://..."
+                                class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition {form
+                                    .errors.url
+                                    ? 'border-red-400'
+                                    : ''}"
+                            />
+                        {/if}
+                        {#if form.errors.url}
+                            <p class="text-xs text-red-500 mt-1">
+                                {form.errors.url}
+                            </p>
+                        {:else}
+                            <p class="text-[10px] text-slate-400 mt-1">
+                                {#if form.platform === 'instagram' || form.platform === 'tiktok'}
+                                    Masukkan username tanpa @ (contoh: <code
+                                        >bizmate.official</code
+                                    >)
+                                {:else if form.platform === 'whatsapp'}
+                                    Nomor lengkap dengan kode negara, tanpa +
+                                    (contoh: <code>6281234567890</code>)
+                                {:else if form.platform === 'twitter'}
+                                    Username Twitter/X tanpa @ (contoh: <code
+                                        >bizmate_id</code
+                                    >)
+                                {:else if form.platform === 'youtube'}
+                                    Username channel YouTube (contoh: <code
+                                        >BizmateOfficial</code
+                                    >)
+                                {:else if form.platform === 'telegram'}
+                                    Username Telegram tanpa @ (contoh: <code
+                                        >bizmatechannel</code
+                                    >)
+                                {:else}
+                                    URL lengkap (contoh: <code
+                                        >https://shopee.co.id/bizmate</code
+                                    >)
+                                {/if}
+                            </p>
+                        {/if}
+                    </div>
+
+                    <!-- Order -->
+                    <Input
+                        id="input-social-order"
+                        bind:value={form.order}
+                        type="number"
+                        label="Urutan Tampil"
+                        placeholder="0"
+                        error={form.errors.order}
+                    />
+
+                    <!-- Status Toggle -->
+                    <div class="pt-1">
+                        <Toggle
+                            bind:checked={form.is_active}
+                            label="Tampilkan di Storefront"
+                            description="Jika aktif, akun ini akan muncul di footer halaman storefront toko."
+                            icon="ti-eye"
+                        />
+                    </div>
                 </div>
 
-                <!-- Buttons -->
+                <!-- Action Buttons -->
                 <div
-                    class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 mt-4"
+                    class="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-slate-50/50 shrink-0"
                 >
                     <button
                         type="button"

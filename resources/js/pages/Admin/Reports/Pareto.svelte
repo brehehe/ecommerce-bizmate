@@ -588,42 +588,76 @@
 
         <!-- KPI Cards -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Item Card -->
             <div
                 class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm"
             >
-                <span
-                    class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-indigo-600 bg-indigo-50 mb-3"
-                >
-                    <i class="ti ti-list-numbers"></i>
-                </span>
-                <p
-                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
-                >
-                    Total Item
-                </p>
+                <div class="flex items-center gap-2 mb-3">
+                    <span
+                        class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-indigo-600 bg-indigo-50 shrink-0"
+                    >
+                        <i class="ti ti-list-numbers"></i>
+                    </span>
+                    <span
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                    >
+                        {#if selectedType === 'customer_spending'}
+                            Total Pelanggan
+                        {:else if selectedType === 'category_revenue'}
+                            Total Kategori
+                        {:else}
+                            Total Jenis Produk
+                        {/if}
+                    </span>
+                </div>
                 <h3 class="font-outfit font-black text-2xl text-slate-800 mt-1">
                     {metrics.total_items}
                 </h3>
+                <p class="text-xs text-slate-400 font-semibold mt-1">
+                    {#if selectedType === 'customer_spending'}
+                        pelanggan unik berbelanja
+                    {:else if selectedType === 'category_revenue'}
+                        kategori terdata transaksi
+                    {:else}
+                        jenis produk unik terjual
+                    {/if}
+                </p>
             </div>
 
+            <!-- Total Value Card -->
             <div
                 class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm"
             >
-                <span
-                    class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-emerald-600 bg-emerald-50 mb-3"
-                >
-                    <i class="ti ti-chart-pie"></i>
-                </span>
-                <p
-                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
-                >
-                    Total Nilai
-                </p>
+                <div class="flex items-center gap-2 mb-3">
+                    <span
+                        class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-emerald-600 bg-emerald-50 shrink-0"
+                    >
+                        <i class="ti ti-chart-pie"></i>
+                    </span>
+                    <span
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                    >
+                        {#if selectedType === 'product_qty'}
+                            Total Kuantitas
+                        {:else}
+                            Total Omset
+                        {/if}
+                    </span>
+                </div>
                 <h3 class="font-outfit font-black text-xl text-slate-800 mt-1">
                     {selectedType === 'product_qty'
                         ? formatNumber(metrics.total_value) + ' pcs'
                         : formatRupiah(metrics.total_value)}
                 </h3>
+                <p class="text-xs text-slate-400 font-semibold mt-1">
+                    {#if selectedType === 'product_qty'}
+                        total kuantitas produk terjual
+                    {:else if selectedType === 'customer_spending'}
+                        total nilai transaksi pelanggan
+                    {:else}
+                        total nilai omset kotor (gross)
+                    {/if}
+                </p>
             </div>
 
             <!-- Vital Few Card -->
@@ -633,7 +667,7 @@
             >
                 <div class="flex items-center gap-2 mb-3">
                     <span
-                        class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-white"
+                        class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-white shrink-0"
                         style="background-color: {primaryColor};"
                     >
                         <i class="ti ti-star"></i>
@@ -644,10 +678,17 @@
                     >
                 </div>
                 <h3 class="font-outfit font-black text-2xl text-slate-800">
-                    {metrics.vital_few_count} item
+                    {metrics.vital_few_count}
+                    {#if selectedType === 'customer_spending'}
+                        pelanggan
+                    {:else if selectedType === 'category_revenue'}
+                        kategori
+                    {:else}
+                        produk
+                    {/if}
                 </h3>
-                <p class="text-xs text-slate-500 font-semibold mt-0.5">
-                    hanya {metrics.vital_few_pct}% dari semua item
+                <p class="text-xs text-slate-500 font-semibold mt-1">
+                    hanya {metrics.vital_few_pct}% dari total, tapi menyumbang {metrics.total_value > 0 ? Math.round((metrics.vital_few_value / metrics.total_value) * 100) : 0}% {selectedType === 'product_qty' ? 'qty' : 'omset'} ({selectedType === 'product_qty' ? formatNumber(metrics.vital_few_value) + ' pcs' : formatRupiah(metrics.vital_few_value)})
                 </p>
             </div>
 
@@ -655,21 +696,30 @@
             <div
                 class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm"
             >
-                <span
-                    class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-slate-400 bg-slate-50 mb-3"
-                >
-                    <i class="ti ti-dots"></i>
-                </span>
-                <p
-                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
-                >
-                    Trivial Many (20%)
-                </p>
+                <div class="flex items-center gap-2 mb-3">
+                    <span
+                        class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-slate-400 bg-slate-50 shrink-0"
+                    >
+                        <i class="ti ti-dots"></i>
+                    </span>
+                    <span
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit"
+                    >
+                        Trivial Many (20%)
+                    </span>
+                </div>
                 <h3 class="font-outfit font-black text-2xl text-slate-800 mt-1">
-                    {metrics.trivial_many_count} item
+                    {metrics.trivial_many_count}
+                    {#if selectedType === 'customer_spending'}
+                        pelanggan
+                    {:else if selectedType === 'category_revenue'}
+                        kategori
+                    {:else}
+                        produk
+                    {/if}
                 </h3>
-                <p class="text-xs text-slate-400 font-semibold mt-0.5">
-                    sisa {100 - metrics.vital_few_pct}% item
+                <p class="text-xs text-slate-400 font-semibold mt-1">
+                    sisa {Math.max(0, 100 - metrics.vital_few_pct)}% dari total, hanya menyumbang {metrics.total_value > 0 ? Math.round((metrics.trivial_many_value / metrics.total_value) * 100) : 0}% {selectedType === 'product_qty' ? 'qty' : 'omset'} ({selectedType === 'product_qty' ? formatNumber(metrics.trivial_many_value) + ' pcs' : formatRupiah(metrics.trivial_many_value)})
                 </p>
             </div>
         </div>

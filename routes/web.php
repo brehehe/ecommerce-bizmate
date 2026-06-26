@@ -169,6 +169,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/cms/banners', [CmsController::class, 'updateBanners'])->name('cms.banners.update');
 
     // Categories
+    Route::post('/categories/bulk-delete', [CategoryController::class, 'bulkDelete'])->name('categories.bulk-delete');
     Route::post('/categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
     Route::apiResource('categories', CategoryController::class)->except(['show']);
 
