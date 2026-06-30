@@ -180,6 +180,7 @@
                 settings.can_stack_with_promos =
                     settings.can_stack_with_promos ?? true;
                 settings.is_points_voucher = settings.is_points_voucher ?? false;
+                settings.show_publicly = settings.show_publicly ?? true;
                 settings.points_new_user = settings.points_new_user ?? '';
                 settings.points_existing_user = settings.points_existing_user ?? '';
                 // If old structure exists, convert to new structure on the fly
@@ -456,6 +457,34 @@
         }
     });
 
+    // --- Voucher Code Generator ---
+    let codeCopied = $state(false);
+
+    function generateVoucherCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        const prefix =
+            form.type === 'voucher_gratis_ongkir'
+                ? 'ONGKIR'
+                : form.type === 'voucher_belanja'
+                  ? 'BLNJA'
+                  : 'PROMO';
+        let code = prefix;
+        const length = 8;
+        for (let i = 0; i < length; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        form.code = code;
+        codeCopied = false;
+    }
+
+    function copyVoucherCode() {
+        if (!form.code) return;
+        navigator.clipboard.writeText(form.code).then(() => {
+            codeCopied = true;
+            setTimeout(() => (codeCopied = false), 2000);
+        });
+    }
+
     $effect(() => {
         if (form.type === 'flash_sale') {
             if (form.start_time) {
@@ -704,6 +733,20 @@
             } else {
                 rules.push(`Potongan ongkir gratis 100%.`);
             }
+        } else if (form.type === 'voucher_belanja' && form.settings.is_points_voucher) {
+            // Points/Coins voucher mode
+            if (form.settings.points_new_user && Number(form.settings.points_new_user) > 0) {
+                rules.push(
+                    `Pembeli baru mendapatkan ${Number(form.settings.points_new_user).toLocaleString('id-ID')} Poin/Koin setelah transaksi berhasil.`,
+                );
+            }
+            if (form.settings.points_existing_user && Number(form.settings.points_existing_user) > 0) {
+                rules.push(
+                    `Pembeli lama mendapatkan ${Number(form.settings.points_existing_user).toLocaleString('id-ID')} Poin/Koin setelah transaksi berhasil.`,
+                );
+            }
+            rules.push(`Poin/Koin dikreditkan ke akun setelah transaksi berstatus selesai.`);
+            rules.push(`Poin/Koin tidak dapat diuangkan atau dipindahtangankan.`);
         } else if (
             form.type !== 'bundling_gift' &&
             form.discount_value &&
@@ -864,6 +907,9 @@
             min_qty: form.settings.min_qty,
             bundle_buy: JSON.stringify(form.settings.bundle?.buy_items),
             bundle_get: JSON.stringify(form.settings.bundle?.get_items),
+            is_points_voucher: form.settings.is_points_voucher,
+            points_new_user: form.settings.points_new_user,
+            points_existing_user: form.settings.points_existing_user,
         };
 
         if (!isTermsManuallyEdited) {
@@ -939,18 +985,58 @@
 
                         {#if form.type === 'voucher_belanja' || form.type === 'voucher_gratis_ongkir' || form.type === 'promo_toko'}
                             <div>
-                                <Input
-                                    id="promo-code"
-                                    bind:value={form.code}
-                                    label={form.type === 'promo_toko'
+                                <label
+                                    for="promo-code"
+                                    class="text-xs font-bold text-slate-600 block mb-2"
+                                >
+                                    {form.type === 'promo_toko'
                                         ? 'Kode Voucher (Opsional)'
                                         : 'Kode Voucher'}
-                                    placeholder={form.type === 'promo_toko'
-                                        ? 'Contoh: TOKOPROMO (Kosongkan jika otomatis)'
-                                        : 'Contoh: GAJIANMAI10'}
-                                    required={form.type !== 'promo_toko'}
-                                    error={form.errors.code}
-                                />
+                                    {#if form.type !== 'promo_toko'}
+                                        <span class="text-red-500 ml-0.5">*</span>
+                                    {/if}
+                                </label>
+                                <div class="flex gap-2">
+                                    <div class="relative flex-1">
+                                        <input
+                                            id="promo-code"
+                                            type="text"
+                                            bind:value={form.code}
+                                            placeholder={form.type === 'promo_toko'
+                                                ? 'Contoh: TOKOPROMO'
+                                                : 'Contoh: GAJIANMAI10'}
+                                            class="w-full px-3 py-2.5 pr-10 rounded-xl border text-sm font-mono font-bold tracking-widest uppercase {form.errors.code ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/30 focus:border-brand-blueRoyal transition"
+                                        />
+                                        {#if form.code}
+                                            <button
+                                                type="button"
+                                                onclick={copyVoucherCode}
+                                                title={codeCopied ? 'Tersalin!' : 'Salin kode'}
+                                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-blueRoyal transition"
+                                            >
+                                                <i class="ti {codeCopied ? 'ti-check text-emerald-500' : 'ti-copy'} text-base"></i>
+                                            </button>
+                                        {/if}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onclick={generateVoucherCode}
+                                        title="Generate kode otomatis"
+                                        class="flex items-center gap-1.5 px-3 py-2.5 bg-gradient-to-br from-brand-blueRoyal to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold rounded-xl shadow shadow-blue-500/20 transition shrink-0 whitespace-nowrap"
+                                    >
+                                        <i class="ti ti-refresh text-sm"></i>
+                                        Generate
+                                    </button>
+                                </div>
+                                {#if form.errors.code}
+                                    <p class="text-xs text-red-500 font-medium mt-1">{form.errors.code}</p>
+                                {/if}
+                                {#if form.code}
+                                    <p class="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
+                                        <i class="ti ti-info-circle"></i>
+                                        Kode bersifat case-insensitive. Pelanggan cukup ketik kode ini di kolom voucher.
+                                    </p>
+                                {/if}
                             </div>
                         {/if}
                     </div>
@@ -1116,6 +1202,15 @@
                                     ]}
                                 />
                             </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 mt-4 space-y-4">
+                            <Toggle
+                                bind:checked={form.settings.show_publicly}
+                                label="Tampilkan di Toko"
+                                description="Jika dinonaktifkan, voucher tidak akan ditampilkan di daftar voucher publik. Pelanggan harus memindai QR Code atau memasukkan kodenya secara manual."
+                                icon="ti-eye"
+                            />
                         </div>
 
                         <div class="pt-4 border-t border-slate-100 mt-4">

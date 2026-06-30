@@ -3,6 +3,130 @@
     import { page, Link, router } from '@inertiajs/svelte';
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
+    import { onDestroy } from 'svelte';
+
+    // QR/Barcode Scanner States for Cart
+    let showScanModal = $state(false);
+    let scanError = $state('');
+    let isScanning = $state(false);
+    let html5QrScanner: any = null;
+    let availableCameras = $state<any[]>([]);
+    let selectedCameraId = $state('');
+
+    async function startScanning() {
+        scanError = '';
+        try {
+            const { Html5Qrcode } = await import('html5-qrcode');
+            // Request permissions and get cameras
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+                availableCameras = devices;
+                if (!selectedCameraId) {
+                    // Prefer back camera if available
+                    const backCam = devices.find(
+                        (d: any) =>
+                            d.label.toLowerCase().includes('back') ||
+                            d.label.toLowerCase().includes('rear'),
+                    );
+                    selectedCameraId = backCam ? backCam.id : devices[0].id;
+                }
+
+                // Initialize scanner
+                if (!html5QrScanner) {
+                    html5QrScanner = new Html5Qrcode('cart-scanner-reader');
+                }
+
+                isScanning = true;
+                await html5QrScanner.start(
+                    selectedCameraId,
+                    {
+                        fps: 10,
+                        qrbox: (width: number, height: number) => {
+                            const min = Math.min(width, height);
+                            return { width: min * 0.7, height: min * 0.7 };
+                        },
+                        aspectRatio: 1.0,
+                    },
+                    (decodedText: string) => {
+                        handleScanSuccess(decodedText);
+                    },
+                    (errorMessage: string) => {
+                        // Verbose debug scanning errors can be ignored
+                    },
+                );
+            } else {
+                scanError = 'Kamera tidak ditemukan. Pastikan izin kamera telah diberikan.';
+            }
+        } catch (err: any) {
+            scanError = 'Gagal mengakses kamera: ' + (err.message || err);
+            isScanning = false;
+        }
+    }
+
+    async function stopScanning() {
+        if (html5QrScanner && isScanning) {
+            try {
+                await html5QrScanner.stop();
+            } catch (e) {
+                console.error('Error stopping scanner:', e);
+            }
+            isScanning = false;
+        }
+    }
+
+    async function changeCamera(cameraId: string) {
+        selectedCameraId = cameraId;
+        if (isScanning) {
+            await stopScanning();
+            await startScanning();
+        }
+    }
+
+    function openScanModal() {
+        showScanModal = true;
+        scanError = '';
+        isScanning = false;
+        // Start scanning automatically on modal open
+        setTimeout(() => {
+            startScanning();
+        }, 100);
+    }
+
+    async function closeScanModal() {
+        await stopScanning();
+        showScanModal = false;
+    }
+
+    async function handleScanSuccess(decodedText: string) {
+        if (!decodedText) return;
+        await stopScanning();
+        // Play beep sound
+        try {
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(1000, ctx.currentTime);
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        } catch (e) {
+            console.error('AudioContext error:', e);
+        }
+        
+        // Put decoded text in input field
+        manualVoucherCode = decodedText.trim().toUpperCase();
+        showScanModal = false;
+        showToast('Voucher berhasil dipindai!', 'success');
+    }
+
+    onDestroy(() => {
+        stopScanning();
+    });
 
     let { cartItems = [], storeName = '', activePromotions = [] } = $props();
 
@@ -495,8 +619,10 @@
     const activeVouchers = $derived.by(() => {
         const base = (activePromotions || []).filter(
             (p: any) =>
-                p.type === 'voucher_gratis_ongkir' ||
-                p.type === 'voucher_belanja',
+                (p.type === 'voucher_gratis_ongkir' ||
+                 p.type === 'voucher_belanja') &&
+                p.settings?.show_publicly !== false &&
+                p.settings?.show_publicly !== 'false',
         );
         const extra = [];
         if (
@@ -2375,13 +2501,21 @@
                                 type="text"
                                 bind:value={manualVoucherCode}
                                 placeholder="Masukkan kode voucher..."
-                                class="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-[10.5px] font-semibold text-slate-700 h-8 uppercase"
+                                class="w-full pl-8 pr-9 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-[10.5px] font-semibold text-slate-700 h-8 uppercase"
                                 onkeydown={(e) => {
                                     if (e.key === 'Enter') {
                                         applyManualCode();
                                     }
                                 }}
                             />
+                            <button
+                                type="button"
+                                onclick={openScanModal}
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition duration-150 border-0 bg-transparent cursor-pointer p-1"
+                                title="Scan QR Code Voucher"
+                            >
+                                <i class="ti ti-scan text-sm"></i>
+                            </button>
                         </div>
                         <button
                             onclick={applyManualCode}
@@ -2783,11 +2917,101 @@
             </div>
         </div>
     {/if}
+
+    <!-- ═══════════════════════════════════════════════════
+     QR / BARCODE SCANNER MODAL FOR VOUCHER
+    ═══════════════════════════════════════════════════ -->
+    {#if showScanModal}
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden"
+            onclick={closeScanModal}
+            onkeypress={closeScanModal}
+            role="button"
+            tabindex="-1"
+        >
+            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"></div>
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <div
+                class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm flex flex-col max-h-[90vh]"
+                onclick={(e: any) => e.stopPropagation()}
+                onkeypress={(e: any) => e.stopPropagation()}
+                role="document"
+            >
+                <!-- Header -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <i class="ti ti-scan text-lg" style="color: {primary}"></i>
+                        <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider">
+                            Pindai QR Voucher
+                        </h3>
+                    </div>
+                    <button
+                        onclick={closeScanModal}
+                        class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0 border-0 cursor-pointer"
+                        aria-label="Tutup"
+                    >
+                        <i class="ti ti-x text-xs text-slate-500"></i>
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="py-6 space-y-4 flex-1 flex flex-col items-center">
+                    <div class="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner flex items-center justify-center">
+                        <div id="cart-scanner-reader" class="w-full h-full object-cover"></div>
+
+                        {#if !isScanning}
+                            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/80">
+                                <i class="ti ti-camera-off text-2xl text-slate-650 mb-2"></i>
+                                <p class="text-[10px] text-slate-400 font-medium">Kamera tidak aktif</p>
+                                <button
+                                    onclick={startScanning}
+                                    class="mt-3 px-4 py-2 text-white rounded-xl text-xs font-bold transition hover:opacity-90 active:scale-95 border-0 cursor-pointer"
+                                    style="background: {primary}"
+                                >
+                                    Aktifkan Kamera
+                                </button>
+                            </div>
+                        {/if}
+
+                        {#if isScanning}
+                            <!-- Laser scan line animation -->
+                            <div class="absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-laser pointer-events-none z-10"></div>
+                            <!-- Crosshair border indicators -->
+                            <div class="absolute inset-8 border border-white/20 pointer-events-none rounded-xl"></div>
+                        {/if}
+                    </div>
+
+                    {#if scanError}
+                        <p class="text-xs text-red-500 font-bold text-center leading-tight bg-red-50 p-2.5 rounded-xl border border-red-100 w-full">
+                            {scanError}
+                        </p>
+                    {/if}
+                    
+                    <p class="text-[9.5px] text-slate-400 text-center leading-relaxed">
+                        Arahkan kamera ke kode QR Voucher cetak Anda. Kode akan otomatis terpindai dan dimasukkan ke form voucher.
+                    </p>
+                </div>
+            </div>
+        </div>
+    {/if}
 </StorefrontLayout>
 
 <style>
     /* Styling for mobile safe area margins at the bottom */
     .pb-safe {
         padding-bottom: max(0px, env(safe-area-inset-bottom));
+    }
+    @keyframes laser {
+        0%,
+        100% {
+            top: 5%;
+        }
+        50% {
+            top: 95%;
+        }
+    }
+    .animate-laser {
+        animation: laser 2s infinite linear;
     }
 </style>

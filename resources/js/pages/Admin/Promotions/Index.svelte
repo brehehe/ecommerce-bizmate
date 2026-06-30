@@ -44,6 +44,153 @@
     let deleteModalOpen = $state(false);
     let deletePromoId = $state<number | null>(null);
 
+    // QR Code Print Card Modal State
+    let qrModalOpen = $state(false);
+    let qrPromo = $state<any>(null);
+
+    function openQrCard(promo: any) {
+        qrPromo = promo;
+        qrModalOpen = true;
+    }
+
+    function getQrCodeUrl(code: string, size = 200) {
+        return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(code)}&margin=10&format=png`;
+    }
+
+    function openPrintWindow(promo: any) {
+        const discountText = getDiscountText(promo);
+
+        const typeLabel = (() => {
+            switch (promo.type) {
+                case 'voucher_belanja': return '🎫 Voucher Belanja';
+                case 'voucher_gratis_ongkir': return '🚚 Gratis Ongkir';
+                case 'promo_toko': return '🏪 Promo Toko';
+                case 'flash_sale': return '⚡ Flash Sale';
+                default: return '🎁 Promosi';
+            }
+        })();
+
+        const endDate = new Date(promo.end_time).toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'long', year: 'numeric'
+        });
+
+        const minPurchaseRow = promo.min_purchase > 0
+            ? `<div class="detail-row">Min. belanja: <strong>Rp ${Number(promo.min_purchase).toLocaleString('id-ID')}</strong></div>` : '';
+        const maxDiscountRow = promo.max_discount > 0
+            ? `<div class="detail-row">Maks. diskon: <strong>Rp ${Number(promo.max_discount).toLocaleString('id-ID')}</strong></div>` : '';
+        const quotaRow = promo.quota
+            ? `<div class="detail-row">Sisa kuota: <strong>${promo.quota - (promo.used_count || 0)}</strong></div>` : '';
+        const termsText = promo.settings?.terms
+            ? `<div class="terms"><strong>Syarat & Ketentuan:</strong><br>${promo.settings.terms.replace(/\n/g, '<br>')}</div>` : '';
+        const qrUrl = getQrCodeUrl(promo.code, 240);
+
+        const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Voucher: ${promo.code}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: #f8f9fa; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { width: 600px; border: 2px dashed #cbd5e1; border-radius: 20px; overflow: hidden; background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+    .card-header { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px 24px; display: flex; align-items: flex-start; justify-content: space-between; }
+    .card-header-left .subtitle { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+    .card-header-left .title { font-size: 18px; font-weight: 900; color: white; line-height: 1.2; }
+    .type-badge { display: inline-block; margin-top: 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 10px; font-size: 9px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 1px; }
+    .card-header-right { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; text-align: right; white-space: nowrap; margin-left: 16px; }
+    .card-body { display: flex; }
+    .card-info { flex: 1; padding: 20px; }
+    .discount-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; }
+    .discount-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+    .discount-value { font-size: 22px; font-weight: 900; color: #1e293b; }
+    .detail-row { font-size: 11px; color: #475569; margin-bottom: 4px; }
+    .validity { font-size: 11px; color: #475569; margin-top: 4px; }
+    .terms { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #64748b; line-height: 1.6; }
+    .card-qr { width: 180px; background: #f8fafc; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; gap: 8px; }
+    .card-qr img { width: 148px; height: 148px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; padding: 4px; object-fit: contain; }
+    .qr-code-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
+    .qr-code-text { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; color: #1e293b; letter-spacing: 2px; text-align: center; }
+    .card-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .footer-col .footer-title { font-size: 9px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .footer-col ol { padding-left: 0; list-style: none; }
+    .footer-col li { font-size: 9px; color: #64748b; margin-bottom: 2px; display: flex; gap: 5px; }
+    .footer-col li span { font-weight: 700; color: #334155; }
+    @media print {
+      body { background: white; padding: 0; }
+      .card { box-shadow: none; border-style: dashed; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="subtitle">Voucher Spesial Untuk Kamu</div>
+        <div class="title">${promo.name}</div>
+        <span class="type-badge">${typeLabel}</span>
+      </div>
+      <div class="card-header-right">SCAN &amp; KLAIM!</div>
+    </div>
+    <div class="card-body">
+      <div class="card-info">
+        <div class="discount-box">
+          <div class="discount-label">Nilai Diskon</div>
+          <div class="discount-value">${discountText}</div>
+        </div>
+        ${minPurchaseRow}
+        ${maxDiscountRow}
+        ${quotaRow}
+        <div class="validity">Berlaku s/d: <strong>${endDate}</strong></div>
+        ${termsText}
+      </div>
+      <div class="card-qr">
+        <img src="${qrUrl}" alt="QR ${promo.code}" />
+        <div class="qr-code-label">Kode:</div>
+        <div class="qr-code-text">${promo.code}</div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div class="footer-col">
+        <div class="footer-title">Klaim via QR Code:</div>
+        <ol>
+          <li><span>1.</span> Buka kamera ponsel</li>
+          <li><span>2.</span> Scan QR Code ini</li>
+          <li><span>3.</span> Buka link yang muncul</li>
+          <li><span>4.</span> Masukkan kode di checkout</li>
+        </ol>
+      </div>
+      <div class="footer-col">
+        <div class="footer-title">Klaim Manual:</div>
+        <ol>
+          <li><span>1.</span> Buka halaman checkout</li>
+          <li><span>2.</span> Klik Voucher &amp; Promo</li>
+          <li><span>3.</span> Ketik kode: <strong>${promo.code}</strong></li>
+          <li><span>4.</span> Klik Pakai &amp; selesai!</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.onload = function() {
+      // Wait for QR image to load before printing
+      var img = document.querySelector('img');
+      if (img && img.complete) { window.print(); }
+      else if (img) { img.onload = function() { window.print(); }; }
+      else { window.print(); }
+    };
+  <\/script>
+</body>
+</html>`;
+
+        const printWindow = window.open('', '_blank', 'width=700,height=600');
+        if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+        }
+    }
+
     function applyFilters() {
         router.get(
             adminPromotionsIndex.url(),
@@ -132,6 +279,12 @@
     }
 
     function getDiscountText(promo: any) {
+        if (!promo) return '-';
+        if (promo.settings?.is_points_voucher) {
+            const newUserPoints = Number(promo.settings.points_new_user || 0).toLocaleString('id-ID');
+            const oldUserPoints = Number(promo.settings.points_existing_user || 0).toLocaleString('id-ID');
+            return `+${newUserPoints} Poin (Baru) / +${oldUserPoints} Poin (Lama)`;
+        }
         if (promo.type === 'voucher_gratis_ongkir') {
             return promo.discount_value
                 ? `Potongan Ongkir Rp ${Number(promo.discount_value).toLocaleString('id-ID')}`
@@ -141,10 +294,10 @@
             return 'Bundling / Gift';
         }
         if (promo.discount_type === 'percentage') {
-            return `${Number(promo.discount_value)}% Off`;
+            return `${Number(promo.discount_value)}% OFF`;
         }
         if (promo.discount_type === 'fixed') {
-            return `Rp ${Number(promo.discount_value).toLocaleString('id-ID')} Off`;
+            return `Rp ${Number(promo.discount_value).toLocaleString('id-ID')} OFF`;
         }
         return '-';
     }
@@ -542,6 +695,15 @@
                                         <td
                                             class="px-4 py-4 text-right whitespace-nowrap"
                                         >
+                                            {#if promo.code}
+                                                <button
+                                                    onclick={() => openQrCard(promo)}
+                                                    class="p-2 text-slate-400 hover:text-purple-600 rounded-lg transition inline-block"
+                                                    title="Lihat QR Code Voucher"
+                                                >
+                                                    <i class="ti ti-qrcode text-lg"></i>
+                                                </button>
+                                            {/if}
                                             <Link
                                                 href={adminPromotionsEdit.url({
                                                     promotion: promo.id,
@@ -768,6 +930,184 @@
             </div>
         </main>
     </div>
+
+    <!-- QR Code Print Card Modal -->
+    {#if qrModalOpen && qrPromo}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden" id="qr-modal-overlay">
+            <div
+                class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+                onclick={() => (qrModalOpen = false)}
+                onkeypress={() => (qrModalOpen = false)}
+                role="button"
+                tabindex="0"
+            ></div>
+
+            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full relative z-10 overflow-hidden animate-in fade-in zoom-in duration-200">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+                    <div>
+                        <h4 class="font-outfit font-black text-lg text-slate-800">QR Code Voucher</h4>
+                        <p class="text-xs text-slate-500 font-medium mt-0.5">Cetak dan bagikan kepada pelanggan</p>
+                    </div>
+                    <button
+                        onclick={() => (qrModalOpen = false)}
+                        class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition"
+                    >
+                        <i class="ti ti-x text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Print Card Preview -->
+                <div class="p-6" id="qr-print-card">
+                    <!-- Card Container -->
+                    <div class="border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden">
+                        <!-- Card Top: Colored Header -->
+                        <div class="bg-gradient-to-br from-slate-800 to-slate-900 px-5 py-4 flex items-start justify-between">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Voucher Spesial Untuk Kamu</p>
+                                <h3 class="font-outfit font-black text-white text-base leading-tight">{qrPromo.name}</h3>
+                                <div class="mt-2">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-white/15 text-white border border-white/20">
+                                        {#if qrPromo.type === 'voucher_belanja'}
+                                            🎫 Voucher Belanja
+                                        {:else if qrPromo.type === 'voucher_gratis_ongkir'}
+                                            🚚 Gratis Ongkir
+                                        {:else if qrPromo.type === 'promo_toko'}
+                                            🏪 Promo Toko
+                                        {:else if qrPromo.type === 'flash_sale'}
+                                            ⚡ Flash Sale
+                                        {:else}
+                                            🎁 Promosi
+                                        {/if}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right shrink-0 ml-4">
+                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">SCAN & KLAIM!</p>
+                            </div>
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="flex gap-0">
+                            <!-- Left: Promo Info -->
+                            <div class="flex-1 p-5 bg-white">
+                                <!-- Discount Value -->
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3">
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nilai Diskon</p>
+                                    <p class="font-outfit font-black text-slate-800 text-lg">
+                                        {getDiscountText(qrPromo)}
+                                    </p>
+                                </div>
+
+                                <!-- Voucher Details -->
+                                <div class="space-y-1.5">
+                                    {#if qrPromo.min_purchase > 0}
+                                        <div class="flex items-start gap-2">
+                                            <i class="ti ti-shopping-cart text-slate-400 text-xs mt-0.5 shrink-0"></i>
+                                            <p class="text-xs text-slate-600 font-medium">
+                                                Min. belanja Rp {Number(qrPromo.min_purchase).toLocaleString('id-ID')}
+                                            </p>
+                                        </div>
+                                    {/if}
+                                    {#if qrPromo.max_discount > 0}
+                                        <div class="flex items-start gap-2">
+                                            <i class="ti ti-coin text-slate-400 text-xs mt-0.5 shrink-0"></i>
+                                            <p class="text-xs text-slate-600 font-medium">
+                                                Maks. diskon Rp {Number(qrPromo.max_discount).toLocaleString('id-ID')}
+                                            </p>
+                                        </div>
+                                    {/if}
+                                    {#if qrPromo.quota}
+                                        <div class="flex items-start gap-2">
+                                            <i class="ti ti-users text-slate-400 text-xs mt-0.5 shrink-0"></i>
+                                            <p class="text-xs text-slate-600 font-medium">
+                                                Kuota: {qrPromo.quota - (qrPromo.used_count || 0)} sisa
+                                            </p>
+                                        </div>
+                                    {/if}
+                                    <div class="flex items-start gap-2">
+                                        <i class="ti ti-calendar text-slate-400 text-xs mt-0.5 shrink-0"></i>
+                                        <p class="text-xs text-slate-600 font-medium">
+                                            Berlaku s/d {new Date(qrPromo.end_time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- Terms -->
+                                {#if qrPromo.settings?.terms}
+                                    <div class="mt-3 pt-3 border-t border-slate-100">
+                                        <p class="text-[9px] text-slate-500 font-medium leading-relaxed">
+                                            *{qrPromo.settings.terms}
+                                        </p>
+                                    </div>
+                                {/if}
+                            </div>
+
+                            <!-- Right: QR Code -->
+                            <div class="w-44 bg-slate-50 border-l border-slate-200 flex flex-col items-center justify-center p-4 gap-2">
+                                <img
+                                    src={getQrCodeUrl(qrPromo.code)}
+                                    alt="QR Code {qrPromo.code}"
+                                    class="w-36 h-36 object-contain rounded-lg border border-slate-200 bg-white p-1"
+                                />
+                                <div class="text-center">
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Kode:</p>
+                                    <p class="font-mono font-black text-slate-800 text-sm tracking-widest mt-0.5">
+                                        {qrPromo.code}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Footer: How to use -->
+                        <div class="bg-slate-50 border-t border-slate-200 px-5 py-3">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[9px] font-black text-slate-600 uppercase tracking-wider mb-1.5">Klaim Melalui QR Code:</p>
+                                    <ol class="space-y-0.5">
+                                        {#each ['Buka kamera ponsel', 'Scan Kode QR ini', 'Buka link yang muncul', 'Masukkan kode di checkout'] as step, i}
+                                            <li class="text-[9px] text-slate-500 font-medium flex gap-1.5">
+                                                <span class="font-bold text-slate-700">{i + 1}.</span>
+                                                {step}
+                                            </li>
+                                        {/each}
+                                    </ol>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] font-black text-slate-600 uppercase tracking-wider mb-1.5">Klaim Manual:</p>
+                                    <ol class="space-y-0.5">
+                                        {#each ['Buka halaman checkout', 'Klik bagian Voucher & Promo', `Ketik kode: ${qrPromo.code}`, 'Klik Pakai & selesai!'] as step, i}
+                                            <li class="text-[9px] text-slate-500 font-medium flex gap-1.5">
+                                                <span class="font-bold text-slate-700">{i + 1}.</span>
+                                                {step}
+                                            </li>
+                                        {/each}
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="px-6 pb-6 flex gap-3">
+                    <button
+                        onclick={() => (qrModalOpen = false)}
+                        class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition"
+                    >
+                        Tutup
+                    </button>
+                    <button
+                        onclick={() => openPrintWindow(qrPromo)}
+                        class="flex-1 py-3 bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-bold rounded-xl text-sm shadow-lg shadow-slate-900/20 transition flex items-center justify-center gap-2"
+                    >
+                        <i class="ti ti-printer text-base"></i>
+                        Cetak Kartu
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
 
     <!-- Delete Confirmation Modal -->
     {#if deleteModalOpen}
