@@ -496,7 +496,7 @@
                     <h1
                         class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2"
                     >
-                        📂 {category.name}
+                        {category.name}
                     </h1>
                 </div>
             </div>

@@ -312,29 +312,6 @@
                 `'${form.store_font}', sans-serif`,
                 'important',
             );
-
-            // Note: Google Fonts tag needs to be loaded if it's a google font,
-            // but for preview purposes if it's not cached it might fallback,
-            // but typically we can inject a link tag if not present.
-            if (
-                ![
-                    'Arial',
-                    'Verdana',
-                    'Helvetica',
-                    'Times New Roman',
-                    'Georgia',
-                ].includes(form.store_font)
-            ) {
-                const linkId =
-                    'preview-font-' + form.store_font.replace(/\s+/g, '-');
-                if (!document.getElementById(linkId)) {
-                    const link = document.createElement('link');
-                    link.id = linkId;
-                    link.rel = 'stylesheet';
-                    link.href = `https://fonts.googleapis.com/css2?family=${form.store_font.replace(/\s+/g, '+')}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap`;
-                    document.head.appendChild(link);
-                }
-            }
         }
     });
 
