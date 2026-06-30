@@ -72,29 +72,152 @@ return [
         'provider' => 'config',
 
         'apps' => [
+
+            /*
+            |------------------------------------------------------------------
+            | demo.aplikasitokoonline.id (Reverb Hub - Server Pusat)
+            |------------------------------------------------------------------
+            */
             [
-                'key' => env('REVERB_APP_KEY'),
+                'key'    => env('REVERB_APP_KEY'),
                 'secret' => env('REVERB_APP_SECRET'),
                 'app_id' => env('REVERB_APP_ID'),
                 'options' => [
-                    'host' => env('REVERB_HOST'),
-                    'port' => env('REVERB_PORT', 443),
+                    'host'   => env('REVERB_HOST'),
+                    'port'   => env('REVERB_PORT', 443),
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
-                'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
-                'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
-                'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),
-                'max_message_size' => env('REVERB_APP_MAX_MESSAGE_SIZE', 10_000),
-                'accept_client_events_from' => env('REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM', 'members'),
+                'allowed_origins'            => ['https://demo.aplikasitokoonline.id'],
+                'ping_interval'              => env('REVERB_APP_PING_INTERVAL', 60),
+                'activity_timeout'           => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
+                'max_connections'            => env('REVERB_APP_MAX_CONNECTIONS'),
+                'max_message_size'           => env('REVERB_APP_MAX_MESSAGE_SIZE', 10_000),
+                'accept_client_events_from'  => env('REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM', 'members'),
                 'rate_limiting' => [
-                    'enabled' => env('REVERB_APP_RATE_LIMITING_ENABLED', false),
-                    'max_attempts' => env('REVERB_APP_RATE_LIMIT_MAX_ATTEMPTS', 60),
-                    'decay_seconds' => env('REVERB_APP_RATE_LIMIT_DECAY_SECONDS', 60),
+                    'enabled'            => env('REVERB_APP_RATE_LIMITING_ENABLED', false),
+                    'max_attempts'       => env('REVERB_APP_RATE_LIMIT_MAX_ATTEMPTS', 60),
+                    'decay_seconds'      => env('REVERB_APP_RATE_LIMIT_DECAY_SECONDS', 60),
                     'terminate_on_limit' => env('REVERB_APP_RATE_LIMIT_TERMINATE', false),
                 ],
             ],
+
+            /*
+            |------------------------------------------------------------------
+            | demo-1.bizmate.id
+            |------------------------------------------------------------------
+            */
+            [
+                'key'    => 'ubd7vv2yusz3upcfceln',
+                'secret' => 'ffnaq5tqp316xfmk8dqd',
+                'app_id' => '18570032',
+                'options' => [
+                    'host'   => 'demo.aplikasitokoonline.id',
+                    'port'   => 443,
+                    'scheme' => 'https',
+                    'useTLS' => true,
+                ],
+                'allowed_origins'            => ['https://demo-1.bizmate.id'],
+                'ping_interval'              => 60,
+                'activity_timeout'           => 30,
+                'max_connections'            => null,
+                'max_message_size'           => 10_000,
+                'accept_client_events_from'  => 'members',
+                'rate_limiting' => [
+                    'enabled'            => false,
+                    'max_attempts'       => 60,
+                    'decay_seconds'      => 60,
+                    'terminate_on_limit' => false,
+                ],
+            ],
+
+            /*
+            |------------------------------------------------------------------
+            | demo-2.bizmate.id
+            |------------------------------------------------------------------
+            */
+            [
+                'key'    => 'ig3zfkqs5w40w0cknuod',
+                'secret' => 'kvj4flmofv3koh7rvf8y',
+                'app_id' => '25227675',
+                'options' => [
+                    'host'   => 'demo.aplikasitokoonline.id',
+                    'port'   => 443,
+                    'scheme' => 'https',
+                    'useTLS' => true,
+                ],
+                'allowed_origins'            => ['https://demo-2.bizmate.id'],
+                'ping_interval'              => 60,
+                'activity_timeout'           => 30,
+                'max_connections'            => null,
+                'max_message_size'           => 10_000,
+                'accept_client_events_from'  => 'members',
+                'rate_limiting' => [
+                    'enabled'            => false,
+                    'max_attempts'       => 60,
+                    'decay_seconds'      => 60,
+                    'terminate_on_limit' => false,
+                ],
+            ],
+
+            /*
+            |------------------------------------------------------------------
+            | botolbekassurabaya.com
+            |------------------------------------------------------------------
+            */
+            [
+                'key'    => 'ffkpu0lt2t6lv0chd5d0',
+                'secret' => 'e0jxgcqp55zvxsa832hj',
+                'app_id' => '30701195',
+                'options' => [
+                    'host'   => 'demo.aplikasitokoonline.id',
+                    'port'   => 443,
+                    'scheme' => 'https',
+                    'useTLS' => true,
+                ],
+                'allowed_origins'            => ['https://botolbekassurabaya.com'],
+                'ping_interval'              => 60,
+                'activity_timeout'           => 30,
+                'max_connections'            => null,
+                'max_message_size'           => 10_000,
+                'accept_client_events_from'  => 'members',
+                'rate_limiting' => [
+                    'enabled'            => false,
+                    'max_attempts'       => 60,
+                    'decay_seconds'      => 60,
+                    'terminate_on_limit' => false,
+                ],
+            ],
+
+            /*
+            |------------------------------------------------------------------
+            | momotoki.id
+            |------------------------------------------------------------------
+            */
+            [
+                'key'    => 'tcp5dr0fz4ybqmixhevt',
+                'secret' => '9p2il4fcyy861vf4g23r',
+                'app_id' => '70749392',
+                'options' => [
+                    'host'   => 'demo.aplikasitokoonline.id',
+                    'port'   => 443,
+                    'scheme' => 'https',
+                    'useTLS' => true,
+                ],
+                'allowed_origins'            => ['https://momotoki.id'],
+                'ping_interval'              => 60,
+                'activity_timeout'           => 30,
+                'max_connections'            => null,
+                'max_message_size'           => 10_000,
+                'accept_client_events_from'  => 'members',
+                'rate_limiting' => [
+                    'enabled'            => false,
+                    'max_attempts'       => 60,
+                    'decay_seconds'      => 60,
+                    'terminate_on_limit' => false,
+                ],
+            ],
+
         ],
 
     ],
