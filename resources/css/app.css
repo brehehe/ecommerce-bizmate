@@ -43,3 +43,294 @@
         0 0 10px var(--dynamic-secondary, var(--color-brand-orange)),
         0 0 5px var(--dynamic-secondary, var(--color-brand-orange)) !important;
 }
+
+/* ========================================
+   DARK MODE - Storefront only
+   Uses .sf-dark class on StorefrontLayout wrapper
+   Admin pages are completely unaffected
+   ======================================== */
+
+/* Base dark mode variables on the storefront root */
+.sf-dark {
+    --sf-text-dark: #f1f5f9;
+    --sf-bg-card: #1e293b;
+    --sf-bg-page: #0f172a;
+    color: #e2e8f0;
+}
+
+/* ── STRUCTURAL BACKGROUNDS ─────────────────────────────── */
+
+.sf-dark .bg-slate-50 {
+    background-color: #0f172a !important;
+}
+
+.sf-dark .bg-slate-100 {
+    background-color: #1e293b !important;
+}
+
+.sf-dark .bg-slate-200 {
+    background-color: #334155 !important;
+}
+
+.sf-dark .bg-slate-900 {
+    background-color: #020617 !important;
+}
+
+/* All white backgrounds inside storefront become dark */
+.sf-dark .bg-white {
+    background-color: #1e293b !important;
+}
+
+/* ── TEXT COLORS ──────────────────────────────────────────── */
+
+.sf-dark .text-slate-900 {
+    color: #f1f5f9 !important;
+}
+
+.sf-dark .text-slate-800 {
+    color: #f1f5f9 !important;
+}
+
+.sf-dark .text-slate-700 {
+    color: #e2e8f0 !important;
+}
+
+.sf-dark .text-slate-600 {
+    color: #cbd5e1 !important;
+}
+
+.sf-dark .text-slate-500 {
+    color: #94a3b8 !important;
+}
+
+.sf-dark .text-slate-400 {
+    color: #64748b !important;
+}
+
+/* Product name with hardcoded color - override via CSS variable */
+.sf-dark [style*="color: #1e293b"] {
+    color: #f1f5f9 !important;
+}
+
+.sf-dark [style*="color:#1e293b"] {
+    color: #f1f5f9 !important;
+}
+
+/* ── BORDERS ──────────────────────────────────────────────── */
+
+.sf-dark .border-slate-50 {
+    border-color: #0f172a !important;
+}
+
+.sf-dark .border-slate-100 {
+    border-color: #334155 !important;
+}
+
+.sf-dark .border-slate-200 {
+    border-color: #475569 !important;
+}
+
+.sf-dark .divide-slate-50 > * + * {
+    border-color: #1e293b !important;
+}
+
+.sf-dark .divide-slate-100 > * + * {
+    border-color: #334155 !important;
+}
+
+/* ── OPACITY VARIANTS ─────────────────────────────────────── */
+
+.sf-dark .bg-slate-50\/40 {
+    background-color: rgba(15, 23, 42, 0.4) !important;
+}
+
+.sf-dark .bg-slate-50\/50 {
+    background-color: rgba(15, 23, 42, 0.5) !important;
+}
+
+.sf-dark .bg-slate-50\/30 {
+    background-color: rgba(15, 23, 42, 0.3) !important;
+}
+
+/* ── HOVER STATES ─────────────────────────────────────────── */
+
+.sf-dark .hover\:bg-slate-50:hover {
+    background-color: #334155 !important;
+}
+
+.sf-dark .hover\:bg-slate-50\/70:hover {
+    background-color: rgba(51, 65, 85, 0.7) !important;
+}
+
+.sf-dark .hover\:bg-slate-100:hover {
+    background-color: #334155 !important;
+}
+
+/* ── FORM INPUTS ──────────────────────────────────────────── */
+
+.sf-dark input:not([type='range']):not([type='checkbox']):not([type='radio']),
+.sf-dark select,
+.sf-dark textarea {
+    background-color: #1e293b !important;
+    border-color: #475569 !important;
+    color: #f1f5f9 !important;
+}
+
+.sf-dark input::placeholder,
+.sf-dark textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* ── ERROR / DANGER STATES ────────────────────────────────── */
+
+.sf-dark .text-rose-600 {
+    color: #fb7185 !important;
+}
+
+.sf-dark .hover\:bg-rose-50:hover {
+    background-color: rgba(190, 18, 60, 0.15) !important;
+}
+
+/* ── SHADOW ADJUSTMENTS ───────────────────────────────────── */
+
+.sf-dark .shadow-sm {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.sf-dark .shadow-md {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.sf-dark .shadow-xl {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+}
+
+.sf-dark .shadow-2xl {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ── SCROLLBAR ────────────────────────────────────────────── */
+
+.sf-dark ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.sf-dark ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+.sf-dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 3px;
+}
+
+.sf-dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* ── DARK MODE TOGGLE ANIMATIONS ──────────────────────────── */
+
+html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+@keyframes spin-moon {
+    from { transform: rotate(-30deg) scale(0.8); opacity: 0; }
+    to   { transform: rotate(0deg)   scale(1);   opacity: 1; }
+}
+
+@keyframes spin-sun {
+    from { transform: rotate(30deg)  scale(0.8); opacity: 0; }
+    to   { transform: rotate(0deg)   scale(1);   opacity: 1; }
+}
+
+.dark-toggle-icon-enter {
+    animation: spin-moon 0.3s ease forwards;
+}
+
+.light-toggle-icon-enter {
+    animation: spin-sun 0.3s ease forwards;
+}
+
+/* ── SPECIFIC COMPONENT OVERRIDES ─────────────────────────── */
+
+/* Tab switcher active item */
+.sf-dark .bg-white.shadow-sm {
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+}
+
+/* Notification / dropdown panels */
+.sf-dark .absolute.bg-white {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* Auth modal */
+.sf-dark .bg-white.rounded-3xl,
+.sf-dark .bg-white.rounded-2xl,
+.sf-dark .bg-white.rounded-t-\[2\.25rem\] {
+    background-color: #1e293b !important;
+}
+
+/* PWA install banner */
+.sf-dark .bg-white.rounded-xl {
+    background-color: #1e293b !important;
+}
+
+/* Mobile profile / notif dropdown */
+.sf-dark .fixed.bg-white {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* Checkout, cart input backgrounds that use bg-white/30 or similar */
+.sf-dark .bg-white\/10 {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.sf-dark .bg-white\/20 {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Amber/yellow status badges - keep visible */
+.sf-dark .bg-amber-50 {
+    background-color: rgba(120, 53, 15, 0.3) !important;
+}
+
+.sf-dark .text-amber-600,
+.sf-dark .text-amber-700,
+.sf-dark .text-amber-800 {
+    color: #fcd34d !important;
+}
+
+/* Green status badges */
+.sf-dark .bg-green-50,
+.sf-dark .bg-emerald-50 {
+    background-color: rgba(6, 78, 59, 0.3) !important;
+}
+
+.sf-dark .text-green-700,
+.sf-dark .text-emerald-700 {
+    color: #34d399 !important;
+}
+
+/* Blue status badges */
+.sf-dark .bg-blue-50 {
+    background-color: rgba(29, 78, 216, 0.2) !important;
+}
+
+.sf-dark .text-blue-700 {
+    color: #93c5fd !important;
+}
+
+/* Purple status badges */
+.sf-dark .bg-purple-50 {
+    background-color: rgba(88, 28, 135, 0.2) !important;
+}
+
+.sf-dark .text-purple-700 {
+    color: #c084fc !important;
+}
+

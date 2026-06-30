@@ -17,6 +17,7 @@
         appFee = 0,
         appliedVoucher: initialAppliedVoucher = null,
         couriers = [],
+        isNewUser = false,
     } = $props();
 
     const primary = $derived(
@@ -27,6 +28,7 @@
     );
 
     const storeSettings = $derived((page.props as any).settings || {});
+    const userIsNew = $derived(isNewUser || (page.props as any).isNewUser || false);
 
     // Store Open Logic
     const isStoreOpen = $derived.by(() => {
@@ -566,7 +568,13 @@
     const coinEarningTiers = $derived(coinsSettings?.coin_earning_tiers || []);
 
     const prospectiveCoinsEarned = $derived.by(() => {
-        if (!coinsEnabled || (useCoins && coinDiscountAmount > 0)) return 0;
+        if (!coinsEnabled) return 0;
+
+        if (appliedVoucher && appliedVoucher.is_points_voucher) {
+            return Number(appliedVoucher.voucher_points || 0);
+        }
+
+        if (useCoins && coinDiscountAmount > 0) return 0;
 
         if (coinEarningMethod === 'proportional') {
             if (coinEarningRateRupiah <= 0) return 0;
@@ -2186,12 +2194,21 @@
                                         <p
                                             class="text-[9px] text-emerald-800 leading-tight"
                                         >
-                                            Dapatkan <span
-                                                class="font-black text-emerald-600"
-                                                >{formatNumber(
-                                                    prospectiveCoinsEarned,
-                                                )} Poin</span
-                                            > setelah pesanan Anda selesai!
+                                            {#if appliedVoucher && appliedVoucher.is_points_voucher}
+                                                Dapatkan <span
+                                                    class="font-black text-emerald-600"
+                                                    >{formatNumber(
+                                                        prospectiveCoinsEarned,
+                                                    )} Poin</span
+                                                > dari Voucher Belanja setelah pesanan Anda selesai!
+                                            {:else}
+                                                Dapatkan <span
+                                                    class="font-black text-emerald-600"
+                                                    >{formatNumber(
+                                                        prospectiveCoinsEarned,
+                                                    )} Poin</span
+                                                > setelah pesanan Anda selesai!
+                                            {/if}
                                         </p>
                                     </div>
                                 </div>
@@ -3027,7 +3044,7 @@
                                                     <span
                                                         class="text-[7.5px] font-black uppercase tracking-wider leading-none"
                                                     >
-                                                        Diskon
+                                                        {#if voucher.settings?.is_points_voucher}Poin{:else}Diskon{/if}
                                                     </span>
                                                 </div>
 
@@ -3079,15 +3096,19 @@
                                                         <p
                                                             class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
                                                         >
-                                                            Potongan {#if voucher.discount_type === 'percentage'}{Number(
-                                                                    voucher.discount_value,
-                                                                )}%{:else}{fmt(
-                                                                    voucher.discount_value,
-                                                                )}{/if}
-                                                            {#if voucher.max_discount}s/d
-                                                                {fmt(
-                                                                    voucher.max_discount,
-                                                                )}{/if}
+                                                            {#if voucher.settings?.is_points_voucher}
+                                                                Konversi Poin: +{formatNumber(userIsNew ? (voucher.settings?.points_new_user || 0) : (voucher.settings?.points_existing_user || 0))} Poin
+                                                            {:else}
+                                                                Potongan {#if voucher.discount_type === 'percentage'}{Number(
+                                                                        voucher.discount_value,
+                                                                    )}%{:else}{fmt(
+                                                                        voucher.discount_value,
+                                                                    )}{/if}
+                                                                {#if voucher.max_discount}s/d
+                                                                    {fmt(
+                                                                        voucher.max_discount,
+                                                                    )}{/if}
+                                                            {/if}
                                                         </p>
                                                     </div>
 

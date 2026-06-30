@@ -7,6 +7,11 @@
     const storeName = $derived(
         (page.props as any).settings?.store_name || 'Bizmate',
     );
+    const coinsEnabled = $derived(
+        (page.props as any).settings?.coins_enabled === 'true' ||
+        (page.props as any).settings?.coins_enabled === true ||
+        (page.props as any).settings?.coins_enabled === '1'
+    );
     import Input from '@/components/ui/Input.svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
     import Select from '@/components/ui/Select.svelte';
@@ -105,6 +110,9 @@
             max_uses_per_user: '',
             min_qty: 1,
             can_stack_with_promos: true,
+            is_points_voucher: false,
+            points_new_user: '',
+            points_existing_user: '',
             bundle: {
                 buy_items: [{ product_id: '', product_variant_id: '', qty: 1 }],
                 get_items: [
@@ -496,6 +504,11 @@
             form.items = [];
         }
 
+        if (form.settings.is_points_voucher) {
+            form.discount_type = 'fixed';
+            form.discount_value = 0;
+        }
+
         form.post(adminPromotionsStore.url(), {
             onSuccess: () => {
                 showToast('Promosi berhasil ditambahkan!', 'success');
@@ -813,48 +826,53 @@
 
                     <!-- Discount Values Config -->
                     {#if form.type !== 'bundling_gift' && form.type !== 'voucher_gratis_ongkir'}
-                        <div
-                            class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-slate-100"
-                        >
-                            <div>
-                                <Select
-                                    label="Jenis Diskon"
-                                    options={discountTypeOptions}
-                                    bind:value={form.discount_type}
-                                    required={form.type !== 'flash_sale' &&
-                                        targetScope !== 'specific'}
-                                />
-                            </div>
+                        {#if form.type !== 'voucher_belanja' || !form.settings.is_points_voucher}
+                            <div
+                                class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-slate-100"
+                            >
+                                <div>
+                                    <Select
+                                        label="Jenis Diskon"
+                                        options={discountTypeOptions}
+                                        bind:value={form.discount_type}
+                                        required={form.type !== 'flash_sale' &&
+                                            targetScope !== 'specific' &&
+                                            !form.settings.is_points_voucher}
+                                    />
+                                </div>
 
-                            {#if form.discount_type === 'percentage'}
-                                <div>
-                                    <Input
-                                        id="discount-val"
-                                        bind:value={form.discount_value}
-                                        type="number"
-                                        label="Diskon Persentase (%)"
-                                        placeholder="Contoh: 10"
-                                        min="0"
-                                        max="100"
-                                        required={form.type !== 'flash_sale' &&
-                                            targetScope !== 'specific'}
-                                        error={form.errors.discount_value}
-                                    />
-                                </div>
-                            {:else}
-                                <div>
-                                    <InputCurrency
-                                        id="discount-val-curr"
-                                        bind:value={form.discount_value}
-                                        label="Nominal Diskon Rupiah (Rp)"
-                                        placeholder="Contoh: 50.000"
-                                        required={form.type !== 'flash_sale' &&
-                                            targetScope !== 'specific'}
-                                        error={form.errors.discount_value}
-                                    />
-                                </div>
-                            {/if}
-                        </div>
+                                {#if form.discount_type === 'percentage'}
+                                    <div>
+                                        <Input
+                                            id="discount-val"
+                                            bind:value={form.discount_value}
+                                            type="number"
+                                            label="Diskon Persentase (%)"
+                                            placeholder="Contoh: 10"
+                                            min="0"
+                                            max="100"
+                                            required={form.type !== 'flash_sale' &&
+                                                targetScope !== 'specific' &&
+                                                !form.settings.is_points_voucher}
+                                            error={form.errors.discount_value}
+                                        />
+                                    </div>
+                                {:else}
+                                    <div>
+                                        <InputCurrency
+                                            id="discount-val-curr"
+                                            bind:value={form.discount_value}
+                                            label="Nominal Diskon Rupiah (Rp)"
+                                            placeholder="Contoh: 50.000"
+                                            required={form.type !== 'flash_sale' &&
+                                                targetScope !== 'specific' &&
+                                                !form.settings.is_points_voucher}
+                                            error={form.errors.discount_value}
+                                        />
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
                     {/if}
 
                     <!-- Free Shipping Voucher Custom Settings -->
@@ -979,6 +997,55 @@
                                 icon="ti-layers-intersect"
                             />
                         </div>
+
+                        {#if form.type === 'voucher_belanja' && coinsEnabled}
+                            <div class="pt-4 border-t border-slate-100 mt-4 space-y-4">
+                                <Toggle
+                                    bind:checked={form.settings.is_points_voucher}
+                                    label="Ubah Jadi Poin/Koin"
+                                    description="Ubah voucher belanja ini menjadi voucher reward koin/poin alih-alih diskon nominal belanja."
+                                    icon="ti-coins"
+                                />
+
+                                {#if form.settings.is_points_voucher}
+                                    <div
+                                        class="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-50/50 rounded-2xl border border-slate-100 mt-2"
+                                    >
+                                        <div>
+                                            <Input
+                                                id="points-new-user"
+                                                bind:value={form.settings.points_new_user}
+                                                type="number"
+                                                label="Jumlah Poin (Pengguna Baru)"
+                                                placeholder="Contoh: 10000"
+                                                min="0"
+                                                required={true}
+                                                error={form.errors['settings.points_new_user']}
+                                            />
+                                            <p class="text-[10px] text-slate-400 mt-1">
+                                                Poin yang didapatkan jika pembeli belum pernah bertransaksi sukses/aktif.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <Input
+                                                id="points-existing-user"
+                                                bind:value={form.settings.points_existing_user}
+                                                type="number"
+                                                label="Jumlah Poin (Pengguna Lama)"
+                                                placeholder="Contoh: 5000"
+                                                min="0"
+                                                required={true}
+                                                error={form.errors['settings.points_existing_user']}
+                                            />
+                                            <p class="text-[10px] text-slate-400 mt-1">
+                                                Poin yang didapatkan jika pembeli sudah pernah bertransaksi sebelumnya.
+                                            </p>
+                                        </div>
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
                     {/if}
 
                     <!-- Terms & Conditions (S&K) -->

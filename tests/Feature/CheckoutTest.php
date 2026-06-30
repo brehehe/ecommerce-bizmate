@@ -787,3 +787,107 @@ test('customer can get store courier shipping cost with distance rounded up', fu
     $data = $response->json();
     expect((float) $data['results'][0]['costs'][0]['cost'][0]['value'])->toBe(2000.0);
 });
+
+test('points voucher is resolved with correct points based on new or existing user status', function () {
+    // 1. Enable coins
+    Setting::updateOrCreate(['key' => 'coins_enabled'], ['value' => '1']);
+
+    // 2. Create points voucher
+    $voucher = Promotion::create([
+        'name' => 'Voucher Koin Baru',
+        'type' => 'voucher_belanja',
+        'code' => 'KOINBARU',
+        'discount_type' => 'fixed',
+        'discount_value' => 0,
+        'start_time' => now()->subDay(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'is_points_voucher' => true,
+            'points_new_user' => 10000,
+            'points_existing_user' => 5000,
+        ],
+    ]);
+
+    // 3. Resolve for new user (no transactions)
+    $response = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'KOINBARU',
+        'subtotal' => 100000,
+        'shipping_fee' => 10000,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['valid'])->toBeTrue();
+    expect((int) $data['discount_amount'])->toBe(0);
+    expect($data['is_points_voucher'])->toBeTrue();
+    expect($data['voucher_points'])->toBe(10000);
+
+    // 4. Create an active transaction for the user so they become an existing user
+    Transaction::create([
+        'transaction_number' => 'TRX-PAST-001',
+        'user_id' => $this->user->id,
+        'payment_method_id' => $this->paymentMethod->id,
+        'status' => 'selesai',
+        'subtotal' => 50000,
+        'discount_amount' => 0,
+        'shipping_fee' => 10000,
+        'grand_total' => 60000,
+    ]);
+
+    // 5. Resolve for existing user
+    $response = $this->actingAs($this->user)->post(route('checkout.apply-voucher'), [
+        'code' => 'KOINBARU',
+        'subtotal' => 100000,
+        'shipping_fee' => 10000,
+    ]);
+    $response->assertOk();
+    $data = $response->json();
+    expect($data['valid'])->toBeTrue();
+    expect($data['voucher_points'])->toBe(5000);
+});
+
+test('checkout stores correct coins_earned when points voucher is used and bypasses normal earning', function () {
+    // 1. Enable coins and configure proportional earning (1000 Rp = 1 Coin)
+    Setting::updateOrCreate(['key' => 'coins_enabled'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'coin_conversion_rate'], ['value' => '1']);
+    Setting::updateOrCreate(['key' => 'coin_earning_method'], ['value' => 'proportional']);
+    Setting::updateOrCreate(['key' => 'coin_earning_rate_rupiah'], ['value' => '1000']);
+    Setting::updateOrCreate(['key' => 'coin_earning_rate_coins'], ['value' => '1']);
+
+    // 2. Create points voucher
+    $voucher = Promotion::create([
+        'name' => 'Voucher Koin Baru',
+        'type' => 'voucher_belanja',
+        'code' => 'KOINBARU',
+        'discount_type' => 'fixed',
+        'discount_value' => 0,
+        'start_time' => now()->subDay(),
+        'end_time' => now()->addDay(),
+        'is_active' => true,
+        'settings' => [
+            'is_points_voucher' => true,
+            'points_new_user' => 10000,
+            'points_existing_user' => 5000,
+        ],
+    ]);
+
+    // Subtotal is 1000000 (from 2 * 5000000 Laptop).
+    // Normally proportional points would be 1000000 / 1000 * 1 = 1000 points.
+    // But points voucher for new user grants 10000 points, which should override/bypass it!
+
+    $response = $this->actingAs($this->user)->post(route('checkout.store'), [
+        'customer_address_id' => $this->address->id,
+        'payment_method_id' => $this->paymentMethod->id,
+        'shipping_courier' => 'jne',
+        'shipping_service' => 'REG',
+        'shipping_fee' => 15000,
+        'voucher_code' => 'KOINBARU',
+    ]);
+
+    $response->assertRedirect();
+    $transaction = Transaction::latest('created_at')->first();
+    expect($transaction->voucher_code)->toBe('KOINBARU');
+    expect((int) $transaction->discount_amount)->toBe(0);
+    // User is new -> should get exactly 10000 points, overriding regular 1000 proportional points
+    expect((int) $transaction->coins_earned)->toBe(10000);
+});

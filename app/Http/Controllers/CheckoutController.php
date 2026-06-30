@@ -225,6 +225,10 @@ class CheckoutController extends Controller
 
         $couriers = Courier::where('is_active', true)->orderBy('order')->get();
 
+        $isNewUser = ! Transaction::where('user_id', $user->id)
+            ->where('status', '!=', 'batal')
+            ->exists();
+
         return Inertia::render('Storefront/Checkout', [
             'cartItems' => $cartItems,
             'addresses' => $addresses,
@@ -237,6 +241,7 @@ class CheckoutController extends Controller
             'appFee' => $appFee,
             'appliedVoucher' => $appliedVoucher,
             'couriers' => $couriers,
+            'isNewUser' => $isNewUser,
         ]);
     }
 
@@ -376,6 +381,21 @@ class CheckoutController extends Controller
             }
         }
 
+        // Calculate subtotal and populate unit_price
+        $subtotal = 0;
+        foreach ($cartItems as $item) {
+            $variant = $item->productVariant;
+            $product = $item->product;
+
+            $basePrice = $variant
+                ? (float) ($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0))
+                : (float) ($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0));
+
+            $item->unit_price = $basePrice;
+            $item->subtotal = $basePrice * $item->quantity;
+            $subtotal += $item->subtotal;
+        }
+
         // Process voucher
         $voucherCode = $request->voucher_code;
         $voucherDiscountType = null;
@@ -385,7 +405,7 @@ class CheckoutController extends Controller
         $shippingDiscount = 0;
 
         if ($voucherCode) {
-            $result = $this->resolveVoucher($voucherCode, $cartItems, $request->shipping_fee);
+            $result = $this->resolveVoucher($voucherCode, $cartItems, $request->shipping_fee, $subtotal);
 
             if (! $result['valid']) {
                 return back()->with('error', $result['message']);
@@ -396,19 +416,6 @@ class CheckoutController extends Controller
             $voucherDiscountValue = $result['discount_value'];
             $discountAmount = $result['discount_amount'];
             $shippingDiscount = $result['shipping_discount'];
-        }
-
-        // Calculate subtotal
-        $subtotal = 0;
-        foreach ($cartItems as $item) {
-            $variant = $item->productVariant;
-            $product = $item->product;
-
-            $basePrice = $variant
-                ? (float) ($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0))
-                : (float) ($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0));
-
-            $subtotal += $basePrice * $item->quantity;
         }
 
         $shippingFee = (float) $request->shipping_fee;
@@ -448,33 +455,63 @@ class CheckoutController extends Controller
 
         // --- Loyalty Coins Earning Calculation ---
         $coinsEarned = 0;
-        if ($coinsEnabled && $coinsRedeemed <= 0) {
-            $coinEarningMethod = Setting::where('key', 'coin_earning_method')->value('value') ?? 'proportional';
-
-            if ($coinEarningMethod === 'proportional') {
-                $coinEarningRateRupiah = (float) (Setting::where('key', 'coin_earning_rate_rupiah')->value('value') ?? 1000);
-                $coinEarningRateCoins = (float) (Setting::where('key', 'coin_earning_rate_coins')->value('value') ?? 1);
-
-                if ($coinEarningRateRupiah > 0) {
-                    $coinsEarned = (int) (floor($subtotal / $coinEarningRateRupiah) * $coinEarningRateCoins);
+        if ($coinsEnabled) {
+            // Check if points voucher is used
+            $pointsVoucher = null;
+            if ($voucherPromotion) {
+                if (is_array($voucherPromotion) || $voucherPromotion instanceof \Illuminate\Support\Collection) {
+                    foreach ($voucherPromotion as $promo) {
+                        if ($promo->settings['is_points_voucher'] ?? false) {
+                            $pointsVoucher = $promo;
+                            break;
+                        }
+                    }
+                } elseif ($voucherPromotion instanceof Promotion) {
+                    if ($voucherPromotion->settings['is_points_voucher'] ?? false) {
+                        $pointsVoucher = $voucherPromotion;
+                    }
                 }
-            } elseif ($coinEarningMethod === 'tiered') {
-                $tiersVal = Setting::where('key', 'coin_earning_tiers')->value('value');
-                $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
+            }
 
-                if (is_array($coinEarningTiers) && count($coinEarningTiers) > 0) {
-                    // Sort descending by min_purchase
-                    usort($coinEarningTiers, function ($a, $b) {
-                        return ($b['min_purchase'] ?? 0) <=> ($a['min_purchase'] ?? 0);
-                    });
+            if ($pointsVoucher) {
+                // If points voucher is used, we get the points defined in settings
+                $isNewUser = ! Transaction::where('user_id', $user->id)
+                    ->where('status', '!=', 'batal')
+                    ->exists();
 
-                    foreach ($coinEarningTiers as $tier) {
-                        $minPurchase = (float) ($tier['min_purchase'] ?? 0);
-                        $earnCoins = (int) ($tier['earn_coins'] ?? 0);
+                $pointsNew = (int) ($pointsVoucher->settings['points_new_user'] ?? 0);
+                $pointsExisting = (int) ($pointsVoucher->settings['points_existing_user'] ?? 0);
 
-                        if ($subtotal >= $minPurchase) {
-                            $coinsEarned = $earnCoins;
-                            break; // Got the highest tier
+                $coinsEarned = $isNewUser ? $pointsNew : $pointsExisting;
+            } elseif ($coinsRedeemed <= 0) {
+                // Otherwise calculate regular points
+                $coinEarningMethod = Setting::where('key', 'coin_earning_method')->value('value') ?? 'proportional';
+
+                if ($coinEarningMethod === 'proportional') {
+                    $coinEarningRateRupiah = (float) (Setting::where('key', 'coin_earning_rate_rupiah')->value('value') ?? 1000);
+                    $coinEarningRateCoins = (float) (Setting::where('key', 'coin_earning_rate_coins')->value('value') ?? 1);
+
+                    if ($coinEarningRateRupiah > 0) {
+                        $coinsEarned = (int) (floor($subtotal / $coinEarningRateRupiah) * $coinEarningRateCoins);
+                    }
+                } elseif ($coinEarningMethod === 'tiered') {
+                    $tiersVal = Setting::where('key', 'coin_earning_tiers')->value('value');
+                    $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
+
+                    if (is_array($coinEarningTiers) && count($coinEarningTiers) > 0) {
+                        // Sort descending by min_purchase
+                        usort($coinEarningTiers, function ($a, $b) {
+                            return ($b['min_purchase'] ?? 0) <=> ($a['min_purchase'] ?? 0);
+                        });
+
+                        foreach ($coinEarningTiers as $tier) {
+                            $minPurchase = (float) ($tier['min_purchase'] ?? 0);
+                            $earnCoins = (int) ($tier['earn_coins'] ?? 0);
+
+                            if ($subtotal >= $minPurchase) {
+                                $coinsEarned = $earnCoins;
+                                break; // Got the highest tier
+                            }
                         }
                     }
                 }
@@ -1448,6 +1485,11 @@ class CheckoutController extends Controller
         $totalDiscountAmount = 0;
         $totalShippingDiscount = 0;
 
+        $isPointsVoucher = false;
+        $pointsNewUser = 0;
+        $pointsExistingUser = 0;
+        $voucherPoints = 0;
+
         foreach ($resolvedPromotions as $promo) {
             if ($promo->type === 'voucher_gratis_ongkir') {
                 $shippingDiscount = min($shippingFee, (float) ($promo->max_discount ?? $shippingFee));
@@ -1457,16 +1499,29 @@ class CheckoutController extends Controller
                 $eligibleSubtotal = $canStack ? $subtotal : $normalSubtotal;
 
                 $discountAmount = 0;
-                if ($promo->discount_type === 'percentage') {
-                    $discountAmount = $eligibleSubtotal * ($promo->discount_value / 100);
+                if ($promo->settings['is_points_voucher'] ?? false) {
+                    $discountAmount = 0;
+                    $isPointsVoucher = true;
+                    $pointsNewUser = (int) ($promo->settings['points_new_user'] ?? 0);
+                    $pointsExistingUser = (int) ($promo->settings['points_existing_user'] ?? 0);
+                    if ($user) {
+                        $isNewUser = ! Transaction::where('user_id', $user->id)
+                            ->where('status', '!=', 'batal')
+                            ->exists();
+                        $voucherPoints = $isNewUser ? $pointsNewUser : $pointsExistingUser;
+                    }
                 } else {
-                    $discountAmount = (float) $promo->discount_value;
-                }
+                    if ($promo->discount_type === 'percentage') {
+                        $discountAmount = $eligibleSubtotal * ($promo->discount_value / 100);
+                    } else {
+                        $discountAmount = (float) $promo->discount_value;
+                    }
 
-                $discountAmount = min($discountAmount, $eligibleSubtotal);
+                    $discountAmount = min($discountAmount, $eligibleSubtotal);
 
-                if ($promo->max_discount) {
-                    $discountAmount = min($discountAmount, (float) $promo->max_discount);
+                    if ($promo->max_discount) {
+                        $discountAmount = min($discountAmount, (float) $promo->max_discount);
+                    }
                 }
                 $totalDiscountAmount += $discountAmount;
             }
@@ -1484,6 +1539,10 @@ class CheckoutController extends Controller
             'discount_value' => $singlePromo ? (float) $singlePromo->discount_value : 0.0,
             'discount_amount' => round($totalDiscountAmount, 2),
             'shipping_discount' => round($totalShippingDiscount, 2),
+            'is_points_voucher' => $isPointsVoucher,
+            'points_new_user' => $pointsNewUser,
+            'points_existing_user' => $pointsExistingUser,
+            'voucher_points' => $voucherPoints,
         ];
     }
 

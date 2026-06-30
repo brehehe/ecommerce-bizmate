@@ -5,6 +5,18 @@
     import { showToast } from '@/utils/toast';
     import OfflineDetector from '@/components/OfflineDetector.svelte';
 
+    // ── DARK MODE ──────────────────────────────────
+    let isDark = $state(false);
+
+    function applyDarkMode(dark: boolean) {
+        localStorage.setItem('sf_theme', dark ? 'dark' : 'light');
+    }
+
+    function toggleDarkMode() {
+        isDark = !isDark;
+        applyDarkMode(isDark);
+    }
+
     const shownFlashIds = new Set();
 
     let {
@@ -884,6 +896,18 @@
     }
 
     onMount(() => {
+        // Initialize dark mode from localStorage or system preference
+        const stored = localStorage.getItem('sf_theme');
+        if (stored === 'dark') {
+            isDark = true;
+        } else if (stored === 'light') {
+            isDark = false;
+        } else {
+            // Follow system preference if no stored value
+            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        applyDarkMode(isDark);
+
         const handleOpenLogin = () => openLogin();
         const handleToggleDropdown = () => (profileDropOpen = !profileDropOpen);
         const handleOpenDesktopChat = async (e: any) => {
@@ -1292,7 +1316,7 @@
 </script>
 
 <div
-    class="min-h-screen flex flex-col bg-slate-50 font-sans"
+    class="min-h-screen flex flex-col {isDark ? 'sf-dark bg-slate-900' : 'bg-slate-50'} font-sans transition-colors duration-300"
     style="--primary: {primary}; --secondary: {secondary};"
 >
     <!-- ====== NAVBAR ====== -->
@@ -1362,6 +1386,21 @@
 
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
+                    <!-- Dark Mode Toggle (Desktop) -->
+                    <button
+                        onclick={toggleDarkMode}
+                        class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                        title={isDark ? 'Mode Terang' : 'Mode Gelap'}
+                    >
+                        {#if isDark}
+                            <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
+                            <span class="text-[9px] font-bold text-white/80 mt-0.5">Terang</span>
+                        {:else}
+                            <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
+                            <span class="text-[9px] font-bold text-white/80 mt-0.5">Gelap</span>
+                        {/if}
+                    </button>
                     <!-- Poin Saya -->
                     {#if (page.props as any).settings?.coins_enabled}
                         <button
@@ -1767,6 +1806,18 @@
 
                 <!-- Mobile right icons -->
                 <div class="flex items-center gap-2 shrink-0">
+                    <!-- Dark Mode Toggle (Mobile) -->
+                    <button
+                        onclick={toggleDarkMode}
+                        class="relative text-white p-1.5 shrink-0"
+                        aria-label={isDark ? 'Mode Terang' : 'Mode Gelap'}
+                    >
+                        {#if isDark}
+                            <i class="ti ti-sun text-2xl light-toggle-icon-enter"></i>
+                        {:else}
+                            <i class="ti ti-moon text-2xl dark-toggle-icon-enter"></i>
+                        {/if}
+                    </button>
                     <!-- Coin Saya (mobile) -->
                     {#if (page.props as any).settings?.coins_enabled}
                         <button
