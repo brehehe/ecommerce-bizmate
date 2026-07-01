@@ -67,14 +67,14 @@
             container.style.position = 'fixed';
             container.style.top = '0';
             container.style.left = '0';
-            container.style.width = '600px';
+            container.style.width = '1120px';
             container.style.height = '0';
             container.style.overflow = 'hidden';
             container.style.zIndex = '-9999';
             container.style.pointerEvents = 'none';
 
             const element = document.createElement('div');
-            element.style.width = '600px';
+            element.style.width = '1120px';
             element.style.background = 'white';
 
             const discountText = getDiscountText(promo);
@@ -93,55 +93,63 @@
             });
 
             const minPurchaseRow = promo.min_purchase > 0
-                ? `<div class="detail-row" style="font-size: 11px; color: #475569; margin-bottom: 4px;">Min. belanja: <strong>Rp ${Number(promo.min_purchase).toLocaleString('id-ID')}</strong></div>` : '';
+                ? `<div class="detail-row" style="font-size: 16px; color: #475569; margin-bottom: 8px;">Min. belanja: <strong>Rp ${Number(promo.min_purchase).toLocaleString('id-ID')}</strong></div>` : '';
             const maxDiscountRow = promo.max_discount > 0
-                ? `<div class="detail-row" style="font-size: 11px; color: #475569; margin-bottom: 4px;">Maks. diskon: <strong>Rp ${Number(promo.max_discount).toLocaleString('id-ID')}</strong></div>` : '';
+                ? `<div class="detail-row" style="font-size: 16px; color: #475569; margin-bottom: 8px;">Maks. diskon: <strong>Rp ${Number(promo.max_discount).toLocaleString('id-ID')}</strong></div>` : '';
             const quotaRow = promo.quota
-                ? `<div class="detail-row" style="font-size: 11px; color: #475569; margin-bottom: 4px;">Sisa kuota: <strong>${promo.quota - (promo.used_count || 0)}</strong></div>` : '';
+                ? `<div class="detail-row" style="font-size: 16px; color: #475569; margin-bottom: 8px;">Sisa kuota: <strong>${promo.quota - (promo.used_count || 0)}</strong></div>` : '';
             const termsText = promo.settings?.terms
-                ? `<div class="terms" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #64748b; line-height: 1.6;"><strong>Syarat & Ketentuan:</strong><br>${promo.settings.terms.replace(/\n/g, '<br>')}</div>` : '';
-            const qrUrl = getQrCodeUrl(promo.code, 240);
+                ? `<div class="terms" style="margin-top: 24px; padding-top: 16px; border-top: 1px dashed #cbd5e1; font-size: 12px; color: #64748b; line-height: 1.6;"><strong>Syarat & Ketentuan:</strong><br>${promo.settings.terms.replace(/\n/g, '<br>')}</div>` : '';
+            const qrUrl = getQrCodeUrl(promo.code, 300);
 
             element.innerHTML = `
-              <div class="card" style="width: 600px; border: 2px dashed #cbd5e1; border-radius: 20px; overflow: hidden; background: white; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
-                <div class="card-header" style="background: linear-gradient(135deg, #1e293b, #334155); padding: 20px 24px; display: flex; align-items: flex-start; justify-content: space-between; flex-direction: row; color: white;">
+              <div class="card" style="width: 1120px; height: 792px; border: 3px dashed #cbd5e1; border-radius: 28px; overflow: hidden; background: white; font-family: 'Outfit', sans-serif; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;">
+                <!-- Header -->
+                <div class="card-header" style="background: linear-gradient(135deg, #1e293b, #334155); padding: 32px 48px; display: flex; align-items: center; justify-content: space-between; flex-direction: row; color: white;">
                   <div class="card-header-left">
-                    <div class="subtitle" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">Voucher Spesial Untuk Kamu</div>
-                    <div class="title" style="font-size: 18px; font-weight: 900; color: white; line-height: 1.2;">${promo.name}</div>
-                    <span class="type-badge" style="display: inline-block; margin-top: 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 10px; font-size: 9px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 1px;">${typeLabel}</span>
+                    <div class="subtitle" style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px;">Voucher Spesial Untuk Kamu</div>
+                    <div class="title" style="font-size: 32px; font-weight: 900; color: white; line-height: 1.2;">${promo.name}</div>
+                    <span class="type-badge" style="display: inline-block; margin-top: 12px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 6px 14px; font-size: 11px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 1.5px;">${typeLabel}</span>
                   </div>
-                  <div class="card-header-right" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: right; white-space: nowrap; margin-left: 16px;">SCAN &amp; KLAIM!</div>
+                  <div class="card-header-right" style="font-size: 13px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 2px; text-align: right; white-space: nowrap; border: 2px solid #38bdf8; padding: 8px 16px; border-radius: 8px; margin-left: 16px;">SCAN &amp; KLAIM!</div>
                 </div>
-                <div class="card-body" style="display: flex; flex-direction: row;">
-                  <div class="card-info" style="flex: 1; padding: 20px;">
-                    <div class="discount-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px;">
-                      <div class="discount-label" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Nilai Diskon</div>
-                      <div class="discount-value" style="font-size: 22px; font-weight: 900; color: #1e293b;">${discountText}</div>
+
+                <!-- Body -->
+                <div class="card-body" style="display: flex; flex-direction: row; flex: 1; min-height: 0;">
+                  <!-- Left Info Column -->
+                  <div class="card-info" style="flex: 1; padding: 32px 48px; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="discount-box" style="background: #f1f5f9; border: 1.5px solid #e2e8f0; border-radius: 16px; padding: 20px 28px; margin-bottom: 24px;">
+                      <div class="discount-label" style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 6px;">Nilai Diskon</div>
+                      <div class="discount-value" style="font-size: 42px; font-weight: 900; color: #0f172a;">${discountText}</div>
                     </div>
                     ${minPurchaseRow}
                     ${maxDiscountRow}
                     ${quotaRow}
-                    <div class="validity" style="font-size: 11px; color: #475569; margin-top: 4px;">Berlaku s/d: <strong>${endDate}</strong></div>
+                    <div class="validity" style="font-size: 16px; color: #475569; margin-top: 8px;">Berlaku s/d: <strong style="color: #0f172a;">${endDate}</strong></div>
                     ${termsText}
                   </div>
-                  <div class="card-qr" style="width: 180px; background: #f8fafc; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; gap: 8px;">
-                    <img src="${qrUrl}" crossorigin="anonymous" alt="QR ${promo.code}" style="width: 148px; height: 148px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; padding: 4px; object-fit: contain;" />
-                    <div class="qr-code-label" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Kode:</div>
-                    <div class="qr-code-text" style="font-family: monospace; font-weight: 700; font-size: 13px; color: #1e293b; letter-spacing: 2px; text-align: center;">${promo.code}</div>
+
+                  <!-- Right QR Column -->
+                  <div class="card-qr" style="width: 360px; background: #f8fafc; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; gap: 14px;">
+                    <img src="${qrUrl}" crossorigin="anonymous" alt="QR ${promo.code}" style="width: 200px; height: 200px; border: 1px solid #cbd5e1; border-radius: 12px; background: white; padding: 8px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" />
+                    <div class="qr-code-label" style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; text-align: center; margin-top: 8px;">Kode Voucher:</div>
+                    <div class="qr-code-text" style="font-family: monospace; font-weight: 800; font-size: 22px; color: #0f172a; letter-spacing: 3px; text-align: center; background: #e2e8f0; padding: 6px 16px; border-radius: 8px; border: 1px solid #cbd5e1;">${promo.code}</div>
                   </div>
                 </div>
-                <div class="card-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
+                <!-- Footer -->
+                <div class="card-footer" style="background: #f1f5f9; border-top: 1.5px solid #e2e8f0; padding: 24px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
                   <div class="footer-col">
-                    <div class="footer-title" style="font-size: 9px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Klaim via QR Code:</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">1. Buka kamera ponsel</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">2. Scan QR Code ini</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">3. Buka link yang muncul</div>
+                    <div class="footer-title" style="font-size: 12px; font-weight: 900; color: #1e293b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">📱 Klaim via QR Code:</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 4px; line-height: 1.5;">1. Buka aplikasi kamera ponsel Anda</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 4px; line-height: 1.5;">2. Pindai/Scan QR Code di atas</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 4px; line-height: 1.5;">3. Buka tautan untuk mengeklaim voucher</div>
                   </div>
                   <div class="footer-col">
-                    <div class="footer-title" style="font-size: 9px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Klaim Manual:</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">1. Buka halaman checkout</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">2. Klik Voucher &amp; Promo</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">3. Ketik kode: <strong>${promo.code}</strong></div>
+                    <div class="footer-title" style="font-size: 12px; font-weight: 900; color: #1e293b; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">⌨️ Klaim Manual di Aplikasi:</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 4px; line-height: 1.5;">1. Pilih produk belanjaan Anda &amp; buka halaman Checkout</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 4px; line-height: 1.5;">2. Klik bagian "Gunakan/Masukkan Voucher"</div>
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 4px; line-height: 1.5;">3. Ketikkan kode: <strong style="color: #0f172a;">${promo.code}</strong></div>
                   </div>
                 </div>
               </div>
@@ -153,11 +161,11 @@
             const img = element.querySelector('img');
             const runHtml2Pdf = () => {
                 const opt = {
-                    margin: 10,
+                    margin: 0,
                     filename: `Voucher-${promo.code}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
                     html2canvas: { scale: 2, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
                 };
 
                 // @ts-ignore
