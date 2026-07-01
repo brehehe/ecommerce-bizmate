@@ -121,7 +121,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'required|string|max:100|unique:products,sku',
-            'category_ids' => 'required|array|min:1',
+            'category_ids' => 'nullable|array',
             'category_ids.*' => 'exists:categories,id',
             'brand_ids' => 'nullable|array',
             'brand_ids.*' => 'exists:brands,id',
@@ -161,10 +161,10 @@ class ProductController extends Controller
 
         $this->validateBase64Images($request);
 
-        $categoryIds = $validated['category_ids'];
+        $categoryIds = $validated['category_ids'] ?? [];
         $brandIds = $validated['brand_ids'] ?? [];
 
-        $validated['category_id'] = head($categoryIds);
+        $validated['category_id'] = head($categoryIds) ?: null;
         $validated['brand_id'] = head($brandIds) ?: null;
 
         if (! empty($validated['brand_id'])) {
@@ -418,7 +418,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sku' => 'required|string|max:100|unique:products,sku,'.$product->id,
-            'category_ids' => 'required|array|min:1',
+            'category_ids' => 'nullable|array',
             'category_ids.*' => 'exists:categories,id',
             'brand_ids' => 'nullable|array',
             'brand_ids.*' => 'exists:brands,id',
@@ -458,10 +458,10 @@ class ProductController extends Controller
 
         $this->validateBase64Images($request);
 
-        $categoryIds = $validated['category_ids'];
+        $categoryIds = $validated['category_ids'] ?? [];
         $brandIds = $validated['brand_ids'] ?? [];
 
-        $validated['category_id'] = head($categoryIds);
+        $validated['category_id'] = head($categoryIds) ?: null;
         $validated['brand_id'] = head($brandIds) ?: null;
 
         if (! empty($validated['brand_id'])) {

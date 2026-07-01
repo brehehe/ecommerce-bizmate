@@ -536,7 +536,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->
-    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
+    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 mb-5 sm:mb-6">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3">
                 <!-- Main slider (left, 2/3 width) -->
@@ -667,7 +667,7 @@
     {#if categories.length > 0}
         <section
             id="categories-section"
-            class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8"
+            class="mb-5 sm:mb-6 px-3 sm:px-5 lg:px-8"
         >
             <div
                 class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm"
@@ -741,7 +741,7 @@
      SECTION 4: FLASH SALE
     ═══════════════════════════════════════════════════ -->
     {#if activeFlashSale}
-        <section class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
+        <section class="mb-5 sm:mb-6 px-3 sm:px-5 lg:px-8">
             <div
                 class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden shadow-sm"
             >
@@ -1000,7 +1000,7 @@
     {#if bestSellerProducts.length > 0}
         <section
             id="bestsellers-section"
-            class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8"
+            class="mb-5 sm:mb-6 px-3 sm:px-5 lg:px-8"
         >
             <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
                 <div
@@ -1148,7 +1148,7 @@
         </section>
     {/if}
 
-    <section class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8">
+    <section class="mb-5 sm:mb-6 px-3 sm:px-5 lg:px-8">
         <div
             class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:scale-[1.005] transition-all duration-300 aspect-[3.5/1] sm:aspect-[4.5/1]"
         >
@@ -1179,7 +1179,7 @@
 ═══════════════════════════════════════════════════ -->
     <section
         id="recommendations-section"
-        class="mt-4 sm:mt-5 px-3 sm:px-5 lg:px-8"
+        class="mb-5 sm:mb-6 px-3 sm:px-5 lg:px-8"
     >
         <div class="max-w-6xl mx-auto bg-transparent shadow-none">
             <div class="flex items-center justify-between mb-4 px-1">
@@ -1478,16 +1478,6 @@
                     alt="Detail Gambar"
                     class="w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/10 animate-zoomIn"
                 />
-
-                <!-- Download Button / Full size opener -->
-                <a
-                    href={activeLightboxImage}
-                    download
-                    target="_blank"
-                    class="mt-4 px-4 py-2 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition flex items-center gap-1.5 border border-white/15 backdrop-blur-md"
-                >
-                    <i class="ti ti-download text-sm"></i> Buka Ukuran Penuh
-                </a>
             </div>
         </div>
     {/if}

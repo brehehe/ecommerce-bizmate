@@ -47,6 +47,7 @@
     // QR Code Print Card Modal State
     let qrModalOpen = $state(false);
     let qrPromo = $state<any>(null);
+    let pdfLoading = $state<number | null>(null);
 
     function openQrCard(promo: any) {
         qrPromo = promo;
@@ -57,137 +58,142 @@
         return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(code)}&margin=10&format=png`;
     }
 
-    function openPrintWindow(promo: any) {
-        const discountText = getDiscountText(promo);
+    function downloadPdf(promo: any) {
+        if (!promo || pdfLoading !== null) return;
+        pdfLoading = promo.id;
 
-        const typeLabel = (() => {
-            switch (promo.type) {
-                case 'voucher_belanja': return '🎫 Voucher Belanja';
-                case 'voucher_gratis_ongkir': return '🚚 Gratis Ongkir';
-                case 'promo_toko': return '🏪 Promo Toko';
-                case 'flash_sale': return '⚡ Flash Sale';
-                default: return '🎁 Promosi';
+        const runDownload = () => {
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '600px';
+            container.style.height = '0';
+            container.style.overflow = 'hidden';
+            container.style.zIndex = '-9999';
+            container.style.pointerEvents = 'none';
+
+            const element = document.createElement('div');
+            element.style.width = '600px';
+            element.style.background = 'white';
+
+            const discountText = getDiscountText(promo);
+            const typeLabel = (() => {
+                switch (promo.type) {
+                    case 'voucher_belanja': return '🎫 Voucher Belanja';
+                    case 'voucher_gratis_ongkir': return '🚚 Gratis Ongkir';
+                    case 'promo_toko': return '🏪 Promo Toko';
+                    case 'flash_sale': return '⚡ Flash Sale';
+                    default: return '🎁 Promosi';
+                }
+            })();
+
+            const endDate = new Date(promo.end_time).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'long', year: 'numeric'
+            });
+
+            const minPurchaseRow = promo.min_purchase > 0
+                ? `<div class="detail-row" style="font-size: 11px; color: #475569; margin-bottom: 4px;">Min. belanja: <strong>Rp ${Number(promo.min_purchase).toLocaleString('id-ID')}</strong></div>` : '';
+            const maxDiscountRow = promo.max_discount > 0
+                ? `<div class="detail-row" style="font-size: 11px; color: #475569; margin-bottom: 4px;">Maks. diskon: <strong>Rp ${Number(promo.max_discount).toLocaleString('id-ID')}</strong></div>` : '';
+            const quotaRow = promo.quota
+                ? `<div class="detail-row" style="font-size: 11px; color: #475569; margin-bottom: 4px;">Sisa kuota: <strong>${promo.quota - (promo.used_count || 0)}</strong></div>` : '';
+            const termsText = promo.settings?.terms
+                ? `<div class="terms" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #64748b; line-height: 1.6;"><strong>Syarat & Ketentuan:</strong><br>${promo.settings.terms.replace(/\n/g, '<br>')}</div>` : '';
+            const qrUrl = getQrCodeUrl(promo.code, 240);
+
+            element.innerHTML = `
+              <div class="card" style="width: 600px; border: 2px dashed #cbd5e1; border-radius: 20px; overflow: hidden; background: white; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
+                <div class="card-header" style="background: linear-gradient(135deg, #1e293b, #334155); padding: 20px 24px; display: flex; align-items: flex-start; justify-content: space-between; flex-direction: row; color: white;">
+                  <div class="card-header-left">
+                    <div class="subtitle" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px;">Voucher Spesial Untuk Kamu</div>
+                    <div class="title" style="font-size: 18px; font-weight: 900; color: white; line-height: 1.2;">${promo.name}</div>
+                    <span class="type-badge" style="display: inline-block; margin-top: 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 10px; font-size: 9px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 1px;">${typeLabel}</span>
+                  </div>
+                  <div class="card-header-right" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: right; white-space: nowrap; margin-left: 16px;">SCAN &amp; KLAIM!</div>
+                </div>
+                <div class="card-body" style="display: flex; flex-direction: row;">
+                  <div class="card-info" style="flex: 1; padding: 20px;">
+                    <div class="discount-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px;">
+                      <div class="discount-label" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px;">Nilai Diskon</div>
+                      <div class="discount-value" style="font-size: 22px; font-weight: 900; color: #1e293b;">${discountText}</div>
+                    </div>
+                    ${minPurchaseRow}
+                    ${maxDiscountRow}
+                    ${quotaRow}
+                    <div class="validity" style="font-size: 11px; color: #475569; margin-top: 4px;">Berlaku s/d: <strong>${endDate}</strong></div>
+                    ${termsText}
+                  </div>
+                  <div class="card-qr" style="width: 180px; background: #f8fafc; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; gap: 8px;">
+                    <img src="${qrUrl}" crossorigin="anonymous" alt="QR ${promo.code}" style="width: 148px; height: 148px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; padding: 4px; object-fit: contain;" />
+                    <div class="qr-code-label" style="font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: center;">Kode:</div>
+                    <div class="qr-code-text" style="font-family: monospace; font-weight: 700; font-size: 13px; color: #1e293b; letter-spacing: 2px; text-align: center;">${promo.code}</div>
+                  </div>
+                </div>
+                <div class="card-footer" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                  <div class="footer-col">
+                    <div class="footer-title" style="font-size: 9px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Klaim via QR Code:</div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">1. Buka kamera ponsel</div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">2. Scan QR Code ini</div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">3. Buka link yang muncul</div>
+                  </div>
+                  <div class="footer-col">
+                    <div class="footer-title" style="font-size: 9px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Klaim Manual:</div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">1. Buka halaman checkout</div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">2. Klik Voucher &amp; Promo</div>
+                    <div style="font-size: 9px; color: #64748b; margin-bottom: 2px;">3. Ketik kode: <strong>${promo.code}</strong></div>
+                  </div>
+                </div>
+              </div>
+            `;
+
+            container.appendChild(element);
+            document.body.appendChild(container);
+
+            const img = element.querySelector('img');
+            const runHtml2Pdf = () => {
+                const opt = {
+                    margin: 10,
+                    filename: `Voucher-${promo.code}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                // @ts-ignore
+                html2pdf().set(opt).from(element).save().then(() => {
+                    container.remove();
+                    pdfLoading = null;
+                }).catch((err: any) => {
+                    console.error('html2pdf error:', err);
+                    container.remove();
+                    pdfLoading = null;
+                });
+            };
+
+            if (img && img.complete) {
+                runHtml2Pdf();
+            } else if (img) {
+                img.onload = runHtml2Pdf;
+                img.onerror = () => {
+                    runHtml2Pdf();
+                };
+            } else {
+                runHtml2Pdf();
             }
-        })();
+        };
 
-        const endDate = new Date(promo.end_time).toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'long', year: 'numeric'
-        });
-
-        const minPurchaseRow = promo.min_purchase > 0
-            ? `<div class="detail-row">Min. belanja: <strong>Rp ${Number(promo.min_purchase).toLocaleString('id-ID')}</strong></div>` : '';
-        const maxDiscountRow = promo.max_discount > 0
-            ? `<div class="detail-row">Maks. diskon: <strong>Rp ${Number(promo.max_discount).toLocaleString('id-ID')}</strong></div>` : '';
-        const quotaRow = promo.quota
-            ? `<div class="detail-row">Sisa kuota: <strong>${promo.quota - (promo.used_count || 0)}</strong></div>` : '';
-        const termsText = promo.settings?.terms
-            ? `<div class="terms"><strong>Syarat & Ketentuan:</strong><br>${promo.settings.terms.replace(/\n/g, '<br>')}</div>` : '';
-        const qrUrl = getQrCodeUrl(promo.code, 240);
-
-        const html = `<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <title>Voucher: ${promo.code}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Outfit', sans-serif; background: #f8f9fa; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .card { width: 600px; border: 2px dashed #cbd5e1; border-radius: 20px; overflow: hidden; background: white; box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
-    .card-header { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px 24px; display: flex; align-items: flex-start; justify-content: space-between; }
-    .card-header-left .subtitle { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
-    .card-header-left .title { font-size: 18px; font-weight: 900; color: white; line-height: 1.2; }
-    .type-badge { display: inline-block; margin-top: 8px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 3px 10px; font-size: 9px; font-weight: 800; color: white; text-transform: uppercase; letter-spacing: 1px; }
-    .card-header-right { font-size: 9px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; text-align: right; white-space: nowrap; margin-left: 16px; }
-    .card-body { display: flex; }
-    .card-info { flex: 1; padding: 20px; }
-    .discount-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; }
-    .discount-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
-    .discount-value { font-size: 22px; font-weight: 900; color: #1e293b; }
-    .detail-row { font-size: 11px; color: #475569; margin-bottom: 4px; }
-    .validity { font-size: 11px; color: #475569; margin-top: 4px; }
-    .terms { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #64748b; line-height: 1.6; }
-    .card-qr { width: 180px; background: #f8fafc; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; gap: 8px; }
-    .card-qr img { width: 148px; height: 148px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; padding: 4px; object-fit: contain; }
-    .qr-code-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; text-align: center; }
-    .qr-code-text { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; color: #1e293b; letter-spacing: 2px; text-align: center; }
-    .card-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .footer-col .footer-title { font-size: 9px; font-weight: 900; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-    .footer-col ol { padding-left: 0; list-style: none; }
-    .footer-col li { font-size: 9px; color: #64748b; margin-bottom: 2px; display: flex; gap: 5px; }
-    .footer-col li span { font-weight: 700; color: #334155; }
-    @media print {
-      body { background: white; padding: 0; }
-      .card { box-shadow: none; border-style: dashed; width: 100%; }
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="card-header">
-      <div class="card-header-left">
-        <div class="subtitle">Voucher Spesial Untuk Kamu</div>
-        <div class="title">${promo.name}</div>
-        <span class="type-badge">${typeLabel}</span>
-      </div>
-      <div class="card-header-right">SCAN &amp; KLAIM!</div>
-    </div>
-    <div class="card-body">
-      <div class="card-info">
-        <div class="discount-box">
-          <div class="discount-label">Nilai Diskon</div>
-          <div class="discount-value">${discountText}</div>
-        </div>
-        ${minPurchaseRow}
-        ${maxDiscountRow}
-        ${quotaRow}
-        <div class="validity">Berlaku s/d: <strong>${endDate}</strong></div>
-        ${termsText}
-      </div>
-      <div class="card-qr">
-        <img src="${qrUrl}" alt="QR ${promo.code}" />
-        <div class="qr-code-label">Kode:</div>
-        <div class="qr-code-text">${promo.code}</div>
-      </div>
-    </div>
-    <div class="card-footer">
-      <div class="footer-col">
-        <div class="footer-title">Klaim via QR Code:</div>
-        <ol>
-          <li><span>1.</span> Buka kamera ponsel</li>
-          <li><span>2.</span> Scan QR Code ini</li>
-          <li><span>3.</span> Buka link yang muncul</li>
-          <li><span>4.</span> Masukkan kode di checkout</li>
-        </ol>
-      </div>
-      <div class="footer-col">
-        <div class="footer-title">Klaim Manual:</div>
-        <ol>
-          <li><span>1.</span> Buka halaman checkout</li>
-          <li><span>2.</span> Klik Voucher &amp; Promo</li>
-          <li><span>3.</span> Ketik kode: <strong>${promo.code}</strong></li>
-          <li><span>4.</span> Klik Pakai &amp; selesai!</li>
-        </ol>
-      </div>
-    </div>
-  </div>
-  <script>
-    window.onload = function() {
-      // Wait for QR image to load before printing
-      var img = document.querySelector('img');
-      if (img && img.complete) { window.print(); }
-      else if (img) { img.onload = function() { window.print(); }; }
-      else { window.print(); }
-    };
-  <\/script>
-</body>
-</html>`;
-
-        const printWindow = window.open('', '_blank', 'width=700,height=600');
-        if (printWindow) {
-            printWindow.document.write(html);
-            printWindow.document.close();
+        if (typeof (window as any).html2pdf === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            script.onload = runDownload;
+            script.onerror = () => {
+                showToast('Gagal memuat PDF engine. Coba lagi.', 'error');
+                pdfLoading = null;
+            };
+            document.head.appendChild(script);
+        } else {
+            runDownload();
         }
     }
 
@@ -697,11 +703,16 @@
                                         >
                                             {#if promo.code}
                                                 <button
-                                                    onclick={() => openQrCard(promo)}
-                                                    class="p-2 text-slate-400 hover:text-purple-600 rounded-lg transition inline-block"
-                                                    title="Lihat QR Code Voucher"
+                                                    onclick={() => downloadPdf(promo)}
+                                                    disabled={pdfLoading !== null}
+                                                    class="p-2 text-slate-400 hover:text-purple-600 rounded-lg transition inline-block disabled:opacity-50"
+                                                    title="Unduh PDF Voucher (QR Code)"
                                                 >
-                                                    <i class="ti ti-qrcode text-lg"></i>
+                                                    {#if pdfLoading === promo.id}
+                                                        <div class="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    {:else}
+                                                        <i class="ti ti-qrcode text-lg"></i>
+                                                    {/if}
                                                 </button>
                                             {/if}
                                             <Link
@@ -1098,11 +1109,17 @@
                         Tutup
                     </button>
                     <button
-                        onclick={() => openPrintWindow(qrPromo)}
-                        class="flex-1 py-3 bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-bold rounded-xl text-sm shadow-lg shadow-slate-900/20 transition flex items-center justify-center gap-2"
+                        onclick={() => downloadPdf(qrPromo)}
+                        disabled={pdfLoading}
+                        class="flex-1 py-3 bg-gradient-to-br from-slate-800 to-slate-900 hover:from-slate-700 hover:to-slate-800 text-white font-bold rounded-xl text-sm shadow-lg shadow-slate-900/20 transition flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                        <i class="ti ti-printer text-base"></i>
-                        Cetak Kartu
+                        {#if pdfLoading}
+                            <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Mengunduh...
+                        {:else}
+                            <i class="ti ti-download text-base"></i>
+                            Unduh PDF
+                        {/if}
                     </button>
                 </div>
             </div>

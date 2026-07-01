@@ -203,10 +203,10 @@
 
     <div
         bind:this={sidebarContainer}
-        class="flex-grow overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar"
+        class="flex-grow overflow-y-auto pt-3 pb-6 px-4 space-y-1 custom-scrollbar"
     >
         <div
-            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-2"
+            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3"
         >
             Main Menu
         </div>
@@ -279,7 +279,7 @@
             </a>
         </div>
         <div
-            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-8"
+            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-4"
         >
             Store Management
         </div>
@@ -893,7 +893,7 @@
         </div>
 
         <div
-            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-8"
+            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-4 mb-3 mt-4"
         >
             System & Config
         </div>

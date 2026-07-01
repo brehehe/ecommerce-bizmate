@@ -3975,9 +3975,7 @@
                                 <span
                                     class="text-xs font-bold text-slate-600 block"
                                 >
-                                    Kategori Produk <span class="text-rose-500"
-                                        >*</span
-                                    >
+                                    Kategori Produk
                                 </span>
                                 <button
                                     type="button"

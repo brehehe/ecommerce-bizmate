@@ -2118,41 +2118,42 @@
     <footer
         class="{hideMobileFooter
             ? 'hidden md:block'
-            : ''} bg-slate-900 text-slate-400 mt-4 py-6 border-t border-slate-800"
+            : ''} text-white/95 mt-4 py-4 shadow-[0_-4px_24px_rgba(0,0,0,0.03)] border-t border-white/10"
+        style="background: linear-gradient(135deg, {primary}, {secondary});"
     >
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div
                 class="flex flex-col sm:flex-row items-center justify-between gap-4"
             >
                 <!-- Brand -->
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-3">
                     {#if storeIcon}
                         <img
                             src={storeIcon}
                             alt={storeName}
-                            class="w-8 h-8 object-contain rounded-lg"
+                            class="w-8 h-8 object-contain rounded-xl bg-white p-0.5 shadow-sm"
                         />
                     {:else}
                         <div
-                            class="w-8 h-8 rounded-xl flex items-center justify-center text-white"
-                            style="background: linear-gradient(135deg, {primary}, {secondary});"
+                            class="w-8 h-8 rounded-xl flex items-center justify-center bg-white shadow-sm"
+                            style="color: {primary};"
                         >
-                            <i class="ti ti-shopping-bag text-lg"></i>
+                            <i class="ti ti-shopping-bag text-lg animate-pulse"></i>
                         </div>
                     {/if}
-                    <span class="font-outfit font-black text-lg text-white"
+                    <span class="font-outfit font-black text-xl text-white tracking-tight"
                         >{storeName}</span
                     >
                 </div>
 
                 <!-- Copyright -->
-                <p class="text-xs text-slate-500">
+                <p class="text-xs text-white/80 text-center sm:text-left leading-relaxed">
                     © {new Date().getFullYear()}
                     <a
                         href="https://aplikasitokoonline.id/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="hover:text-slate-300 transition-colors"
+                        class="hover:text-white text-white font-bold transition-colors underline decoration-white/35 underline-offset-4 decoration-2"
                     >
                         {storeAppName}
                     </a>
@@ -2194,7 +2195,7 @@
                                 rel="noopener noreferrer"
                                 aria-label={sm.label}
                                 title={sm.label}
-                                class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition text-slate-300 hover:text-white"
+                                class="w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition text-white shadow-sm"
                             >
                                 <i class="ti {sm.icon} text-base"></i>
                             </a>
@@ -2205,7 +2206,7 @@
                         <a
                             href="#"
                             aria-label="Instagram"
-                            class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition text-slate-300"
+                            class="w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition text-white shadow-sm"
                         >
                             <i class="ti ti-brand-instagram text-base"></i>
                         </a>
@@ -2213,7 +2214,7 @@
                         <a
                             href="#"
                             aria-label="WhatsApp"
-                            class="w-8 h-8 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition text-slate-300"
+                            class="w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition text-white shadow-sm"
                         >
                             <i class="ti ti-brand-whatsapp text-base"></i>
                         </a>
