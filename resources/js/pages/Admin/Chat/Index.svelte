@@ -105,6 +105,7 @@
                         <button
                             type="button"
                             onclick={resetSearch}
+                            aria-label="Reset pencarian"
                             class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                         >
                             <i class="ti ti-x text-xs"></i>

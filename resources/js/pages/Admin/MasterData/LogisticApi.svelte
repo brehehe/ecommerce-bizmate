@@ -17,6 +17,7 @@
 
     let selectedProvider = $state(getActiveProvider());
 
+    // svelte-ignore state_referenced_locally
     const form = useForm({
         shipping_delivery_key: settings.shipping_delivery_key || '',
         rajaongkir_url: settings.rajaongkir_url || '',

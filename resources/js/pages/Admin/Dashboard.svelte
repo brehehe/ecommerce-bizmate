@@ -24,6 +24,7 @@
 
     // svelte-ignore state_referenced_locally
     let selectedFilter = $state(initialFilter);
+    // svelte-ignore state_referenced_locally
     let stockSearchInput = $state(initialSearch);
     let canvas: HTMLCanvasElement;
     let chartInstance: Chart | null = null;

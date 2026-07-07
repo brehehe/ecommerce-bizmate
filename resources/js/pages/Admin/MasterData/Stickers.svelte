@@ -38,7 +38,7 @@
     // Image preview
     let imagePreview = $state<string | null>(null);
     let imageFile = $state<File | null>(null);
-    let fileInputEl: HTMLInputElement;
+    let fileInputEl = $state<HTMLInputElement>();
 
     const form = useForm({
         name: '',

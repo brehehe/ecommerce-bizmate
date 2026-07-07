@@ -873,7 +873,7 @@
                                 <p class="truncate text-xs font-medium text-slate-700">{attachedImage?.name || 'Gambar'}</p>
                                 <p class="text-[10px] text-slate-400">Siap dikirim</p>
                             </div>
-                            <button type="button" onclick={removeAttachment} class="text-slate-400 hover:text-rose-500 transition-colors">
+                            <button aria-label="Hapus lampiran" type="button" onclick={removeAttachment} class="text-slate-400 hover:text-rose-500 transition-colors">
                                 <i class="ti ti-x text-sm"></i>
                             </button>
                         </div>
@@ -942,6 +942,7 @@
 
                         <!-- Send button -->
                         <button
+                            aria-label="Kirim pesan"
                             type="submit"
                             disabled={!replyInput.trim() && !attachedImage}
                             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
@@ -968,6 +969,8 @@
     <!-- Sticker modal -->
     {#if stickerModalOpen}
         <div class="fixed inset-0 z-50 flex items-end justify-end pb-20 pr-4">
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div class="fixed inset-0" onclick={() => (stickerModalOpen = false)}></div>
             <div class="relative z-10 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                 <div class="border-b border-slate-100 px-4 py-3">
@@ -1002,6 +1005,7 @@
 
     <!-- Image preview modal -->
     {#if chatPreviewUrl}
+        <!-- svelte-ignore a11y_interactive_supports_focus -->
         <div
             role="dialog"
             aria-label="Preview gambar"
@@ -1013,6 +1017,8 @@
             <button aria-label="Tutup preview" type="button" onclick={() => (chatPreviewUrl = null)} class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <i class="ti ti-x"></i>
             </button>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <img
                 src={chatPreviewUrl}
                 alt="Preview gambar"

@@ -66,6 +66,7 @@
     }
     let selectedGateway = $state(getActiveGateway());
 
+    // svelte-ignore state_referenced_locally
     const gatewayForm = useForm({
         payment_api_enabled: gateway_settings.payment_api_enabled === '1',
         payment_api_key: gateway_settings.payment_api_key || '',
