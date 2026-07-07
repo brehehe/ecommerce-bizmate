@@ -157,6 +157,64 @@
             );
         }, 300);
     }
+
+    function dragScroll(node: HTMLElement) {
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+        let hasDragged = false;
+
+        function onMouseDown(e: MouseEvent) {
+            isDown = true;
+            hasDragged = false;
+            startX = e.pageX - node.offsetLeft;
+            scrollLeft = node.scrollLeft;
+            node.style.cursor = 'grabbing';
+            node.style.userSelect = 'none';
+        }
+
+        function onMouseLeave() {
+            isDown = false;
+            node.style.cursor = 'grab';
+            node.style.removeProperty('user-select');
+        }
+
+        function onMouseUp() {
+            isDown = false;
+            node.style.cursor = 'grab';
+            node.style.removeProperty('user-select');
+        }
+
+        function onMouseMove(e: MouseEvent) {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - node.offsetLeft;
+            const walk = (x - startX) * 1.2;
+            if (Math.abs(walk) > 3) hasDragged = true;
+            node.scrollLeft = scrollLeft - walk;
+        }
+
+        function onClickCapture(e: MouseEvent) {
+            if (hasDragged) e.stopPropagation();
+        }
+
+        node.style.cursor = 'grab';
+        node.addEventListener('mousedown', onMouseDown);
+        node.addEventListener('mouseleave', onMouseLeave);
+        node.addEventListener('mouseup', onMouseUp);
+        node.addEventListener('mousemove', onMouseMove);
+        node.addEventListener('click', onClickCapture, true);
+
+        return {
+            destroy() {
+                node.removeEventListener('mousedown', onMouseDown);
+                node.removeEventListener('mouseleave', onMouseLeave);
+                node.removeEventListener('mouseup', onMouseUp);
+                node.removeEventListener('mousemove', onMouseMove);
+                node.removeEventListener('click', onClickCapture, true);
+            },
+        };
+    }
 </script>
 
 <svelte:head>
@@ -362,7 +420,7 @@
                 </div>
 
                 {#if recentOrders && recentOrders.length > 0}
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto" use:dragScroll>
                         <table class="w-full responsive-table">
                             <thead>
                                 <tr class="border-b border-slate-100 bg-slate-50/50">
@@ -489,7 +547,7 @@
                 </Link>
             </div>
             {#if recentCustomers && recentCustomers.length > 0}
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" use:dragScroll>
                     <table class="w-full responsive-table text-sm">
                         <thead>
                             <tr class="border-b border-slate-100 bg-slate-50/50">
@@ -544,7 +602,7 @@
                         Semua →
                     </Link>
                 </div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" use:dragScroll>
                     <table class="w-full responsive-table">
                         <thead>
                             <tr class="border-b border-slate-100 bg-slate-50/50">

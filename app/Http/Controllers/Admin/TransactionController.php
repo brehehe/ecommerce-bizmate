@@ -493,14 +493,22 @@ class TransactionController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $movements = $query->paginate(25)->withQueryString();
+        $perPage = (int) $request->input('per_page', 25);
+        if ($perPage < 10) {
+            $perPage = 10;
+        }
+
+        $movements = $query->paginate($perPage)->withQueryString();
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Admin/StockMovements/Index', [
             'movements' => $movements,
-            'filters' => $request->only(['type', 'product_id', 'date_from', 'date_to']),
+            'filters' => array_merge(
+                $request->only(['type', 'product_id', 'date_from', 'date_to']),
+                ['per_page' => $perPage]
+            ),
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);

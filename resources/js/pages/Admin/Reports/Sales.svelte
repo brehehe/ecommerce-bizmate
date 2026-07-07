@@ -23,11 +23,12 @@
         },
         salesTrend = [],
         salesTrendPaginated = { data: [], links: [], total: 0 },
+        transactions = { data: [], links: [], total: 0 },
         paymentDistribution = [],
         statusDistribution = [],
         paymentMethods = [],
         chartData = { labels: [], revenue: [], orders: [] },
-        filters = { date_from: '', date_to: '', search: '', payment_method_id: 'all', status: 'all', preset: '' },
+        filters = { date_from: '', date_to: '', search: '', payment_method_id: 'all', status: 'all', preset: '', per_page: 15 },
     } = $props();
 
     // svelte-ignore state_referenced_locally
@@ -42,6 +43,10 @@
     let paymentMethodFilter = $state(filters.payment_method_id || 'all');
     // svelte-ignore state_referenced_locally
     let statusFilter = $state(filters.status || 'all');
+    // svelte-ignore state_referenced_locally
+    let perPageFilter = $state(filters.per_page || 15);
+
+    let activeTab = $state('daily');
 
     let trendCanvas: HTMLCanvasElement | undefined = $state();
     let paymentCanvas: HTMLCanvasElement | undefined = $state();
@@ -85,6 +90,7 @@
                 search: searchInput,
                 payment_method_id: paymentMethodFilter,
                 status: statusFilter,
+                per_page: perPageFilter,
             },
             {
                 preserveState: true,
@@ -102,6 +108,7 @@
                 search: searchInput,
                 payment_method_id: paymentMethodFilter,
                 status: statusFilter,
+                per_page: perPageFilter,
             },
             {
                 preserveState: true,
@@ -116,6 +123,7 @@
         searchInput = '';
         paymentMethodFilter = 'all';
         statusFilter = 'all';
+        perPageFilter = 15;
         
         router.get(
             '/admin/reports/sales',
@@ -126,6 +134,7 @@
                 search: '',
                 payment_method_id: 'all',
                 status: 'all',
+                per_page: 15,
             },
             {
                 preserveState: true,
@@ -186,12 +195,41 @@
     }
 
     function formatDate(dateStr: string) {
+        if (!dateStr) return '—';
         return new Date(dateStr).toLocaleDateString('id-ID', {
             day: 'numeric',
             month: 'short',
             year: 'numeric',
         });
     }
+
+    function formatTime(dateStr: string) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    }
+
+    const statusLabels: Record<string, string> = {
+        belum_bayar: 'Belum Bayar',
+        menunggu: 'Menunggu',
+        diproses: 'Diproses',
+        dikemas: 'Dikemas',
+        dikirim: 'Dikirim',
+        selesai: 'Selesai',
+        batal: 'Batal',
+    };
+
+    const statusColors: Record<string, { bg: string; text: string }> = {
+        belum_bayar: { bg: '#f1f5f9', text: '#475569' },
+        menunggu: { bg: '#fef3c7', text: '#d97706' },
+        diproses: { bg: '#e0f2fe', text: '#0284c7' },
+        dikemas: { bg: '#fae8ff', text: '#c026d3' },
+        dikirim: { bg: '#e0e7ff', text: '#4f46e5' },
+        selesai: { bg: '#dcfce7', text: '#16a34a' },
+        batal: { bg: '#fee2e2', text: '#dc2626' },
+    };
 
     onMount(() => {
         // 1. Line Chart: Tren Penjualan Harian
@@ -434,7 +472,7 @@
             <!-- Advanced Filters Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-100">
                 <!-- Search Input -->
-                <div class="lg:col-span-4 space-y-1.5">
+                <div class="lg:col-span-3 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-search">Cari Penjualan</label>
                     <div class="relative">
                         <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
@@ -450,7 +488,7 @@
                 </div>
 
                 <!-- Custom Dates -->
-                <div class="lg:col-span-4 space-y-1.5">
+                <div class="lg:col-span-3 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="date-from">Periode Tanggal</label>
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1">
@@ -508,6 +546,23 @@
                         <option value="dikirim">Dikirim</option>
                         <option value="selesai">Selesai</option>
                         <option value="batal">Batal</option>
+                    </select>
+                </div>
+
+                <!-- Per Page Filter -->
+                <div class="lg:col-span-2 space-y-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-perpage">Per Halaman</label>
+                    <select
+                        id="sales-perpage"
+                        bind:value={perPageFilter}
+                        onchange={applyFilter}
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                    >
+                        <option value={10}>10</option>
+                        <option value={15}>15</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
                     </select>
                 </div>
             </div>
@@ -689,97 +744,218 @@
             </div>
         </div>
 
-        <!-- Aggregated Table -->
+        <!-- Tabbed Tables -->
         <div
             class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm"
         >
-            <div class="p-6 border-b border-slate-100">
-                <h3 class="font-outfit font-black text-lg text-slate-800">
-                    Rincian Penjualan Harian
-                </h3>
-                <p class="text-xs text-slate-500 font-medium">
-                    Data transaksi yang dikelompokkan per hari.
-                </p>
+            <!-- Tab Headers -->
+            <div class="flex border-b border-slate-100">
+                <button
+                    onclick={() => activeTab = 'daily'}
+                    class="px-6 py-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all duration-200 cursor-pointer font-outfit
+                        {activeTab === 'daily' ? 'text-slate-800' : 'border-transparent text-slate-400 hover:text-slate-700'}"
+                    style={activeTab === 'daily' ? `border-color: ${primaryColor};` : ''}
+                >
+                    Ringkasan Harian
+                </button>
+                <button
+                    onclick={() => activeTab = 'detail'}
+                    class="px-6 py-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all duration-200 cursor-pointer font-outfit
+                        {activeTab === 'detail' ? 'text-slate-800' : 'border-transparent text-slate-400 hover:text-slate-700'}"
+                    style={activeTab === 'detail' ? `border-color: ${primaryColor};` : ''}
+                >
+                    Detail Transaksi ({transactions.total ?? 0})
+                </button>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse responsive-table sales-report-table">
-                    <thead>
-                        <tr
-                            class="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-100"
-                        >
-                            <th class="py-4 px-6">Tanggal</th>
-                            <th class="py-4 px-6 text-center">Jumlah Pesanan</th>
-                            <th class="py-4 px-6 text-right">Omset Kotor</th>
-                            <th class="py-4 px-6 text-right">Subsidi Diskon</th>
-                            <th class="py-4 px-6 text-right">Ongkos Kirim</th>
-                            <th class="py-4 px-6 text-right">Biaya Admin</th>
-                            <th class="py-4 px-6 text-right">Penjualan Bersih</th>
-                        </tr>
-                    </thead>
-                    <tbody
-                        class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
-                    >
-                        {#if salesTrendPaginated.data.length === 0}
-                            <tr>
-                                <td
-                                    colspan="7"
-                                    class="py-12 text-center text-slate-400 font-bold font-outfit"
-                                >
-                                    <i
-                                        class="ti ti-receipt-off text-3xl block mb-2 text-slate-300"
-                                    ></i>
-                                    Tidak ada data penjualan pada periode ini.
-                                </td>
+            {#if activeTab === 'daily'}
+                <div class="p-6 border-b border-slate-100 bg-slate-50/20">
+                    <h3 class="font-outfit font-black text-base text-slate-800">
+                        Rincian Penjualan Harian
+                    </h3>
+                    <p class="text-xs text-slate-500 font-medium">
+                        Data transaksi yang dikelompokkan per hari.
+                    </p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse responsive-table sales-report-table">
+                        <thead>
+                            <tr
+                                class="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-100"
+                            >
+                                <th class="py-4 px-6">Tanggal</th>
+                                <th class="py-4 px-6 text-center">Jumlah Pesanan</th>
+                                <th class="py-4 px-6 text-right">Omset Kotor</th>
+                                <th class="py-4 px-6 text-right">Subsidi Diskon</th>
+                                <th class="py-4 px-6 text-right">Ongkos Kirim</th>
+                                <th class="py-4 px-6 text-right">Biaya Admin</th>
+                                <th class="py-4 px-6 text-right">Penjualan Bersih</th>
                             </tr>
-                        {:else}
-                            {#each salesTrendPaginated.data as row}
-                                <tr class="hover:bg-slate-50/50 transition">
+                        </thead>
+                        <tbody
+                            class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
+                        >
+                            {#if salesTrendPaginated.data.length === 0}
+                                <tr>
                                     <td
-                                        class="py-4 px-6 font-bold text-slate-800"
-                                        data-label="Tanggal"
-                                        >{formatDate(row.date)}</td
+                                        colspan="7"
+                                        class="py-12 text-center text-slate-400 font-bold font-outfit"
                                     >
-                                    <td
-                                        class="py-4 px-6 text-center text-slate-600 font-semibold"
-                                        data-label="Pesanan"
-                                        >{row.order_count}</td
-                                    >
-                                    <td
-                                        class="py-4 px-6 text-right text-slate-600 font-semibold"
-                                        data-label="Omset Kotor"
-                                        >{formatRupiah(row.gross_sales)}</td
-                                    >
-                                    <td
-                                        class="py-4 px-6 text-right text-rose-500 font-semibold"
-                                        data-label="Diskon"
-                                        >- {formatRupiah(
-                                            row.total_discount,
-                                        )}</td
-                                    >
-                                    <td
-                                        class="py-4 px-6 text-right text-slate-500 font-semibold"
-                                        data-label="Ongkir"
-                                        >{formatRupiah(row.total_shipping)}</td
-                                    >
-                                    <td
-                                        class="py-4 px-6 text-right text-emerald-600 font-semibold"
-                                        data-label="Admin Fee"
-                                        >+ {formatRupiah(row.total_admin)}</td
-                                    >
-                                    <td
-                                        class="py-4 px-6 text-right font-black text-slate-800"
-                                        data-label="Penjualan Bersih"
-                                        >{formatRupiah(row.net_sales)}</td
-                                    >
+                                        <i
+                                            class="ti ti-receipt-off text-3xl block mb-2 text-slate-300"
+                                        ></i>
+                                        Tidak ada data penjualan pada periode ini.
+                                    </td>
                                 </tr>
-                            {/each}
-                        {/if}
-                    </tbody>
-                </table>
-            </div>
+                            {:else}
+                                {#each salesTrendPaginated.data as row}
+                                    <tr class="hover:bg-slate-50/50 transition">
+                                        <td
+                                            class="py-4 px-6 font-bold text-slate-800"
+                                            data-label="Tanggal"
+                                            >{formatDate(row.date)}</td
+                                        >
+                                        <td
+                                            class="py-4 px-6 text-center text-slate-600 font-semibold"
+                                            data-label="Pesanan"
+                                            >{row.order_count}</td
+                                        >
+                                        <td
+                                            class="py-4 px-6 text-right text-slate-600 font-semibold"
+                                            data-label="Omset Kotor"
+                                            >{formatRupiah(row.gross_sales)}</td
+                                        >
+                                        <td
+                                            class="py-4 px-6 text-right text-rose-500 font-semibold"
+                                            data-label="Diskon"
+                                            >- {formatRupiah(
+                                                row.total_discount,
+                                            )}</td
+                                        >
+                                        <td
+                                            class="py-4 px-6 text-right text-slate-500 font-semibold"
+                                            data-label="Ongkir"
+                                            >{formatRupiah(row.total_shipping)}</td
+                                        >
+                                        <td
+                                            class="py-4 px-6 text-right text-emerald-600 font-semibold"
+                                            data-label="Admin Fee"
+                                            >+ {formatRupiah(row.total_admin)}</td
+                                        >
+                                        <td
+                                            class="py-4 px-6 text-right font-black text-slate-800"
+                                            data-label="Penjualan Bersih"
+                                            >{formatRupiah(row.net_sales)}</td
+                                        >
+                                    </tr>
+                                {/each}
+                            {/if}
+                        </tbody>
+                    </table>
+                </div>
 
-            <Pagination paginator={salesTrendPaginated} itemLabel="hari" />
+                <Pagination paginator={salesTrendPaginated} itemLabel="hari" />
+            {:else}
+                <div class="p-6 border-b border-slate-100 bg-slate-50/20">
+                    <h3 class="font-outfit font-black text-base text-slate-800">
+                        Daftar Transaksi Detail
+                    </h3>
+                    <p class="text-xs text-slate-500 font-medium">
+                        Rincian per transaksi yang terjadi pada periode tanggal ini.
+                    </p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse responsive-table sales-report-table">
+                        <thead>
+                            <tr
+                                class="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-100"
+                            >
+                                <th class="py-4 px-6">No. Transaksi</th>
+                                <th class="py-4 px-6">Pelanggan</th>
+                                <th class="py-4 px-6">Metode Bayar</th>
+                                <th class="py-4 px-6">Status</th>
+                                <th class="py-4 px-6 text-right">Total Transaksi</th>
+                                <th class="py-4 px-6">Tanggal</th>
+                            </tr>
+                        </thead>
+                        <tbody
+                            class="divide-y divide-slate-100 text-slate-700 text-sm font-medium"
+                        >
+                            {#if transactions.data.length === 0}
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="py-12 text-center text-slate-400 font-bold font-outfit"
+                                    >
+                                        <i
+                                            class="ti ti-receipt-off text-3xl block mb-2 text-slate-300"
+                                        ></i>
+                                        Tidak ada data transaksi pada periode ini.
+                                    </td>
+                                </tr>
+                            {:else}
+                                {#each transactions.data as row}
+                                    {@const badge = statusColors[row.status] ?? { bg: '#f1f5f9', text: '#475569' }}
+                                    <tr class="hover:bg-slate-50/50 transition">
+                                        <td
+                                            class="py-4 px-6 font-mono font-bold"
+                                            data-label="No. Transaksi"
+                                        >
+                                            <a
+                                                href={`/admin/transactions/${row.id}`}
+                                                class="hover:underline"
+                                                style={`color: ${primaryColor};`}
+                                            >
+                                                {row.transaction_number}
+                                            </a>
+                                        </td>
+                                        <td
+                                            class="py-4 px-6 text-slate-650 font-bold text-xs"
+                                            data-label="Pelanggan"
+                                        >
+                                            {row.user?.name ?? 'Umum/Tamu'}
+                                        </td>
+                                        <td
+                                            class="py-4 px-6 text-slate-500 font-semibold text-xs"
+                                            data-label="Metode Bayar"
+                                        >
+                                            {row.payment_method?.name ?? '-'}
+                                        </td>
+                                        <td
+                                            class="py-4 px-6"
+                                            data-label="Status"
+                                        >
+                                            <span
+                                                class="inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider"
+                                                style={`background: ${badge.bg}; color: ${badge.text}`}
+                                            >
+                                                {statusLabels[row.status] ?? row.status}
+                                            </span>
+                                        </td>
+                                        <td
+                                            class="py-4 px-6 text-right font-black text-slate-800"
+                                            data-label="Total"
+                                        >
+                                            {formatRupiah(row.grand_total)}
+                                        </td>
+                                        <td
+                                            class="py-4 px-6 text-slate-500 font-bold text-xs"
+                                            data-label="Tanggal"
+                                        >
+                                            <div>{formatDate(row.created_at)}</div>
+                                            <div class="text-[10px] text-slate-400 font-medium mt-0.5">{formatTime(row.created_at)}</div>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            {/if}
+                        </tbody>
+                    </table>
+                </div>
+
+                <Pagination paginator={transactions} itemLabel="transaksi" />
+            {/if}
         </div>
     </main>
 </AdminLayout>

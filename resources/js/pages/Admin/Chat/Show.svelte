@@ -320,6 +320,7 @@
 
     let searchQuery = $state('');
     let showSidebar = $state(true);
+    let fallbackInterval: any = null;
 
     onMount(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -346,6 +347,14 @@
         }
     });
 
+    // Sync messages when initialMessages prop updates from router.reload polling
+    $effect(() => {
+        if (initialMessages && initialMessages.length !== messages.length) {
+            messages = initialMessages;
+            setTimeout(scrollToBottom, 50);
+        }
+    });
+
     function scrollToBottom() {
         const el = document.querySelector('.admin-chat-messages');
         if (el) {
@@ -355,58 +364,71 @@
 
     function startPolling() {
         stopPolling();
-        if (!chat.id || !(window as any).Echo) return;
 
-        (window as any).Echo.private(`chat.${chat.id}`)
-            .listen('.message.sent', (event: any) => {
-                const newMsg = event.messageData;
-                if (newMsg) {
-                    const existingIds = new Set(messages.map((m) => m.id));
-                    if (!existingIds.has(newMsg.id)) {
-                        messages = [...messages, newMsg];
-                        setTimeout(scrollToBottom, 50);
+        if (chat.id && (window as any).Echo) {
+            (window as any).Echo.private(`chat.${chat.id}`)
+                .listen('.message.sent', (event: any) => {
+                    const newMsg = event.messageData;
+                    if (newMsg) {
+                        const existingIds = new Set(messages.map((m) => m.id));
+                        if (!existingIds.has(newMsg.id)) {
+                            messages = [...messages, newMsg];
+                            setTimeout(scrollToBottom, 50);
 
-                        // Reload Inertia props to update thread list & total unread count on sidebar
-                        router.reload({
-                            only: [
-                                'chats',
-                                'totalUnread',
-                                'adminChatUnreadCount',
-                            ],
-                            preserveScroll: true,
-                        });
-                    }
-                }
-            })
-            .listen('.messages.read', (event: any) => {
-                const readIds = event.readIds || [];
-                if (readIds.length > 0) {
-                    let readChanged = false;
-                    messages = messages.map((m: any) => {
-                        if (readIds.includes(m.id) && !m.is_read) {
-                            readChanged = true;
-                            return { ...m, is_read: true };
+                            // Reload Inertia props to update thread list & total unread count on sidebar
+                            router.reload({
+                                only: [
+                                    'chats',
+                                    'totalUnread',
+                                    'adminChatUnreadCount',
+                                ],
+                                preserveScroll: true,
+                            });
                         }
-                        return m;
-                    });
-
-                    if (readChanged) {
-                        router.reload({
-                            only: [
-                                'chats',
-                                'totalUnread',
-                                'adminChatUnreadCount',
-                            ],
-                            preserveScroll: true,
-                        });
                     }
-                }
+                })
+                .listen('.messages.read', (event: any) => {
+                    const readIds = event.readIds || [];
+                    if (readIds.length > 0) {
+                        let readChanged = false;
+                        messages = messages.map((m: any) => {
+                            if (readIds.includes(m.id) && !m.is_read) {
+                                readChanged = true;
+                                return { ...m, is_read: true };
+                            }
+                            return m;
+                        });
+
+                        if (readChanged) {
+                            router.reload({
+                                only: [
+                                    'chats',
+                                    'totalUnread',
+                                    'adminChatUnreadCount',
+                                ],
+                                preserveScroll: true,
+                            });
+                        }
+                    }
+                });
+        }
+
+        // Fallback polling interval to fetch latest chat list, unread counts, and messages
+        fallbackInterval = setInterval(() => {
+            router.reload({
+                only: ['chats', 'totalUnread', 'adminChatUnreadCount', 'initialMessages'],
+                preserveScroll: true,
             });
+        }, 2000);
     }
 
     function stopPolling() {
         if (chat.id && (window as any).Echo) {
             (window as any).Echo.leave(`chat.${chat.id}`);
+        }
+        if (fallbackInterval) {
+            clearInterval(fallbackInterval);
+            fallbackInterval = null;
         }
     }
 

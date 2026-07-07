@@ -137,6 +137,10 @@
     let chatListLoading = $state(false);
     let chatMessagesLoading = $state(false);
 
+    let chatListPollInterval: any = null;
+    let chatMessagesPollInterval: any = null;
+    let notificationsPollInterval: any = null;
+
     $effect(() => {
         if (auth && (window as any).Echo) {
             const channel = (window as any).Echo.private(
@@ -168,6 +172,23 @@
 
             return () => {
                 (window as any).Echo.leave(`user.${auth.id}`);
+            };
+        }
+    });
+
+    $effect(() => {
+        if (auth) {
+            notificationsPollInterval = setInterval(() => {
+                router.reload({
+                    only: ['chatUnreadCount', 'customerNotifications', 'cartCount'],
+                    preserveScroll: true,
+                });
+            }, 5000);
+
+            return () => {
+                if (notificationsPollInterval) {
+                    clearInterval(notificationsPollInterval);
+                }
             };
         }
     });
@@ -235,60 +256,92 @@
         }
     }
 
+    function startChatListPolling() {
+        stopChatListPolling();
+        chatListPollInterval = setInterval(() => {
+            fetchChatList(true);
+        }, 4000);
+    }
+
+    function stopChatListPolling() {
+        if (chatListPollInterval) {
+            clearInterval(chatListPollInterval);
+            chatListPollInterval = null;
+        }
+    }
+
+    function startChatMessagesPolling() {
+        stopChatMessagesPolling();
+        if (!activeChatId) return;
+        chatMessagesPollInterval = setInterval(() => {
+            fetchChatMessages();
+        }, 3000);
+    }
+
+    function stopChatMessagesPolling() {
+        if (chatMessagesPollInterval) {
+            clearInterval(chatMessagesPollInterval);
+            chatMessagesPollInterval = null;
+        }
+    }
+
     function startChatPolling() {
         stopChatPolling();
-        if (!activeChatId || !(window as any).Echo) return;
 
-        (window as any).Echo.private(`chat.${activeChatId}`)
-            .listen('.message.sent', (event: any) => {
-                const newMsg = event.messageData;
-                if (newMsg) {
-                    // Check if the message is already present
-                    const existingIds = new Set(chatMessages.map((m) => m.id));
-                    if (existingIds.has(newMsg.id)) {
-                        return;
-                    }
-
-                    // Check if there is an optimistic temporary message matching this new message
-                    const optimisticIndex = chatMessages.findIndex(
-                        (m) =>
-                            m.id < 0 &&
-                            m.sender_type === newMsg.sender_type &&
-                            m.sender_id === newMsg.sender_id &&
-                            (m.body === newMsg.body ||
-                                m.attachment_type === newMsg.attachment_type),
-                    );
-
-                    if (optimisticIndex !== -1) {
-                        // Replace the optimistic message with the real one
-                        chatMessages = chatMessages.map((m, idx) =>
-                            idx === optimisticIndex ? newMsg : m,
-                        );
-                    } else {
-                        // Append the message
-                        chatMessages = [...chatMessages, newMsg];
-                    }
-                    setTimeout(scrollMiniChatToBottom, 50);
-                    fetchChatList(true);
-                }
-            })
-            .listen('.messages.read', (event: any) => {
-                const readIds = event.readIds || [];
-                if (readIds.length > 0) {
-                    chatMessages = chatMessages.map((m: any) => {
-                        if (readIds.includes(m.id) && !m.is_read) {
-                            return { ...m, is_read: true };
+        if (activeChatId && (window as any).Echo) {
+            (window as any).Echo.private(`chat.${activeChatId}`)
+                .listen('.message.sent', (event: any) => {
+                    const newMsg = event.messageData;
+                    if (newMsg) {
+                        const existingIds = new Set(chatMessages.map((m) => m.id));
+                        if (existingIds.has(newMsg.id)) {
+                            return;
                         }
-                        return m;
-                    });
-                }
-            });
+
+                        const optimisticIndex = chatMessages.findIndex(
+                            (m) =>
+                                m.id < 0 &&
+                                m.sender_type === newMsg.sender_type &&
+                                m.sender_id === newMsg.sender_id &&
+                                (m.body === newMsg.body ||
+                                    m.attachment_type === newMsg.attachment_type),
+                        );
+
+                        if (optimisticIndex !== -1) {
+                            chatMessages = chatMessages.map((m, idx) =>
+                                idx === optimisticIndex ? newMsg : m,
+                            );
+                        } else {
+                            chatMessages = [...chatMessages, newMsg];
+                        }
+                        setTimeout(scrollMiniChatToBottom, 50);
+                        fetchChatList(true);
+                    }
+                })
+                .listen('.messages.read', (event: any) => {
+                    const readIds = event.readIds || [];
+                    if (readIds.length > 0) {
+                        chatMessages = chatMessages.map((m: any) => {
+                            if (readIds.includes(m.id) && !m.is_read) {
+                                return { ...m, is_read: true };
+                            }
+                            return m;
+                        });
+                    }
+                });
+        }
+
+        // Fallback polling for messages and chat list
+        startChatMessagesPolling();
+        startChatListPolling();
     }
 
     function stopChatPolling() {
         if (activeChatId && (window as any).Echo) {
             (window as any).Echo.leave(`chat.${activeChatId}`);
         }
+        stopChatMessagesPolling();
+        stopChatListPolling();
     }
 
     let stickerModalOpen = $state(false);

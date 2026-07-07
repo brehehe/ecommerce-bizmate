@@ -1,6 +1,7 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { page, router, Link } from '@inertiajs/svelte';
+    import { dragScroll } from '@/utils/dragScroll';
     import Pagination from '@/components/ui/Pagination.svelte';
 
     let { movements, filters = {}, storeName = '', storeLogo = '' } = $props();
@@ -15,6 +16,8 @@
     let filterDateFrom = $state((filters as any).date_from ?? '');
     // svelte-ignore state_referenced_locally
     let filterDateTo = $state((filters as any).date_to ?? '');
+    // svelte-ignore state_referenced_locally
+    let filterPerPage = $state((filters as any).per_page ?? 25);
 
     function applyFilters() {
         router.get(
@@ -23,6 +26,7 @@
                 type: filterType || undefined,
                 date_from: filterDateFrom || undefined,
                 date_to: filterDateTo || undefined,
+                per_page: filterPerPage || undefined,
             },
             { preserveScroll: true },
         );
@@ -32,6 +36,7 @@
         filterType = '';
         filterDateFrom = '';
         filterDateTo = '';
+        filterPerPage = 25;
         router.get('/admin/stock-movements');
     }
 
@@ -113,6 +118,20 @@
                 />
             </div>
 
+            <!-- Per Page -->
+            <div class="relative flex flex-col gap-1">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Per Halaman</span>
+                <select
+                    bind:value={filterPerPage}
+                    class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                </select>
+            </div>
+
             <button
                 onclick={applyFilters}
                 class="h-9 rounded-lg px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 cursor-pointer"
@@ -148,7 +167,7 @@
                     <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau tanggal pencarian</p>
                 </div>
             {:else}
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" use:dragScroll>
                     <table class="w-full text-left border-collapse responsive-table">
                         <thead>
                             <tr class="border-b border-slate-100 bg-slate-50/50">

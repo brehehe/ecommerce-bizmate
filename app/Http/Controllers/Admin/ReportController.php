@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Courier;
+use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\PaymentMethod;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -95,6 +95,11 @@ class ReportController extends Controller
      */
     public function sales(Request $request): Response
     {
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage < 10) {
+            $perPage = 10;
+        }
+
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
         $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
 
@@ -178,7 +183,7 @@ class ReportController extends Controller
             ')
             ->groupBy(DB::raw('CAST(created_at AS DATE)'))
             ->orderBy('date', 'desc')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
 
         // Distribusi Metode Pembayaran
@@ -196,10 +201,17 @@ class ReportController extends Controller
 
         // Format data untuk grafik
         $chartData = [
-            'labels' => $salesTrend->map(fn($t) => Carbon::parse($t->date)->format('d M Y'))->toArray(),
-            'revenue' => $salesTrend->map(fn($t) => (float) $t->net_sales)->toArray(),
-            'orders' => $salesTrend->map(fn($t) => (int) $t->order_count)->toArray(),
+            'labels' => $salesTrend->map(fn ($t) => Carbon::parse($t->date)->format('d M Y'))->toArray(),
+            'revenue' => $salesTrend->map(fn ($t) => (float) $t->net_sales)->toArray(),
+            'orders' => $salesTrend->map(fn ($t) => (int) $t->order_count)->toArray(),
         ];
+
+        // Paginated individual transaction details list
+        $transactions = (clone $baseQuery)
+            ->with(['user:id,name', 'paymentMethod:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'transactions_page')
+            ->withQueryString();
 
         return Inertia::render('Admin/Reports/Sales', [
             'metrics' => [
@@ -218,6 +230,7 @@ class ReportController extends Controller
             'statusDistribution' => $statusDistribution,
             'paymentMethods' => $paymentMethods,
             'chartData' => $chartData,
+            'transactions' => $transactions,
             'filters' => [
                 'date_from' => $dateFrom->format('Y-m-d'),
                 'date_to' => $dateTo->format('Y-m-d'),
@@ -225,6 +238,7 @@ class ReportController extends Controller
                 'search' => $request->input('search', ''),
                 'payment_method_id' => $request->input('payment_method_id', 'all'),
                 'status' => $request->input('status', 'all'),
+                'per_page' => $perPage,
             ],
         ]);
     }
@@ -407,7 +421,7 @@ class ReportController extends Controller
             $monthNetProfit = ($monthRevenue - $cogs) - $monthExpenses;
 
             $trendData[] = [
-                'month' => Carbon::parse($month . '-01')->format('M Y'),
+                'month' => Carbon::parse($month.'-01')->format('M Y'),
                 'revenue' => $monthRevenue,
                 'cogs' => $cogs,
                 'expenses' => $monthExpenses,
@@ -516,8 +530,8 @@ class ReportController extends Controller
                 'total_customers' => $totalCustomers,
             ],
             'chartData' => [
-                'labels' => $registrationsTrend->map(fn($t) => Carbon::parse($t->date)->format('d M'))->toArray(),
-                'counts' => $registrationsTrend->map(fn($t) => (int) $t->count)->toArray(),
+                'labels' => $registrationsTrend->map(fn ($t) => Carbon::parse($t->date)->format('d M'))->toArray(),
+                'counts' => $registrationsTrend->map(fn ($t) => (int) $t->count)->toArray(),
             ],
             'filters' => [
                 'date_from' => $dateFrom->format('Y-m-d'),
@@ -841,8 +855,8 @@ class ReportController extends Controller
         }
 
         // Hitung metrik ringkasan pareto
-        $vitalFewCount = $items->filter(fn($i) => $i['is_vital_few'])->count();
-        $vitalFewValue = $items->filter(fn($i) => $i['is_vital_few'])->sum('value');
+        $vitalFewCount = $items->filter(fn ($i) => $i['is_vital_few'])->count();
+        $vitalFewValue = $items->filter(fn ($i) => $i['is_vital_few'])->sum('value');
         $trivialManyCount = $items->count() - $vitalFewCount;
         $trivialManyValue = $total - $vitalFewValue;
 
@@ -1073,8 +1087,8 @@ class ReportController extends Controller
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('user', fn($u) => $u->where('name', 'ilike', "%{$search}%"))
-                    ->orWhereHas('product', fn($p) => $p->where('name', 'ilike', "%{$search}%"))
+                $q->whereHas('user', fn ($u) => $u->where('name', 'ilike', "%{$search}%"))
+                    ->orWhereHas('product', fn ($p) => $p->where('name', 'ilike', "%{$search}%"))
                     ->orWhere('comment', 'ilike', "%{$search}%");
             });
         }

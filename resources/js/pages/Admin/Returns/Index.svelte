@@ -402,7 +402,7 @@
                     <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
                 </div>
             {:else}
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto" use:dragScroll>
                     <table class="w-full text-left border-collapse responsive-table">
                         <thead>
                             <tr class="border-b border-slate-100 bg-slate-50/50">
