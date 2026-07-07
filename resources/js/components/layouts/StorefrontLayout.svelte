@@ -139,7 +139,6 @@
 
     let chatListPollInterval: any = null;
     let chatMessagesPollInterval: any = null;
-    let notificationsPollInterval: any = null;
 
     $effect(() => {
         if (auth && (window as any).Echo) {
@@ -176,22 +175,6 @@
         }
     });
 
-    $effect(() => {
-        if (auth) {
-            notificationsPollInterval = setInterval(() => {
-                router.reload({
-                    only: ['chatUnreadCount', 'customerNotifications', 'cartCount'],
-                    preserveScroll: true,
-                });
-            }, 5000);
-
-            return () => {
-                if (notificationsPollInterval) {
-                    clearInterval(notificationsPollInterval);
-                }
-            };
-        }
-    });
 
     async function toggleDesktopChat() {
         if (!auth) {

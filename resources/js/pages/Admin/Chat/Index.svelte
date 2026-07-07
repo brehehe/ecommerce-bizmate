@@ -1,7 +1,7 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { usePage, router, Link } from '@inertiajs/svelte';
-    import { onMount, onDestroy } from 'svelte';
+    import { onMount } from 'svelte';
 
     let { chats = { data: [], links: [] }, totalUnread = 0 } = $props();
 
@@ -17,24 +17,26 @@
     );
 
     let searchQuery = $state('');
-    let pollInterval: any = null;
 
     onMount(() => {
         const urlParams = new URLSearchParams(window.location.search);
         searchQuery = urlParams.get('search') || '';
-
-        // Poll chat list and unread counts every 2 seconds for realtime updates
-        pollInterval = setInterval(() => {
-            router.reload({
-                only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
-                preserveScroll: true,
-            });
-        }, 2000);
     });
 
-    onDestroy(() => {
-        if (pollInterval) {
-            clearInterval(pollInterval);
+    $effect(() => {
+        const user = (page.props as any).auth?.user;
+        if (user && (window as any).Echo) {
+            (window as any).Echo.private(`user.${user.id}`)
+                .listen('.notification.updated', () => {
+                    router.reload({
+                        only: ['chats', 'totalUnread', 'adminChatUnreadCount'],
+                        preserveScroll: true,
+                    });
+                });
+
+            return () => {
+                (window as any).Echo.leave(`user.${user.id}`);
+            };
         }
     });
 

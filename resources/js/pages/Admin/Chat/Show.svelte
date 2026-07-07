@@ -320,7 +320,6 @@
 
     let searchQuery = $state('');
     let showSidebar = $state(true);
-    let fallbackInterval: any = null;
 
     onMount(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -412,23 +411,11 @@
                     }
                 });
         }
-
-        // Fallback polling interval to fetch latest chat list, unread counts, and messages
-        fallbackInterval = setInterval(() => {
-            router.reload({
-                only: ['chats', 'totalUnread', 'adminChatUnreadCount', 'initialMessages'],
-                preserveScroll: true,
-            });
-        }, 2000);
     }
 
     function stopPolling() {
         if (chat.id && (window as any).Echo) {
             (window as any).Echo.leave(`chat.${chat.id}`);
-        }
-        if (fallbackInterval) {
-            clearInterval(fallbackInterval);
-            fallbackInterval = null;
         }
     }
 
