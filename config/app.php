@@ -1,0 +1,192 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Name
+    |--------------------------------------------------------------------------
+    |
+    | This value is the name of your application, which will be used when the
+    | framework needs to place the application's name in a notification or
+    | other UI elements where an application name needs to be displayed.
+    |
+    */
+
+    'name' => env('APP_NAME', 'Laravel'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Environment
+    |--------------------------------------------------------------------------
+    |
+    | This value determines the "environment" your application is currently
+    | running in. This may determine how you prefer to configure various
+    | services the application utilizes. Set this in your ".env" file.
+    |
+    */
+
+    'env' => env('APP_ENV', 'production'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Debug Mode
+    |--------------------------------------------------------------------------
+    |
+    | When your application is in debug mode, detailed error messages with
+    | stack traces will be shown on every error that occurs within your
+    | application. If disabled, a simple generic error page is shown.
+    |
+    */
+
+    'debug' => (bool) env('APP_DEBUG', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application URL
+    |--------------------------------------------------------------------------
+    |
+    | This URL is used by the console to properly generate URLs when using
+    | the Artisan command line tool. You should set this to the root of
+    | the application so that it's available within Artisan commands.
+    |
+    */
+
+    'url' => env('APP_URL', 'http://localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Here you may specify the default timezone for your application, which
+    | will be used by the PHP date and date-time functions. The timezone
+    | is set to "UTC" by default as it is suitable for most use cases.
+    |
+    */
+
+    'timezone' => env('APP_TIMEZONE', 'Asia/Jakarta'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Application Locale Configuration
+    |--------------------------------------------------------------------------
+    |
+    | The application locale determines the default locale that will be used
+    | by Laravel's translation / localization methods. This option can be
+    | set to any locale for which you plan to have translation strings.
+    |
+    */
+
+    'locale' => env('APP_LOCALE', 'en'),
+
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+
+    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Encryption Key
+    |--------------------------------------------------------------------------
+    |
+    | This key is utilized by Laravel's encryption services and should be set
+    | to a random, 32 character string to ensure that all encrypted values
+    | are secure. You should do this prior to deploying the application.
+    |
+    */
+
+    'cipher' => 'AES-256-CBC',
+
+    'key' => env('APP_KEY'),
+
+    'previous_keys' => [
+        ...array_filter(
+            explode(',', (string) env('APP_PREVIOUS_KEYS', '')),
+        ),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Maintenance Mode Driver
+    |--------------------------------------------------------------------------
+    |
+    | These configuration options determine the driver used to determine and
+    | manage Laravel's "maintenance mode" status. The "cache" driver will
+    | allow maintenance mode to be controlled across multiple machines.
+    |
+    | Supported drivers: "file", "cache"
+    |
+    */
+
+    'maintenance' => [
+        'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
+        'store' => env('APP_MAINTENANCE_STORE', 'database'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Checkout Lock
+    |--------------------------------------------------------------------------
+    |
+    | When CHECKOUT_LOCKED=true in .env, the checkout page will display a
+    | notice and block all new orders. Useful for maintenance, stock-taking,
+    | or any situation where you need to temporarily pause checkouts without
+    | taking the whole site offline.
+    |
+    | CHECKOUT_LOCKED_MESSAGE lets you provide a custom reason shown to
+    | customers. Defaults to a generic maintenance message.
+    |
+    */
+
+    'checkout_locked' => (bool) env('CHECKOUT_LOCKED', false),
+    'checkout_locked_message' => env('CHECKOUT_LOCKED_MESSAGE', 'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | PWA Install Prompt
+    |--------------------------------------------------------------------------
+    |
+    | When PWA_INSTALL_ENABLED=true in .env, users will see a banner
+    | inviting them to install the application to their home screen.
+    |
+    */
+    'pwa_install_enabled' => (bool) env('PWA_INSTALL_ENABLED', true),
+    'pickup_enabled' => (bool) env('PICKUP_ENABLED', true),
+    'show_checkout_settings' => (bool) env('SHOW_CHECKOUT_SETTINGS', true),
+
+    'rajaongkir' => [
+        'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),
+        'shipping_cost' => env('RAJAONGKIR_SHIPPING_COST_KEY', 'zvvoSZT25a2e20929ec5ff826xI0rWY1'),
+        'shipping_delivery_key' => env('SHIPPING_DELIVERY_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
+        'payment_api_key' => env('PAYMENT_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
+        'qrisly_api_key' => env('QRISLY_API_KEY', 'sdfh2Qgp5a2e20929ec5ff822tkkgf6S'),
+        'delivery_url' => env('KOMERCE_DELIVERY_URL', 'https://api-sandbox.collaborator.komerce.id/api/v1/'),
+        'has_url_env' => env('RAJAONGKIR_URL') !== null,
+        'has_shipping_cost_env' => env('RAJAONGKIR_SHIPPING_COST_KEY') !== null,
+        'has_delivery_url_env' => env('KOMERCE_DELIVERY_URL') !== null,
+        'has_shipping_delivery_key_env' => env('SHIPPING_DELIVERY_API_KEY') !== null,
+        'has_payment_api_key_env' => env('PAYMENT_API_KEY') !== null,
+        'has_qrisly_api_key_env' => env('QRISLY_API_KEY') !== null,
+    ],
+
+    'xendit' => [
+        'url' => env('XENDIT_URL', 'https://api.xendit.co/'),
+        'private_key' => env('X_API_XENDIT_KEY_PRIVATE'),
+        'public_key' => env('X_API_XENDIT_KEY_PUBLIC_DEVELOPMENT'),
+        'webhook_token' => env('X_API_XENDIT_TOKEN_WEBHOO'),
+    ],
+
+    'midtrans' => [
+        'server_key' => env('MIDTRANS_SERVER_KEY', 'SB-Mid-server-YvWfBSvBdRvLwqzUc_TmKCHH'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY', 'SB-Mid-client-15KqQ2A7XYrBc5cL'),
+        'snap_url' => env('MIDTRANS_SNAP_URL', 'https://app.sandbox.midtrans.com'),
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+    ],
+
+    'flip' => [
+        'secret_key' => env('FLIP_SECRET_KEY', 'JDJ5JDEzJG5rSXlyTnlINlgzOVk2emxzOUVtNk9PTS9iUnpIcVRTdGlOS0RTSUxzTC83RXNGcGliclhh'),
+        'validation_token' => env('FLIP_VALIDATION_TOKEN', '$2y$13$bJAwMLvSexLawNRLvHAeP.8BT7mJorBYqBASfx1FjMN.NsYlZ7LXu'),
+        'base_url' => env('FLIP_BASE_URL', 'https://bigflip.id/big_sandbox_api'),
+    ],
+
+];
