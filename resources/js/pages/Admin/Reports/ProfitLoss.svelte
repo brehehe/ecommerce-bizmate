@@ -44,8 +44,8 @@
     // svelte-ignore state_referenced_locally
     let activePreset = $state(filters.preset || 'bulanan');
 
-    let plCanvas = $state<HTMLCanvasElement>();
-    let plChart = $state<Chart>();
+    let plCanvas: HTMLCanvasElement | undefined;
+    let plChart: Chart | undefined;
 
     function formatDateLocal(date: Date) {
         const year = date.getFullYear();
@@ -173,14 +173,15 @@
         if (plCanvas && trendData.length > 0) {
             const ctx = plCanvas.getContext('2d');
             if (ctx) {
+                const cleanTrendData = $state.snapshot(trendData);
                 plChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: trendData.map((d: any) => d.month),
+                        labels: cleanTrendData.map((d: any) => d.month),
                         datasets: [
                             {
                                 label: 'Pendapatan (Rp)',
-                                data: trendData.map((d: any) => d.revenue),
+                                data: cleanTrendData.map((d: any) => d.revenue),
                                 borderColor: primaryColor,
                                 backgroundColor: primaryColor + '22',
                                 borderWidth: 2,
@@ -189,7 +190,7 @@
                             },
                             {
                                 label: 'HPP / COGS (Rp)',
-                                data: trendData.map((d: any) => d.cogs),
+                                data: cleanTrendData.map((d: any) => d.cogs),
                                 borderColor: '#94a3b8',
                                 backgroundColor: '#94a3b822',
                                 borderWidth: 2,
@@ -198,7 +199,7 @@
                             },
                             {
                                 label: 'Laba Bersih (Rp)',
-                                data: trendData.map((d: any) => d.net_profit),
+                                data: cleanTrendData.map((d: any) => d.net_profit),
                                 borderColor: '#10b981',
                                 backgroundColor: '#10b98122',
                                 borderWidth: 3,

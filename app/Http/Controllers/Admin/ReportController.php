@@ -1216,6 +1216,28 @@ class ReportController extends Controller
             ->distinct('user_id')
             ->count('user_id');
 
+        $driver = DB::connection()->getDriverName();
+        $dateFormat = $driver === 'sqlite'
+            ? "strftime('%Y-%m-%d', updated_at)"
+            : 'CAST(updated_at AS DATE)';
+
+        $cartTrend = CartItem::where('updated_at', '<', $threshold)
+            ->selectRaw("
+                {$dateFormat} as date,
+                SUM(quantity) as total_qty,
+                COUNT(DISTINCT user_id) as total_users
+            ")
+            ->groupBy(DB::raw($dateFormat))
+            ->orderBy('date', 'asc')
+            ->take(30)
+            ->get();
+
+        $chartData = [
+            'labels' => $cartTrend->map(fn ($t) => Carbon::parse($t->date)->format('d M Y'))->toArray(),
+            'qty' => $cartTrend->map(fn ($t) => (int) $t->total_qty)->toArray(),
+            'users' => $cartTrend->map(fn ($t) => (int) $t->total_users)->toArray(),
+        ];
+
         return Inertia::render('Admin/Reports/AbandonedCarts', [
             'abandonedCarts' => [
                 'data' => $formattedData,
@@ -1230,6 +1252,7 @@ class ReportController extends Controller
                 'total_items' => (int) $allAbandonedItems->sum('quantity'),
                 'total_value' => (float) $totalValue,
             ],
+            'chartData' => $chartData,
             'filters' => [
                 'search' => $search,
                 'per_page' => $perPage,

@@ -640,85 +640,19 @@
 <AdminLayout>
     <div class="flex h-[calc(100dvh-3.5rem)] w-full overflow-hidden">
 
-        <!-- Chat list sidebar -->
-        <div class="hidden w-80 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
-            <!-- Header -->
-            <div class="flex h-14 items-center justify-between border-b border-slate-100 px-4">
-                <div class="flex items-center gap-2">
-                    <h2 class="text-sm font-semibold text-slate-800">Pesan</h2>
-                    {#if totalUnread > 0}
-                        <span class="rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white" style="background-color: {secondaryColor};">
-                            {totalUnread}
-                        </span>
-                    {/if}
-                </div>
-                <Link href="/admin/chats" class="text-xs font-medium text-slate-400 hover:text-slate-700 transition-colors">
-                    Semua
-                </Link>
-            </div>
-
-            <!-- Search -->
-            <div class="border-b border-slate-100 px-3 py-2.5">
-                <form onsubmit={handleSearch} class="relative">
-                    <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
-                    <input
-                        type="search"
-                        placeholder="Cari percakapan..."
-                        bind:value={searchQuery}
-                        class="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 placeholder-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none transition-colors"
-                    />
-                </form>
-            </div>
-
-            <!-- Chat list -->
-            <div class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100">
-                {#each chats.data as c}
-                    <Link
-                        href="/admin/chats/{c.id}"
-                        class="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50
-                            {c.id === chat.id ? 'bg-slate-50 border-r-2' : ''}
-                            {c.has_unread && c.id !== chat.id ? 'bg-blue-50/30' : ''}"
-                        style={c.id === chat.id ? `border-color: ${primaryColor};` : ''}
-                    >
-                        <div class="relative shrink-0">
-                            {#if c.user?.avatar}
-                                <img src={formatAvatarPath(c.user.avatar)} alt={c.user?.name} class="h-8 w-8 rounded-full object-cover" />
-                            {:else}
-                                <div
-                                    class="flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-bold uppercase text-white"
-                                    style="background-color: {c.id === chat.id ? primaryColor : '#94a3b8'};"
-                                >
-                                    {c.user?.name?.substring(0, 2) || '??'}
-                                </div>
-                            {/if}
-                            {#if c.has_unread && c.id !== chat.id}
-                                <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-white" style="background-color: {secondaryColor};"></span>
-                            {/if}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center justify-between gap-1">
-                                <p class="truncate text-xs {c.has_unread ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}">
-                                    {c.user?.name || 'Pelanggan'}
-                                </p>
-                                <span class="shrink-0 text-[10px] text-slate-400">{c.last_message_at ? new Date(c.last_message_at).toLocaleTimeString("id-ID", {hour:"2-digit",minute:"2-digit"}) : ""}</span>
-                            </div>
-                            <p class="mt-0.5 truncate text-[11px] {c.has_unread ? 'font-medium text-slate-600' : 'text-slate-400'}">
-                                {typeof c.last_message === "object" ? (c.last_message?.body || c.subject || "Percakapan baru") : (c.last_message || c.subject || "Percakapan baru")}
-                            </p>
-                        </div>
-                    </Link>
-                {/each}
-            </div>
-        </div>
-
-        <!-- Main chat area -->
+        <!-- Main chat area (full width) -->
         <div class="flex flex-1 flex-col overflow-hidden bg-white">
 
             <!-- Chat header -->
             <div class="flex h-14 shrink-0 items-center justify-between border-b border-slate-100 px-4 bg-white">
                 <div class="flex items-center gap-3">
-                    <Link href="/admin/chats" class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors lg:hidden">
-                        <i class="ti ti-arrow-left text-sm"></i>
+                    <!-- Back button - icon only -->
+                    <Link
+                        href="/admin/chats"
+                        title="Kembali ke daftar chat"
+                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-xs transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+                    >
+                        <i class="ti ti-arrow-left text-sm leading-none"></i>
                     </Link>
                     {#if chat.user?.avatar}
                         <img src={formatAvatarPath(chat.user.avatar)} alt={chat.user?.name} class="h-8 w-8 rounded-full object-cover shrink-0" />

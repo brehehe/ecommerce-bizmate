@@ -31,11 +31,11 @@
     // svelte-ignore state_referenced_locally
     let activePreset = $state(filters.preset || 'bulanan');
 
-    let methodCanvas: HTMLCanvasElement | undefined = $state();
-    let serviceCanvas: HTMLCanvasElement | undefined = $state();
+    let methodCanvas: HTMLCanvasElement | undefined;
+    let serviceCanvas: HTMLCanvasElement | undefined;
 
-    let methodChart: Chart;
-    let serviceChart: Chart;
+    let methodChart: Chart | undefined;
+    let serviceChart: Chart | undefined;
 
     function formatDateLocal(date: Date) {
         const year = date.getFullYear();
@@ -194,6 +194,9 @@
     }
 
     onMount(() => {
+        const cleanShippingSummary = $state.snapshot(shippingSummary);
+        const cleanRajaongkirBreakdown = $state.snapshot(rajaongkirBreakdown);
+
         // 1. Doughnut Chart: Distribusi Metode Pengiriman
         if (methodCanvas) {
             const ctx = methodCanvas.getContext('2d');
@@ -207,12 +210,12 @@
                 methodChart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: shippingSummary.map(
+                        labels: cleanShippingSummary.map(
                             (s: any) => methodLabelsMap[s.method] || s.method,
                         ),
                         datasets: [
                             {
-                                data: shippingSummary.map(
+                                data: cleanShippingSummary.map(
                                     (s: any) => s.total_orders,
                                 ),
                                 backgroundColor: [
@@ -246,11 +249,11 @@
                 serviceChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: rajaongkirBreakdown.map((r: any) => r.name),
+                        labels: cleanRajaongkirBreakdown.map((r: any) => r.name),
                         datasets: [
                             {
                                 label: 'Jumlah Pesanan',
-                                data: rajaongkirBreakdown.map(
+                                data: cleanRajaongkirBreakdown.map(
                                     (r: any) => r.total_orders,
                                 ),
                                 backgroundColor: primaryColor + 'cc',

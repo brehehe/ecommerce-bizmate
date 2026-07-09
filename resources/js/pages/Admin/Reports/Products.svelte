@@ -39,11 +39,11 @@
     // svelte-ignore state_referenced_locally
     let selectedCategory = $state(filters.category_id || '');
 
-    let productCanvas = $state<HTMLCanvasElement>();
-    let categoryCanvas = $state<HTMLCanvasElement>();
+    let productCanvas: HTMLCanvasElement | undefined;
+    let categoryCanvas: HTMLCanvasElement | undefined;
 
-    let productChart = $state<Chart>();
-    let categoryChart: Chart;
+    let productChart: Chart | undefined;
+    let categoryChart: Chart | undefined;
 
     function formatDateLocal(date: Date) {
         const year = date.getFullYear();
@@ -169,14 +169,16 @@
     }
 
     onMount(() => {
+        const cleanChartData = $state.snapshot(chartData);
+
         // 1. Horizontal Bar Chart: Top 5 Produk Terlaris
-        if (productCanvas && chartData.topProducts.length > 0) {
+        if (productCanvas && cleanChartData.topProducts.length > 0) {
             const ctx = productCanvas.getContext('2d');
             if (ctx) {
                 productChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: chartData.topProducts.map((p: any) =>
+                        labels: cleanChartData.topProducts.map((p: any) =>
                             p.name.length > 20
                                 ? p.name.substring(0, 20) + '...'
                                 : p.name,
@@ -184,7 +186,7 @@
                         datasets: [
                             {
                                 label: 'Jumlah Terjual (pcs)',
-                                data: chartData.topProducts.map(
+                                data: cleanChartData.topProducts.map(
                                     (p: any) => p.qty,
                                 ),
                                 backgroundColor: primaryColor + 'cc',
@@ -217,16 +219,16 @@
         }
 
         // 2. Pie Chart: Kontribusi Kategori Produk
-        if (categoryCanvas && chartData.categorySales.length > 0) {
+        if (categoryCanvas && cleanChartData.categorySales.length > 0) {
             const ctx = categoryCanvas.getContext('2d');
             if (ctx) {
                 categoryChart = new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: chartData.categorySales.map((c: any) => c.name),
+                        labels: cleanChartData.categorySales.map((c: any) => c.name),
                         datasets: [
                             {
-                                data: chartData.categorySales.map(
+                                data: cleanChartData.categorySales.map(
                                     (c: any) => c.revenue,
                                 ),
                                 backgroundColor: [

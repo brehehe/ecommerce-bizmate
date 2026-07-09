@@ -49,13 +49,13 @@
 
     let activeTab = $state('daily');
 
-    let trendCanvas: HTMLCanvasElement | undefined = $state();
-    let paymentCanvas: HTMLCanvasElement | undefined = $state();
-    let statusCanvas: HTMLCanvasElement | undefined = $state();
+    let trendCanvas: HTMLCanvasElement | undefined;
+    let paymentCanvas: HTMLCanvasElement | undefined;
+    let statusCanvas: HTMLCanvasElement | undefined;
 
-    let trendChart: Chart;
-    let paymentChart: Chart;
-    let statusChart: Chart;
+    let trendChart: Chart | undefined;
+    let paymentChart: Chart | undefined;
+    let statusChart: Chart | undefined;
 
     function formatDateLocal(date: Date) {
         const year = date.getFullYear();
@@ -233,6 +233,10 @@
     };
 
     onMount(() => {
+        const cleanChartData = $state.snapshot(chartData);
+        const cleanPaymentDistribution = $state.snapshot(paymentDistribution);
+        const cleanStatusDistribution = $state.snapshot(statusDistribution);
+
         // 1. Line Chart: Tren Penjualan Harian
         if (trendCanvas) {
             const ctx = trendCanvas.getContext('2d');
@@ -244,11 +248,11 @@
                 trendChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: [...chartData.labels],
+                        labels: [...cleanChartData.labels],
                         datasets: [
                             {
                                 label: 'Penjualan Bersih (Rp)',
-                                data: [...chartData.revenue],
+                                data: [...cleanChartData.revenue],
                                 borderColor: primaryColor,
                                 backgroundColor: gradient,
                                 borderWidth: 3,
@@ -304,10 +308,10 @@
                 paymentChart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: paymentDistribution.map((p: any) => p.name),
+                        labels: cleanPaymentDistribution.map((p: any) => p.name),
                         datasets: [
                             {
-                                data: paymentDistribution.map(
+                                data: cleanPaymentDistribution.map(
                                     (p: any) => p.count,
                                 ),
                                 backgroundColor: [
@@ -364,15 +368,15 @@
                 statusChart = new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: statusDistribution.map(
+                        labels: cleanStatusDistribution.map(
                             (s: any) => statusLabelsMap[s.status] || s.status,
                         ),
                         datasets: [
                             {
-                                data: statusDistribution.map(
+                                data: cleanStatusDistribution.map(
                                     (s: any) => s.count,
                                 ),
-                                backgroundColor: statusDistribution.map(
+                                backgroundColor: cleanStatusDistribution.map(
                                     (s: any) =>
                                         statusColorsMap[s.status] || '#cbd5e1',
                                 ),

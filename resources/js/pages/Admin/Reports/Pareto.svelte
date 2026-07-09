@@ -60,7 +60,7 @@
               ),
     );
 
-    let paretoCanvas: HTMLCanvasElement | undefined = $state();
+    let paretoCanvas: HTMLCanvasElement | undefined;
     let paretoChart: Chart | null = null;
 
     const typeOptions = [
@@ -405,14 +405,17 @@
             return;
         }
 
-        const labels = [...(chartData.labels as string[])];
-        const values = [...(chartData.values as number[])];
-        const cumulative = [...(chartData.cumulativePercentages as number[])];
+        const cleanChartData = $state.snapshot(chartData);
+        const cleanItems = $state.snapshot(items);
+
+        const labels = [...(cleanChartData.labels as string[])];
+        const values = [...(cleanChartData.values as number[])];
+        const cumulative = [...(cleanChartData.cumulativePercentages as number[])];
 
         // Color bars by moving_category if product type
         const barColors = labels.map((lbl, i) => {
             if (isProductType) {
-                const item = (items as any[]).find(
+                const item = (cleanItems as any[]).find(
                     (it: any) => it.label === lbl,
                 );
                 if (item?.moving_category === 'fast') return '#10b981cc';

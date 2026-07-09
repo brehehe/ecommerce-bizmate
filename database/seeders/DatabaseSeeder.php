@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             CourierSeeder::class,
             DummyTransactionSeeder::class,
             PromotionSeeder::class,
+            DummyReportSeeder::class,
         ]);
 
         // User::factory()->create([

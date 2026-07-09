@@ -27,8 +27,8 @@
     // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
 
-    let regCanvas = $state<HTMLCanvasElement>();
-    let regChart = $state<Chart>();
+    let regCanvas: HTMLCanvasElement | undefined;
+    let regChart: Chart | undefined;
 
     let selectedCustomer = $state<any>(null);
     let showModal = $state(false);
@@ -252,14 +252,15 @@
         if (regCanvas && chartData.labels.length > 0) {
             const ctx = regCanvas.getContext('2d');
             if (ctx) {
+                const cleanChartData = $state.snapshot(chartData);
                 regChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: [...chartData.labels],
+                        labels: [...cleanChartData.labels],
                         datasets: [
                             {
                                 label: 'Pendaftaran Baru',
-                                data: [...chartData.counts],
+                                data: [...cleanChartData.counts],
                                 backgroundColor: primaryColor,
                                 borderRadius: 6,
                             },

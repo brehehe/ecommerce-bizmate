@@ -31,7 +31,7 @@
     // svelte-ignore state_referenced_locally
     let perPageFilter = $state(filters.per_page || 15);
 
-    let chartCanvas: HTMLCanvasElement | undefined = $state();
+    let chartCanvas: HTMLCanvasElement | undefined;
     let trendChart: Chart;
 
     function formatDateLocal(date: Date) {
@@ -148,14 +148,15 @@
 
     onMount(() => {
         if (chartCanvas) {
+            const cleanChartData = $state.snapshot(chartData);
             trendChart = new Chart(chartCanvas, {
                 type: 'bar',
                 data: {
-                    labels: chartData.labels,
+                    labels: cleanChartData.labels,
                     datasets: [
                         {
                             label: 'Jumlah Penggunaan',
-                            data: chartData.usage,
+                            data: cleanChartData.usage,
                             backgroundColor: primaryColor,
                             borderColor: primaryColor,
                             type: 'bar',
@@ -163,7 +164,7 @@
                         },
                         {
                             label: 'Total Diskon',
-                            data: chartData.discount,
+                            data: cleanChartData.discount,
                             borderColor: secondaryColor,
                             backgroundColor: secondaryColor + '20',
                             borderWidth: 2,
@@ -259,7 +260,7 @@
 
             <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto">
                 <button
-                    onclick={printReport}
+                    onclick={() => window.print()}
                     class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
                 >
                     <i class="ti ti-printer text-base"></i>
@@ -275,21 +276,21 @@
             </div>
         </div>
 
-        <!-- Metrics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-            <!-- Metric 1: Total Usage -->
-            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between transition hover:shadow-md duration-200">
+        <!-- KPI Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- Card 1: Total Usage -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
-                    <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-slate-600 bg-slate-50 mb-3">
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-blue-600 bg-blue-50 mb-3">
                         <i class="ti ti-ticket"></i>
                     </span>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Total Penggunaan Voucher</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Total Penggunaan</p>
                     <h3 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 mt-1">{metrics.total_usage} Kali</h3>
                 </div>
             </div>
 
-            <!-- Metric 2: Total Discount Given -->
-            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between transition hover:shadow-md duration-200">
+            <!-- Card 2: Total Discount Given -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                     <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-rose-600 bg-rose-50 mb-3">
                         <i class="ti ti-gift"></i>
@@ -299,13 +300,26 @@
                 </div>
             </div>
 
-            <!-- Metric 3: Total Sales Generated -->
-            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between transition hover:shadow-md duration-200">
+            <!-- Card 3: Average Discount -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-purple-600 bg-purple-50 mb-3">
+                        <i class="ti ti-receipt"></i>
+                    </span>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Rata-rata Potongan</p>
+                    <h3 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 mt-1">
+                        {metrics.total_usage > 0 ? formatRupiah(metrics.total_discount_amount / metrics.total_usage) : 'Rp 0'}
+                    </h3>
+                </div>
+            </div>
+
+            <!-- Card 4: Total Sales Generated -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                     <span class="w-8 h-8 rounded-lg flex items-center justify-center text-lg text-emerald-600 bg-emerald-50 mb-3">
                         <i class="ti ti-shopping-bag"></i>
                     </span>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Omset yang Dihasilkan</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit">Omset Terkait</p>
                     <h3 class="font-outfit font-black text-xl sm:text-2xl text-emerald-600 mt-1">{formatRupiah(metrics.total_sales)}</h3>
                 </div>
             </div>
@@ -352,23 +366,26 @@
                 <!-- Search Input -->
                 <div class="lg:col-span-4 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="search-input">Cari Voucher</label>
-                    <input
-                        type="text"
-                        id="search-input"
-                        bind:value={searchQuery}
-                        oninput={handleSearchInput}
-                        placeholder="Cari kode voucher..."
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition"
-                    />
+                    <div class="relative">
+                        <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input
+                            id="search-input"
+                            type="search"
+                            bind:value={searchQuery}
+                            oninput={handleSearchInput}
+                            placeholder="Cari kode voucher..."
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        />
+                    </div>
                 </div>
 
                 <!-- Custom Dates -->
                 <div class="lg:col-span-5 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="date_from">Periode Tanggal</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="date-from">Periode Tanggal</label>
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1">
                             <input
-                                id="date_from"
+                                id="date-from"
                                 type="date"
                                 bind:value={dateFrom}
                                 onchange={() => activePreset = 'custom'}
@@ -378,7 +395,7 @@
                         <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">s/d</span>
                         <div class="relative flex-1">
                             <input
-                                id="date_to"
+                                id="date-to"
                                 type="date"
                                 bind:value={dateTo}
                                 onchange={() => activePreset = 'custom'}
@@ -399,7 +416,7 @@
                     >
                         <option value={10}>10 Baris</option>
                         <option value={15}>15 Baris</option>
-                        <option value={30}>30 Baris</option>
+                        <option value={25}>25 Baris</option>
                         <option value={50}>50 Baris</option>
                     </select>
                 </div>
@@ -422,44 +439,62 @@
             </div>
         </div>
 
-        <!-- Chart Card (Hidden on print unless needed, usually hidden to keep print clean or styled cleanly) -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm print:hidden">
-            <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider mb-4">Tren Penggunaan Voucher</h3>
-            <div class="h-80 w-full relative">
-                <canvas bind:this={chartCanvas}></canvas>
+        <!-- Charts Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
+            <div class="lg:col-span-3 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+                <div class="mb-4">
+                    <h3 class="font-outfit font-black text-lg text-slate-800">
+                        Tren Penggunaan Voucher
+                    </h3>
+                    <p class="text-xs text-slate-500 font-medium">
+                        Grafik fluktuasi frekuensi penggunaan dan total subsidi potongan.
+                    </p>
+                </div>
+                <div class="h-80 w-full">
+                    <canvas bind:this={chartCanvas}></canvas>
+                </div>
             </div>
         </div>
 
         <!-- Report Table Card -->
-        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-slate-100 bg-slate-50/20">
+                <h3 class="font-outfit font-black text-base text-slate-800">
+                    Rincian Penggunaan Voucher
+                </h3>
+                <p class="text-xs text-slate-500 font-medium">
+                    Data efektivitas performa masing-masing kode voucher promosi.
+                </p>
+            </div>
+
             <div class="overflow-x-auto">
-                <table class="w-full border-collapse text-left">
+                <table class="w-full text-left border-collapse responsive-table vouchers-report-table">
                     <thead>
-                        <tr class="border-b border-slate-200 bg-slate-50/50 text-[11px] font-bold uppercase tracking-wider text-slate-500 font-outfit">
+                        <tr class="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-100">
                             <th class="py-4 px-6">Kode Voucher</th>
                             <th class="py-4 px-6 text-center">Jumlah Penggunaan</th>
                             <th class="py-4 px-6 text-right">Total Potongan (Subsidi)</th>
-                            <th class="py-4 px-6 text-right">Omset yang Dihasilkan</th>
+                            <th class="py-4 px-6 text-right">Omset Terkait</th>
                             <th class="py-4 px-6 text-right">Terakhir Digunakan</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 text-slate-700 text-sm">
+                    <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
                         {#each vouchers.data as v}
                             <tr class="hover:bg-slate-50/30 transition duration-150">
-                                <td class="py-4 px-6 font-bold text-slate-800 font-mono tracking-wide">
-                                    {v.voucher_code}
+                                <td class="py-4 px-6 font-bold text-slate-800 font-mono tracking-wide" data-label="Kode Voucher">
+                                    <span>{v.voucher_code}</span>
                                 </td>
-                                <td class="py-4 px-6 text-center font-mono font-bold text-slate-600">
-                                    {v.usage_count}
+                                <td class="py-4 px-6 text-center font-mono font-bold text-slate-600" data-label="Jumlah Penggunaan">
+                                    <span>{v.usage_count}</span>
                                 </td>
-                                <td class="py-4 px-6 text-right font-bold text-rose-600 font-mono">
-                                    {formatRupiah(v.total_discount)}
+                                <td class="py-4 px-6 text-right font-bold text-rose-600 font-mono" data-label="Total Potongan (Subsidi)">
+                                    <span>{formatRupiah(v.total_discount)}</span>
                                 </td>
-                                <td class="py-4 px-6 text-right font-black text-slate-800 font-mono">
-                                    {formatRupiah(v.total_sales_generated)}
+                                <td class="py-4 px-6 text-right font-black text-slate-800 font-mono" data-label="Omset Terkait">
+                                    <span>{formatRupiah(v.total_sales_generated)}</span>
                                 </td>
-                                <td class="py-4 px-6 text-right text-xs text-slate-400 font-medium font-mono">
-                                    {formatDate(v.last_used_at)}
+                                <td class="py-4 px-6 text-right text-xs text-slate-400 font-medium font-mono" data-label="Terakhir Digunakan">
+                                    <span>{formatDate(v.last_used_at)}</span>
                                 </td>
                             </tr>
                         {:else}
@@ -484,3 +519,11 @@
 
     </main>
 </AdminLayout>
+
+<style>
+    @media (max-width: 640px) {
+        .vouchers-report-table td:first-child {
+            display: flex !important;
+        }
+    }
+</style>
