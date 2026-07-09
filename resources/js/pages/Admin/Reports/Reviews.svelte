@@ -1,5 +1,10 @@
 <script lang="ts">
-    import { router } from '@inertiajs/svelte';
+    import { page, router } from '@inertiajs/svelte';
+
+    const storeName = $derived(
+        (page.props as any).settings?.store_name || 'Bizmate',
+    );
+
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
 
@@ -90,7 +95,9 @@
     }
 
     function resetFilter() {
-        dateFrom = formatDateLocal(new Date(new Date().setDate(new Date().getDate() - 29)));
+        dateFrom = formatDateLocal(
+            new Date(new Date().setDate(new Date().getDate() - 29)),
+        );
         dateTo = formatDateLocal(new Date());
         activePreset = 'bulanan';
         searchQuery = '';
@@ -193,14 +200,34 @@
 </script>
 
 <svelte:head>
-    <title>Laporan Ulasan Produk</title>
+    <title>Laporan Ulasan Produk — {storeName}</title>
 </svelte:head>
 
 <AdminLayout>
-    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6">
+    <main
+        class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6 print:p-0 print:bg-white"
+    >
+        <!-- Print Header -->
+        <div class="hidden print:block text-center space-y-1.5 mb-6">
+            <h1
+                class="font-outfit font-black text-2xl text-slate-800 tracking-tight"
+            >
+                {storeName}
+            </h1>
+            <h2 class="font-outfit font-bold text-lg text-slate-700">
+                Laporan Ulasan Produk
+            </h2>
+            <p class="text-xs text-slate-500 font-medium">
+                Periode: {formatDate(dateFrom)} s/d {formatDate(dateTo)}
+            </p>
+            <p class="text-[10px] text-slate-400">
+                Dicetak pada: {new Date().toLocaleString('id-ID')}
+            </p>
+        </div>
+
         <!-- ── Page Header ─────────────────────────────────────── -->
         <div
-            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden"
         >
             <div>
                 <h1
@@ -213,46 +240,69 @@
                     pelanggaran konten.
                 </p>
             </div>
-            <button
-                onclick={exportToCSV}
-                class="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition shadow-sm uppercase tracking-wider font-outfit shrink-0"
-            >
-                <i class="ti ti-download text-base"></i>
-                Ekspor CSV
-            </button>
+            <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                <button
+                    onclick={() => window.print()}
+                    class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
+                >
+                    <i class="ti ti-printer text-base"></i>
+                    <span>Cetak PDF</span>
+                </button>
+                <button
+                    onclick={exportToCSV}
+                    class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
+                >
+                    <i class="ti ti-download text-base"></i>
+                    <span>Ekspor CSV</span>
+                </button>
+            </div>
         </div>
 
         <!-- ── Filter Card ─────────────────────────────────────── -->
         <!-- Filter Card -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
-            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div
+            class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4 print:hidden"
+        >
+            <div
+                class="flex flex-col xl:flex-row xl:items-center justify-between gap-4"
+            >
                 <!-- Presets -->
-                <div class="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl w-full xl:w-auto">
+                <div
+                    class="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl w-full xl:w-auto"
+                >
                     <button
                         onclick={() => selectPreset('harian')}
                         class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
-                            {activePreset === 'harian' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            {activePreset === 'harian'
+                            ? 'bg-white text-slate-800 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Harian
                     </button>
                     <button
                         onclick={() => selectPreset('mingguan')}
                         class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
-                            {activePreset === 'mingguan' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            {activePreset === 'mingguan'
+                            ? 'bg-white text-slate-800 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Mingguan
                     </button>
                     <button
                         onclick={() => selectPreset('bulanan')}
                         class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
-                            {activePreset === 'bulanan' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            {activePreset === 'bulanan'
+                            ? 'bg-white text-slate-800 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Bulanan
                     </button>
                     <button
                         onclick={() => selectPreset('tahunan')}
                         class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
-                            {activePreset === 'tahunan' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            {activePreset === 'tahunan'
+                            ? 'bg-white text-slate-800 shadow-xs'
+                            : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Tahunan
                     </button>
@@ -260,12 +310,19 @@
             </div>
 
             <!-- Advanced Filters Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-100">
+            <div
+                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-100"
+            >
                 <!-- Search Input -->
                 <div class="lg:col-span-3 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="search">Pencarian</label>
+                    <label
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                        for="search">Pencarian</label
+                    >
                     <div class="relative">
-                        <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <i
+                            class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
+                        ></i>
                         <input
                             type="text"
                             id="search"
@@ -278,24 +335,30 @@
 
                 <!-- Custom Dates -->
                 <div class="lg:col-span-4 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="date_from">Periode Tanggal</label>
+                    <label
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                        for="date_from">Periode Tanggal</label
+                    >
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1">
                             <input
                                 id="date_from"
                                 type="date"
                                 bind:value={dateFrom}
-                                onchange={() => activePreset = 'custom'}
+                                onchange={() => (activePreset = 'custom')}
                                 class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                             />
                         </div>
-                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">s/d</span>
+                        <span
+                            class="text-xs text-slate-400 font-bold uppercase tracking-wider"
+                            >s/d</span
+                        >
                         <div class="relative flex-1">
                             <input
                                 id="date_to"
                                 type="date"
                                 bind:value={dateTo}
-                                onchange={() => activePreset = 'custom'}
+                                onchange={() => (activePreset = 'custom')}
                                 class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                             />
                         </div>
@@ -304,7 +367,10 @@
 
                 <!-- Rating Filter -->
                 <div class="lg:col-span-3 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="rating">Rating</label>
+                    <label
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                        for="rating">Rating</label
+                    >
                     <select
                         id="rating"
                         bind:value={ratingFilter}
@@ -326,7 +392,13 @@
                         role="button"
                         tabindex="0"
                         class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border cursor-pointer select-none transition text-[10px] font-bold uppercase tracking-wider font-outfit"
-                        style="border-color:{reportedOnly ? '#fca5a5' : '#e2e8f0'}; background:{reportedOnly ? '#fef2f2' : 'transparent'}; color:{reportedOnly ? '#ef4444' : '#64748b'};"
+                        style="border-color:{reportedOnly
+                            ? '#fca5a5'
+                            : '#e2e8f0'}; background:{reportedOnly
+                            ? '#fef2f2'
+                            : 'transparent'}; color:{reportedOnly
+                            ? '#ef4444'
+                            : '#64748b'};"
                         onclick={() => (reportedOnly = !reportedOnly)}
                         onkeydown={(e: KeyboardEvent) => {
                             if (e.key === 'Enter' || e.key === ' ')
@@ -342,7 +414,13 @@
                         role="button"
                         tabindex="0"
                         class="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl border cursor-pointer select-none transition text-[10px] font-bold uppercase tracking-wider font-outfit"
-                        style="border-color:{anonymousOnly ? '#a5b4fc' : '#e2e8f0'}; background:{anonymousOnly ? '#eef2ff' : 'transparent'}; color:{anonymousOnly ? '#6366f1' : '#64748b'};"
+                        style="border-color:{anonymousOnly
+                            ? '#a5b4fc'
+                            : '#e2e8f0'}; background:{anonymousOnly
+                            ? '#eef2ff'
+                            : 'transparent'}; color:{anonymousOnly
+                            ? '#6366f1'
+                            : '#64748b'};"
                         onclick={() => (anonymousOnly = !anonymousOnly)}
                         onkeydown={(e: KeyboardEvent) => {
                             if (e.key === 'Enter' || e.key === ' ')
@@ -356,7 +434,9 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row justify-end items-center gap-2 pt-2 border-t border-slate-50">
+            <div
+                class="flex flex-col sm:flex-row justify-end items-center gap-2 pt-2 border-t border-slate-50"
+            >
                 <button
                     onclick={resetFilter}
                     class="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition duration-200 uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
@@ -478,9 +558,10 @@
         <div
             class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm"
         >
-            <div
-                     <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse responsive-table reviews-report-table">
+            <div <div class="overflow-x-auto">
+                <table
+                    class="w-full text-left border-collapse responsive-table reviews-report-table"
+                >
                     <thead>
                         <tr
                             class="bg-slate-55 text-[10px] font-bold text-slate-400 uppercase tracking-widest font-outfit border-b border-slate-200"
@@ -525,7 +606,10 @@
                                     class="hover:bg-slate-50/60 transition group"
                                 >
                                     <!-- Pelanggan -->
-                                    <td class="py-4 px-5" data-label="Pelanggan">
+                                    <td
+                                        class="py-4 px-5"
+                                        data-label="Pelanggan"
+                                    >
                                         <div class="flex items-center gap-2.5">
                                             {#if review.is_anonymous}
                                                 <span
@@ -575,7 +659,10 @@
                                     </td>
 
                                     <!-- Produk -->
-                                    <td class="py-4 px-5 max-w-[180px]" data-label="Produk">
+                                    <td
+                                        class="py-4 px-5 max-w-[180px]"
+                                        data-label="Produk"
+                                    >
                                         <p
                                             class="text-xs font-semibold text-slate-700 line-clamp-1"
                                         >
@@ -593,7 +680,10 @@
                                     </td>
 
                                     <!-- Rating -->
-                                    <td class="py-4 px-5 text-center" data-label="Rating">
+                                    <td
+                                        class="py-4 px-5 text-center"
+                                        data-label="Rating"
+                                    >
                                         <div
                                             class="inline-flex items-center gap-0.5 mb-0.5"
                                         >
@@ -604,7 +694,7 @@
                                                     review.rating
                                                         ? RATING_COLORS[
                                                               review.rating
-                                                           ]
+                                                          ]
                                                         : '#e2e8f0'};"
                                                 ></i>
                                             {/each}
@@ -620,7 +710,10 @@
                                     </td>
 
                                     <!-- Komentar -->
-                                    <td class="py-4 px-5 max-w-xs" data-label="Komentar">
+                                    <td
+                                        class="py-4 px-5 max-w-xs"
+                                        data-label="Komentar"
+                                    >
                                         <p
                                             class="text-xs text-slate-600 leading-relaxed line-clamp-2"
                                         >
@@ -639,7 +732,10 @@
                                     </td>
 
                                     <!-- Status -->
-                                    <td class="py-4 px-5 text-center" data-label="Status">
+                                    <td
+                                        class="py-4 px-5 text-center"
+                                        data-label="Status"
+                                    >
                                         {#if review.is_reported}
                                             <div
                                                 class="flex flex-col items-center gap-1"
@@ -671,7 +767,10 @@
                                     </td>
 
                                     <!-- Tanggal -->
-                                    <td class="py-4 px-5 text-right" data-label="Tanggal">
+                                    <td
+                                        class="py-4 px-5 text-right"
+                                        data-label="Tanggal"
+                                    >
                                         <span
                                             class="text-xs text-slate-500 font-medium"
                                             >{formatDate(
@@ -696,16 +795,16 @@
         .reviews-report-table td:first-child {
             display: flex !important;
         }
-        .reviews-report-table td[data-label="Pelanggan"],
-        .reviews-report-table td[data-label="Produk"],
-        .reviews-report-table td[data-label="Komentar"] {
+        .reviews-report-table td[data-label='Pelanggan'],
+        .reviews-report-table td[data-label='Produk'],
+        .reviews-report-table td[data-label='Komentar'] {
             flex-direction: column !important;
             align-items: flex-start !important;
             gap: 4px;
         }
-        .reviews-report-table td[data-label="Pelanggan"] > *,
-        .reviews-report-table td[data-label="Produk"] > *,
-        .reviews-report-table td[data-label="Komentar"] > * {
+        .reviews-report-table td[data-label='Pelanggan'] > *,
+        .reviews-report-table td[data-label='Produk'] > *,
+        .reviews-report-table td[data-label='Komentar'] > * {
             text-align: left !important;
             width: 100% !important;
         }

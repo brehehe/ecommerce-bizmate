@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
@@ -1124,6 +1125,199 @@ class ReportController extends Controller
                 'rating' => $ratingFilter,
                 'reported_only' => $reportedOnly,
                 'anonymous_only' => $anonymousOnly,
+            ],
+        ]);
+    }
+
+    /**
+     * Laporan Keranjang Terbengkalai (Abandoned Carts Report)
+     */
+    public function abandonedCarts(Request $request): Response
+    {
+        $search = $request->input('search', '');
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage < 10) {
+            $perPage = 10;
+        }
+
+        // Carts last updated older than 2 hours
+        $threshold = Carbon::now()->subHours(2);
+
+        $query = User::whereHas('cartItems', function ($q) use ($threshold) {
+            $q->where('updated_at', '<', $threshold);
+        })
+            ->with(['cartItems' => function ($q) use ($threshold) {
+                $q->where('updated_at', '<', $threshold)->with([
+                    'product:id,name,sku',
+                    'product.productPrice:id,product_id,price',
+                    'productVariant:id,sku',
+                    'productVariant.productPrice:id,product_variant_id,price',
+                ]);
+            }]);
+
+        if (! empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('email', 'ilike', "%{$search}%");
+            });
+        }
+
+        $abandonedUsers = $query->paginate($perPage)->withQueryString();
+
+        $formattedData = collect($abandonedUsers->items())->map(function ($user) {
+            $items = $user->cartItems->map(function ($item) {
+                $price = $item->productVariant?->productPrice?->price
+                    ?? $item->product?->productPrice?->price
+                    ?? 0;
+                $subtotal = $price * $item->quantity;
+
+                return [
+                    'id' => $item->id,
+                    'product_name' => $item->product?->name ?? 'Produk Tidak Dikenal',
+                    'sku' => $item->product?->sku ?? '—',
+                    'variant_name' => $item->productVariant?->name ?? null,
+                    'quantity' => $item->quantity,
+                    'price' => (float) $price,
+                    'subtotal' => (float) $subtotal,
+                    'last_active' => $item->updated_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            return [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'items' => $items,
+                'total_items' => $items->sum('quantity'),
+                'total_value' => $items->sum('subtotal'),
+                'last_active' => $user->cartItems->max('updated_at')?->format('Y-m-d H:i:s') ?? '—',
+            ];
+        });
+
+        $allAbandonedItems = CartItem::where('updated_at', '<', $threshold)
+            ->select(['id', 'product_id', 'product_variant_id', 'quantity', 'updated_at'])
+            ->with([
+                'product:id',
+                'product.productPrice:id,product_id,price',
+                'productVariant:id',
+                'productVariant.productPrice:id,product_variant_id,price',
+            ])
+            ->get();
+
+        $totalValue = $allAbandonedItems->sum(function ($item) {
+            $price = $item->productVariant?->productPrice?->price
+                ?? $item->product?->productPrice?->price
+                ?? 0;
+
+            return $price * $item->quantity;
+        });
+
+        $totalUsers = CartItem::where('updated_at', '<', $threshold)
+            ->distinct('user_id')
+            ->count('user_id');
+
+        return Inertia::render('Admin/Reports/AbandonedCarts', [
+            'abandonedCarts' => [
+                'data' => $formattedData,
+                'current_page' => $abandonedUsers->currentPage(),
+                'last_page' => $abandonedUsers->lastPage(),
+                'total' => $abandonedUsers->total(),
+                'per_page' => $abandonedUsers->perPage(),
+                'links' => $abandonedUsers->linkCollection()->toArray(),
+            ],
+            'metrics' => [
+                'total_users' => (int) $totalUsers,
+                'total_items' => (int) $allAbandonedItems->sum('quantity'),
+                'total_value' => (float) $totalValue,
+            ],
+            'filters' => [
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
+        ]);
+    }
+
+    /**
+     * Laporan Voucher & Promosi (Voucher & Discount Report)
+     */
+    public function vouchers(Request $request): Response
+    {
+        [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
+        $search = $request->input('search', '');
+        $perPage = (int) $request->input('per_page', 15);
+        if ($perPage < 10) {
+            $perPage = 10;
+        }
+
+        $paidStatuses = Transaction::PAID_STATUSES;
+
+        $query = Transaction::whereIn('status', $paidStatuses)
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereNotNull('voucher_code');
+
+        if (! empty($search)) {
+            $query->where('voucher_code', 'ilike', "%{$search}%");
+        }
+
+        $vouchersData = $query->selectRaw('
+                voucher_code,
+                COUNT(id) as usage_count,
+                SUM(discount_amount) as total_discount,
+                SUM(grand_total) as total_sales_generated,
+                MAX(created_at) as last_used_at
+            ')
+            ->groupBy('voucher_code')
+            ->orderBy('usage_count', 'desc')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $globalMetrics = Transaction::whereIn('status', $paidStatuses)
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereNotNull('voucher_code')
+            ->selectRaw('
+                COUNT(id) as total_usage,
+                SUM(discount_amount) as total_discount_amount,
+                SUM(grand_total) as total_sales
+            ')
+            ->first();
+
+        $driver = DB::connection()->getDriverName();
+        $dateFormat = $driver === 'sqlite'
+            ? "strftime('%Y-%m-%d', created_at)"
+            : 'CAST(created_at AS DATE)';
+
+        $voucherTrend = Transaction::whereIn('status', $paidStatuses)
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereNotNull('voucher_code')
+            ->selectRaw("
+                {$dateFormat} as date,
+                COUNT(id) as usage_count,
+                SUM(discount_amount) as total_discount
+            ")
+            ->groupBy(DB::raw($dateFormat))
+            ->orderBy('date', 'asc')
+            ->get();
+
+        $chartData = [
+            'labels' => $voucherTrend->map(fn ($t) => Carbon::parse($t->date)->format('d M Y'))->toArray(),
+            'usage' => $voucherTrend->map(fn ($t) => (int) $t->usage_count)->toArray(),
+            'discount' => $voucherTrend->map(fn ($t) => (float) $t->total_discount)->toArray(),
+        ];
+
+        return Inertia::render('Admin/Reports/Vouchers', [
+            'vouchers' => $vouchersData,
+            'metrics' => [
+                'total_usage' => (int) ($globalMetrics->total_usage ?? 0),
+                'total_discount_amount' => (float) ($globalMetrics->total_discount_amount ?? 0),
+                'total_sales' => (float) ($globalMetrics->total_sales ?? 0),
+            ],
+            'chartData' => $chartData,
+            'filters' => [
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'preset' => $preset,
+                'search' => $search,
+                'per_page' => $perPage,
             ],
         ]);
     }

@@ -4740,7 +4740,7 @@
 
             <!-- ── Input Bar ── -->
             <div
-                class="bg-white border-t border-slate-100 px-4 pt-3 pb-3 shrink-0"
+                class="bg-white border-t border-slate-100 px-4 pt-3 pb-6 sm:pb-3 shrink-0"
             >
                 <div class="flex items-center gap-2">
                     <!-- Emoji placeholder -->

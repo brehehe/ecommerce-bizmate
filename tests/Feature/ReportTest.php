@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
@@ -216,5 +217,78 @@ test('admin can view couriers report', function () {
         ->has('rajaongkirBreakdown')
         ->has('courierPerformance')
         ->has('recentDeliveries')
+    );
+});
+
+test('admin can view abandoned carts report', function () {
+    $admin = setupReportTestData();
+
+    // Create a customer with a cart item updated 3 hours ago
+    $customer = User::factory()->create();
+    $product = Product::first();
+
+    $cartItem = CartItem::create([
+        'user_id' => $customer->id,
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'is_checked' => true,
+    ]);
+
+    // Force updated_at to be older than 2 hours
+    $cartItem->updated_at = now()->subHours(3);
+    $cartItem->save();
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.abandoned-carts'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Admin/Reports/AbandonedCarts')
+        ->has('abandonedCarts')
+        ->where('abandonedCarts.data.0.name', $customer->name)
+        ->where('abandonedCarts.data.0.total_items', 2)
+        ->has('metrics')
+        ->where('metrics.total_users', 1)
+        ->where('metrics.total_items', 2)
+    );
+});
+
+test('admin can view vouchers report', function () {
+    $admin = setupReportTestData();
+
+    // Create transaction with a voucher code
+    $customer = User::whereHas('roles', function ($q) {
+        $q->where('name', 'Customer');
+    })->first();
+    $address = CustomerAddress::first();
+    $paymentMethod = PaymentMethod::first();
+
+    Transaction::create([
+        'transaction_number' => 'TRX-20260529-00002',
+        'user_id' => $customer->id,
+        'customer_address_id' => $address->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'selesai',
+        'subtotal' => 200000,
+        'discount_amount' => 20000,
+        'shipping_fee' => 10000,
+        'admin_fee' => 1000,
+        'grand_total' => 191000,
+        'voucher_code' => 'HEMAT20',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.reports.vouchers'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Admin/Reports/Vouchers')
+        ->has('vouchers')
+        ->where('vouchers.data.0.voucher_code', 'HEMAT20')
+        ->where('vouchers.data.0.usage_count', 1)
+        ->where('vouchers.data.0.total_discount', 20000)
+        ->where('vouchers.data.0.total_sales_generated', 191000)
+        ->has('metrics')
+        ->where('metrics.total_usage', 1)
+        ->where('metrics.total_discount_amount', 20000)
+        ->where('metrics.total_sales', 191000)
     );
 });

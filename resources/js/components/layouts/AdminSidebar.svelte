@@ -357,6 +357,8 @@
                     {@render SubNavItem('/admin/reports/stocks', 'Stok')}
                     {@render SubNavItem('/admin/reports/reviews', 'Ulasan')}
                     {@render SubNavItem('/admin/reports/pareto', 'Pareto')}
+                    {@render SubNavItem('/admin/reports/abandoned-carts', 'Keranjang Terbengkalai')}
+                    {@render SubNavItem('/admin/reports/vouchers', 'Voucher & Diskon')}
                 </div>
             {/if}
         </div>

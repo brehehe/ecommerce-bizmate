@@ -1269,7 +1269,7 @@
                         {/if}
 
                         <!-- Input Bar -->
-                        <div class="bg-white px-4 py-3">
+                        <div class="bg-white px-4 pt-3 pb-6 sm:pb-3 border-t border-slate-100">
                             <div class="flex items-center gap-2.5">
                                 <button
                                     onclick={() =>

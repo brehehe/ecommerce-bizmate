@@ -7,6 +7,16 @@
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
     );
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
+
+    function formatDate(dateStr: string) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+    }
 
     let {
         items = [],
@@ -543,14 +553,22 @@
 </script>
 
 <svelte:head>
-    <title>Analisis Pareto</title>
+    <title>Analisis Pareto — {storeName}</title>
 </svelte:head>
 
 <AdminLayout>
-    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6">
+    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6 print:p-0 print:bg-white">
+        <!-- Print Header -->
+        <div class="hidden print:block text-center space-y-1.5 mb-6">
+            <h1 class="font-outfit font-black text-2xl text-slate-800 tracking-tight">{storeName}</h1>
+            <h2 class="font-outfit font-bold text-lg text-slate-700">Analisis Pareto (80/20)</h2>
+            <p class="text-xs text-slate-500 font-medium">Periode: {formatDate(dateFrom)} s/d {formatDate(dateTo)}</p>
+            <p class="text-[10px] text-slate-400">Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
+        </div>
+
         <!-- Page Header -->
         <div
-            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden"
         >
             <div>
                 <h1
@@ -563,17 +581,27 @@
                     performa bisnis Anda.
                 </p>
             </div>
-            <button
-                onclick={exportToCSV}
-                class="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0"
-            >
-                <i class="ti ti-download text-base"></i>
-                <span>Ekspor CSV</span>
-            </button>
+
+            <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                <button
+                    onclick={() => window.print()}
+                    class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
+                >
+                    <i class="ti ti-printer text-base"></i>
+                    <span>Cetak PDF</span>
+                </button>
+                <button
+                    onclick={exportToCSV}
+                    class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
+                >
+                    <i class="ti ti-download text-base"></i>
+                    <span>Ekspor CSV</span>
+                </button>
+            </div>
         </div>
 
         <!-- Type Selector -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
             {#each typeOptions as opt}
                 <button
                     onclick={() => {
@@ -607,7 +635,7 @@
         </div>
 
         <!-- Filter Card -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4 print:hidden">
             <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                 <!-- Presets -->
                 <div class="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl w-full xl:w-auto">
@@ -1021,7 +1049,7 @@
         {/if}
 
         <!-- Pareto Chart -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+        <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm print:hidden">
             <div class="mb-4">
                 <h3 class="font-outfit font-black text-lg text-slate-800">
                     Diagram Pareto

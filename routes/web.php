@@ -323,6 +323,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
         Route::get('/pareto', [ReportController::class, 'pareto'])->name('pareto');
         Route::get('/couriers', [ReportController::class, 'couriers'])->name('couriers');
         Route::get('/reviews', [ReportController::class, 'reviews'])->name('reviews');
+        Route::get('/abandoned-carts', [ReportController::class, 'abandonedCarts'])->name('abandoned-carts');
+        Route::get('/vouchers', [ReportController::class, 'vouchers'])->name('vouchers');
     });
 });
 

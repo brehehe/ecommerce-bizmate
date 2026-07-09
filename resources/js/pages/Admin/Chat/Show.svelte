@@ -362,6 +362,9 @@
     }
 
     function startPolling() {
+        if (typeof window === 'undefined') {
+            return;
+        }
         stopPolling();
 
         if (chat.id && (window as any).Echo) {
@@ -414,6 +417,9 @@
     }
 
     function stopPolling() {
+        if (typeof window === 'undefined') {
+            return;
+        }
         if (chat.id && (window as any).Echo) {
             (window as any).Echo.leave(`chat.${chat.id}`);
         }
@@ -872,7 +878,7 @@
 
             <!-- Reply input -->
             {#if chat.status === 'open'}
-                <div class="shrink-0 border-t border-slate-200 bg-white p-3">
+                <div class="shrink-0 border-t border-slate-200 bg-white p-3 pb-5 sm:pb-3">
 
                     <!-- Image preview -->
                     {#if attachedImageUrl}
@@ -888,15 +894,15 @@
                         </div>
                     {/if}
 
-                    <form onsubmit={sendReply} class="flex items-end gap-2">
+                    <form onsubmit={sendReply} class="flex items-center gap-2">
                         <!-- Attachment button -->
                         <button
                             type="button"
                             onclick={triggerImageUpload}
-                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95"
                             title="Lampirkan gambar"
                         >
-                            <i class="ti ti-photo text-base"></i>
+                            <i class="ti ti-photo text-lg"></i>
                         </button>
 
                         <!-- Emoji button -->
@@ -904,14 +910,14 @@
                             <button
                                 type="button"
                                 onclick={() => { emojiPickerOpen = !emojiPickerOpen; stickerModalOpen = false; }}
-                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95"
                                 title="Emoji"
                             >
-                                <i class="ti ti-mood-smile text-base"></i>
+                                <i class="ti ti-mood-smile text-lg"></i>
                             </button>
 
                             {#if emojiPickerOpen}
-                                <div class="absolute bottom-11 left-0 z-50 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                                <div class="absolute bottom-12 left-0 z-50 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                                     <div class="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto custom-scrollbar">
                                         {#each emojiList as emoji}
                                             <button
@@ -931,10 +937,10 @@
                         <button
                             type="button"
                             onclick={() => { stickerModalOpen = !stickerModalOpen; emojiPickerOpen = false; }}
-                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-700 active:scale-95"
                             title="Stiker"
                         >
-                            <i class="ti ti-sticker text-base"></i>
+                            <i class="ti ti-sticker text-lg"></i>
                         </button>
 
                         <!-- Text input -->
@@ -954,10 +960,10 @@
                             aria-label="Kirim pesan"
                             type="submit"
                             disabled={!replyInput.trim() && !attachedImage}
-                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white transition-all shadow-sm active:scale-95 disabled:scale-100 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 hover:shadow"
                             style="background-color: {primaryColor};"
                         >
-                            <i class="ti ti-send text-sm"></i>
+                            <i class="ti ti-send text-base"></i>
                         </button>
                     </form>
                 </div>

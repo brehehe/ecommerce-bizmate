@@ -7,6 +7,7 @@
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
     );
+    const storeName = $derived((page.props as any).settings?.store_name || 'Bizmate');
 
     let {
         stocks = { data: [], links: [], total: 0 },
@@ -90,14 +91,21 @@
 </script>
 
 <svelte:head>
-    <title>Laporan Stok & Inventaris</title>
+    <title>Laporan Stok & Inventaris — {storeName}</title>
 </svelte:head>
 
 <AdminLayout>
-    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6">
+    <main class="flex-grow p-4 sm:p-8 w-full max-w-[1600px] mx-auto space-y-6 print:p-0 print:bg-white">
+        <!-- Print Header -->
+        <div class="hidden print:block text-center space-y-1.5 mb-6">
+            <h1 class="font-outfit font-black text-2xl text-slate-800 tracking-tight">{storeName}</h1>
+            <h2 class="font-outfit font-bold text-lg text-slate-700">Laporan Stok & Inventaris (Valuasi)</h2>
+            <p class="text-xs text-slate-500 font-medium">Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
+        </div>
+
         <!-- Page Header -->
         <div
-            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+            class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden"
         >
             <div>
                 <h1
@@ -111,18 +119,27 @@
                 </p>
             </div>
 
-            <button
-                onclick={exportToCSV}
-                class="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0"
-            >
-                <i class="ti ti-download text-base"></i>
-                <span>Ekspor CSV</span>
-            </button>
+            <div class="flex items-center gap-3 shrink-0 w-full sm:w-auto">
+                <button
+                    onclick={() => window.print()}
+                    class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
+                >
+                    <i class="ti ti-printer text-base"></i>
+                    <span>Cetak PDF</span>
+                </button>
+                <button
+                    onclick={exportToCSV}
+                    class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-5 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-2xl text-xs hover:bg-slate-50 transition duration-200 shadow-sm uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
+                >
+                    <i class="ti ti-download text-base"></i>
+                    <span>Ekspor CSV</span>
+                </button>
+            </div>
         </div>
 
         <!-- Filter Card -->
         <div
-            class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4"
+            class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4 print:hidden"
         >
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="space-y-1.5">

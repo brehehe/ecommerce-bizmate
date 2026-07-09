@@ -473,3 +473,34 @@ html {
     }
 }
 
+/* ========================================
+   PRINT LAYOUT - Global Styles
+   ======================================== */
+@media print {
+    aside,
+    header,
+    .print-hidden,
+    .print\:hidden {
+        display: none !important;
+    }
+
+    div.lg\:pl-64 {
+        padding-left: 0 !important;
+    }
+
+    main,
+    .print-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    /* Ensure tables and text are visible and printable */
+    table, th, td {
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+    }
+}
+
