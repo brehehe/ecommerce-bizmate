@@ -240,6 +240,13 @@
         router.get('/admin/transactions');
     }
 
+    // Debounce search
+    let searchTimeout: ReturnType<typeof setTimeout>;
+    function handleSearchInput() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(applyFilters, 300);
+    }
+
     function fmt(price: any): string {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',

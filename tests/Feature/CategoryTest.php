@@ -33,8 +33,10 @@ test('user can access category page by slug', function () {
     $response->assertInertia(fn (Assert $page) => $page
         ->component('Storefront/Category')
         ->where('category.name', 'Elektronik')
-        ->has('products.data', 1)
-        ->where('products.data.0.name', 'Laptop ASUS')
+        ->loadDeferredProps(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Laptop ASUS')
+        )
     );
 });
 
@@ -61,8 +63,10 @@ test('user can access category page by id', function () {
     $response->assertInertia(fn (Assert $page) => $page
         ->component('Storefront/Category')
         ->where('category.name', 'Pakaian')
-        ->has('products.data', 1)
-        ->where('products.data.0.name', 'Kemeja Batik')
+        ->loadDeferredProps(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Kemeja Batik')
+        )
     );
 });
 
@@ -101,8 +105,10 @@ test('category page filters products by search query and prices', function () {
     $responseSearch->assertOk();
     $responseSearch->assertInertia(fn (Assert $page) => $page
         ->component('Storefront/Category')
-        ->has('products.data', 1)
-        ->where('products.data.0.name', 'Bakso Sapi')
+        ->loadDeferredProps(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Bakso Sapi')
+        )
     );
 
     // Test price range filter
@@ -110,8 +116,10 @@ test('category page filters products by search query and prices', function () {
     $responsePrice->assertOk();
     $responsePrice->assertInertia(fn (Assert $page) => $page
         ->component('Storefront/Category')
-        ->has('products.data', 1)
-        ->where('products.data.0.name', 'Nasi Goreng')
+        ->loadDeferredProps(fn (Assert $page) => $page
+            ->has('products.data', 1)
+            ->where('products.data.0.name', 'Nasi Goreng')
+        )
     );
 });
 

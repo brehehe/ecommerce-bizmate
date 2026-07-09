@@ -101,7 +101,7 @@ class ReportController extends Controller
         }
 
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
-        $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
+        $paidStatuses = Transaction::PAID_STATUSES;
 
         // Get active payment methods for dropdown
         $paymentMethods = PaymentMethod::where('is_active', true)
@@ -152,7 +152,14 @@ class ReportController extends Controller
         // Jumlah item terjual
         $itemsSold = DB::table('transaction_items')
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-            ->whereIn('transactions.id', (clone $baseQuery)->select('id'))
+            ->whereIn('transactions.status', $paidStatuses)
+            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+            ->when($request->filled('payment_method_id') && $request->payment_method_id !== 'all', function ($q) use ($request) {
+                $q->where('transactions.payment_method_id', $request->payment_method_id);
+            })
+            ->when($request->filled('status') && $request->status !== 'all', function ($q) use ($request) {
+                $q->where('transactions.status', $request->status);
+            })
             ->sum('transaction_items.quantity');
 
         // Tren Penjualan Harian
@@ -249,7 +256,7 @@ class ReportController extends Controller
     public function products(Request $request): Response
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
-        $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
+        $paidStatuses = Transaction::PAID_STATUSES;
 
         $query = DB::table('transaction_items')
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
@@ -337,7 +344,7 @@ class ReportController extends Controller
     public function profitLoss(Request $request): Response
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
-        $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
+        $paidStatuses = Transaction::PAID_STATUSES;
 
         // Hitung Pendapatan
         // Pendapatan Produk: sum of items subtotal
@@ -457,7 +464,7 @@ class ReportController extends Controller
     public function customers(Request $request): Response
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
-        $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
+        $paidStatuses = Transaction::PAID_STATUSES;
 
         // Total Pelanggan Baru
         $newCustomersCount = User::whereHas('roles', function ($q) {
@@ -649,33 +656,14 @@ class ReportController extends Controller
             }
         }
 
-        // Clone untuk Metrik sebelum pagination
-        $allStocksData = (clone $unionQuery)->get();
-
-        $totalSku = $allStocksData->count();
-        $totalStock = $allStocksData->where('is_unlimited', false)->sum('stock');
-
-        $totalAssetCost = $allStocksData->reduce(function ($carry, $item) {
-            if ($item->is_unlimited) {
-                return $carry;
-            }
-
-            return $carry + ($item->stock * $item->cost);
-        }, 0);
-
-        $totalRetailValue = $allStocksData->reduce(function ($carry, $item) {
-            if ($item->is_unlimited) {
-                return $carry;
-            }
-
-            return $carry + ($item->stock * $item->price);
-        }, 0);
-
-        $potentialProfit = $totalRetailValue - $totalAssetCost;
-
-        $lowStockCount = $allStocksData->where('is_unlimited', false)->filter(function ($item) {
-            return $item->stock <= $item->min_stock;
-        })->count();
+        // Hitung metrik agregat langsung di DB — tanpa menarik semua baris ke PHP
+        $metrics = (clone $unionQuery)->selectRaw('
+            COUNT(*) as total_sku,
+            COALESCE(SUM(CASE WHEN is_unlimited = false THEN stock ELSE 0 END), 0) as total_stock,
+            COALESCE(SUM(CASE WHEN is_unlimited = false THEN stock * cost ELSE 0 END), 0) as total_asset_cost,
+            COALESCE(SUM(CASE WHEN is_unlimited = false THEN stock * price ELSE 0 END), 0) as total_retail_value,
+            COUNT(CASE WHEN is_unlimited = false AND stock <= min_stock THEN 1 END) as low_stock_count
+        ')->first();
 
         // Paginated output
         $stocks = $unionQuery->orderBy('all_stocks.stock', 'asc')->paginate(20)->withQueryString();
@@ -683,12 +671,12 @@ class ReportController extends Controller
         return Inertia::render('Admin/Reports/Stocks', [
             'stocks' => $stocks,
             'metrics' => [
-                'total_sku' => $totalSku,
-                'total_stock' => $totalStock,
-                'total_asset_value' => (float) $totalAssetCost,
-                'total_retail_value' => (float) $totalRetailValue,
-                'potential_profit' => (float) $potentialProfit,
-                'low_stock_count' => $lowStockCount,
+                'total_sku' => (int) $metrics->total_sku,
+                'total_stock' => (int) $metrics->total_stock,
+                'total_asset_value' => (float) $metrics->total_asset_cost,
+                'total_retail_value' => (float) $metrics->total_retail_value,
+                'potential_profit' => (float) ($metrics->total_retail_value - $metrics->total_asset_cost),
+                'low_stock_count' => (int) $metrics->low_stock_count,
             ],
             'filters' => [
                 'search' => $request->search,
@@ -704,7 +692,7 @@ class ReportController extends Controller
     public function pareto(Request $request): Response
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
-        $paidStatuses = ['diproses', 'dikemas', 'dikirim', 'selesai'];
+        $paidStatuses = Transaction::PAID_STATUSES;
         $type = $request->input('type', 'product_revenue'); // default
 
         $rawItems = collect();

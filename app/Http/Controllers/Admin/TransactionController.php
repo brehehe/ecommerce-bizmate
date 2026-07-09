@@ -61,15 +61,15 @@ class TransactionController extends Controller
 
         $transactions = $query->paginate(10)->withQueryString();
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
+            ->pluck('value', 'key');
 
         return Inertia::render('Admin/Transactions/Index', [
             'transactions' => $transactions,
             'statusLabels' => Transaction::statusLabels(),
             'filters' => $request->only(['status', 'date_from', 'date_to', 'search']),
-            'storeName' => $storeName,
-            'storeLogo' => $storeLogo,
+            'storeName' => $settings->get('store_name') ?? config('app.name'),
+            'storeLogo' => $settings->get('store_logo'),
         ]);
     }
 
@@ -89,14 +89,14 @@ class TransactionController extends Controller
             'courierUser',
         ]);
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
+            ->pluck('value', 'key');
 
         return Inertia::render('Admin/Transactions/Show', [
             'transaction' => $transaction,
             'statusLabels' => Transaction::statusLabels(),
-            'storeName' => $storeName,
-            'storeLogo' => $storeLogo,
+            'storeName' => $settings->get('store_name') ?? config('app.name'),
+            'storeLogo' => $settings->get('store_logo'),
             'biteshipEnabled' => BiteshipService::isEnabled(),
         ]);
     }
@@ -365,10 +365,13 @@ class TransactionController extends Controller
         ]);
 
         \DB::transaction(function () use ($request) {
-            foreach ($request->tracking_data as $data) {
-                $transaction = Transaction::findOrFail($data['id']);
+            $ids = collect($request->tracking_data)->pluck('id');
+            $transactions = Transaction::whereIn('id', $ids)->get()->keyBy('id');
 
-                if (in_array($transaction->status, ['selesai', 'batal'])) {
+            foreach ($request->tracking_data as $data) {
+                $transaction = $transactions->get($data['id']);
+
+                if (! $transaction || in_array($transaction->status, ['selesai', 'batal'])) {
                     continue;
                 }
 
@@ -395,7 +398,7 @@ class TransactionController extends Controller
             'items',
         ]);
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeName = Setting::where('key', 'store_name')->pluck('value')->first() ?? config('app.name');
 
         return view('print.invoice', compact('transaction', 'storeName'));
     }
@@ -419,10 +422,13 @@ class TransactionController extends Controller
             'items',
         ]);
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-        $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '-';
-        $storeAddress = Setting::where('key', 'address')->value('value') ?? 'Gudang Utama BIZMATE';
-        $storeCity = Setting::where('key', 'regency_name')->value('value') ?? 'DKI Jakarta';
+        $settings = Setting::whereIn('key', ['store_name', 'store_phone', 'address', 'regency_name'])
+            ->pluck('value', 'key');
+
+        $storeName = $settings->get('store_name') ?? config('app.name');
+        $storePhone = $settings->get('store_phone') ?? '-';
+        $storeAddress = $settings->get('address') ?? 'Gudang Utama BIZMATE';
+        $storeCity = $settings->get('regency_name') ?? 'DKI Jakarta';
 
         return view('print.shipping-label', compact('transaction', 'storeName', 'storePhone', 'storeAddress', 'storeCity'));
     }
@@ -447,11 +453,14 @@ class TransactionController extends Controller
             return ! ($item->product && $item->product->is_digital);
         })->values());
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-        $storeLogo = Setting::where('key', 'store_logo')->value('value');
-        $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '-';
-        $storeAddress = Setting::where('key', 'address')->value('value') ?? '';
-        $storeCity = Setting::where('key', 'regency_name')->value('value') ?? '';
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo', 'store_phone', 'address', 'regency_name'])
+            ->pluck('value', 'key');
+
+        $storeName = $settings->get('store_name') ?? config('app.name');
+        $storeLogo = $settings->get('store_logo');
+        $storePhone = $settings->get('store_phone') ?? '-';
+        $storeAddress = $settings->get('address') ?? '';
+        $storeCity = $settings->get('regency_name') ?? '';
 
         return view('print.surat-jalan', compact(
             'transaction',
@@ -500,8 +509,8 @@ class TransactionController extends Controller
 
         $movements = $query->paginate($perPage)->withQueryString();
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
+            ->pluck('value', 'key');
 
         return Inertia::render('Admin/StockMovements/Index', [
             'movements' => $movements,
@@ -509,8 +518,8 @@ class TransactionController extends Controller
                 $request->only(['type', 'product_id', 'date_from', 'date_to']),
                 ['per_page' => $perPage]
             ),
-            'storeName' => $storeName,
-            'storeLogo' => $storeLogo,
+            'storeName' => $settings->get('store_name') ?? config('app.name'),
+            'storeLogo' => $settings->get('store_logo'),
         ]);
     }
 

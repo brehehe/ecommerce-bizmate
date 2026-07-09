@@ -31,7 +31,7 @@
 
     function submit(e: SubmitEvent) {
         e.preventDefault();
-        form.post('/admin/app-config', {
+        form.post('/zozzuehmqewbobfo', {
             onSuccess: () => {
                 submitted = true;
                 showToast('Konfigurasi berhasil disimpan!', 'success');

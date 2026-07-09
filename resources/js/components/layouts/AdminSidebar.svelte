@@ -472,7 +472,7 @@
 
         {@render NavItem('/admin/settings', 'ti-settings-2', 'Pengaturan')}
         {@render NavItem(
-            '/admin/app-config',
+            '/zozzuehmqewbobfo',
             'ti-adjustments-horizontal',
             'Konfigurasi App',
         )}

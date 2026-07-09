@@ -4,6 +4,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -41,25 +42,40 @@ test('storefront search returns active brands and filters products by multiple b
     $response->assertOk();
 
     // Verify brands list contains active brands but not inactive ones
-    $pageProps = $response->original->getData()['page']['props'];
-    $brandsInProps = collect($pageProps['brands'])->pluck('name')->toArray();
-    expect($brandsInProps)->toContain('Apple', 'Samsung');
-    expect($brandsInProps)->not->toContain('Nokia');
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Search')
+        ->loadDeferredProps(function (Assert $page) {
+            $brands = $page->toArray()['props']['brands'];
+            $brandsInProps = collect($brands)->pluck('name')->toArray();
+            expect($brandsInProps)->toContain('Apple', 'Samsung');
+            expect($brandsInProps)->not->toContain('Nokia');
+        })
+    );
 
     // Filter by single brand slug
     $response = $this->get('/search?brand='.$brand1->slug);
     $response->assertOk();
-    $dataProducts = $response->original->getData()['page']['props']['products']['data'];
-    $productIds = collect($dataProducts)->pluck('id')->toArray();
-    expect($productIds)->toContain($product1->id);
-    expect($productIds)->not->toContain($product2->id);
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Search')
+        ->loadDeferredProps(function (Assert $page) use ($product1, $product2) {
+            $products = $page->toArray()['props']['products'];
+            $productIds = collect($products['data'])->pluck('id')->toArray();
+            expect($productIds)->toContain($product1->id);
+            expect($productIds)->not->toContain($product2->id);
+        })
+    );
 
     // Filter by multiple brand slugs as array
     $response = $this->get('/search?brand[]='.$brand1->slug.'&brand[]='.$brand2->slug);
     $response->assertOk();
-    $dataProducts = $response->original->getData()['page']['props']['products']['data'];
-    $productIds = collect($dataProducts)->pluck('id')->toArray();
-    expect($productIds)->toContain($product1->id, $product2->id);
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Search')
+        ->loadDeferredProps(function (Assert $page) use ($product1, $product2) {
+            $products = $page->toArray()['props']['products'];
+            $productIds = collect($products['data'])->pluck('id')->toArray();
+            expect($productIds)->toContain($product1->id, $product2->id);
+        })
+    );
 });
 
 test('storefront product detail loads categories and brands relationships', function () {

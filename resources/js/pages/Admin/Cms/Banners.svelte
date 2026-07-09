@@ -511,9 +511,9 @@
 
                         <!-- iPhone Mockup -->
                         <div class="p-6 flex justify-center bg-gradient-to-b from-slate-100 to-slate-200/60">
-                            <div class="relative w-[250px] h-[510px] bg-slate-900 rounded-[42px] border-[10px] border-slate-900 shadow-2xl overflow-hidden ring-4 ring-slate-800 select-none">
+                            <div class="relative w-[360px] h-[720px] bg-slate-900 rounded-[42px] border-[10px] border-slate-900 shadow-2xl overflow-hidden ring-4 ring-slate-800 select-none">
                                 <!-- Dynamic Island -->
-                                <div class="absolute top-1.5 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-50 flex items-center justify-center gap-1.5">
+                                <div class="absolute top-1.5 left-1/2 -translate-x-1/2 w-28 h-5.5 bg-black rounded-full z-50 flex items-center justify-center gap-1.5">
                                     <div class="w-2 h-2 rounded-full bg-slate-950/80"></div>
                                     <div class="w-1.5 h-1.5 rounded-full bg-slate-950/80"></div>
                                 </div>
@@ -526,7 +526,7 @@
                                     ></iframe>
                                 {/key}
                                 <!-- Home Bar -->
-                                <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-20 h-1 bg-black/60 rounded-full z-50"></div>
+                                <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-24 h-1 bg-black/60 rounded-full z-50"></div>
                             </div>
                         </div>
                     </div>

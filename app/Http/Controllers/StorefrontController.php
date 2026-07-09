@@ -21,6 +21,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -76,10 +77,10 @@ class StorefrontController extends Controller
                     ->take(12)
                     ->get();
 
-                $activePromotions = Promotion::where('is_active', true)
+                $activePromotions = Cache::remember('active_promotions', 120, fn () => Promotion::where('is_active', true)
                     ->where('start_time', '<=', now())
                     ->where('end_time', '>=', now())
-                    ->get();
+                    ->get());
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
@@ -102,13 +103,13 @@ class StorefrontController extends Controller
                     ->withCount('reviews as review_count')
                     ->where('active', true)
                     ->latest()
-                    ->take(50)
+                    ->take(12)
                     ->get();
 
-                $activePromotions = Promotion::where('is_active', true)
+                $activePromotions = Cache::remember('active_promotions', 120, fn () => Promotion::where('is_active', true)
                     ->where('start_time', '<=', now())
                     ->where('end_time', '>=', now())
-                    ->get();
+                    ->get());
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
@@ -145,10 +146,10 @@ class StorefrontController extends Controller
                     ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
                     ->values();
 
-                $activePromotions = Promotion::where('is_active', true)
+                $activePromotions = Cache::remember('active_promotions', 120, fn () => Promotion::where('is_active', true)
                     ->where('start_time', '<=', now())
                     ->where('end_time', '>=', now())
-                    ->get();
+                    ->get());
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
@@ -213,9 +214,11 @@ class StorefrontController extends Controller
         ]);
 
         // Calculate actual sold count from completed transactions
-        $soldCount = TransactionItem::where('product_id', $product->id)
-            ->whereHas('transaction', fn ($q) => $q->where('status', 'selesai'))
-            ->sum('quantity');
+        $soldCount = DB::table('transaction_items')
+            ->join('transactions', 'transactions.id', '=', 'transaction_items.transaction_id')
+            ->where('transaction_items.product_id', $product->id)
+            ->where('transactions.status', 'selesai')
+            ->sum('transaction_items.quantity');
 
         $product->sold_count = (int) $soldCount;
 
@@ -412,6 +415,7 @@ class StorefrontController extends Controller
             if ($promo->items->isEmpty()) {
                 return true; // Store-wide
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -431,6 +435,7 @@ class StorefrontController extends Controller
                     return true;
                 }
             }
+
             return false;
         });
 
@@ -442,6 +447,7 @@ class StorefrontController extends Controller
             if ($promo->items->isEmpty()) {
                 return true;
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -455,6 +461,7 @@ class StorefrontController extends Controller
             if ($promo->items->isEmpty()) {
                 return true;
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -1340,7 +1347,7 @@ class StorefrontController extends Controller
             'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
-            'products' => Inertia::defer(function () use ($productsQuery, $minPrice, $maxPrice, $sort, $query, $categoryId) {
+            'products' => Inertia::defer(function () use ($productsQuery, $minPrice, $maxPrice, $sort) {
                 $productsCollection = $productsQuery->get();
 
                 $activePromotions = Promotion::with(['items'])
@@ -2237,12 +2244,11 @@ class StorefrontController extends Controller
         if ($this->soldPromoQuantitiesCache === null) {
             $this->soldPromoQuantitiesCache = [];
 
-            $soldQuantities = TransactionItem::selectRaw('applied_promotion_id, product_id, product_variant_id, SUM(promo_quantity_used) as total_used')
-                ->whereIn('applied_promotion_id', array_keys($this->promoItemsCache ? array_flip(array_column($this->promoItemsCache, 'promotion_id')) : []))
-                ->whereHas('transaction', function ($q) {
-                    $q->where('status', '!=', 'batal');
-                })
-                ->groupBy('applied_promotion_id', 'product_id', 'product_variant_id')
+            $soldQuantities = TransactionItem::join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
+                ->selectRaw('transaction_items.applied_promotion_id, transaction_items.product_id, transaction_items.product_variant_id, SUM(transaction_items.promo_quantity_used) as total_used')
+                ->whereIn('transaction_items.applied_promotion_id', array_keys($this->promoItemsCache ? array_flip(array_column($this->promoItemsCache, 'promotion_id')) : []))
+                ->where('transactions.status', '!=', 'batal')
+                ->groupBy('transaction_items.applied_promotion_id', 'transaction_items.product_id', 'transaction_items.product_variant_id')
                 ->get();
 
             foreach ($soldQuantities as $item) {
