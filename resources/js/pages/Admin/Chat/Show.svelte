@@ -31,7 +31,6 @@
     // svelte-ignore state_referenced_locally
     let messages = $state<any[]>(initialMessages);
     let replyInput = $state('');
-    let pollingInterval: any = null;
 
     let attachedImage = $state<File | null>(null);
     let attachedImageUrl = $state<string | null>(null);
@@ -342,81 +341,70 @@
             attachedImage = null;
             attachedImageUrl = null;
             setTimeout(scrollToBottom, 50);
+            setTimeout(scrollToBottom, 150);
             startPolling();
         }
     });
 
-    // Sync messages when initialMessages prop updates from router.reload polling
+    // Sync messages when initialMessages prop updates from Inertia (merge only, never overwrite)
     $effect(() => {
-        if (initialMessages && initialMessages.length !== messages.length) {
-            messages = initialMessages;
-            setTimeout(scrollToBottom, 50);
+        if (initialMessages && initialMessages.length > 0) {
+            const existingIds = new Set(messages.map((m: any) => m.id));
+            const newFromServer = initialMessages.filter((m: any) => !existingIds.has(m.id));
+            if (newFromServer.length > 0) {
+                messages = [...messages, ...newFromServer];
+                setTimeout(scrollToBottom, 50);
+            }
         }
     });
 
     function scrollToBottom() {
-        const el = document.querySelector('.admin-chat-messages');
-        if (el) {
-            el.scrollTop = el.scrollHeight;
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        } else {
+            const el = document.querySelector('.admin-chat-messages');
+            if (el) {
+                el.scrollTop = el.scrollHeight;
+            }
         }
     }
 
-    function startPolling() {
+    function startEcho() {
         if (typeof window === 'undefined') {
             return;
         }
-        stopPolling();
+        stopEcho();
 
-        if (chat.id && (window as any).Echo) {
-            (window as any).Echo.private(`chat.${chat.id}`)
-                .listen('.message.sent', (event: any) => {
-                    const newMsg = event.messageData;
-                    if (newMsg) {
-                        const existingIds = new Set(messages.map((m) => m.id));
-                        if (!existingIds.has(newMsg.id)) {
-                            messages = [...messages, newMsg];
-                            setTimeout(scrollToBottom, 50);
-
-                            // Reload Inertia props to update thread list & total unread count on sidebar
-                            router.reload({
-                                only: [
-                                    'chats',
-                                    'totalUnread',
-                                    'adminChatUnreadCount',
-                                ],
-                                preserveScroll: true,
-                            });
-                        }
-                    }
-                })
-                .listen('.messages.read', (event: any) => {
-                    const readIds = event.readIds || [];
-                    if (readIds.length > 0) {
-                        let readChanged = false;
-                        messages = messages.map((m: any) => {
-                            if (readIds.includes(m.id) && !m.is_read) {
-                                readChanged = true;
-                                return { ...m, is_read: true };
-                            }
-                            return m;
-                        });
-
-                        if (readChanged) {
-                            router.reload({
-                                only: [
-                                    'chats',
-                                    'totalUnread',
-                                    'adminChatUnreadCount',
-                                ],
-                                preserveScroll: true,
-                            });
-                        }
-                    }
-                });
+        if (!chat.id || !(window as any).Echo) {
+            return;
         }
+
+        (window as any).Echo.private(`chat.${chat.id}`)
+            .listen('.message.sent', (event: any) => {
+                const newMsg = event.messageData;
+                if (newMsg) {
+                    const existingIds = new Set(messages.map((m) => m.id));
+                    if (!existingIds.has(newMsg.id)) {
+                        messages = [...messages, newMsg];
+                        setTimeout(scrollToBottom, 50);
+                        setTimeout(scrollToBottom, 150);
+                    }
+                }
+            })
+            .listen('.messages.read', (event: any) => {
+                const readIds = event.readIds || [];
+                if (readIds.length > 0) {
+                    messages = messages.map((m: any) => {
+                        if (readIds.includes(m.id) && !m.is_read) {
+                            return { ...m, is_read: true };
+                        }
+                        return m;
+                    });
+                }
+            });
     }
 
-    function stopPolling() {
+    function stopEcho() {
         if (typeof window === 'undefined') {
             return;
         }
@@ -424,6 +412,10 @@
             (window as any).Echo.leave(`chat.${chat.id}`);
         }
     }
+
+    // Keep startPolling/stopPolling as aliases for backward compatibility
+    function startPolling() { startEcho(); }
+    function stopPolling() { stopEcho(); }
 
     async function sendReply() {
         const text = replyInput.trim();
@@ -774,7 +766,7 @@
             <!-- Messages area -->
             <div
                 bind:this={messagesContainer}
-                class="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-4 bg-slate-50/30"
+                class="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-4 bg-slate-50/30 admin-chat-messages"
             >
                 {#each messages as msg (msg.id)}
                     {@const isAdmin = msg.sender_type === 'admin'}

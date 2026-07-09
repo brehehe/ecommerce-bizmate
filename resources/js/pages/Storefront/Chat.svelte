@@ -87,6 +87,7 @@
                 const data = await response.json();
                 messages = Array.isArray(data) ? data : data.messages || [];
                 setTimeout(scrollToBottom, 50);
+                setTimeout(scrollToBottom, 150);
             }
         } catch (err) {
             console.error('Error fetching chat messages:', err);
@@ -107,32 +108,19 @@
                     if (!existingIds.has(newMsg.id)) {
                         messages = [...messages, newMsg];
                         setTimeout(scrollToBottom, 50);
-
-                        router.reload({
-                            only: ['chats', 'chatUnreadCount'],
-                            preserveScroll: true,
-                        });
+                        setTimeout(scrollToBottom, 150);
                     }
                 }
             })
             .listen('.messages.read', (event: any) => {
                 const readIds = event.readIds || [];
                 if (readIds.length > 0) {
-                    let readChanged = false;
                     messages = messages.map((m: any) => {
                         if (readIds.includes(m.id) && !m.is_read) {
-                            readChanged = true;
                             return { ...m, is_read: true };
                         }
                         return m;
                     });
-
-                    if (readChanged) {
-                        router.reload({
-                            only: ['chats', 'chatUnreadCount'],
-                            preserveScroll: true,
-                        });
-                    }
                 }
             });
     }
@@ -186,6 +174,7 @@
                 if (!messages.some((m: any) => m.id === msg.id)) {
                     messages = [...messages, msg];
                     setTimeout(scrollToBottom, 50);
+                    setTimeout(scrollToBottom, 150);
                 }
             }
         } catch (err) {

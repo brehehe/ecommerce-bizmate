@@ -4,6 +4,11 @@ import Pusher from 'pusher-js';
 if (typeof window !== 'undefined') {
     window.Pusher = Pusher;
 
+    // Enable Pusher debug logging (remove in production)
+    if (import.meta.env.DEV) {
+        Pusher.logToConsole = true;
+    }
+
     if (import.meta.env.VITE_REVERB_APP_KEY) {
         window.Echo = new Echo({
             broadcaster: 'reverb',
@@ -14,6 +19,18 @@ if (typeof window !== 'undefined') {
             forceTLS:
                 (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
             enabledTransports: ['ws', 'wss'],
+        });
+
+        window.Echo.connector.pusher.connection.bind('connected', () => {
+            console.log('[Reverb] ✅ WebSocket connected');
+        });
+
+        window.Echo.connector.pusher.connection.bind('disconnected', () => {
+            console.warn('[Reverb] ❌ WebSocket disconnected');
+        });
+
+        window.Echo.connector.pusher.connection.bind('error', (err) => {
+            console.error('[Reverb] ⚠️ WebSocket error', err);
         });
     }
 }
