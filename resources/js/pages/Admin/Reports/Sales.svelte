@@ -492,9 +492,9 @@
             </div>
 
             <!-- Advanced Filters Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-100">
                 <!-- Search Input -->
-                <div class="lg:col-span-3 space-y-1.5">
+                <div class="xl:col-span-3 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-search">Cari Penjualan</label>
                     <div class="relative">
                         <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
@@ -504,13 +504,13 @@
                             bind:value={searchInput}
                             oninput={handleSearchInput}
                             placeholder="Cari produk, pelanggan, no. transaksi..."
-                            class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                         />
                     </div>
                 </div>
 
                 <!-- Custom Dates -->
-                <div class="lg:col-span-3 space-y-1.5">
+                <div class="xl:col-span-3 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="date-from">Periode Tanggal</label>
                     <div class="flex items-center gap-2">
                         <div class="relative flex-1">
@@ -519,7 +519,7 @@
                                 type="date"
                                 bind:value={dateFrom}
                                 onchange={() => activePreset = 'custom'}
-                                class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                             />
                         </div>
                         <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">s/d</span>
@@ -529,20 +529,20 @@
                                 type="date"
                                 bind:value={dateTo}
                                 onchange={() => activePreset = 'custom'}
-                                class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                             />
                         </div>
                     </div>
                 </div>
 
                 <!-- Payment Method Filter -->
-                <div class="lg:col-span-2 space-y-1.5">
+                <div class="xl:col-span-2 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-payment">Metode Bayar</label>
                     <select
                         id="sales-payment"
                         bind:value={paymentMethodFilter}
                         onchange={applyFilter}
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                     >
                         <option value="all">Semua Metode</option>
                         {#each paymentMethods as pm}
@@ -552,13 +552,13 @@
                 </div>
 
                 <!-- Status Filter -->
-                <div class="lg:col-span-2 space-y-1.5">
+                <div class="xl:col-span-2 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-status">Status</label>
                     <select
                         id="sales-status"
                         bind:value={statusFilter}
                         onchange={applyFilter}
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                     >
                         <option value="all">Semua Lunas</option>
                         <option value="belum_bayar">Belum Bayar</option>
@@ -572,13 +572,13 @@
                 </div>
 
                 <!-- Per Page Filter -->
-                <div class="lg:col-span-2 space-y-1.5">
+                <div class="xl:col-span-2 space-y-1.5">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-perpage">Per Halaman</label>
                     <select
                         id="sales-perpage"
                         bind:value={perPageFilter}
                         onchange={applyFilter}
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-750 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                     >
                         <option value={10}>10</option>
                         <option value={15}>15</option>
