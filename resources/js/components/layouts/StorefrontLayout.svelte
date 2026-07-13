@@ -10,6 +10,13 @@
 
     function applyDarkMode(dark: boolean) {
         localStorage.setItem('sf_theme', dark ? 'dark' : 'light');
+        if (typeof document !== 'undefined') {
+            if (dark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
     }
 
     function toggleDarkMode() {
