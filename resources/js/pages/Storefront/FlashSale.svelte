@@ -758,9 +758,8 @@
                                 <div
                                     class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
                                 >
-                                    <Link
-                                        href={`/products/${product.slug || product.id}`}
-                                        prefetch
+                                    <a
+                                        href={`/products/${product.id}`}
                                         class="flex flex-col flex-1 cursor-pointer"
                                     >
                                         <div
@@ -889,7 +888,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </Link>
+                                    </a>
                                     <!-- Cart buttons OUTSIDE Link to prevent Inertia navigation -->
                                     {#if cartButtonStyle === 'icon'}
                                         <button

@@ -206,10 +206,10 @@
                                                         e.preventDefault();
                                                         e.stopPropagation();
                                                         if (
-                                                            item.product?.slug
+                                                            item.product?.id
                                                         ) {
                                                             router.get(
-                                                                `/products/${item.product.slug}`,
+                                                                `/products/${item.product.id}`,
                                                             );
                                                         } else {
                                                             router.get(

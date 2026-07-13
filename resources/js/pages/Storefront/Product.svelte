@@ -2671,7 +2671,7 @@
                                                             </p>
                                                         {:else}
                                                             <a
-                                                                href={`/products/${buyItem.product_slug}`}
+                                                                href={`/products/${buyItem.product_id}`}
                                                                 class="font-bold text-slate-800 hover:text-brand-blueRoyal hover:underline truncate text-[10.5px] block"
                                                             >
                                                                 {buyItem.product_name ||
@@ -3746,9 +3746,8 @@
                     {@const rating = (4.5 + ((rp.id || 0) % 6) * 0.1).toFixed(
                         1,
                     )}
-                    <Link
-                        href="/products/{rp.slug || rp.id}"
-                        prefetch
+                    <a
+                        href="/products/{rp.id}"
                         class="group bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-md overflow-hidden transition cursor-pointer flex flex-col h-full"
                     >
                         <div class="relative aspect-square overflow-hidden">
@@ -3850,7 +3849,7 @@
                                 </div>
                             {/if}
                         </div>
-                    </Link>
+                    </a>
                 {/each}
             </div>
         </div>

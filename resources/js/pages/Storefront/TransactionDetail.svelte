@@ -2920,9 +2920,9 @@
                                 <div class="px-4 py-3">
                                     <div class="flex gap-3">
                                         {#if item.product_image}
-                                            <Link
-                                                href={item.product?.slug
-                                                    ? `/products/${item.product.slug}`
+                                            <a
+                                                href={item.product?.id
+                                                    ? `/products/${item.product.id}`
                                                     : '#'}
                                                 class="shrink-0"
                                             >
@@ -2937,7 +2937,7 @@
                                                             '/noimage/image.png';
                                                     }}
                                                 />
-                                            </Link>
+                                            </a>
                                         {:else}
                                             <div
                                                 class="w-14 h-14 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center border border-slate-100"
@@ -2951,14 +2951,14 @@
                                             <div
                                                 class="flex items-center gap-1.5 flex-wrap"
                                             >
-                                                <Link
-                                                    href={item.product?.slug
-                                                        ? `/products/${item.product.slug}`
+                                                <a
+                                                    href={item.product?.id
+                                                        ? `/products/${item.product.id}`
                                                         : '#'}
                                                     class="text-sm font-semibold text-slate-800 leading-tight whitespace-pre-wrap break-words hover:text-brand-blueRoyal hover:underline transition"
                                                 >
                                                     {item.product_name}
-                                                </Link>
+                                                </a>
                                                 {#if item.product?.is_digital}
                                                     <span
                                                         class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider"

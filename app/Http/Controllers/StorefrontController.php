@@ -21,7 +21,6 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -78,10 +77,11 @@ class StorefrontController extends Controller
                     ->take(12)
                     ->get();
 
-                $activePromotions = Cache::remember('active_promotions', 120, fn () => Promotion::where('is_active', true)
+                $activePromotions = Promotion::with(['items'])
+                    ->where('is_active', true)
                     ->where('start_time', '<=', now())
                     ->where('end_time', '>=', now())
-                    ->get());
+                    ->get();
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
@@ -107,10 +107,11 @@ class StorefrontController extends Controller
                     ->take(12)
                     ->get();
 
-                $activePromotions = Cache::remember('active_promotions', 120, fn () => Promotion::where('is_active', true)
+                $activePromotions = Promotion::with(['items'])
+                    ->where('is_active', true)
                     ->where('start_time', '<=', now())
                     ->where('end_time', '>=', now())
-                    ->get());
+                    ->get();
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
@@ -147,10 +148,11 @@ class StorefrontController extends Controller
                     ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
                     ->values();
 
-                $activePromotions = Cache::remember('active_promotions', 120, fn () => Promotion::where('is_active', true)
+                $activePromotions = Promotion::with(['items'])
+                    ->where('is_active', true)
                     ->where('start_time', '<=', now())
                     ->where('end_time', '>=', now())
-                    ->get());
+                    ->get();
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
@@ -199,9 +201,14 @@ class StorefrontController extends Controller
      */
     public function show($product)
     {
-        $product = Str::isUuid($product)
-            ? Product::where('id', $product)->firstOrFail()
-            : Product::where('slug', $product)->firstOrFail();
+        if (! Str::isUuid($product)) {
+            $product = Product::where('slug', $product)->first();
+            if (! $product) {
+                abort(404);
+            }
+        } else {
+            $product = Product::where('id', $product)->firstOrFail();
+        }
 
         $product->load([
             'category',

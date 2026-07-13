@@ -876,9 +876,8 @@
                                         : product.remaining_promo_stock === 0
                                           ? 0
                                           : 100}
-                                <Link
-                                    href={`/products/${product.slug || product.id}`}
-                                    prefetch
+                                <a
+                                    href={`/products/${product.id}`}
                                     class="w-36 sm:w-40 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0"
                                 >
                                     <div
@@ -984,7 +983,7 @@
                                             {/if}
                                         </div>
                                     </div>
-                                </Link>
+                                </a>
                             {/each}
                         {:else}
                             {#each Array(5) as _, i}
@@ -1079,14 +1078,13 @@
                         </p>
                     </div>
                 </div>
-                <Link
+                <a
                     href="/produk-terlaris"
-                    prefetch
                     class="text-xs font-bold flex items-center gap-1"
                     style="color: {primary};"
                 >
                     Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
-                </Link>
+                </a>
             </div>
             <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
                 <div
@@ -1116,11 +1114,10 @@
                         {@const reviewCount = isReal
                             ? (product.review_count ?? 0)
                             : 0}
-                        <Link
+                        <a
                             href={isReal
-                                ? `/products/${product.slug || product.id}`
+                                ? `/products/${product.id}`
                                 : '#'}
-                            prefetch
                             class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0 flex flex-col h-full"
                         >
                             <div
@@ -1234,7 +1231,7 @@
                                     </div>
                                 {/if}
                             </div>
-                        </Link>
+                        </a>
                     {/each}
                 </div>
             </div>
@@ -1305,11 +1302,10 @@
                         <div
                             class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
                         >
-                            <Link
+                            <a
                                 href={isReal
-                                    ? `/products/${product.slug || product.id}`
+                                    ? `/products/${product.id}`
                                     : '#'}
-                                prefetch
                                 class="flex flex-col flex-1 cursor-pointer"
                             >
                                 <!-- Rounded image container -->
@@ -1424,7 +1420,7 @@
                                         </div>
                                     {/if}
                                 </div>
-                            </Link>
+                            </a>
                             <!-- Cart buttons OUTSIDE Link to prevent Inertia navigation -->
                             {#if isReal && cartButtonStyle === 'icon'}
                                 <button
