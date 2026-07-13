@@ -235,6 +235,9 @@ class CheckoutController extends Controller
             ->where('status', '!=', 'batal')
             ->exists();
 
+        $additionalCostsJson = Setting::where('key', 'additional_costs')->value('value');
+        $additionalCosts = $additionalCostsJson ? json_decode($additionalCostsJson, true) : [];
+
         return Inertia::render('Storefront/Checkout', [
             'cartItems' => $cartItems,
             'addresses' => $addresses,
@@ -247,6 +250,7 @@ class CheckoutController extends Controller
             'storeLogo' => $storeLogo,
             'storeOriginCity' => $storeOriginCity,
             'appFee' => $appFee,
+            'additionalCosts' => $additionalCosts,
             'appliedVoucher' => $appliedVoucher,
             'couriers' => $couriers,
             'isNewUser' => $isNewUser,
@@ -427,10 +431,29 @@ class CheckoutController extends Controller
             $shippingDiscount = $result['shipping_discount'];
         }
 
+        // Dynamic additional costs
+        $additionalCostsJson = Setting::where('key', 'additional_costs')->value('value');
+        $additionalCosts = $additionalCostsJson ? json_decode($additionalCostsJson, true) : [];
+        $activeAdditionalCosts = [];
+        $additionalCostsSum = 0.0;
+
+        if (is_array($additionalCosts)) {
+            foreach ($additionalCosts as $cost) {
+                if (isset($cost['is_active']) && $cost['is_active']) {
+                    $activeAdditionalCosts[] = [
+                        'id' => $cost['id'] ?? '',
+                        'name' => $cost['name'] ?? '',
+                        'value' => (float) ($cost['value'] ?? 0),
+                    ];
+                    $additionalCostsSum += (float) ($cost['value'] ?? 0);
+                }
+            }
+        }
+
         $shippingFee = (float) $request->shipping_fee;
         $adminFee = (float) ($paymentMethod->admin_fee ?? 0);
         $appFee = (float) (Setting::where('key', 'shipping_rate')->value('value') ?? 0);
-        $grandTotal = $subtotal - $discountAmount + ($shippingFee - $shippingDiscount) + $adminFee + $appFee;
+        $grandTotal = $subtotal - $discountAmount + ($shippingFee - $shippingDiscount) + $adminFee + $appFee + $additionalCostsSum;
         $grandTotal = max(0, $grandTotal);
 
         // --- Loyalty Coins Redemption Logic ---
@@ -539,6 +562,7 @@ class CheckoutController extends Controller
             $shippingDiscount,
             $adminFee,
             $appFee,
+            $activeAdditionalCosts,
             $grandTotal,
             $voucherCode,
             $voucherDiscountType,
@@ -562,6 +586,7 @@ class CheckoutController extends Controller
                 'shipping_discount' => $shippingDiscount,
                 'admin_fee' => $adminFee,
                 'application_fee' => $appFee,
+                'additional_costs' => $activeAdditionalCosts,
                 'grand_total' => $grandTotal,
                 'shipping_courier' => $request->shipping_courier,
                 'shipping_service' => $request->shipping_service,
@@ -1611,6 +1636,7 @@ class CheckoutController extends Controller
             if ($promo->items->isEmpty()) {
                 return true; // Store-wide
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -1630,6 +1656,7 @@ class CheckoutController extends Controller
                     return true;
                 }
             }
+
             return false;
         });
 
@@ -1641,6 +1668,7 @@ class CheckoutController extends Controller
             if ($promo->items->isEmpty()) {
                 return true;
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -1654,6 +1682,7 @@ class CheckoutController extends Controller
             if ($promo->items->isEmpty()) {
                 return true;
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });

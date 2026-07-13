@@ -506,14 +506,13 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination -->
+                {#if returns.last_page > 1}
+                    <Pagination data={returns} params={{ status: filterStatus, search: filterSearch, type: filterType }} />
+                {/if}
             {/if}
         </div>
-
-        {#if returns.last_page > 1}
-            <div class="border-t border-slate-100 px-4 py-2.5">
-                <Pagination data={returns} params={{ status: filterStatus, search: filterSearch, type: filterType }} />
-            </div>
-        {/if}
     </main>
 </AdminLayout>
 

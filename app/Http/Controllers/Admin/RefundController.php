@@ -25,7 +25,7 @@ class RefundController extends Controller
     {
         $query = RefundRequest::with([
             'user:id,name,email',
-            'transaction:id,transaction_number,grand_total,status',
+            'transaction:id,transaction_number,grand_total,status,admin_fee,application_fee,shipping_fee,subtotal,discount_amount,shipping_discount',
         ])->latest();
 
         if ($request->filled('status')) {
@@ -40,8 +40,8 @@ class RefundController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('refund_number', 'ilike', "%{$search}%")
-                    ->orWhereHas('user', fn($uq) => $uq->where('name', 'ilike', "%{$search}%"))
-                    ->orWhereHas('transaction', fn($tq) => $tq->where('transaction_number', 'ilike', "%{$search}%"));
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'ilike', "%{$search}%"))
+                    ->orWhereHas('transaction', fn ($tq) => $tq->where('transaction_number', 'ilike', "%{$search}%"));
             });
         }
 
@@ -108,7 +108,7 @@ class RefundController extends Controller
             // 2. Cancel transaction
             $transaction->update([
                 'status' => 'batal',
-                'cancel_reason' => 'Pengajuan Pembatalan Disetujui: ' . $refund->reason,
+                'cancel_reason' => 'Pengajuan Pembatalan Disetujui: '.$refund->reason,
                 'cancelled_at' => now(),
             ]);
 
@@ -128,7 +128,7 @@ class RefundController extends Controller
                         'transaction_id' => $transaction->id,
                         'amount' => $coinsToCredit,
                         'type' => 'refund',
-                        'description' => 'Refund pembatalan transaksi #' . $transaction->transaction_number . ' ke Koin Toko',
+                        'description' => 'Refund pembatalan transaksi #'.$transaction->transaction_number.' ke Koin Toko',
                     ]);
                 }
 
@@ -139,9 +139,9 @@ class RefundController extends Controller
                 Notification::create([
                     'user_id' => $refund->user_id,
                     'title' => 'Refund Koin Berhasil dikreditkan',
-                    'message' => 'Refund berupa koin untuk transaksi #' . $transaction->transaction_number . ' sebesar ' . number_format($coinsToCredit, 0, ',', '.') . ' koin telah berhasil dikreditkan ke saldo koin Anda.',
+                    'message' => 'Refund berupa koin untuk transaksi #'.$transaction->transaction_number.' sebesar '.number_format($coinsToCredit, 0, ',', '.').' koin telah berhasil dikreditkan ke saldo koin Anda.',
                     'type' => 'refund_completed',
-                    'url' => '/refunds/' . $refund->id,
+                    'url' => '/refunds/'.$refund->id,
                     'is_read' => false,
                 ]);
             } else {
@@ -149,9 +149,9 @@ class RefundController extends Controller
                 Notification::create([
                     'user_id' => $refund->user_id,
                     'title' => 'Pengajuan Pembatalan Disetujui',
-                    'message' => 'Pengajuan pembatalan untuk transaksi #' . $transaction->transaction_number . ' telah disetujui. Refund transfer bank sebesar Rp ' . number_format($refund->refund_amount, 0, ',', '.') . ' sedang diproses.',
+                    'message' => 'Pengajuan pembatalan untuk transaksi #'.$transaction->transaction_number.' telah disetujui. Refund transfer bank sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' sedang diproses.',
                     'type' => 'refund_approved',
-                    'url' => '/refunds/' . $refund->id,
+                    'url' => '/refunds/'.$refund->id,
                     'is_read' => false,
                 ]);
             }
@@ -195,9 +195,9 @@ class RefundController extends Controller
         Notification::create([
             'user_id' => $refund->user_id,
             'title' => 'Pengajuan Pembatalan Ditolak',
-            'message' => 'Pengajuan pembatalan untuk transaksi #' . $refund->transaction->transaction_number . ' ditolak. Catatan: ' . $request->notes_admin,
+            'message' => 'Pengajuan pembatalan untuk transaksi #'.$refund->transaction->transaction_number.' ditolak. Catatan: '.$request->notes_admin,
             'type' => 'refund_rejected',
-            'url' => '/refunds/' . $refund->id,
+            'url' => '/refunds/'.$refund->id,
             'is_read' => false,
         ]);
 
@@ -222,9 +222,9 @@ class RefundController extends Controller
         Notification::create([
             'user_id' => $refund->user_id,
             'title' => 'Refund Berhasil Ditransfer',
-            'message' => 'Dana refund sebesar Rp ' . number_format($refund->refund_amount, 0, ',', '.') . ' untuk transaksi #' . $refund->transaction->transaction_number . ' telah berhasil ditransfer ke rekening Anda.',
+            'message' => 'Dana refund sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
             'type' => 'refund_completed',
-            'url' => '/refunds/' . $refund->id,
+            'url' => '/refunds/'.$refund->id,
             'is_read' => false,
         ]);
 
@@ -266,7 +266,7 @@ class RefundController extends Controller
                 // 2. Cancel transaction
                 $transaction->update([
                     'status' => 'batal',
-                    'cancel_reason' => 'Pengajuan Pembatalan Disetujui: ' . $refund->reason,
+                    'cancel_reason' => 'Pengajuan Pembatalan Disetujui: '.$refund->reason,
                     'cancelled_at' => now(),
                 ]);
 
@@ -286,7 +286,7 @@ class RefundController extends Controller
                             'transaction_id' => $transaction->id,
                             'amount' => $coinsToCredit,
                             'type' => 'refund',
-                            'description' => 'Refund pembatalan transaksi #' . $transaction->transaction_number . ' ke Koin Toko',
+                            'description' => 'Refund pembatalan transaksi #'.$transaction->transaction_number.' ke Koin Toko',
                         ]);
                     }
 
@@ -298,9 +298,9 @@ class RefundController extends Controller
                         Notification::create([
                             'user_id' => $refund->user_id,
                             'title' => 'Refund Koin Berhasil dikreditkan',
-                            'message' => 'Refund berupa koin untuk transaksi #' . $transaction->transaction_number . ' sebesar ' . number_format($coinsToCredit, 0, ',', '.') . ' koin telah berhasil dikreditkan ke saldo koin Anda.',
+                            'message' => 'Refund berupa koin untuk transaksi #'.$transaction->transaction_number.' sebesar '.number_format($coinsToCredit, 0, ',', '.').' koin telah berhasil dikreditkan ke saldo koin Anda.',
                             'type' => 'refund_completed',
-                            'url' => '/refunds/' . $refund->id,
+                            'url' => '/refunds/'.$refund->id,
                             'is_read' => false,
                         ]);
                     } catch (\Throwable $e) {
@@ -312,9 +312,9 @@ class RefundController extends Controller
                         Notification::create([
                             'user_id' => $refund->user_id,
                             'title' => 'Pengajuan Pembatalan Disetujui',
-                            'message' => 'Pengajuan pembatalan untuk transaksi #' . $transaction->transaction_number . ' telah disetujui. Refund transfer bank sebesar Rp ' . number_format($refund->refund_amount, 0, ',', '.') . ' sedang diproses.',
+                            'message' => 'Pengajuan pembatalan untuk transaksi #'.$transaction->transaction_number.' telah disetujui. Refund transfer bank sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' sedang diproses.',
                             'type' => 'refund_approved',
-                            'url' => '/refunds/' . $refund->id,
+                            'url' => '/refunds/'.$refund->id,
                             'is_read' => false,
                         ]);
                     } catch (\Throwable $e) {
@@ -370,9 +370,9 @@ class RefundController extends Controller
                 Notification::create([
                     'user_id' => $refund->user_id,
                     'title' => 'Refund Berhasil Ditransfer',
-                    'message' => 'Dana refund sebesar Rp ' . number_format($refund->refund_amount, 0, ',', '.') . ' untuk transaksi #' . $refund->transaction->transaction_number . ' telah berhasil ditransfer ke rekening Anda.',
+                    'message' => 'Dana refund sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
                     'type' => 'refund_completed',
-                    'url' => '/refunds/' . $refund->id,
+                    'url' => '/refunds/'.$refund->id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {
@@ -414,7 +414,7 @@ class RefundController extends Controller
                     'quantity' => $item->quantity,
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
-                    'notes' => 'Pembatalan transaksi - ' . $transaction->transaction_number,
+                    'notes' => 'Pembatalan transaksi - '.$transaction->transaction_number,
                     'created_by' => $adminUser->id,
                 ]);
             }

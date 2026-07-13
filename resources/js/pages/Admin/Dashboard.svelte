@@ -528,9 +528,10 @@
                 </div>
 
                 {#if productStockInfo.data && productStockInfo.data.length > 0}
-                    <div class="border-t border-slate-100 px-4 py-2.5">
-                        <Pagination data={productStockInfo} params={{ filter: selectedFilter, search: stockSearchInput }} />
-                    </div>
+                    <Pagination
+                        data={productStockInfo}
+                        class="p-4 flex flex-col items-center gap-2.5 text-center"
+                    />
                 {/if}
             </div>
         </div>

@@ -6,6 +6,7 @@ use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\ChatSticker;
+use App\Models\CoinHistory;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
 use App\Models\Setting;
@@ -515,8 +516,20 @@ class MasterDataController extends Controller
         $perPage = $request->get('perPage', 10);
         $couriers = $query->orderBy('order')->paginate($perPage)->withQueryString();
 
+        $settingsKeys = [
+            'store_courier_enabled',
+            'store_courier_type',
+            'store_courier_flat_fee',
+            'store_courier_per_km_fee',
+            'store_courier_max_radius',
+            'store_courier_round_up',
+            'store_courier_tiered_rates',
+        ];
+        $settings = Setting::whereIn('key', $settingsKeys)->pluck('value', 'key')->toArray();
+
         return Inertia::render('Admin/MasterData/Couriers', [
             'couriers' => $couriers,
+            'settings' => $settings,
             'filters' => [
                 'search' => $request->search,
                 'perPage' => $perPage,
@@ -1156,5 +1169,144 @@ class MasterDataController extends Controller
         }
 
         return back()->with('success', 'Konfigurasi Logistik API berhasil disimpan.');
+    }
+
+    /**
+     * Display a listing of loyalty point histories.
+     */
+    public function loyaltyPoints(Request $request): Response
+    {
+        $query = CoinHistory::with(['user:id,name,email,avatar', 'transaction:id,order_number'])
+            ->select(['id', 'user_id', 'transaction_id', 'amount', 'type', 'description', 'order', 'created_at']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('email', 'ilike', "%{$search}%");
+            })->orWhere('description', 'ilike', "%{$search}%");
+        }
+
+        if ($request->filled('type') && $request->type !== 'all') {
+            $query->where('type', $request->type);
+        }
+
+        $perPage = $request->get('perPage', 10);
+        $histories = $query->latest()->paginate($perPage)->withQueryString();
+
+        // Summary stats
+        $totalEarned = CoinHistory::where('amount', '>', 0)->sum('amount');
+        $totalRedeemed = CoinHistory::where('amount', '<', 0)->sum('amount');
+
+        // Customers for the adjust modal dropdown
+        $customers = User::whereHas('roles', function ($q) {
+            $q->where('name', 'Customer');
+        })->select(['id', 'name', 'email', 'coins_balance'])->orderBy('name')->get();
+
+        return Inertia::render('Admin/MasterData/LoyaltyPoin', [
+            'histories' => $histories,
+            'filters' => [
+                'search' => $request->search,
+                'type' => $request->type,
+                'perPage' => $perPage,
+            ],
+            'stats' => [
+                'total_earned' => (int) $totalEarned,
+                'total_redeemed' => abs((int) $totalRedeemed),
+            ],
+            'customers' => $customers,
+            'settings' => Setting::whereIn('key', [
+                'coins_enabled',
+                'coin_conversion_rate',
+                'coin_earning_method',
+                'coin_earning_rate_rupiah',
+                'coin_earning_rate_coins',
+                'coin_earning_tiers',
+                'coin_min_purchase_redeem',
+                'coin_max_redeem_per_txn',
+                'coin_max_redeem_percentage',
+                'coin_terms_conditions',
+            ])->pluck('value', 'key'),
+        ]);
+    }
+
+    /**
+     * Manually adjust loyalty points for a customer.
+     */
+    public function storeLoyaltyPoint(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|uuid|exists:users,id',
+            'amount' => 'required|integer|min:1',
+            'type' => 'required|in:add,deduct',
+            'description' => 'required|string|max:255',
+        ]);
+
+        $user = User::whereHas('roles', function ($q) {
+            $q->where('name', 'Customer');
+        })->findOrFail($validated['user_id']);
+
+        $coinAmount = $validated['type'] === 'add'
+            ? (int) $validated['amount']
+            : -(int) $validated['amount'];
+
+        // Prevent negative balance
+        if ($coinAmount < 0 && $user->coins_balance + $coinAmount < 0) {
+            return back()->withErrors(['amount' => 'Saldo poin pelanggan tidak cukup untuk dikurangi sebesar itu.']);
+        }
+
+        CoinHistory::create([
+            'user_id' => $user->id,
+            'amount' => $coinAmount,
+            'type' => 'manual',
+            'description' => $validated['description'],
+        ]);
+
+        $user->increment('coins_balance', $coinAmount);
+
+        $action = $coinAmount > 0 ? 'ditambah' : 'dikurangi';
+
+        return back()->with('success', "Poin pelanggan berhasil {$action}.");
+    }
+
+    /**
+     * Display Master Cost settings page.
+     */
+    public function costs(): Response
+    {
+        $keys = [
+            'shipping_rate',
+            'self_pickup_enabled',
+            'self_pickup_fee',
+            'additional_costs',
+        ];
+
+        $settings = Setting::whereIn('key', $keys)->pluck('value', 'key')->toArray();
+
+        return Inertia::render('Admin/MasterData/Cost', [
+            'settings' => $settings,
+        ]);
+    }
+
+    /**
+     * Update Master Cost settings.
+     */
+    public function updateCosts(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'shipping_rate' => 'required|numeric|min:0',
+            'self_pickup_enabled' => 'required|boolean',
+            'self_pickup_fee' => 'required|numeric|min:0',
+            'additional_costs' => 'nullable|string',
+        ]);
+
+        foreach ($validated as $key => $value) {
+            Setting::updateOrCreate(
+                ['key' => $key],
+                ['value' => is_bool($value) ? ($value ? '1' : '0') : ($value ?? '')]
+            );
+        }
+
+        return back()->with('success', 'Pengaturan biaya berhasil disimpan.');
     }
 }

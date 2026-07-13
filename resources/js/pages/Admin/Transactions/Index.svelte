@@ -782,6 +782,11 @@
                                     <!-- Total -->
                                     <td class="px-4 py-3" data-label="Total">
                                         <p class="text-sm font-semibold text-slate-800 whitespace-nowrap">{trx.grand_total_formatted ?? '—'}</p>
+                                        {#if (trx.admin_fee && parseFloat(trx.admin_fee) > 0) || (trx.application_fee && parseFloat(trx.application_fee) > 0)}
+                                            <p class="text-[9px] text-slate-400 mt-0.5 whitespace-nowrap">
+                                                (Termasuk: {parseFloat(trx.admin_fee) > 0 ? 'Admin ' : ''}{parseFloat(trx.application_fee) > 0 ? 'Aplikasi' : ''})
+                                            </p>
+                                        {/if}
                                     </td>
 
                                     <!-- Status -->
@@ -826,9 +831,7 @@
                 </div>
 
                 <!-- Pagination -->
-                <div class="border-t border-slate-100 px-5 py-3">
-                    <Pagination paginator={transactions} itemLabel="transaksi" />
-                </div>
+                <Pagination paginator={transactions} itemLabel="transaksi" />
             {/if}
         </div>
 

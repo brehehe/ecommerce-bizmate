@@ -24,7 +24,7 @@ class ReturnController extends Controller
     {
         $query = ReturnRequest::with([
             'user:id,name,email',
-            'transaction:id,transaction_number,grand_total',
+            'transaction:id,transaction_number,grand_total,admin_fee,application_fee,shipping_fee,subtotal,discount_amount,shipping_discount',
             'items',
         ])->latest();
 
@@ -40,8 +40,8 @@ class ReturnController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('return_number', 'ilike', "%{$search}%")
-                    ->orWhereHas('user', fn($uq) => $uq->where('name', 'ilike', "%{$search}%"))
-                    ->orWhereHas('transaction', fn($tq) => $tq->where('transaction_number', 'ilike', "%{$search}%"));
+                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'ilike', "%{$search}%"))
+                    ->orWhereHas('transaction', fn ($tq) => $tq->where('transaction_number', 'ilike', "%{$search}%"));
             });
         }
 
@@ -67,7 +67,7 @@ class ReturnController extends Controller
         $return->load([
             'user:id,name,email',
             'user.customerBankAccounts',
-            'transaction:id,transaction_number,grand_total,shipping_fee,status,user_id',
+            'transaction:id,transaction_number,grand_total,shipping_fee,status,user_id,admin_fee,application_fee',
             'transaction.items',
             'items.transactionItem',
             'media',
@@ -115,9 +115,9 @@ class ReturnController extends Controller
             Notification::create([
                 'user_id' => $return->user_id,
                 'title' => 'Pengajuan Retur Disetujui',
-                'message' => 'Pengajuan retur Anda (#' . $return->return_number . ') untuk ' . $typeLabel . ' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
+                'message' => 'Pengajuan retur Anda (#'.$return->return_number.') untuk '.$typeLabel.' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
                 'type' => 'return_approved',
-                'url' => '/transactions/' . $return->transaction_id,
+                'url' => '/transactions/'.$return->transaction_id,
                 'is_read' => false,
             ]);
         } catch (\Throwable $e) {
@@ -153,9 +153,9 @@ class ReturnController extends Controller
             Notification::create([
                 'user_id' => $return->user_id,
                 'title' => 'Pengajuan Retur Ditolak',
-                'message' => 'Pengajuan retur Anda (#' . $return->return_number . ') ditolak. Alasan: ' . $request->notes_admin,
+                'message' => 'Pengajuan retur Anda (#'.$return->return_number.') ditolak. Alasan: '.$request->notes_admin,
                 'type' => 'return_rejected',
-                'url' => '/transactions/' . $return->transaction_id,
+                'url' => '/transactions/'.$return->transaction_id,
                 'is_read' => false,
             ]);
         } catch (\Throwable $e) {
@@ -222,10 +222,10 @@ class ReturnController extends Controller
                 if ($stockAction === 'active') {
                     $stockAfter = $stockBefore + $item->quantity_returned;
                     $stockRecord->update(['stock' => $stockAfter]);
-                    $notes = 'Retur barang (kembali ke stok aktif) - ' . $return->return_number;
+                    $notes = 'Retur barang (kembali ke stok aktif) - '.$return->return_number;
                 } else {
                     $stockAfter = $stockBefore;
-                    $notes = 'Retur barang (rusak/tidak dikembalikan ke stok) - ' . $return->return_number;
+                    $notes = 'Retur barang (rusak/tidak dikembalikan ke stok) - '.$return->return_number;
                 }
 
                 StockMovement::create([
@@ -247,9 +247,9 @@ class ReturnController extends Controller
             Notification::create([
                 'user_id' => $return->user_id,
                 'title' => 'Barang Retur Diterima',
-                'message' => 'Barang retur Anda (#' . $return->return_number . ') telah diterima oleh toko. Admin sedang memproses ' . ($return->type === 'refund' ? 'pengembalian dana' : 'pengiriman barang pengganti') . '.',
+                'message' => 'Barang retur Anda (#'.$return->return_number.') telah diterima oleh toko. Admin sedang memproses '.($return->type === 'refund' ? 'pengembalian dana' : 'pengiriman barang pengganti').'.',
                 'type' => 'return_received',
-                'url' => '/transactions/' . $return->transaction_id,
+                'url' => '/transactions/'.$return->transaction_id,
                 'is_read' => false,
             ]);
         } catch (\Throwable $e) {
@@ -295,13 +295,13 @@ class ReturnController extends Controller
 
         // Notify customer
         try {
-            $amount = 'Rp ' . number_format($return->refund_amount, 0, ',', '.');
+            $amount = 'Rp '.number_format($return->refund_amount, 0, ',', '.');
             Notification::create([
                 'user_id' => $return->user_id,
                 'title' => 'Refund Sedang Diproses',
                 'message' => "Refund sebesar {$amount} untuk retur #{$return->return_number} sedang diproses. {$bankInfo}",
                 'type' => 'refund_processed',
-                'url' => '/transactions/' . $return->transaction_id,
+                'url' => '/transactions/'.$return->transaction_id,
                 'is_read' => false,
             ]);
         } catch (\Throwable $e) {
@@ -381,7 +381,7 @@ class ReturnController extends Controller
                 'grand_total' => $newSubtotal,
                 'shipping_courier' => $originalTx->shipping_courier,
                 'shipping_service' => $originalTx->shipping_service,
-                'notes' => 'Transaksi penggantian barang retur dari ' . $originalTx->transaction_number,
+                'notes' => 'Transaksi penggantian barang retur dari '.$originalTx->transaction_number,
                 'return_status' => null,
                 'is_replacement_transaction' => true,
                 'original_transaction_id' => $originalTx->id,
@@ -405,9 +405,9 @@ class ReturnController extends Controller
                 Notification::create([
                     'user_id' => $return->user_id,
                     'title' => 'Barang Pengganti Sedang Diproses',
-                    'message' => 'Barang pengganti untuk retur #' . $return->return_number . ' sedang diproses. Transaksi baru dibuat: #' . $replacementTx->transaction_number . '.',
+                    'message' => 'Barang pengganti untuk retur #'.$return->return_number.' sedang diproses. Transaksi baru dibuat: #'.$replacementTx->transaction_number.'.',
                     'type' => 'replacement_created',
-                    'url' => '/transactions/' . $replacementTx->id,
+                    'url' => '/transactions/'.$replacementTx->id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {
@@ -447,9 +447,9 @@ class ReturnController extends Controller
             Notification::create([
                 'user_id' => $return->user_id,
                 'title' => 'Barang Pengganti Dikirim',
-                'message' => 'Barang pengganti untuk retur #' . $return->return_number . ' telah dikirim. Resi: ' . $request->replacement_tracking_number,
+                'message' => 'Barang pengganti untuk retur #'.$return->return_number.' telah dikirim. Resi: '.$request->replacement_tracking_number,
                 'type' => 'replacement_shipped',
-                'url' => '/transactions/' . ($return->replacement_transaction_id ?? $return->transaction_id),
+                'url' => '/transactions/'.($return->replacement_transaction_id ?? $return->transaction_id),
                 'is_read' => false,
             ]);
         } catch (\Throwable $e) {
@@ -473,13 +473,13 @@ class ReturnController extends Controller
 
         // Notify customer
         try {
-            $amount = 'Rp ' . number_format($return->refund_amount, 0, ',', '.');
+            $amount = 'Rp '.number_format($return->refund_amount, 0, ',', '.');
             Notification::create([
                 'user_id' => $return->user_id,
                 'title' => 'Refund Selesai',
                 'message' => "Refund sebesar {$amount} untuk retur #{$return->return_number} telah selesai diproses.",
                 'type' => 'refund_completed',
-                'url' => '/transactions/' . $return->transaction_id,
+                'url' => '/transactions/'.$return->transaction_id,
                 'is_read' => false,
             ]);
         } catch (\Throwable $e) {
@@ -526,9 +526,9 @@ class ReturnController extends Controller
                 Notification::create([
                     'user_id' => $return->user_id,
                     'title' => 'Pengajuan Retur Disetujui',
-                    'message' => 'Pengajuan retur Anda (#' . $return->return_number . ') untuk ' . $typeLabel . ' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
+                    'message' => 'Pengajuan retur Anda (#'.$return->return_number.') untuk '.$typeLabel.' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
                     'type' => 'return_approved',
-                    'url' => '/transactions/' . $return->transaction_id,
+                    'url' => '/transactions/'.$return->transaction_id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {
@@ -585,10 +585,10 @@ class ReturnController extends Controller
                     if ($stockAction === 'active') {
                         $stockAfter = $stockBefore + $item->quantity_returned;
                         $stockRecord->update(['stock' => $stockAfter]);
-                        $notes = 'Retur barang (kembali ke stok aktif) - ' . $return->return_number;
+                        $notes = 'Retur barang (kembali ke stok aktif) - '.$return->return_number;
                     } else {
                         $stockAfter = $stockBefore;
-                        $notes = 'Retur barang (rusak/tidak dikembalikan ke stok) - ' . $return->return_number;
+                        $notes = 'Retur barang (rusak/tidak dikembalikan ke stok) - '.$return->return_number;
                     }
 
                     StockMovement::create([
@@ -610,9 +610,9 @@ class ReturnController extends Controller
                 Notification::create([
                     'user_id' => $return->user_id,
                     'title' => 'Barang Retur Diterima',
-                    'message' => 'Barang retur Anda (#' . $return->return_number . ') telah diterima oleh toko. Admin sedang memproses ' . ($return->type === 'refund' ? 'pengembalian dana' : 'pengiriman barang pengganti') . '.',
+                    'message' => 'Barang retur Anda (#'.$return->return_number.') telah diterima oleh toko. Admin sedang memproses '.($return->type === 'refund' ? 'pengembalian dana' : 'pengiriman barang pengganti').'.',
                     'type' => 'return_received',
-                    'url' => '/transactions/' . $return->transaction_id,
+                    'url' => '/transactions/'.$return->transaction_id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {

@@ -94,11 +94,22 @@
             : false,
     );
 
+    // Also read from localStorage so we don't rely solely on async props (prevents race-condition popup)
+    const setupTourCompletedLocally = $state(
+        typeof window !== 'undefined'
+            ? localStorage.getItem('setup_tour_completed') === 'true'
+            : false,
+    );
+
     const setupTourCompletedInDb = $derived(
         (page.props as any).settings?.setup_tour_completed || false,
     );
+
+    // Tour is truly completed if DB says so OR localStorage says so (whichever loads first)
+    const isTourCompleted = $derived(setupTourCompletedInDb || setupTourCompletedLocally);
+
     const showTour = $derived(
-        (!setupTourCompletedInDb || forceShowTour) &&
+        (!isTourCompleted || forceShowTour) &&
             currentTourStep > 0 &&
             typeof window !== 'undefined' &&
             window.location.pathname === tourSteps[currentTourStep - 1]?.url,
@@ -278,9 +289,16 @@
     }
 
     $effect(() => {
-        // Auto start the tour if not completed in database OR if manually forced
+        // Persist DB-confirmed tour completion into localStorage to avoid race conditions on page load
+        if (setupTourCompletedInDb && typeof window !== 'undefined') {
+            localStorage.setItem('setup_tour_completed', 'true');
+        }
+    });
+
+    $effect(() => {
+        // Auto start the tour if not completed in database OR localStorage, OR if manually forced
         if (currentTourStep === 0) {
-            if (!setupTourCompletedInDb && !forceShowTour) {
+            if (!isTourCompleted && !forceShowTour) {
                 currentTourStep = 1;
             } else if (forceShowTour) {
                 currentTourStep = 1;
@@ -304,6 +322,7 @@
             // Last step finished: save to database and redirect to dashboard
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('force_show_tour');
+                localStorage.setItem('setup_tour_completed', 'true');
             }
             forceShowTour = false;
             currentTourStep = 0;
@@ -367,6 +386,7 @@
     function skipTour() {
         if (typeof window !== 'undefined') {
             localStorage.removeItem('force_show_tour');
+            localStorage.setItem('setup_tour_completed', 'true');
         }
         forceShowTour = false;
         currentTourStep = 0;

@@ -877,8 +877,7 @@
                                           ? 0
                                           : 100}
                                 <Link
-                                    href="/products/{product.slug ||
-                                        product.id}"
+                                    href={`/products/${product.slug || product.id}`}
                                     prefetch
                                     class="w-36 sm:w-40 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0"
                                 >

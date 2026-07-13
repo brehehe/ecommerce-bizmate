@@ -377,9 +377,7 @@
                 </div>
             {/if}
 
-            <div class="border-t border-slate-100 px-4 py-2.5 bg-white">
-                <Pagination paginator={brands} />
-            </div>
+            <Pagination paginator={brands} />
         </div>
     </main>
 </AdminLayout>

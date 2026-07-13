@@ -36,7 +36,7 @@ Route::get('/search', [StorefrontController::class, 'search'])->name('search');
 Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');
 Route::get('/produk-terlaris', [StorefrontController::class, 'produkTerlaris'])->name('produk-terlaris');
 Route::get('/category/{category}', [StorefrontController::class, 'category'])->name('category');
-Route::get('/products/{product:slug}', [StorefrontController::class, 'show'])->name('products.show');
+Route::get('/products/{product}', [StorefrontController::class, 'show'])->name('products.show');
 Route::get('/about', [StorefrontController::class, 'about'])->name('about');
 
 Route::get('/zozzuehmqewbobfo', [AppConfigController::class, 'show'])->name('app-config.show');
@@ -252,6 +252,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Logistik API
     Route::get('/master-data/logistic-api', [MasterDataController::class, 'logisticApi'])->name('master-data.logistic-api');
     Route::post('/master-data/logistic-api', [MasterDataController::class, 'updateLogisticApi'])->name('master-data.logistic-api.update');
+
+    // Loyalty Poin
+    Route::get('/master-data/loyalty-poin', [MasterDataController::class, 'loyaltyPoints'])->name('master-data.loyalty-poin');
+    Route::post('/master-data/loyalty-poin', [MasterDataController::class, 'storeLoyaltyPoint'])->name('master-data.loyalty-poin.store');
+
+    // Master Biaya (Cost)
+    Route::get('/master-data/cost', [MasterDataController::class, 'costs'])->name('master-data.cost');
+    Route::post('/master-data/cost', [MasterDataController::class, 'updateCosts'])->name('master-data.cost.update');
 
     // Chat (Admin)
     Route::get('/chats', [AdminChatController::class, 'index'])->name('chats.index');

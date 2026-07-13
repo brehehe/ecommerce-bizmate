@@ -495,14 +495,13 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination -->
+                {#if refunds.last_page > 1}
+                    <Pagination data={refunds} params={{ status: filterStatus, search: filterSearch, refund_method: filterMethod }} />
+                {/if}
             {/if}
         </div>
-
-        {#if refunds.last_page > 1}
-            <div class="border-t border-slate-100 px-4 py-2.5">
-                <Pagination data={refunds} params={{ status: filterStatus, search: filterSearch, refund_method: filterMethod }} />
-            </div>
-        {/if}
     </main>
 </AdminLayout>
 

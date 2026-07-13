@@ -1027,6 +1027,16 @@
                                     <span class="font-medium">{fmtRp(transaction.application_fee)}</span>
                                 </div>
                             {/if}
+                            {#if transaction.additional_costs && Array.isArray(transaction.additional_costs)}
+                                {#each transaction.additional_costs as cost}
+                                    {#if parseFloat(cost.value) > 0}
+                                        <div class="flex justify-between text-sm text-slate-600">
+                                            <span>{cost.name}</span>
+                                            <span class="font-medium">{fmtRp(parseFloat(cost.value))}</span>
+                                        </div>
+                                    {/if}
+                                {/each}
+                            {/if}
                             <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900">
                                 <span>Total</span>
                                 <span>{transaction.grand_total_formatted ?? '—'}</span>

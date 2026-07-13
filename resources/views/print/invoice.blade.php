@@ -329,6 +329,16 @@
                         <td style="text-align: right; font-weight: bold;">Rp {{ number_format($transaction->application_fee, 0, ',', '.') }}</td>
                     </tr>
                 @endif
+                @if($transaction->additional_costs && is_array($transaction->additional_costs))
+                    @foreach($transaction->additional_costs as $cost)
+                        @if(($cost['value'] ?? 0) > 0)
+                            <tr>
+                                <td>{{ $cost['name'] }}:</td>
+                                <td style="text-align: right; font-weight: bold;">Rp {{ number_format($cost['value'], 0, ',', '.') }}</td>
+                            </tr>
+                        @endif
+                    @endforeach
+                @endif
                 <tr class="total-row">
                     <td>Total Belanja:</td>
                     <td style="text-align: right; color: #0c4cb4;">Rp {{ number_format($transaction->grand_total, 0, ',', '.') }}</td>

@@ -140,6 +140,7 @@
         storeLogo = '',
         storeOriginCity = null,
         appFee = 0,
+        additionalCosts = [],
         appliedVoucher: initialAppliedVoucher = null,
         couriers = [],
         isNewUser = false,
@@ -778,6 +779,13 @@
         return 0;
     });
 
+    const activeAdditionalCosts = $derived(
+        (additionalCosts || []).filter((c: any) => c.is_active || c.is_active === '1' || c.is_active === 1)
+    );
+    const additionalCostsSum = $derived(
+        activeAdditionalCosts.reduce((sum: number, c: any) => sum + Number(c.value || 0), 0)
+    );
+
     const grandTotal = $derived(
         Math.max(
             0,
@@ -786,7 +794,8 @@
                 coinDiscountAmount +
                 (shippingFee - shippingDiscount) +
                 adminFee +
-                applicationFee,
+                applicationFee +
+                additionalCostsSum,
         ),
     );
 
@@ -2765,9 +2774,13 @@
                                 {/if}
                                 {#if !isDigitalOnly}
                                     <div class="flex justify-between">
-                                        <span class="text-slate-600"
-                                            >Ongkos Kirim</span
-                                        >
+                                        <div class="flex items-center gap-1 group relative">
+                                            <span class="text-slate-600">Ongkos Kirim</span>
+                                            <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
+                                            <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
+                                                Biaya pengiriman barang berdasarkan lokasi dan kurir pilihan Anda.
+                                            </div>
+                                        </div>
                                         <span
                                             class="font-semibold text-slate-800"
                                             >{selectedShipping
@@ -2788,9 +2801,13 @@
                                 {/if}
                                 {#if adminFee > 0}
                                     <div class="flex justify-between">
-                                        <span class="text-slate-600"
-                                            >Biaya Admin</span
-                                        >
+                                        <div class="flex items-center gap-1 group relative">
+                                            <span class="text-slate-600">Biaya Admin</span>
+                                            <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
+                                            <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
+                                                Biaya administrasi metode pembayaran yang Anda pilih.
+                                            </div>
+                                        </div>
                                         <span
                                             class="font-semibold text-slate-800"
                                             >{fmt(adminFee)}</span
@@ -2799,15 +2816,33 @@
                                 {/if}
                                 {#if applicationFee > 0}
                                     <div class="flex justify-between">
-                                        <span class="text-slate-600"
-                                            >Biaya Aplikasi</span
-                                        >
+                                        <div class="flex items-center gap-1 group relative">
+                                            <span class="text-slate-600">Biaya Aplikasi</span>
+                                            <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
+                                            <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
+                                                Biaya layanan platform untuk pemeliharaan sistem.
+                                            </div>
+                                        </div>
                                         <span
                                             class="font-semibold text-slate-800"
                                             >{fmt(applicationFee)}</span
                                         >
                                     </div>
                                 {/if}
+                                {#each activeAdditionalCosts as cost (cost.id)}
+                                    {#if Number(cost.value) > 0}
+                                        <div class="flex justify-between">
+                                            <div class="flex items-center gap-1 group relative">
+                                                <span class="text-slate-600">{cost.name}</span>
+                                                <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
+                                                <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
+                                                    Biaya operasional tambahan: {cost.name}.
+                                                </div>
+                                            </div>
+                                            <span class="font-semibold text-slate-800">{fmt(Number(cost.value))}</span>
+                                        </div>
+                                    {/if}
+                                {/each}
                                 <div
                                     class="border-t border-slate-100 pt-2 flex justify-between"
                                 >

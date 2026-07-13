@@ -3634,6 +3634,16 @@
                                     >
                                 </div>
                             {/if}
+                            {#if transaction.additional_costs && Array.isArray(transaction.additional_costs)}
+                                {#each transaction.additional_costs as cost}
+                                    {#if parseFloat(cost.value) > 0}
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-600">{cost.name}</span>
+                                            <span class="font-semibold">{fmt(parseFloat(cost.value))}</span>
+                                        </div>
+                                    {/if}
+                                {/each}
+                            {/if}
                             <div
                                 class="border-t border-slate-100 pt-2 flex justify-between"
                             >

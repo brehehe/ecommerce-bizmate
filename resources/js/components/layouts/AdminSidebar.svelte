@@ -429,6 +429,14 @@
                         '/admin/master-data/stickers',
                         'Stiker Chat',
                     )}
+                    {@render SubNavItem(
+                        '/admin/master-data/loyalty-poin',
+                        'Loyalty Poin',
+                    )}
+                    {@render SubNavItem(
+                        '/admin/master-data/cost',
+                        'Biaya',
+                    )}
                 </div>
             {/if}
         </div>

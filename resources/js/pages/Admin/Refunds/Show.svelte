@@ -237,6 +237,32 @@
                             <p class="text-xs text-slate-500 mt-0.5">
                                 Grand Total: <strong>{fmt(refund.transaction?.grand_total)}</strong>
                             </p>
+                            {#if parseFloat(refund.transaction?.admin_fee) > 0 || parseFloat(refund.transaction?.application_fee) > 0 || (refund.transaction?.additional_costs && refund.transaction.additional_costs.length > 0)}
+                                <div class="mt-2 pt-2 border-t border-slate-200/60 space-y-1 text-[11px] text-slate-400">
+                                    {#if parseFloat(refund.transaction?.admin_fee) > 0}
+                                        <div class="flex justify-between">
+                                            <span>Biaya Admin:</span>
+                                            <span>{fmt(refund.transaction?.admin_fee)}</span>
+                                        </div>
+                                    {/if}
+                                    {#if parseFloat(refund.transaction?.application_fee) > 0}
+                                        <div class="flex justify-between">
+                                            <span>Biaya Aplikasi:</span>
+                                            <span>{fmt(refund.transaction?.application_fee)}</span>
+                                        </div>
+                                    {/if}
+                                    {#if refund.transaction?.additional_costs && Array.isArray(refund.transaction.additional_costs)}
+                                        {#each refund.transaction.additional_costs as cost}
+                                            {#if parseFloat(cost.value) > 0}
+                                                <div class="flex justify-between">
+                                                    <span>{cost.name}:</span>
+                                                    <span>{fmt(parseFloat(cost.value))}</span>
+                                                </div>
+                                            {/if}
+                                        {/each}
+                                    {/if}
+                                </div>
+                            {/if}
                         </div>
                     </div>
                 </div>
