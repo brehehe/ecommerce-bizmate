@@ -104,6 +104,46 @@
             activeIndex = closestIdx;
         }
     }
+
+    // Mouse Drag to Scroll for Desktop
+    let isDragging = $state(false);
+    let startX = 0;
+    let scrollLeftStart = 0;
+    let totalMoved = 0;
+
+    function handleMouseDown(e: MouseEvent) {
+        if (!carouselEl) return;
+        
+        const target = e.target as HTMLElement;
+        if (target.closest('button')) return;
+        
+        isDragging = true;
+        startX = e.clientX;
+        scrollLeftStart = carouselEl.scrollLeft;
+        totalMoved = 0;
+        
+        e.preventDefault();
+    }
+
+    function handleMouseMove(e: MouseEvent) {
+        if (!isDragging || !carouselEl) return;
+        const deltaX = e.clientX - startX;
+        totalMoved += Math.abs(deltaX);
+        carouselEl.scrollLeft = scrollLeftStart - deltaX;
+    }
+
+    function handleMouseUpOrLeave() {
+        isDragging = false;
+    }
+
+    function handleCardClick(e: MouseEvent, idx: number) {
+        if (totalMoved > 10) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        selectLevel(idx);
+    }
 </script>
 
 <svelte:head>
@@ -152,7 +192,11 @@
                         <div 
                             bind:this={carouselEl}
                             onscroll={handleCarouselScroll}
-                            class="flex overflow-x-auto snap-x snap-mandatory gap-6 py-4 scrollbar-none pl-[calc(50%-160px)] pr-[calc(50%-160px)] sm:pl-[calc(50%-200px)] sm:pr-[calc(50%-200px)] lg:pl-[calc(50%-230px)] lg:pr-[calc(50%-230px)]"
+                            onmousedown={handleMouseDown}
+                            onmousemove={handleMouseMove}
+                            onmouseup={handleMouseUpOrLeave}
+                            onmouseleave={handleMouseUpOrLeave}
+                            class="flex overflow-x-auto snap-x snap-mandatory gap-6 py-4 scrollbar-none pl-[calc(50%-160px)] pr-[calc(50%-160px)] sm:pl-[calc(50%-200px)] sm:pr-[calc(50%-200px)] lg:pl-[calc(50%-230px)] lg:pr-[calc(50%-230px)] select-none {isDragging ? 'cursor-grabbing' : 'cursor-grab'}"
                             style="scroll-behavior: smooth; touch-action: pan-y;"
                         >
                             {#each levels as level, idx (level.id)}
@@ -163,7 +207,7 @@
                                 <div
                                     role="button"
                                     tabindex="0"
-                                    onclick={() => selectLevel(idx)}
+                                    onclick={(e) => handleCardClick(e, idx)}
                                     onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') selectLevel(idx); }}
                                     class="w-[320px] sm:w-[400px] lg:w-[460px] h-52 sm:h-64 shrink-0 snap-center rounded-3xl p-6 sm:p-7 relative overflow-hidden flex flex-col justify-between shadow-xl text-left transition-all duration-300 outline-none border-0 {isActive ? 'scale-[1.02] ring-4 ring-brand-blueRoyal ring-offset-4 dark:ring-offset-slate-900 shadow-brand-blueRoyal/25' : 'scale-95 opacity-40 cursor-pointer'}"
                                     style="background: {getCardGradient(level.name)}; color: {level.name.toLowerCase() === 'silver' ? '#1e293b' : '#ffffff'};"
@@ -247,6 +291,28 @@
                                 </div>
                             {/each}
                         </div>
+
+                        <!-- Left Arrow Button -->
+                        {#if activeIndex > 0}
+                            <button
+                                type="button"
+                                onclick={() => selectLevel(activeIndex - 1)}
+                                class="absolute left-4 top-1/2 -translate-y-1/2 z-30 h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white/90 shadow-md border border-slate-200/50 hover:bg-white text-slate-800 hover:text-brand-blueRoyal flex items-center justify-center transition cursor-pointer dark:bg-slate-800/90 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-700 hidden sm:flex"
+                            >
+                                <i class="ti ti-chevron-left text-lg sm:text-xl"></i>
+                            </button>
+                        {/if}
+
+                        <!-- Right Arrow Button -->
+                        {#if activeIndex < levels.length - 1}
+                            <button
+                                type="button"
+                                onclick={() => selectLevel(activeIndex + 1)}
+                                class="absolute right-4 top-1/2 -translate-y-1/2 z-30 h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-white/90 shadow-md border border-slate-200/50 hover:bg-white text-slate-800 hover:text-brand-blueRoyal flex items-center justify-center transition cursor-pointer dark:bg-slate-800/90 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-700 hidden sm:flex"
+                            >
+                                <i class="ti ti-chevron-right text-lg sm:text-xl"></i>
+                            </button>
+                        {/if}
                     </div>
 
                     <!-- Navigation Dot Indicators -->
