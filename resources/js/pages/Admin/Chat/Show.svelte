@@ -665,7 +665,14 @@
                         </div>
                     {/if}
                     <div class="min-w-0">
-                        <p class="truncate text-sm font-semibold text-slate-800">{chat.user?.name || 'Pelanggan'}</p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="truncate text-sm font-semibold text-slate-800">{chat.user?.name || 'Pelanggan'}</p>
+                            {#if chat.is_priority}
+                                <span class="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase tracking-wide">
+                                    <i class="ti ti-crown text-[9px]"></i> VIP
+                                </span>
+                            {/if}
+                        </div>
                         <p class="text-[11px] text-slate-400 truncate">{chat.user?.email || ''}</p>
                     </div>
                 </div>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\CmsController;
 use App\Http\Controllers\Admin\KomerceShipmentController;
 use App\Http\Controllers\Admin\MasterDataController;
+use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\RefundController as AdminRefundController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\StorefrontController;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [StorefrontController::class, 'index'])->name('home');
@@ -61,6 +63,8 @@ Route::middleware('auth')->group(function () {
     // Email Verification Routes
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])->middleware('throttle:6,1')->name('verification.send');
+
+    Route::get('/membership', [StorefrontController::class, 'membership'])->name('membership.index');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -150,10 +154,35 @@ Route::middleware('auth')->group(function () {
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
+    // Tech Stack PDF
+    Route::get('/techstack-pdf', function () {
+        $pdf = Pdf::loadView('print.techstack')
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('bizmate-techstack.pdf');
+    })->name('techstack.pdf');
+
     // Settings
     Route::get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SettingController::class, 'update'])->name('settings.update');
     Route::post('/settings/tour-complete', [SettingController::class, 'completeTour'])->name('settings.tour-complete');
+
+    // Membership
+    Route::prefix('membership')->name('membership.')->group(function () {
+        Route::get('/dashboard', [MembershipController::class, 'dashboard'])->name('dashboard');
+        Route::get('/levels', [MembershipController::class, 'levels'])->name('levels');
+        Route::post('/levels', [MembershipController::class, 'storeLevel'])->name('levels.store');
+        Route::put('/levels/{level}', [MembershipController::class, 'updateLevel'])->name('levels.update');
+        Route::delete('/levels/{level}', [MembershipController::class, 'destroyLevel'])->name('levels.destroy');
+        Route::post('/levels/{level}/benefits', [MembershipController::class, 'storeBenefit'])->name('benefits.store');
+        Route::put('/benefits/{benefit}', [MembershipController::class, 'updateBenefit'])->name('benefits.update');
+        Route::delete('/benefits/{benefit}', [MembershipController::class, 'destroyBenefit'])->name('benefits.destroy');
+        Route::get('/members', [MembershipController::class, 'members'])->name('members');
+        Route::get('/members/{user}', [MembershipController::class, 'showMember'])->name('members.show');
+        Route::post('/members/{user}/assign-level', [MembershipController::class, 'assignLevel'])->name('members.assign-level');
+        Route::post('/members/{user}/sync', [MembershipController::class, 'syncUser'])->name('members.sync');
+        Route::get('/histories', [MembershipController::class, 'histories'])->name('histories');
+    });
 
     // UAT Testing
     Route::get('/uat', [UATController::class, 'index'])->name('uat.index');

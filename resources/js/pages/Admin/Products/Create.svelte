@@ -47,6 +47,11 @@
         tax_rate: '',
         active: true,
         is_digital: false,
+        is_exclusive: false,
+        exclusive_min_level_order: 0,
+        is_early_access: false,
+        early_access_until: '',
+        early_access_min_level_order: 0,
         photos: [],
         variations: [],
         variants: [],
@@ -3725,6 +3730,67 @@
                             description="Aktifkan jika produk ini tidak memerlukan pengiriman fisik (voucher, lisensi, dll)"
                             icon="ti-device-laptop"
                         />
+                    </div>
+
+                    <!-- Membership Settings -->
+                    <div class="mb-6 space-y-3">
+                        <p class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pengaturan Membership</p>
+
+                        <!-- Exclusive product -->
+                        <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                            <Toggle
+                                bind:checked={form.is_exclusive}
+                                label="Produk Eksklusif Member"
+                                description="Hanya bisa dilihat dan dibeli oleh member dengan level tertentu"
+                                icon="ti-lock"
+                            />
+                            {#if form.is_exclusive}
+                                <div class="space-y-1.5 pt-1">
+                                    <label class="text-xs font-semibold text-slate-600">Minimum Level Order (urutan level membership)</label>
+                                    <input
+                                        type="number"
+                                        bind:value={form.exclusive_min_level_order}
+                                        min="0"
+                                        placeholder="0 = semua level, 1 = Silver ke atas, dst"
+                                        class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
+                                    />
+                                    <p class="text-[10px] text-slate-400">0 = Member, 1 = Silver, 2 = Gold, 3 = Platinum, 4 = Diamond</p>
+                                </div>
+                            {/if}
+                        </div>
+
+                        <!-- Early access -->
+                        <div class="p-4 bg-violet-50 border border-violet-200 rounded-2xl space-y-3">
+                            <Toggle
+                                bind:checked={form.is_early_access}
+                                label="Produk Early Access"
+                                description="Produk bisa diakses lebih awal oleh member tertentu sebelum dijual ke publik"
+                                icon="ti-eye"
+                            />
+                            {#if form.is_early_access}
+                                <div class="grid grid-cols-2 gap-3 pt-1">
+                                    <div class="space-y-1.5">
+                                        <label class="text-xs font-semibold text-slate-600">Early Access Sampai</label>
+                                        <input
+                                            type="datetime-local"
+                                            bind:value={form.early_access_until}
+                                            class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
+                                        />
+                                    </div>
+                                    <div class="space-y-1.5">
+                                        <label class="text-xs font-semibold text-slate-600">Minimum Level Order</label>
+                                        <input
+                                            type="number"
+                                            bind:value={form.early_access_min_level_order}
+                                            min="0"
+                                            placeholder="0 = semua member"
+                                            class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
+                                        />
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-400">Setelah tanggal early access, produk otomatis tersedia untuk semua pelanggan</p>
+                            {/if}
+                        </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="space-y-2">

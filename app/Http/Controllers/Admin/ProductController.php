@@ -133,6 +133,11 @@ class ProductController extends Controller
             'min_purchase' => 'nullable|integer|min:1',
             'is_unlimited' => 'boolean',
             'is_digital' => 'boolean',
+            'is_exclusive' => 'boolean',
+            'exclusive_min_level_order' => 'nullable|integer|min:0',
+            'is_early_access' => 'boolean',
+            'early_access_until' => 'nullable|date',
+            'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
@@ -173,7 +178,7 @@ class ProductController extends Controller
             $validated['brand'] = null;
         }
 
-        $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(5);
+        $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(5);
         $validated['tax_rate'] = $validated['tax_rate'] ?? 0;
         $validated['stock'] = $validated['stock'] ?? 0;
         $validated['weight'] = $validated['weight'] ?? 0;
@@ -185,23 +190,23 @@ class ProductController extends Controller
         $videoPath = $request->input('video_url');
         if ($request->hasFile('video_file')) {
             $path = $request->file('video_file')->store('products/videos', 'public');
-            $videoPath = 'storage/' . $path;
+            $videoPath = 'storage/'.$path;
         }
         $validated['video_path'] = $videoPath;
 
         $modelPath = $request->input('model_3d_url');
         if ($request->hasFile('model_3d_file')) {
-            $filename = Str::random(40) . '.glb';
+            $filename = Str::random(40).'.glb';
             $path = $request->file('model_3d_file')->storeAs('products/models', $filename, 'public');
-            $modelPath = 'storage/' . $path;
+            $modelPath = 'storage/'.$path;
         }
         $validated['model_3d_path'] = $modelPath;
 
         $usdzPath = $request->input('model_3d_usdz_url');
         if ($request->hasFile('model_3d_usdz_file')) {
-            $filename = Str::random(40) . '.usdz';
+            $filename = Str::random(40).'.usdz';
             $path = $request->file('model_3d_usdz_file')->storeAs('products/models', $filename, 'public');
-            $usdzPath = 'storage/' . $path;
+            $usdzPath = 'storage/'.$path;
         }
         $validated['model_3d_usdz_path'] = $usdzPath;
 
@@ -264,17 +269,17 @@ class ProductController extends Controller
                     $type = strtolower($type[1]);
                     $photoBase64 = base64_decode(str_replace(' ', '+', $photoBase64));
                     $photoBase64 = ImageHelper::compress($photoBase64, $type, 75);
-                    $filename = 'product_' . $product->id . '_' . time() . '_' . $index . '.' . $type;
-                    Storage::disk('public')->put('products/' . $filename, $photoBase64);
+                    $filename = 'product_'.$product->id.'_'.time().'_'.$index.'.'.$type;
+                    Storage::disk('public')->put('products/'.$filename, $photoBase64);
 
                     $product->images()->create([
-                        'path' => 'storage/products/' . $filename,
+                        'path' => 'storage/products/'.$filename,
                         'is_main' => $index === 0,
                         'sort_order' => $index,
                     ]);
 
                     if ($index === 0) {
-                        $product->update(['image' => 'storage/products/' . $filename]);
+                        $product->update(['image' => 'storage/products/'.$filename]);
                     }
                 }
             }
@@ -298,9 +303,9 @@ class ProductController extends Controller
                         $type = strtolower($type[1]);
                         $imgBase64 = base64_decode(str_replace(' ', '+', $imgBase64));
                         $imgBase64 = ImageHelper::compress($imgBase64, $type, 75);
-                        $filename = 'opt_' . $product->id . '_' . time() . '_' . uniqid() . '.' . $type;
-                        Storage::disk('public')->put('products/' . $filename, $imgBase64);
-                        $imagePath = 'storage/products/' . $filename;
+                        $filename = 'opt_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
+                        Storage::disk('public')->put('products/'.$filename, $imgBase64);
+                        $imagePath = 'storage/products/'.$filename;
                     }
 
                     $option = $variation->options()->create([
@@ -417,7 +422,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku,' . $product->id,
+            'sku' => 'required|string|max:100|unique:products,sku,'.$product->id,
             'category_ids' => 'nullable|array',
             'category_ids.*' => 'exists:categories,id',
             'brand_ids' => 'nullable|array',
@@ -430,6 +435,11 @@ class ProductController extends Controller
             'min_purchase' => 'nullable|integer|min:1',
             'is_unlimited' => 'boolean',
             'is_digital' => 'boolean',
+            'is_exclusive' => 'boolean',
+            'exclusive_min_level_order' => 'nullable|integer|min:0',
+            'is_early_access' => 'boolean',
+            'early_access_until' => 'nullable|date',
+            'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
@@ -471,7 +481,7 @@ class ProductController extends Controller
         }
 
         if ($product->name !== $validated['name']) {
-            $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(5);
+            $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(5);
         }
         $validated['tax_rate'] = $validated['tax_rate'] ?? 0;
         $validated['stock'] = $validated['stock'] ?? 0;
@@ -484,23 +494,23 @@ class ProductController extends Controller
         $videoPath = $request->input('video_url', $product->video_path);
         if ($request->hasFile('video_file')) {
             $path = $request->file('video_file')->store('products/videos', 'public');
-            $videoPath = 'storage/' . $path;
+            $videoPath = 'storage/'.$path;
         }
         $validated['video_path'] = $videoPath;
 
         $modelPath = $request->input('model_3d_url', $product->model_3d_path);
         if ($request->hasFile('model_3d_file')) {
-            $filename = Str::random(40) . '.glb';
+            $filename = Str::random(40).'.glb';
             $path = $request->file('model_3d_file')->storeAs('products/models', $filename, 'public');
-            $modelPath = 'storage/' . $path;
+            $modelPath = 'storage/'.$path;
         }
         $validated['model_3d_path'] = $modelPath;
 
         $usdzPath = $request->input('model_3d_usdz_url', $product->model_3d_usdz_path);
         if ($request->hasFile('model_3d_usdz_file')) {
-            $filename = Str::random(40) . '.usdz';
+            $filename = Str::random(40).'.usdz';
             $path = $request->file('model_3d_usdz_file')->storeAs('products/models', $filename, 'public');
-            $usdzPath = 'storage/' . $path;
+            $usdzPath = 'storage/'.$path;
         }
         $validated['model_3d_usdz_path'] = $usdzPath;
 
@@ -592,9 +602,9 @@ class ProductController extends Controller
                 $type = strtolower($type[1]);
                 $photoBase64 = base64_decode(str_replace(' ', '+', $photoBase64));
                 $photoBase64 = ImageHelper::compress($photoBase64, $type, 75);
-                $filename = 'product_' . $product->id . '_' . time() . '_' . uniqid() . '.' . $type;
-                Storage::disk('public')->put('products/' . $filename, $photoBase64);
-                $path = 'storage/products/' . $filename;
+                $filename = 'product_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
+                Storage::disk('public')->put('products/'.$filename, $photoBase64);
+                $path = 'storage/products/'.$filename;
 
                 $product->images()->create([
                     'path' => $path,
@@ -675,9 +685,9 @@ class ProductController extends Controller
                         $type = strtolower($type[1]);
                         $imgBase64 = base64_decode(str_replace(' ', '+', $imgBase64));
                         $imgBase64 = ImageHelper::compress($imgBase64, $type, 75);
-                        $filename = 'opt_' . $product->id . '_' . time() . '_' . uniqid() . '.' . $type;
-                        Storage::disk('public')->put('products/' . $filename, $imgBase64);
-                        $imagePath = 'storage/products/' . $filename;
+                        $filename = 'opt_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
+                        Storage::disk('public')->put('products/'.$filename, $imgBase64);
+                        $imagePath = 'storage/products/'.$filename;
                     }
 
                     if ($imagePath) {
@@ -1170,7 +1180,7 @@ class ProductController extends Controller
             $file = fopen('php://output', 'w');
 
             // Add UTF-8 BOM for Excel compatibility
-            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
             // Write the Excel separator instruction
             fwrite($file, "sep=,\n");
@@ -1321,7 +1331,7 @@ class ProductController extends Controller
         \DB::transaction(function () use ($request, $globalTaxPercentage) {
             foreach ($request->input('products') as $pData) {
                 $sku = trim($pData['sku']);
-                $slug = Str::slug($pData['name']) . '-' . Str::random(5);
+                $slug = Str::slug($pData['name']).'-'.Str::random(5);
 
                 $product = Product::where('sku', $sku)->first();
                 if ($product) {
@@ -1372,7 +1382,7 @@ class ProductController extends Controller
                             $catSlug = $baseSlug;
                             $count = 1;
                             while (Category::where('slug', $catSlug)->exists()) {
-                                $catSlug = $baseSlug . '-' . $count;
+                                $catSlug = $baseSlug.'-'.$count;
                                 $count++;
                             }
                             $category = Category::create([
@@ -1401,7 +1411,7 @@ class ProductController extends Controller
                             $bSlug = $baseSlug;
                             $count = 1;
                             while (Brand::where('slug', $bSlug)->exists()) {
-                                $bSlug = $baseSlug . '-' . $count;
+                                $bSlug = $baseSlug.'-'.$count;
                                 $count++;
                             }
                             $brand = Brand::create([
@@ -1514,7 +1524,7 @@ class ProductController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', count($request->input('products')) . ' produk berhasil di-import.');
+        return redirect()->back()->with('success', count($request->input('products')).' produk berhasil di-import.');
     }
 
     /**

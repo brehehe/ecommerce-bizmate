@@ -60,7 +60,7 @@ class SyncShipmentStatus extends Command
                         $this->info("Transaction {$transaction->transaction_number} status updated to [selesai].");
                         Log::info("Auto-sync: Transaction {$transaction->transaction_number} completed based on courier delivery.");
                     }
-                } elseif (str_contains($desc, 'jalan') || str_contains($desc, 'transit') || str_contains($desc, 'kurir') || str_contains($desc, 'kirim') || str_contains($desc, 'pickup') || str_contains($desc, 'hub') || str_contains($desc, 'picked') || str_contains($desc, 'dropping') || str_contains($desc, 'intransit')) {
+                } elseif (str_contains($desc, 'jalan') || str_contains($desc, 'transit') || str_contains($desc, 'kurir') || str_contains($desc, 'kirim') || str_contains($desc, 'pickup') || str_contains($desc, 'hub') || str_contains($desc, 'picked') || str_contains($desc, 'dropping') || str_contains($desc, 'intransit') || str_contains($desc, 'way') || str_contains($desc, 'delivering') || str_contains($desc, 'shipping')) {
                     if (in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
                         $transaction->update(['status' => 'dikirim']);
                         $this->info("Transaction {$transaction->transaction_number} status updated to [dikirim].");

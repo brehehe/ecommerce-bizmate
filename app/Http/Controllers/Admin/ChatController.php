@@ -11,6 +11,7 @@ use App\Models\Chat;
 use App\Models\ChatMessage;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\MembershipService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,26 +21,29 @@ use Inertia\Response;
 
 class ChatController extends Controller
 {
+    public function __construct(private readonly MembershipService $membershipService) {}
+
     /**
      * List all chat threads with pagination (Inertia page).
      */
     public function index(Request $request): Response
     {
         $query = Chat::with(['user', 'lastMessage'])
-            ->withCount(['messages as unread_count' => fn($q) => $q->where('sender_type', 'user')->where('is_read', false)])
+            ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender_type', 'user')->where('is_read', false)])
             ->orderByDesc('last_message_at');
 
         if ($search = $request->query('search')) {
-            $query->whereHas('user', fn($q) => $q->where('name', 'ilike', "%{$search}%")
+            $query->whereHas('user', fn ($q) => $q->where('name', 'ilike', "%{$search}%")
                 ->orWhere('email', 'ilike', "%{$search}%"));
         }
 
-        $chats = $query->paginate(30)->through(fn(Chat $chat) => [
+        $chats = $query->paginate(30)->through(fn (Chat $chat) => [
             'id' => $chat->id,
             'subject' => $chat->subject,
             'status' => $chat->status,
             'last_message_at' => $chat->last_message_at?->toISOString(),
             'unread_count' => $chat->unread_count,
+            'is_priority' => $this->membershipService->hasPriorityCustomerService($chat->user),
             'user' => [
                 'id' => $chat->user->id,
                 'name' => $chat->user->name,
@@ -53,7 +57,7 @@ class ChatController extends Controller
             ] : null,
         ]);
 
-        $totalUnread = Chat::whereHas('messages', fn($q) => $q->where('sender_type', 'user')->where('is_read', false))->count();
+        $totalUnread = Chat::whereHas('messages', fn ($q) => $q->where('sender_type', 'user')->where('is_read', false))->count();
 
         return Inertia::render('Admin/Chat/Index', compact('chats', 'totalUnread'));
     }
@@ -72,7 +76,7 @@ class ChatController extends Controller
 
         $messages = $chat->messages()
             ->get()
-            ->map(fn(ChatMessage $msg) => $this->formatMessage($msg));
+            ->map(fn (ChatMessage $msg) => $this->formatMessage($msg));
 
         // Mark user messages as read
         $chat->messages()
@@ -80,7 +84,7 @@ class ChatController extends Controller
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
-        $admins = User::whereHas('roles', fn($q) => $q->where('name', '!=', 'Customer'))
+        $admins = User::whereHas('roles', fn ($q) => $q->where('name', '!=', 'Customer'))
             ->orWhereDoesntHave('roles')
             ->get();
 
@@ -96,6 +100,7 @@ class ChatController extends Controller
             'subject' => $chat->subject,
             'status' => $chat->status,
             'product_id' => $chat->product_id,
+            'is_priority' => $this->membershipService->hasPriorityCustomerService($chat->user),
             'product' => $product ? [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -112,20 +117,21 @@ class ChatController extends Controller
 
         // Also fetch chats list for the left panel split view
         $chatsQuery = Chat::with(['user', 'lastMessage'])
-            ->withCount(['messages as unread_count' => fn($q) => $q->where('sender_type', 'user')->where('is_read', false)])
+            ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender_type', 'user')->where('is_read', false)])
             ->orderByDesc('last_message_at');
 
         if ($search = $request->query('search')) {
-            $chatsQuery->whereHas('user', fn($q) => $q->where('name', 'ilike', "%{$search}%")
+            $chatsQuery->whereHas('user', fn ($q) => $q->where('name', 'ilike', "%{$search}%")
                 ->orWhere('email', 'ilike', "%{$search}%"));
         }
 
-        $chats = $chatsQuery->paginate(30)->through(fn(Chat $c) => [
+        $chats = $chatsQuery->paginate(30)->through(fn (Chat $c) => [
             'id' => $c->id,
             'subject' => $c->subject,
             'status' => $c->status,
             'last_message_at' => $c->last_message_at?->toISOString(),
             'unread_count' => $c->unread_count,
+            'is_priority' => $this->membershipService->hasPriorityCustomerService($c->user),
             'user' => [
                 'id' => $c->user->id,
                 'name' => $c->user->name,
@@ -139,7 +145,7 @@ class ChatController extends Controller
             ] : null,
         ]);
 
-        $totalUnread = Chat::whereHas('messages', fn($q) => $q->where('sender_type', 'user')->where('is_read', false))->count();
+        $totalUnread = Chat::whereHas('messages', fn ($q) => $q->where('sender_type', 'user')->where('is_read', false))->count();
 
         return Inertia::render('Admin/Chat/Show', [
             'chat' => $chatData,
@@ -167,7 +173,7 @@ class ChatController extends Controller
 
         if ($afterMessage) {
             $index = $messagesCollection->contains('id', $afterMessage->id)
-                ? $messagesCollection->search(fn($msg) => $msg->id === $afterMessage->id)
+                ? $messagesCollection->search(fn ($msg) => $msg->id === $afterMessage->id)
                 : false;
 
             if ($index !== false) {
@@ -175,7 +181,7 @@ class ChatController extends Controller
             }
         }
 
-        $messages = $messagesCollection->map(fn(ChatMessage $msg) => $this->formatMessage($msg));
+        $messages = $messagesCollection->map(fn (ChatMessage $msg) => $this->formatMessage($msg));
 
         // Mark user messages as read
         $chat->messages()

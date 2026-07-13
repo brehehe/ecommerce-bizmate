@@ -19,6 +19,7 @@
         "laravel-best-practices",
         "wayfinder-development",
         "pest-testing",
+        "inertia-svelte-development",
         "tailwindcss-development",
         "laravel-permission-development",
         "deploying-laravel-cloud"

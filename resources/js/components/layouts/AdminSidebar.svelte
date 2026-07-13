@@ -30,8 +30,30 @@
                 }
             });
 
+            // Also listen to the general admin channel for real-time list/detail page updates
+            const adminChannel = (window as any).Echo.private('admin')
+                .listen('.transaction.updated', (event: any) => {
+                    const pathname = window.location.pathname;
+                    if (pathname.startsWith('/admin/transactions') || pathname === '/admin/dashboard') {
+                        router.reload();
+                    }
+                })
+                .listen('.refund.updated', (event: any) => {
+                    const pathname = window.location.pathname;
+                    if (pathname.startsWith('/admin/refunds') || pathname === '/admin/dashboard') {
+                        router.reload();
+                    }
+                })
+                .listen('.return.updated', (event: any) => {
+                    const pathname = window.location.pathname;
+                    if (pathname.startsWith('/admin/returns') || pathname === '/admin/dashboard') {
+                        router.reload();
+                    }
+                });
+
             return () => {
                 (window as any).Echo.leave(`user.${user.id}`);
+                (window as any).Echo.leave('admin');
             };
         }
     });
@@ -486,6 +508,9 @@
             'ti-adjustments-horizontal',
             'Konfigurasi App',
         )}
+
+        <!-- Membership -->
+        {@render NavItem('/admin/membership/dashboard', 'ti-award', 'Membership')}
 
         <div class="my-3 h-px bg-slate-100"></div>
 

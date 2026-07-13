@@ -14,3 +14,6 @@ Schedule::command('app:sync-shipment-status')->everyFiveMinutes();
 Schedule::call(function () {
     Transaction::processAutoStatusUpdates();
 })->everyMinute();
+
+// Membership: issue birthday bonus vouchers daily at 8am
+Schedule::command('membership:birthday-bonus')->dailyAt('08:00');

@@ -2,7 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\RefundRequest;
+use App\Models\ReturnRequest;
 use App\Models\Transaction;
+use App\Observers\RefundRequestObserver;
+use App\Observers\ReturnRequestObserver;
+use App\Observers\TransactionObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Database\Eloquent\Model;
@@ -38,6 +43,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureDefaults();
 
+        // Register observers
+        Transaction::observe(TransactionObserver::class);
+        RefundRequest::observe(RefundRequestObserver::class);
+        ReturnRequest::observe(ReturnRequestObserver::class);
+
         Event::listen(function (Login $event) {
             $event->user->update([
                 'last_active_at' => now(),
@@ -65,13 +75,13 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(
-            fn(): ?Password => app()->isProduction()
+            fn (): ?Password => app()->isProduction()
                 ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
+                    ->mixedCase()
+                    ->letters()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised()
                 : null,
         );
     }

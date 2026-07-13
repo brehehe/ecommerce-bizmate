@@ -104,6 +104,7 @@
         quota: '',
         start_time: '',
         end_time: '',
+        member_early_access_minutes: 0,
         is_active: true,
         settings: {
             terms: '',
@@ -1616,6 +1617,24 @@
                                 label="Waktu Berakhir"
                                 required={true}
                                 error={form.errors.end_time}
+                            />
+                        </div>
+                    {/if}
+
+                    {#if form.type === 'flash_sale'}
+                        <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="ti ti-crown text-amber-600 text-base"></i>
+                                <p class="text-sm font-semibold text-amber-800">Early Access Member</p>
+                            </div>
+                            <p class="text-xs text-amber-700 mb-2">Member dengan benefit Flash Sale Access dapat mengakses promo ini lebih awal (dalam menit sebelum jadwal mulai).</p>
+                            <Input
+                                id="member-early-access-minutes"
+                                bind:value={form.member_early_access_minutes}
+                                type="number"
+                                label="Menit Early Access Member"
+                                placeholder="0 = tidak ada early access"
+                                hint="Contoh: 60 = member bisa akses 60 menit sebelum waktu mulai"
                             />
                         </div>
                     {/if}

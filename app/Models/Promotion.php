@@ -24,6 +24,7 @@ class Promotion extends Model
         'end_time',
         'is_active',
         'settings',
+        'member_early_access_minutes',
     ];
 
     protected $casts = [
@@ -31,6 +32,7 @@ class Promotion extends Model
         'settings' => 'array',
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'member_early_access_minutes' => 'integer',
         'discount_value' => 'decimal:2',
         'min_purchase' => 'decimal:2',
         'max_discount' => 'decimal:2',

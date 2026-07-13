@@ -13,6 +13,7 @@ use App\Models\Setting;
 use App\Models\SocialMedia;
 use App\Models\Transaction;
 use App\Services\KomerceService;
+use App\Services\MembershipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
@@ -441,6 +442,9 @@ class HandleInertiaRequests extends Middleware
                     ])
                     ->toArray())
                 : [],
+            'membershipInfo' => $request->user() && $request->user()->hasRole('Customer')
+                ? Inertia::defer(fn () => app(MembershipService::class)->getMembershipInfoForFrontend($request->user()))
+                : null,
         ];
     }
 }

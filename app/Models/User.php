@@ -60,6 +60,38 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Transaction::class);
     }
 
+    // ── Membership relationships ─────────────────────────────
+
+    public function membership()
+    {
+        return $this->hasOne(CustomerMembership::class);
+    }
+
+    public function membershipHistories()
+    {
+        return $this->hasMany(MembershipHistory::class)->latest();
+    }
+
+    public function membershipPoints()
+    {
+        return $this->hasMany(MembershipPoint::class)->latest();
+    }
+
+    public function membershipCashbacks()
+    {
+        return $this->hasMany(MembershipCashback::class)->latest();
+    }
+
+    public function membershipVouchers()
+    {
+        return $this->hasMany(MembershipVoucher::class)->latest();
+    }
+
+    public function activeMembershipVouchers()
+    {
+        return $this->hasMany(MembershipVoucher::class)->active();
+    }
+
     /**
      * Send the password reset notification.
      *

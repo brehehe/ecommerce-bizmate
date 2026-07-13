@@ -158,9 +158,16 @@
                             <!-- Content -->
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center justify-between gap-2">
-                                    <p class="truncate text-sm {chat.has_unread ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}">
-                                        {chat.user?.name || 'Pelanggan'}
-                                    </p>
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <p class="truncate text-sm {chat.has_unread ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}">
+                                            {chat.user?.name || 'Pelanggan'}
+                                        </p>
+                                        {#if chat.is_priority}
+                                            <span class="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 uppercase tracking-wide">
+                                                <i class="ti ti-crown text-[9px]"></i> VIP
+                                            </span>
+                                        {/if}
+                                    </div>
                                     <span class="shrink-0 text-[10px] text-slate-400">{chat.last_message_at ? new Date(chat.last_message_at).toLocaleTimeString("id-ID", {hour:"2-digit",minute:"2-digit"}) : ""}</span>
                                 </div>
                                 <p class="mt-0.5 truncate text-xs {chat.has_unread ? 'font-medium text-slate-600' : 'text-slate-400'}">

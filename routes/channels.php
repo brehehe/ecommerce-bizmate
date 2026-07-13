@@ -19,3 +19,8 @@ Broadcast::channel('chat.{chatId}', function ($user, $chatId) {
 Broadcast::channel('user.{userId}', function ($user, $userId) {
     return (string) $user->id === (string) $userId;
 });
+
+Broadcast::channel('admin', function ($user) {
+    return ! $user->hasRole('Customer');
+});
+

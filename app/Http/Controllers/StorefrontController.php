@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\ImageHelper;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\MembershipLevel;
 use App\Models\Notification;
 use App\Models\PaymentMethod;
 use App\Models\Product;
@@ -16,6 +17,7 @@ use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
 use App\Services\KomerceService;
+use App\Services\MembershipService;
 use App\Services\MidtransService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -35,11 +37,31 @@ class StorefrontController extends Controller
 
     private ?array $soldPromoQuantitiesCache = null;
 
+    private float $memberDiscountPct = 0;
+
+    public function __construct(private readonly MembershipService $membershipService)
+    {
+        // memberDiscountPct is initialized lazily via initMembership()
+        // to avoid accessing auth() before the request lifecycle is ready
+    }
+
+    /**
+     * Initialize membership discount for the current user.
+     * Call once at the start of any storefront method that renders products.
+     */
+    private function initMembership(): void
+    {
+        /** @var User|null $user */
+        $user = auth()->user();
+        $this->memberDiscountPct = $this->membershipService->getMembershipDiscountForUser($user);
+    }
+
     /**
      * Display the storefront homepage.
      */
     public function index(Request $request)
     {
+        $this->initMembership();
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
@@ -201,6 +223,7 @@ class StorefrontController extends Controller
      */
     public function show($product)
     {
+        $this->initMembership();
         if (! Str::isUuid($product)) {
             $product = Product::where('slug', $product)->first();
             if (! $product) {
@@ -381,6 +404,35 @@ class StorefrontController extends Controller
             'bundlingPromos' => $bundlingPromos->values(),
             'shippingInfo' => $shippingInfo,
         ]);
+    }
+
+    /**
+     * Apply membership discount fields to a product.
+     * Sets member_price and member_discount_pct without overriding existing promo.
+     */
+    private function applyMembershipToProduct(Product $product): void
+    {
+        if ($this->memberDiscountPct <= 0) {
+            $product->member_discount_pct = 0;
+            $product->member_price = null;
+
+            return;
+        }
+
+        $basePrice = $product->productPrice?->price ?? 0;
+        $memberPrice = round($basePrice * (1 - $this->memberDiscountPct / 100), 2);
+
+        $product->member_discount_pct = $this->memberDiscountPct;
+        $product->member_price = $memberPrice;
+
+        // Apply to variants too
+        if ($product->relationLoaded('variants')) {
+            foreach ($product->variants as $variant) {
+                $vPrice = $variant->productPrice?->price ?? 0;
+                $variant->member_price = round($vPrice * (1 - $this->memberDiscountPct / 100), 2);
+                $variant->member_discount_pct = $this->memberDiscountPct;
+            }
+        }
     }
 
     /**
@@ -782,6 +834,9 @@ class StorefrontController extends Controller
                 }
             }
         }
+
+        // Apply membership discount fields (does not override promo)
+        $this->applyMembershipToProduct($product);
     }
 
     /**
@@ -789,6 +844,7 @@ class StorefrontController extends Controller
      */
     public function search(Request $request)
     {
+        $this->initMembership();
         $query = $request->input('q');
         $categoryId = $request->input('category');
         $brandId = $request->input('brand');
@@ -1032,6 +1088,7 @@ class StorefrontController extends Controller
      */
     public function flashSale(Request $request)
     {
+        $this->initMembership();
         $query = $request->input('q');
         $categoryId = $request->input('category');
         $minPrice = $request->input('min_price');
@@ -1042,8 +1099,11 @@ class StorefrontController extends Controller
             ->orderBy('order')
             ->get();
 
-        // 1. Fetch active flash sale
-        $activeFlashSale = Promotion::with([
+        // 1. Fetch active flash sale (supports member early access)
+        $user = auth()->user();
+        $earlyAccessMinutes = $this->membershipService->getFlashSaleEarlyAccessMinutes($user);
+
+        $flashSaleQuery = Promotion::with([
             'items.product.productPrice',
             'items.product.images',
             'items.product.category',
@@ -1052,10 +1112,22 @@ class StorefrontController extends Controller
         ])
             ->where('type', 'flash_sale')
             ->where('is_active', true)
-            ->where('start_time', '<=', now())
-            ->where('end_time', '>=', now())
-            ->latest()
-            ->first();
+            ->where('end_time', '>=', now());
+
+        if ($earlyAccessMinutes > 0) {
+            // Member can access flash sale early
+            $flashSaleQuery->where(function ($q) use ($earlyAccessMinutes) {
+                $q->where('start_time', '<=', now())
+                    ->orWhere(function ($q2) use ($earlyAccessMinutes) {
+                        $q2->whereRaw("start_time - INTERVAL '?' MINUTE <= NOW()", [$earlyAccessMinutes])
+                            ->where('member_early_access_minutes', '>', 0);
+                    });
+            });
+        } else {
+            $flashSaleQuery->where('start_time', '<=', now());
+        }
+
+        $activeFlashSale = $flashSaleQuery->latest()->first();
 
         $productsCollection = collect();
 
@@ -1269,6 +1341,7 @@ class StorefrontController extends Controller
      */
     public function produkTerlaris(Request $request)
     {
+        $this->initMembership();
         $query = $request->input('q');
         $categoryId = $request->input('category');
         $minPrice = $request->input('min_price');
@@ -1446,6 +1519,7 @@ class StorefrontController extends Controller
      */
     public function category(Request $request, string $category)
     {
+        $this->initMembership();
         $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $category);
 
         $categoryModel = $isUuid
@@ -2344,6 +2418,38 @@ class StorefrontController extends Controller
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/About', [
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Display the Customer Digital Membership Card page.
+     */
+    public function membership(Request $request): Response
+    {
+        $levels = MembershipLevel::orderBy('order', 'asc')
+            ->with('activeBenefits')
+            ->get()
+            ->map(fn ($l) => [
+                'id' => $l->id,
+                'name' => $l->name,
+                'order' => $l->order,
+                'badge_color' => $l->badge_color,
+                'icon' => $l->icon,
+                'benefits' => $l->activeBenefits->map(fn ($b) => [
+                    'label' => $b->label,
+                    'icon' => $b->icon,
+                    'type' => $b->type,
+                    'value' => $b->value,
+                ]),
+            ]);
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/Membership', [
+            'levels' => $levels,
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);

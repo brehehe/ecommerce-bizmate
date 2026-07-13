@@ -167,6 +167,24 @@
                 if (unreadChanged && desktopChatOpen) {
                     fetchChatList(true);
                 }
+            })
+            .listen('.transaction.updated', (event: any) => {
+                const pathname = window.location.pathname;
+                if (pathname.startsWith('/transactions') || pathname === '/') {
+                    router.reload();
+                }
+            })
+            .listen('.refund.updated', (event: any) => {
+                const pathname = window.location.pathname;
+                if (pathname.startsWith('/refunds')) {
+                    router.reload();
+                }
+            })
+            .listen('.return.updated', (event: any) => {
+                const pathname = window.location.pathname;
+                if (pathname.startsWith('/returns')) {
+                    router.reload();
+                }
             });
 
             return () => {
@@ -946,6 +964,12 @@
 
         const handleOpenLogin = () => openLogin();
         const handleToggleDropdown = () => (profileDropOpen = !profileDropOpen);
+        
+        const unsubscribe = router.on('navigate', () => {
+            profileDropOpen = false;
+            isNotifOpen = false;
+        });
+
         const handleOpenDesktopChat = async (e: any) => {
             const { productId, productName } = e.detail;
             desktopChatOpen = true;
@@ -985,6 +1009,7 @@
         window.addEventListener('open-desktop-chat', handleOpenDesktopChat);
 
         return () => {
+            unsubscribe();
             window.removeEventListener('open-login-modal', handleOpenLogin);
             window.removeEventListener(
                 'toggle-profile-dropdown',
@@ -1697,6 +1722,14 @@
                                             Saya
                                         </Link>
                                         <Link
+                                            href="/membership"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                        >
+                                            <i class="ti ti-id text-base"></i> Membership
+                                            Saya
+                                        </Link>
+                                        <Link
                                             href="/profile/addresses"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
@@ -1984,6 +2017,13 @@
                     class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                 >
                     <i class="ti ti-user text-lg"></i> Profil Saya
+                </Link>
+                <Link
+                    href="/membership"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                >
+                    <i class="ti ti-id text-lg"></i> Membership Saya
                 </Link>
                 <Link
                     href="/profile/addresses"

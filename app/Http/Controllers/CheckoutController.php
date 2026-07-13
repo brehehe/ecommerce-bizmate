@@ -8,6 +8,7 @@ use App\Models\CartItem;
 use App\Models\CoinHistory;
 use App\Models\Courier;
 use App\Models\CustomerAddress;
+use App\Models\MembershipVoucher;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductStock;
@@ -20,6 +21,7 @@ use App\Models\TransactionItem;
 use App\Models\TransactionPayment;
 use App\Services\BiteshipService;
 use App\Services\KomerceService;
+use App\Services\MembershipService;
 use App\Services\MidtransService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -36,6 +38,8 @@ class CheckoutController extends Controller
     private ?array $promoItemsCache = null;
 
     private ?array $soldPromoQuantitiesCache = null;
+
+    public function __construct(private readonly MembershipService $membershipService) {}
 
     /**
      * Display the checkout page.
@@ -453,7 +457,30 @@ class CheckoutController extends Controller
         $shippingFee = (float) $request->shipping_fee;
         $adminFee = (float) ($paymentMethod->admin_fee ?? 0);
         $appFee = (float) (Setting::where('key', 'shipping_rate')->value('value') ?? 0);
-        $grandTotal = $subtotal - $discountAmount + ($shippingFee - $shippingDiscount) + $adminFee + $appFee + $additionalCostsSum;
+
+        // --- Membership Discount & Free Shipping ---
+        $membershipDiscountAmount = 0.0;
+        $membershipShippingDiscount = 0.0;
+        $membershipLevelId = null;
+        $membership = $user->membership()->with('level')->first();
+        if ($membership && $membership->level?->apply_discount_at_checkout) {
+            $memberBenefits = $this->membershipService->getMembershipCheckoutBenefits($user);
+            if ($memberBenefits['type'] === 'percentage' && $memberBenefits['value'] > 0) {
+                $membershipDiscountAmount = round($subtotal * ($memberBenefits['value'] / 100), 2);
+                $membershipLevelId = $membership->membership_level_id;
+            } elseif ($memberBenefits['type'] === 'nominal' && $memberBenefits['value'] > 0) {
+                $membershipDiscountAmount = min((float) $memberBenefits['value'], $subtotal);
+                $membershipLevelId = $membership->membership_level_id;
+            }
+            if ($memberBenefits['free_shipping']) {
+                $membershipShippingDiscount = $shippingFee;
+                if (! $membershipLevelId) {
+                    $membershipLevelId = $membership->membership_level_id;
+                }
+            }
+        }
+
+        $grandTotal = $subtotal - $discountAmount - $membershipDiscountAmount + ($shippingFee - $shippingDiscount - $membershipShippingDiscount) + $adminFee + $appFee + $additionalCostsSum;
         $grandTotal = max(0, $grandTotal);
 
         // --- Loyalty Coins Redemption Logic ---
@@ -570,7 +597,9 @@ class CheckoutController extends Controller
             $voucherPromotion,
             $coinsRedeemed,
             $coinsValue,
-            $coinsEarned
+            $coinsEarned,
+            $membershipDiscountAmount,
+            $membershipLevelId
         ) {
             // Create transaction
             $transaction = Transaction::create([
@@ -598,6 +627,8 @@ class CheckoutController extends Controller
                 'coins_redeemed' => $coinsRedeemed,
                 'coins_value' => $coinsValue,
                 'coins_earned' => $coinsEarned,
+                'membership_discount_amount' => $membershipDiscountAmount,
+                'membership_level_id' => $membershipLevelId,
             ]);
 
             // Deduct user coins immediately
@@ -1426,6 +1457,57 @@ class CheckoutController extends Controller
         }
 
         $user = auth()->user();
+
+        // Check membership vouchers first (auto_voucher benefit)
+        foreach ($codes as $c) {
+            $membershipVoucher = $user
+                ? MembershipVoucher::where('code', $c)
+                    ->where('user_id', $user->id)
+                    ->where('status', 'active')
+                    ->where('valid_from', '<=', now()->toDateString())
+                    ->where('valid_until', '>=', now()->toDateString())
+                    ->first()
+                : null;
+
+            if ($membershipVoucher) {
+                $discountAmount = 0.0;
+                if ($membershipVoucher->discount_type === 'percentage') {
+                    $discountAmount = round($subtotal * ($membershipVoucher->discount_value / 100), 2);
+                    if ($membershipVoucher->max_discount !== null) {
+                        $discountAmount = min($discountAmount, (float) $membershipVoucher->max_discount);
+                    }
+                } else {
+                    $discountAmount = min((float) $membershipVoucher->discount_value, $subtotal);
+                }
+                if ($subtotal < (float) $membershipVoucher->min_purchase) {
+                    return [
+                        'valid' => false,
+                        'message' => 'Minimum pembelian untuk voucher ini adalah '.number_format($membershipVoucher->min_purchase, 0, ',', '.'),
+                        'promotion' => null,
+                        'discount_type' => null,
+                        'discount_value' => 0,
+                        'discount_amount' => 0,
+                        'shipping_discount' => 0,
+                    ];
+                }
+                // Mark as used
+                $membershipVoucher->update([
+                    'status' => 'used',
+                    'used_at' => now(),
+                    'transaction_id' => null, // will be set after transaction created
+                ]);
+
+                return [
+                    'valid' => true,
+                    'message' => 'Voucher membership berhasil diterapkan.',
+                    'promotion' => null,
+                    'discount_type' => $membershipVoucher->discount_type,
+                    'discount_value' => (float) $membershipVoucher->discount_value,
+                    'discount_amount' => $discountAmount,
+                    'shipping_discount' => 0,
+                ];
+            }
+        }
 
         foreach ($codes as $c) {
             $promotion = Promotion::where('code', $c)
