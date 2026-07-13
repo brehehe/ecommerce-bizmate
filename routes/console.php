@@ -17,3 +17,6 @@ Schedule::call(function () {
 
 // Membership: issue birthday bonus vouchers daily at 8am
 Schedule::command('membership:birthday-bonus')->dailyAt('08:00');
+
+// Membership: sync all membership levels daily at 2am (low traffic)
+Schedule::command('membership:sync --force')->dailyAt('02:00');

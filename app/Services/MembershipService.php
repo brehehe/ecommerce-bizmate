@@ -98,18 +98,12 @@ class MembershipService
     public function getEligibleLevel(array $stats): ?MembershipLevel
     {
         return MembershipLevel::active()
-            ->ordered()
             ->orderBy('order', 'desc')
             ->get()
             ->first(function (MembershipLevel $level) use ($stats) {
-                $purchaseStats = $stats['total_purchase'];
-                if ($level->period_type !== 'lifetime') {
-                    // Will be recalculated per-level if needed
-                }
-
-                return $stats['total_purchase'] >= $level->min_total_purchase
-                    && $stats['total_transactions'] >= $level->min_total_transactions
-                    && $stats['total_products'] >= $level->min_total_products;
+                return (float) $stats['total_purchase'] >= (float) $level->min_total_purchase
+                    && (int) $stats['total_transactions'] >= (int) $level->min_total_transactions
+                    && (int) $stats['total_products'] >= (int) $level->min_total_products;
             });
     }
 
