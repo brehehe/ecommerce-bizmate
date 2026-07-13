@@ -197,7 +197,7 @@
                             onmouseup={handleMouseUpOrLeave}
                             onmouseleave={handleMouseUpOrLeave}
                             class="flex overflow-x-auto snap-x snap-mandatory gap-6 py-4 scrollbar-none pl-[calc(50%-160px)] pr-[calc(50%-160px)] sm:pl-[calc(50%-200px)] sm:pr-[calc(50%-200px)] lg:pl-[calc(50%-230px)] lg:pr-[calc(50%-230px)] select-none {isDragging ? 'cursor-grabbing' : 'cursor-grab'}"
-                            style="scroll-behavior: smooth; touch-action: pan-y;"
+                            style="scroll-behavior: smooth; touch-action: auto;"
                         >
                             {#each levels as level, idx (level.id)}
                                 {@const isLocked = level.order > currentLevelOrder}
