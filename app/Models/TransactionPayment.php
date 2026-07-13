@@ -52,7 +52,6 @@ class TransactionPayment extends Model
         return $this->belongsTo(User::class, 'confirmed_by');
     }
 
-
     /**
      * Get the formatted created at date.
      */

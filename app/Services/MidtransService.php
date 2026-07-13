@@ -148,7 +148,7 @@ class MidtransService
             return ['success' => false, 'error' => "Unknown payment type: {$paymentTypeKey}"];
         }
 
-        // For Credit Card, we request a Snap transaction redirect instead of direct Core API charge 
+        // For Credit Card, we request a Snap transaction redirect instead of direct Core API charge
         // to avoid PCI-DSS and security issues for the merchant.
         if ($config['type'] === 'credit_card') {
             return self::createSnapSessionForCard($orderId, $grossAmount, $customer);
@@ -207,11 +207,10 @@ class MidtransService
                 $payload['payment_type'] = 'cstore';
                 $payload['cstore'] = [
                     'store' => $paymentTypeKey === 'indomaret' ? 'indomaret' : 'alfamart',
-                    'message' => 'Pembayaran Pesanan #' . $orderId,
+                    'message' => 'Pembayaran Pesanan #'.$orderId,
                 ];
                 break;
         }
-
 
         try {
             $response = Http::withBasicAuth($serverKey, '')
@@ -367,12 +366,12 @@ class MidtransService
             }
 
             $errorMsg = $raw['error_messages'][0] ?? 'Gagal membuat sesi kartu kredit Midtrans.';
+
             return ['success' => false, 'error' => $errorMsg, 'raw' => $raw];
         } catch (\Exception $e) {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-
 
     /**
      * Get a list of enabled Midtrans Core API payment methods from settings.

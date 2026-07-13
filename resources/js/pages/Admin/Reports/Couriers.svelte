@@ -31,8 +31,8 @@
     // svelte-ignore state_referenced_locally
     let activePreset = $state(filters.preset || 'bulanan');
 
-    let methodCanvas: HTMLCanvasElement | undefined;
-    let serviceCanvas: HTMLCanvasElement | undefined;
+    let methodCanvas = $state<HTMLCanvasElement>();
+    let serviceCanvas = $state<HTMLCanvasElement>();
 
     let methodChart: Chart | undefined;
     let serviceChart: Chart | undefined;

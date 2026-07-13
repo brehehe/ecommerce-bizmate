@@ -44,7 +44,7 @@
     // svelte-ignore state_referenced_locally
     let activePreset = $state(filters.preset || 'bulanan');
 
-    let plCanvas: HTMLCanvasElement | undefined;
+    let plCanvas = $state<HTMLCanvasElement>();
     let plChart: Chart | undefined;
 
     function formatDateLocal(date: Date) {

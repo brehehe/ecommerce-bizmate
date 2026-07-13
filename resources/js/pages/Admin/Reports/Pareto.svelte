@@ -60,7 +60,7 @@
               ),
     );
 
-    let paretoCanvas: HTMLCanvasElement | undefined;
+    let paretoCanvas = $state<HTMLCanvasElement>();
     let paretoChart: Chart | null = null;
 
     const typeOptions = [

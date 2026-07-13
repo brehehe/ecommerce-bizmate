@@ -2,9 +2,9 @@
 
 namespace App\Observers;
 
-use App\Models\ReturnRequest;
-use App\Events\ReturnRequestUpdated;
 use App\Events\NotificationUpdated;
+use App\Events\ReturnRequestUpdated;
+use App\Models\ReturnRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -42,7 +42,7 @@ class ReturnRequestObserver
                 broadcast(new NotificationUpdated($admin->id))->toOthers();
             }
         } catch (\Throwable $e) {
-            Log::error('Broadcast admin notifications failed for return: ' . $e->getMessage());
+            Log::error('Broadcast admin notifications failed for return: '.$e->getMessage());
         }
     }
 }

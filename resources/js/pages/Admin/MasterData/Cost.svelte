@@ -16,9 +16,13 @@
     // Parse additional costs JSON safely
     let initialCosts: any[] = [];
     try {
+        // svelte-ignore state_referenced_locally
         if (settings.additional_costs) {
+            // svelte-ignore state_referenced_locally
             initialCosts = typeof settings.additional_costs === 'string'
+                // svelte-ignore state_referenced_locally
                 ? JSON.parse(settings.additional_costs)
+                // svelte-ignore state_referenced_locally
                 : settings.additional_costs;
         }
     } catch (e) {
@@ -26,6 +30,7 @@
     }
 
     // Form to manage operational costs and dynamic fee items
+    // svelte-ignore state_referenced_locally
     const form = useForm({
         shipping_rate: Number(settings.shipping_rate || 0),
         self_pickup_enabled: settings.self_pickup_enabled === 'true' || settings.self_pickup_enabled === true || settings.self_pickup_enabled === '1',

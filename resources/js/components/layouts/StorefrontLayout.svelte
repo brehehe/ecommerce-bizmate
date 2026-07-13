@@ -30,6 +30,7 @@
     // Theme from settings
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
+    const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
 
     $effect(() => {
         const flash = (page.props as any).flash;
@@ -1721,14 +1722,16 @@
                                             <i class="ti ti-user text-base"></i> Profil
                                             Saya
                                         </Link>
-                                        <Link
-                                            href="/membership"
-                                            prefetch
-                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                        >
-                                            <i class="ti ti-id text-base"></i> Membership
-                                            Saya
-                                        </Link>
+                                        {#if isMembershipEnabled}
+                                            <Link
+                                                href="/membership"
+                                                prefetch
+                                                class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            >
+                                                <i class="ti ti-id text-base"></i> Membership
+                                                Saya
+                                            </Link>
+                                        {/if}
                                         <Link
                                             href="/profile/addresses"
                                             prefetch
@@ -2018,13 +2021,15 @@
                 >
                     <i class="ti ti-user text-lg"></i> Profil Saya
                 </Link>
-                <Link
-                    href="/membership"
-                    prefetch
-                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                >
-                    <i class="ti ti-id text-lg"></i> Membership Saya
-                </Link>
+                {#if isMembershipEnabled}
+                    <Link
+                        href="/membership"
+                        prefetch
+                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    >
+                        <i class="ti ti-id text-lg"></i> Membership Saya
+                    </Link>
+                {/if}
                 <Link
                     href="/profile/addresses"
                     prefetch

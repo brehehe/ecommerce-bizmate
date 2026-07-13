@@ -24,7 +24,7 @@ class TransactionUpdated implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public function __construct(public Transaction $transaction)
+    public function __construct(protected Transaction $transaction)
     {
         $this->data = [
             'id' => $transaction->id,

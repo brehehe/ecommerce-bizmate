@@ -23,4 +23,3 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
 Broadcast::channel('admin', function ($user) {
     return ! $user->hasRole('Customer');
 });
-

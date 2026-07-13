@@ -2,9 +2,9 @@
 
 namespace App\Observers;
 
-use App\Models\RefundRequest;
-use App\Events\RefundRequestUpdated;
 use App\Events\NotificationUpdated;
+use App\Events\RefundRequestUpdated;
+use App\Models\RefundRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
@@ -42,7 +42,7 @@ class RefundRequestObserver
                 broadcast(new NotificationUpdated($admin->id))->toOthers();
             }
         } catch (\Throwable $e) {
-            Log::error('Broadcast admin notifications failed for refund: ' . $e->getMessage());
+            Log::error('Broadcast admin notifications failed for refund: '.$e->getMessage());
         }
     }
 }

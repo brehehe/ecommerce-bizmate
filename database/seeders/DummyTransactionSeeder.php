@@ -2,22 +2,20 @@
 
 namespace Database\Seeders;
 
+use App\Models\Courier;
 use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Product;
-use App\Models\ProductVariant;
 use App\Models\ProductPrice;
 use App\Models\ProductStock;
+use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\TransactionPayment;
-use App\Models\StockMovement;
 use App\Models\User;
-use App\Models\Courier;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 
 class DummyTransactionSeeder extends Seeder
@@ -29,7 +27,7 @@ class DummyTransactionSeeder extends Seeder
     {
         // 1. Ensure Roles and Customers are present
         $customerRole = Role::firstOrCreate(['name' => 'Customer']);
-        
+
         $customersData = [
             ['name' => 'Budi Santoso', 'email' => 'budi@example.com'],
             ['name' => 'Ani Wijaya', 'email' => 'ani@example.com'],
@@ -51,7 +49,7 @@ class DummyTransactionSeeder extends Seeder
                     'email_verified_at' => now(),
                 ]
             );
-            if (!$customer->hasRole('Customer')) {
+            if (! $customer->hasRole('Customer')) {
                 $customer->assignRole($customerRole);
             }
             $customers[] = $customer;
@@ -61,11 +59,12 @@ class DummyTransactionSeeder extends Seeder
         $products = Product::where('active', true)->with(['variants', 'productPrice', 'productStock'])->get();
         if ($products->isEmpty()) {
             $this->command->warn('No products found in the database. Please run CategoryAndProductSeeder first.');
+
             return;
         }
 
         $paymentMethod = PaymentMethod::where('is_active', true)->first();
-        if (!$paymentMethod) {
+        if (! $paymentMethod) {
             $paymentMethod = PaymentMethod::create([
                 'name' => 'Transfer Bank BCA (Manual)',
                 'type' => 'manual',
@@ -77,7 +76,7 @@ class DummyTransactionSeeder extends Seeder
         }
 
         $courier = Courier::where('is_active', true)->first();
-        if (!$courier) {
+        if (! $courier) {
             $courier = Courier::create([
                 'code' => 'jne',
                 'name' => 'JNE',
@@ -98,14 +97,14 @@ class DummyTransactionSeeder extends Seeder
                 [
                     'label' => 'Rumah',
                     'receiver_name' => $customer->name,
-                    'phone_number' => '0812345678' . rand(10, 99),
-                    'full_address' => 'Jl. Merdeka No. ' . rand(1, 150) . ', DKI Jakarta',
+                    'phone_number' => '0812345678'.rand(10, 99),
+                    'full_address' => 'Jl. Merdeka No. '.rand(1, 150).', DKI Jakarta',
                     'is_primary' => true,
                 ]
             );
 
             $status = $statuses[array_rand($statuses)];
-            
+
             // Random date: 25% today, 75% past 60 days
             if (rand(1, 100) <= 25) {
                 // Today: random time up to now
@@ -114,10 +113,10 @@ class DummyTransactionSeeder extends Seeder
                 // Past days: 1 to 60 days ago
                 $createdAt = Carbon::now()->subDays(rand(1, 60))->subHours(rand(0, 23))->subMinutes(rand(0, 59));
             }
-            
+
             // Get 1-3 random products
             $selectedProducts = $products->random(min(rand(1, 3), $products->count()));
-            
+
             $itemsData = [];
             $subtotal = 0;
 
@@ -134,13 +133,13 @@ class DummyTransactionSeeder extends Seeder
                 if ($variant) {
                     $pPrice = ProductPrice::where('product_variant_id', $variant->id)->first();
                     if ($pPrice) {
-                        $priceVal = (float)$pPrice->price;
-                        $costVal = (float)$pPrice->cost;
+                        $priceVal = (float) $pPrice->price;
+                        $costVal = (float) $pPrice->cost;
                     }
                 } else {
                     if ($product->productPrice) {
-                        $priceVal = (float)$product->productPrice->price;
-                        $costVal = (float)$product->productPrice->cost;
+                        $priceVal = (float) $product->productPrice->price;
+                        $costVal = (float) $product->productPrice->cost;
                     }
                 }
 
@@ -168,15 +167,15 @@ class DummyTransactionSeeder extends Seeder
             $grandTotal = $subtotal + $shippingFee + 1000; // subtotal + shipping + app fee (1000)
 
             // Generate Number
-            $prefix = 'TRX-' . $createdAt->format('Ymd') . '-';
-            $last = Transaction::where('transaction_number', 'like', $prefix . '%')
+            $prefix = 'TRX-'.$createdAt->format('Ymd').'-';
+            $last = Transaction::where('transaction_number', 'like', $prefix.'%')
                 ->orderByDesc('transaction_number')
                 ->value('transaction_number');
             $seq = $last ? (int) substr($last, -5) + 1 : 1;
-            $transactionNumber = $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
+            $transactionNumber = $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
 
             // Create Transaction
-            $transaction = new Transaction();
+            $transaction = new Transaction;
             $transaction->id = (string) Str::uuid();
             $transaction->transaction_number = $transactionNumber;
             $transaction->user_id = $customer->id;
@@ -194,12 +193,12 @@ class DummyTransactionSeeder extends Seeder
             $transaction->shipping_courier = $courier->code;
             $transaction->shipping_service = 'Reguler';
             $transaction->shipping_etd = '2-3 Hari';
-            
+
             if (in_array($status, ['dikirim', 'selesai'])) {
-                $transaction->tracking_number = 'RSI' . rand(10000000, 99999999);
+                $transaction->tracking_number = 'RSI'.rand(10000000, 99999999);
             }
             if (in_array($status, ['diproses', 'dikemas', 'dikirim', 'selesai'])) {
-                $transaction->booking_code = 'ST-' . $transactionNumber;
+                $transaction->booking_code = 'ST-'.$transactionNumber;
             }
             if ($status === 'batal') {
                 $transaction->cancel_reason = 'Dibatalkan oleh pelanggan';
@@ -212,7 +211,7 @@ class DummyTransactionSeeder extends Seeder
 
             // Create Items & Stock Movements
             foreach ($itemsData as $item) {
-                $tItem = new TransactionItem();
+                $tItem = new TransactionItem;
                 $tItem->id = (string) Str::uuid();
                 $tItem->transaction_id = $transaction->id;
                 $tItem->product_id = $item['product_id'];
@@ -236,17 +235,17 @@ class DummyTransactionSeeder extends Seeder
                     $pStock = ProductStock::where('product_id', $item['product_id'])
                         ->where('product_variant_id', $item['product_variant_id'])
                         ->first();
-                    
+
                     if ($pStock) {
-                        $stockBefore = (int)$pStock->stock;
+                        $stockBefore = (int) $pStock->stock;
                         $stockAfter = max(0, $stockBefore - $item['quantity']);
-                        
-                        if (!$pStock->is_unlimited) {
+
+                        if (! $pStock->is_unlimited) {
                             $pStock->stock = $stockAfter;
                             $pStock->save();
                         }
 
-                        $movement = new StockMovement();
+                        $movement = new StockMovement;
                         $movement->id = (string) Str::uuid();
                         $movement->product_id = $item['product_id'];
                         $movement->product_variant_id = $item['product_variant_id'];
@@ -255,7 +254,7 @@ class DummyTransactionSeeder extends Seeder
                         $movement->quantity = $item['quantity'];
                         $movement->stock_before = $stockBefore;
                         $movement->stock_after = $stockAfter;
-                        $movement->notes = 'Penjualan #' . $transactionNumber;
+                        $movement->notes = 'Penjualan #'.$transactionNumber;
                         $movement->created_at = $createdAt;
                         $movement->updated_at = $createdAt;
                         $movement->save();
@@ -265,13 +264,13 @@ class DummyTransactionSeeder extends Seeder
 
             // Create payment
             if ($status !== 'belum_bayar') {
-                $payment = new TransactionPayment();
+                $payment = new TransactionPayment;
                 $payment->id = (string) Str::uuid();
                 $payment->transaction_id = $transaction->id;
                 $payment->payment_method_id = $paymentMethod->id;
                 $payment->amount = $grandTotal;
                 $payment->status = in_array($status, ['batal', 'menunggu']) ? 'pending' : 'confirmed';
-                $payment->notes = 'Pembayaran untuk #' . $transactionNumber;
+                $payment->notes = 'Pembayaran untuk #'.$transactionNumber;
                 if ($payment->status === 'confirmed') {
                     $payment->confirmed_at = $createdAt;
                 }

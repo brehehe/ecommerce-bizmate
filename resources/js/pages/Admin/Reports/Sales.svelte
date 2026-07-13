@@ -49,9 +49,9 @@
 
     let activeTab = $state('daily');
 
-    let trendCanvas: HTMLCanvasElement | undefined;
-    let paymentCanvas: HTMLCanvasElement | undefined;
-    let statusCanvas: HTMLCanvasElement | undefined;
+    let trendCanvas = $state<HTMLCanvasElement>();
+    let paymentCanvas = $state<HTMLCanvasElement>();
+    let statusCanvas = $state<HTMLCanvasElement>();
 
     let trendChart: Chart | undefined;
     let paymentChart: Chart | undefined;

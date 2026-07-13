@@ -22,8 +22,11 @@
         expired:    'bg-slate-100 text-slate-500',
     };
 
+    // svelte-ignore state_referenced_locally
     let searchQ    = $state((filters as any).search || '');
+    // svelte-ignore state_referenced_locally
     let filterAction = $state((filters as any).action || '');
+    // svelte-ignore state_referenced_locally
     let filterLevel  = $state((filters as any).level  || '');
 
     function applyFilters() {

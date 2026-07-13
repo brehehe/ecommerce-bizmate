@@ -2,8 +2,12 @@
 
 namespace App\Observers;
 
+use App\Events\NotificationUpdated;
+use App\Events\TransactionUpdated;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Services\MembershipService;
+use Illuminate\Support\Facades\Log;
 
 class TransactionObserver
 {
@@ -14,7 +18,7 @@ class TransactionObserver
      */
     public function created(Transaction $transaction): void
     {
-        broadcast(new \App\Events\TransactionUpdated($transaction))->toOthers();
+        broadcast(new TransactionUpdated($transaction))->toOthers();
         $this->broadcastAdminNotifications();
     }
 
@@ -24,7 +28,7 @@ class TransactionObserver
     public function updated(Transaction $transaction): void
     {
         // Broadcast real-time update
-        broadcast(new \App\Events\TransactionUpdated($transaction))->toOthers();
+        broadcast(new TransactionUpdated($transaction))->toOthers();
         $this->broadcastAdminNotifications();
 
         // Only trigger when status changes to 'selesai'
@@ -52,16 +56,15 @@ class TransactionObserver
     protected function broadcastAdminNotifications(): void
     {
         try {
-            $admins = \App\Models\User::whereDoesntHave('roles', function ($q) {
+            $admins = User::whereDoesntHave('roles', function ($q) {
                 $q->where('name', 'Customer');
             })->get();
 
             foreach ($admins as $admin) {
-                broadcast(new \App\Events\NotificationUpdated($admin->id))->toOthers();
+                broadcast(new NotificationUpdated($admin->id))->toOthers();
             }
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Broadcast admin notifications failed: ' . $e->getMessage());
+            Log::error('Broadcast admin notifications failed: '.$e->getMessage());
         }
     }
 }
-

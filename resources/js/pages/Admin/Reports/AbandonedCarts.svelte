@@ -25,7 +25,7 @@
     // svelte-ignore state_referenced_locally
     let perPageFilter = $state(filters.per_page || 15);
 
-    let chartCanvas: HTMLCanvasElement | undefined;
+    let chartCanvas = $state<HTMLCanvasElement>();
     let trendChart: Chart | undefined;
 
     function applyFilter() {

@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'membership_enabled' => (bool) env('MEMBERSHIP_ENABLED', true),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

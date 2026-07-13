@@ -17,6 +17,7 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
 
     let showAssignModal = $state(false);
+    // svelte-ignore state_referenced_locally
     let assignLevelId   = $state(membership?.membership_level_id || '');
     let assignReason    = $state('');
     let isAssigning     = $state(false);

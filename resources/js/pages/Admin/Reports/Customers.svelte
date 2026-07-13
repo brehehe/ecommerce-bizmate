@@ -27,7 +27,7 @@
     // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
 
-    let regCanvas: HTMLCanvasElement | undefined;
+    let regCanvas = $state<HTMLCanvasElement>();
     let regChart: Chart | undefined;
 
     let selectedCustomer = $state<any>(null);

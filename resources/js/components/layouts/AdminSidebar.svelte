@@ -13,6 +13,7 @@
     let isCmsOpen = $state(false);
     let sidebarContainer = $state<HTMLElement | null>(null);
     const user = $derived(page.props.auth?.user);
+    const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
 
     $effect(() => {
         if (user && (window as any).Echo) {
@@ -510,7 +511,9 @@
         )}
 
         <!-- Membership -->
-        {@render NavItem('/admin/membership/dashboard', 'ti-award', 'Membership')}
+        {#if isMembershipEnabled}
+            {@render NavItem('/admin/membership/dashboard', 'ti-award', 'Membership')}
+        {/if}
 
         <div class="my-3 h-px bg-slate-100"></div>
 

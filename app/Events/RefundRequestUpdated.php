@@ -24,7 +24,7 @@ class RefundRequestUpdated implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public function __construct(public RefundRequest $refundRequest)
+    public function __construct(protected RefundRequest $refundRequest)
     {
         $this->data = [
             'id' => $refundRequest->id,

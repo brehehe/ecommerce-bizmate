@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Middleware\EnsureMembershipEnabled;
 use App\Http\Middleware\EnsureNotCustomer;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\IsKurir;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'not_customer' => EnsureNotCustomer::class,
             'is_kurir' => IsKurir::class,
             'verified' => EnsureEmailIsVerified::class,
+            'membership_enabled' => EnsureMembershipEnabled::class,
         ]);
         $middleware->web(append: [
             HandleInertiaRequests::class,

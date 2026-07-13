@@ -46,6 +46,7 @@
     });
 
     // Store Courier settings form
+    // svelte-ignore state_referenced_locally
     const storeCourierForm = useForm({
         store_courier_enabled:
             settings.store_courier_enabled === 'true' ||

@@ -24,7 +24,7 @@ class ReturnRequestUpdated implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public function __construct(public ReturnRequest $returnRequest)
+    public function __construct(protected ReturnRequest $returnRequest)
     {
         $this->data = [
             'id' => $returnRequest->id,

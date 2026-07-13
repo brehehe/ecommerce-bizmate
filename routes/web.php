@@ -64,7 +64,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])->middleware('throttle:6,1')->name('verification.send');
 
-    Route::get('/membership', [StorefrontController::class, 'membership'])->name('membership.index');
+    Route::get('/membership', [StorefrontController::class, 'membership'])
+        ->middleware('membership_enabled')
+        ->name('membership.index');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -168,7 +170,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/settings/tour-complete', [SettingController::class, 'completeTour'])->name('settings.tour-complete');
 
     // Membership
-    Route::prefix('membership')->name('membership.')->group(function () {
+    Route::prefix('membership')->name('membership.')->middleware('membership_enabled')->group(function () {
         Route::get('/dashboard', [MembershipController::class, 'dashboard'])->name('dashboard');
         Route::get('/levels', [MembershipController::class, 'levels'])->name('levels');
         Route::post('/levels', [MembershipController::class, 'storeLevel'])->name('levels.store');

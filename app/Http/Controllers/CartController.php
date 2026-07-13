@@ -404,6 +404,7 @@ class CartController extends Controller
             if ($promo->items->isEmpty()) {
                 return true; // Store-wide
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -423,6 +424,7 @@ class CartController extends Controller
                     return true;
                 }
             }
+
             return false;
         });
 
@@ -434,6 +436,7 @@ class CartController extends Controller
             if ($promo->items->isEmpty()) {
                 return true;
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });
@@ -447,6 +450,7 @@ class CartController extends Controller
             if ($promo->items->isEmpty()) {
                 return true;
             }
+
             return $promo->items->contains(function ($i) use ($product) {
                 return $i->product_id === $product->id;
             });

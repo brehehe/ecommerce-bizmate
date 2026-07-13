@@ -7,7 +7,9 @@
     const primary   = $derived(page.props.theme?.primary_color   || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
 
+    // svelte-ignore state_referenced_locally
     let searchQ     = $state((filters as any).search || '');
+    // svelte-ignore state_referenced_locally
     let filterLevel = $state((filters as any).level  || '');
     let showAssignModal = $state(false);
     let selectedUser = $state<any>(null);

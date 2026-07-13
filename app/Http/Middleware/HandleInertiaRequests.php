@@ -291,6 +291,7 @@ class HandleInertiaRequests extends Middleware
                 'secondary_color' => $secondaryColor,
             ],
             'settings' => [
+                'membership_enabled' => (bool) config('app.membership_enabled', true),
                 'tax_enabled' => $taxEnabled,
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,

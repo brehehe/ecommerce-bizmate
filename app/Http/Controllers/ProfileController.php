@@ -48,7 +48,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'phone_number' => 'nullable|string|max:20',
             'gender' => 'nullable|in:Laki-laki,Perempuan',
             'birth_date' => 'nullable|date',
@@ -136,7 +136,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'phone_number' => 'nullable|string|max:20',
             'gender' => 'nullable|in:Laki-laki,Perempuan',
             'birth_date' => 'nullable|date',
@@ -337,9 +337,9 @@ class ProfileController extends Controller
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'ilike', '%' . $search . '%')
+                $q->where('description', 'ilike', '%'.$search.'%')
                     ->orWhereHas('transaction', function ($t) use ($search) {
-                        $t->where('transaction_number', 'ilike', '%' . $search . '%');
+                        $t->where('transaction_number', 'ilike', '%'.$search.'%');
                     });
             });
         }

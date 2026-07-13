@@ -130,7 +130,7 @@ class KurirDashboardController extends Controller
             ];
 
             if (empty($transaction->tracking_number)) {
-                $updateData['tracking_number'] = 'RSI-' . str_replace('TRX-', '', $transaction->transaction_number) . '-' . now()->format('Ymd');
+                $updateData['tracking_number'] = 'RSI-'.str_replace('TRX-', '', $transaction->transaction_number).'-'.now()->format('Ymd');
             }
 
             $transaction->update($updateData);
