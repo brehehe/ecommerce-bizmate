@@ -3,6 +3,7 @@
     import { page, router, Link } from '@inertiajs/svelte';
     import { dragScroll } from '@/utils/dragScroll';
     import Pagination from '@/components/ui/Pagination.svelte';
+    import { showToast } from '@/utils/toast';
 
     let {
         refunds,
@@ -77,22 +78,6 @@
         ditolak: 'ti-circle-x',
         selesai: 'ti-check',
     };
-
-    // Toast state
-    let toastMsg = $state('');
-    let toastType = $state<'success' | 'error'>('success');
-    let toastVisible = $state(false);
-    let toastTimer: ReturnType<typeof setTimeout> | null = null;
-
-    function showToast(msg: string, type: 'success' | 'error' = 'success') {
-        toastMsg = msg;
-        toastType = type;
-        toastVisible = true;
-        if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-            toastVisible = false;
-        }, 3500);
-    }
 
     // Selection state
     let selectedIds = $state<number[]>([]);
@@ -177,9 +162,6 @@
                 onSuccess: () => {
                     selectedIds = [];
                     bulkNotesAdmin = '';
-                    showToast(
-                        'Pengajuan pembatalan berhasil disetujui secara massal.',
-                    );
                 },
                 onError: (err: any) => {
                     showToast(err.message || 'Terjadi kesalahan.', 'error');
@@ -220,7 +202,6 @@
             {
                 onSuccess: () => {
                     selectedIds = [];
-                    showToast('Transfer refund massal berhasil diselesaikan.');
                 },
                 onError: (err: any) => {
                     showToast(err.message || 'Terjadi kesalahan.', 'error');
@@ -505,20 +486,6 @@
     </main>
 </AdminLayout>
 
-<!-- Toast -->
-{#if toastVisible}
-    <div
-        class="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white text-sm font-bold"
-        style="background:{toastType === 'success' ? '#22c55e' : '#ef4444'};"
-    >
-        <i
-            class="ti {toastType === 'success'
-                ? 'ti-circle-check'
-                : 'ti-alert-circle'} text-base"
-        ></i>
-        {toastMsg}
-    </div>
-{/if}
 
 <style>
     .scrollbar-none::-webkit-scrollbar {

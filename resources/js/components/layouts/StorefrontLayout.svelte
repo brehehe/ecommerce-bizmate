@@ -39,26 +39,28 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
 
+    const flash = $derived((page.props as any).flash);
+
     $effect(() => {
-        const flash = (page.props as any).flash;
-        if (!flash || !flash.id || shownFlashIds.has(flash.id)) return;
+        const currentFlash = flash;
+        if (!currentFlash || !currentFlash.id || shownFlashIds.has(currentFlash.id)) return;
 
         let showed = false;
-        if (flash.success) {
-            showToast(flash.success, 'success');
+        if (currentFlash.success) {
+            showToast(currentFlash.success, 'success');
             showed = true;
         }
-        if (flash.error) {
-            showToast(flash.error, 'error');
+        if (currentFlash.error) {
+            showToast(currentFlash.error, 'error');
             showed = true;
         }
-        if (flash.warning) {
-            showToast(flash.warning, 'error');
+        if (currentFlash.warning) {
+            showToast(currentFlash.warning, 'error');
             showed = true;
         }
 
         if (showed) {
-            shownFlashIds.add(flash.id);
+            shownFlashIds.add(currentFlash.id);
         }
     });
 

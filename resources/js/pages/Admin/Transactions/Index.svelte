@@ -5,6 +5,7 @@
     import { onDestroy } from 'svelte';
     import { dragScroll } from '@/utils/dragScroll';
     import Pagination from '@/components/ui/Pagination.svelte';
+    import { showToast } from '@/utils/toast';
 
     let {
         transactions,
@@ -56,21 +57,7 @@
     let courierInput = $state('');
     let submittingResi = $state(false);
 
-    // Toast state
-    let toastMsg = $state('');
-    let toastType = $state<'success' | 'error'>('success');
-    let toastVisible = $state(false);
-    let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-    function showToast(msg: string, type: 'success' | 'error' = 'success') {
-        toastMsg = msg;
-        toastType = type;
-        toastVisible = true;
-        if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-            toastVisible = false;
-        }, 3500);
-    }
 
     // Bulk status update state and method
     let bulkStatusValue = $state('');
@@ -152,10 +139,6 @@
             },
             {
                 onSuccess: () => {
-                    showToast(
-                        `${validIds.length} transaksi berhasil diperbarui.`,
-                        'success',
-                    );
                     selectedIds = [];
                     bulkStatusValue = '';
                     bulkCancelReason = '';
@@ -172,6 +155,24 @@
                 },
             },
         );
+    }
+
+    function bulkUpdateStatus(status: string) {
+        bulkStatusValue = status;
+        if (status === 'batal') {
+            const reason = window.prompt('Masukkan alasan pembatalan untuk transaksi terpilih:');
+            if (reason === null) {
+                bulkStatusValue = '';
+                return;
+            }
+            if (!reason.trim()) {
+                showToast('Alasan pembatalan harus diisi.', 'error');
+                bulkStatusValue = '';
+                return;
+            }
+            bulkCancelReason = reason;
+        }
+        submitBulkStatus();
     }
 
     function submitBulkTracking() {
@@ -196,10 +197,6 @@
             },
             {
                 onSuccess: () => {
-                    showToast(
-                        'Nomor resi massal berhasil disimpan.',
-                        'success',
-                    );
                     selectedIds = [];
                     bulkStatusValue = '';
                     showBulkResiModal = false;

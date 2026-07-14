@@ -14,21 +14,20 @@
     // triggers a prop update more than once per navigation.
     const shownFlashIds = new Set<string>();
 
-    $effect(() => {
-        const flash = (page.props as any).flash;
+    const flash = $derived((page.props as any).flash);
 
-        // Read the id reactively to track it, then check/mutate inside untrack
-        // so the Set mutation never triggers a re-run of this effect.
-        const flashId: string | undefined = flash?.id;
+    $effect(() => {
+        const currentFlash = flash;
+        const flashId: string | undefined = currentFlash?.id;
 
         untrack(() => {
-            if (!flash || !flashId || shownFlashIds.has(flashId)) return;
+            if (!currentFlash || !flashId || shownFlashIds.has(flashId)) return;
 
             shownFlashIds.add(flashId);
 
-            if (flash.success) showToast(flash.success, 'success');
-            if (flash.error) showToast(flash.error, 'error');
-            if (flash.warning) showToast(flash.warning, 'error');
+            if (currentFlash.success) showToast(currentFlash.success, 'success');
+            if (currentFlash.error) showToast(currentFlash.error, 'error');
+            if (currentFlash.warning) showToast(currentFlash.warning, 'error');
         });
     });
 
