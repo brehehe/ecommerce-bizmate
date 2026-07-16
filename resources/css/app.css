@@ -54,39 +54,39 @@
 
 /* Base dark mode variables on the storefront root */
 .sf-dark {
-    --sf-text-dark: #f1f5f9;
-    --sf-bg-card: #1e293b;
-    --sf-bg-page: #0f172a;
-    color: #e2e8f0;
+    --sf-text-dark: #f8fafc;
+    --sf-bg-card: #202c3f;
+    --sf-bg-page: #151f32;
+    color: #f1f5f9;
 }
 
 /* ── STRUCTURAL BACKGROUNDS ─────────────────────────────── */
 
 .sf-dark .bg-slate-50 {
-    background-color: #0f172a !important;
+    background-color: #151f32 !important;
 }
 
 .sf-dark .bg-slate-100 {
-    background-color: #1e293b !important;
+    background-color: #202c3f !important;
 }
 
 .sf-dark .bg-slate-200 {
-    background-color: #334155 !important;
+    background-color: #2d3d56 !important;
 }
 
 .sf-dark .bg-slate-900 {
-    background-color: #020617 !important;
+    background-color: #0b111e !important;
 }
 
 /* All white backgrounds inside storefront become dark */
 .sf-dark .bg-white {
-    background-color: #1e293b !important;
+    background-color: #202c3f !important;
 }
 
 /* ── TEXT COLORS ──────────────────────────────────────────── */
 
 .sf-dark .text-slate-900 {
-    color: #f1f5f9 !important;
+    color: #f8fafc !important;
 }
 
 .sf-dark .text-slate-800 {
@@ -102,11 +102,11 @@
 }
 
 .sf-dark .text-slate-500 {
-    color: #94a3b8 !important;
+    color: #a3b3c9 !important;
 }
 
 .sf-dark .text-slate-400 {
-    color: #64748b !important;
+    color: #8ca0ba !important;
 }
 
 /* Product name with hardcoded color - override via CSS variable */
@@ -121,51 +121,59 @@
 /* ── BORDERS ──────────────────────────────────────────────── */
 
 .sf-dark .border-slate-50 {
-    border-color: #0f172a !important;
+    border-color: #151f32 !important;
 }
 
 .sf-dark .border-slate-100 {
-    border-color: #334155 !important;
+    border-color: #2d3d56 !important;
 }
 
 .sf-dark .border-slate-200 {
-    border-color: #475569 !important;
+    border-color: #3f526e !important;
 }
 
 .sf-dark .divide-slate-50 > * + * {
-    border-color: #1e293b !important;
+    border-color: #202c3f !important;
 }
 
 .sf-dark .divide-slate-100 > * + * {
-    border-color: #334155 !important;
+    border-color: #2d3d56 !important;
 }
 
 /* ── OPACITY VARIANTS ─────────────────────────────────────── */
 
 .sf-dark .bg-slate-50\/40 {
-    background-color: rgba(15, 23, 42, 0.4) !important;
+    background-color: rgba(0, 0, 0, 0.25) !important;
 }
 
 .sf-dark .bg-slate-50\/50 {
-    background-color: rgba(15, 23, 42, 0.5) !important;
+    background-color: rgba(0, 0, 0, 0.3) !important;
 }
 
 .sf-dark .bg-slate-50\/30 {
-    background-color: rgba(15, 23, 42, 0.3) !important;
+    background-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.sf-dark .bg-slate-50\/20 {
+    background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.sf-dark .bg-slate-50\/10 {
+    background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
 /* ── HOVER STATES ─────────────────────────────────────────── */
 
 .sf-dark .hover\:bg-slate-50:hover {
-    background-color: #334155 !important;
+    background-color: #2d3d56 !important;
 }
 
 .sf-dark .hover\:bg-slate-50\/70:hover {
-    background-color: rgba(51, 65, 85, 0.7) !important;
+    background-color: rgba(45, 61, 86, 0.7) !important;
 }
 
 .sf-dark .hover\:bg-slate-100:hover {
-    background-color: #334155 !important;
+    background-color: #2d3d56 !important;
 }
 
 /* ── FORM INPUTS ──────────────────────────────────────────── */
@@ -503,5 +511,29 @@ html {
         border-color: #cbd5e1 !important;
         color: #0f172a !important;
     }
+}
+
+/* ── PROSE / TYPOGRAPHY OVERRIDES IN DARK MODE ────────────── */
+.sf-dark .prose h1,
+.sf-dark .prose h2,
+.sf-dark .prose h3,
+.sf-dark .prose h4,
+.sf-dark .prose h5,
+.sf-dark .prose h6,
+.sf-dark .prose strong,
+.sf-dark :global(.prose h1),
+.sf-dark :global(.prose h2),
+.sf-dark :global(.prose h3),
+.sf-dark :global(.prose strong) {
+    color: #f1f5f9 !important;
+}
+
+.sf-dark .prose p,
+.sf-dark .prose li,
+.sf-dark .prose ul,
+.sf-dark .prose ol,
+.sf-dark .prose span,
+.sf-dark .prose {
+    color: #cbd5e1 !important;
 }
 

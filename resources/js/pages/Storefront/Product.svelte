@@ -1265,13 +1265,24 @@
                 quantity: qty,
             },
             {
-                // onSuccess: () => {
-                //     showToast(
-                //         'Produk berhasil ditambahkan ke keranjang!',
-                //         'success',
-                //         'top',
-                //     );
-                // },
+                preserveScroll: true,
+                onSuccess: (page: any) => {
+                    // Dispatch event so layout updates badge immediately
+                    const newCartCount = page.props?.cartCount;
+                    window.dispatchEvent(
+                        new CustomEvent('cart-updated', {
+                            detail:
+                                newCartCount !== undefined
+                                    ? { cartCount: newCartCount }
+                                    : { delta: qty },
+                        }),
+                    );
+                    showToast(
+                        'Produk berhasil ditambahkan ke keranjang!',
+                        'success',
+                        'top',
+                    );
+                },
                 onError: (errors: any) => {
                     const errMsg =
                         errors?.error ??

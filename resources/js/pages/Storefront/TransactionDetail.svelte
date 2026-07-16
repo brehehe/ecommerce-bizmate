@@ -1829,7 +1829,7 @@
 
                                 {#each statusSteps as step, i}
                                     {@const isCompleted = statusIndex >= i}
-                                    {@const isCurrent = statusIndex === i}
+                                    {@const isCurrent = statusIndex === i && transaction.status !== 'selesai'}
                                     <div
                                         class="flex flex-col items-center gap-2 z-10 flex-1 relative min-w-0"
                                     >
@@ -1865,11 +1865,9 @@
                                         >
                                             <span
                                                 class="text-[8px] sm:text-[10px] font-black text-center leading-tight max-w-[50px] sm:max-w-[76px] transition-colors duration-500 font-outfit"
-                                                style={isCurrent
-                                                    ? `color:${primary}`
-                                                    : isCompleted
-                                                      ? 'color:#334155'
-                                                      : 'color:#94a3b8'}
+                                                class:text-slate-800={isCompleted && !isCurrent}
+                                                class:text-slate-400={!isCompleted && !isCurrent}
+                                                style={isCurrent ? `color:${primary}` : ''}
                                             >
                                                 {step.label}
                                             </span>

@@ -126,7 +126,10 @@
         (page.props as any).settings?.pwa_install_enabled !== false,
     );
 
-    const cartCount = $derived((page.props as any).cartCount || 0);
+    let localCartCount = $state(0);
+    $effect(() => {
+        localCartCount = (page.props as any).cartCount || 0;
+    });
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
     const customerNotifications = $derived(
         (page.props as any).customerNotifications || [],
@@ -168,6 +171,7 @@
                 }
                 if (data.cartCount !== undefined) {
                     (page.props as any).cartCount = data.cartCount;
+                    localCartCount = data.cartCount;
                 }
                 if (data.customerNotifications !== undefined) {
                     (page.props as any).customerNotifications =
@@ -975,9 +979,21 @@
         const handleOpenLogin = () => openLogin();
         const handleToggleDropdown = () => (profileDropOpen = !profileDropOpen);
         
-        const unsubscribe = router.on('navigate', () => {
+        const unsubscribe = router.on('navigate', (event: any) => {
             profileDropOpen = false;
             isNotifOpen = false;
+            // Sync cartCount on every page navigation
+            const navProps = event?.detail?.page?.props;
+            if (navProps && navProps.cartCount !== undefined) {
+                localCartCount = navProps.cartCount;
+            }
+        });
+
+        const unsubscribeSuccess = router.on('success', (event: any) => {
+            const pageProps = event.detail.page.props;
+            if (pageProps && pageProps.cartCount !== undefined) {
+                localCartCount = pageProps.cartCount;
+            }
         });
 
         const handleOpenDesktopChat = async (e: any) => {
@@ -1011,15 +1027,25 @@
             }
         };
 
+        const handleCartUpdated = (e: any) => {
+            if (e.detail?.cartCount !== undefined) {
+                localCartCount = e.detail.cartCount;
+            } else {
+                localCartCount = localCartCount + (e.detail?.delta ?? 1);
+            }
+        };
+
         window.addEventListener('open-login-modal', handleOpenLogin);
         window.addEventListener(
             'toggle-profile-dropdown',
             handleToggleDropdown,
         );
         window.addEventListener('open-desktop-chat', handleOpenDesktopChat);
+        window.addEventListener('cart-updated', handleCartUpdated);
 
         return () => {
             unsubscribe();
+            unsubscribeSuccess();
             window.removeEventListener('open-login-modal', handleOpenLogin);
             window.removeEventListener(
                 'toggle-profile-dropdown',
@@ -1029,6 +1055,7 @@
                 'open-desktop-chat',
                 handleOpenDesktopChat,
             );
+            window.removeEventListener('cart-updated', handleCartUpdated);
         };
     });
 
@@ -1432,6 +1459,18 @@
                     </Link>
                 </div>
 
+                <!-- Home Button (Desktop) - Only show if not on homepage -->
+                {#if page.url.split('?')[0] !== '/'}
+                    <Link
+                        href="/"
+                        class="p-2 text-white hover:bg-white/20 rounded-xl transition flex items-center justify-center shrink-0"
+                        title="Kembali ke Home"
+                        aria-label="Kembali ke Home"
+                    >
+                        <i class="ti ti-home text-2xl"></i>
+                    </Link>
+                {/if}
+
                 <!-- Search bar (desktop) -->
                 <form
                     onsubmit={handleSearch}
@@ -1457,39 +1496,38 @@
 
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
-                    <!-- Dark Mode Toggle (Desktop) -->
-                    <button
-                        onclick={toggleDarkMode}
-                        class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                        title={isDark ? 'Mode Terang' : 'Mode Gelap'}
-                    >
-                        {#if isDark}
-                            <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
-                            <span class="text-[9px] font-bold text-white/80 mt-0.5">Terang</span>
-                        {:else}
-                            <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
-                            <span class="text-[9px] font-bold text-white/80 mt-0.5">Gelap</span>
-                        {/if}
-                    </button>
-                    <!-- Poin Saya -->
-                    {#if (page.props as any).settings?.coins_enabled}
+
+                    <!-- Dark Mode Toggle (Desktop) - Only show for guests in header -->
+                    {#if !auth}
                         <button
-                            onclick={openCoinsModal}
+                            onclick={toggleDarkMode}
                             class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                            aria-label="Poin Saya"
+                            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                            title={isDark ? 'Mode Terang' : 'Mode Gelap'}
                         >
-                            <i class="ti ti-coins text-xl"></i>
-                            <span
-                                class="text-[9px] font-bold text-white/80 mt-0.5"
-                            >
-                                {#if auth}
-                                    {formatNumber(auth.coins_balance || 0)} Poin
-                                {:else}
-                                    Poin
-                                {/if}
-                            </span>
+                            {#if isDark}
+                                <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
+                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Terang</span>
+                            {:else}
+                                <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
+                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Gelap</span>
+                            {/if}
                         </button>
+                        <!-- Poin Saya (Desktop) - Only show for guests in header -->
+                        {#if (page.props as any).settings?.coins_enabled}
+                            <button
+                                onclick={openCoinsModal}
+                                class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                                aria-label="Poin Saya"
+                            >
+                                <i class="ti ti-coins text-xl"></i>
+                                <span
+                                    class="text-[9px] font-bold text-white/80 mt-0.5"
+                                >
+                                    Poin
+                                </span>
+                            </button>
+                        {/if}
                     {/if}
 
                     <!-- Cart -->
@@ -1500,12 +1538,12 @@
                     >
                         <div class="relative">
                             <i class="ti ti-shopping-cart text-xl"></i>
-                            {#if cartCount > 0}
+                            {#if localCartCount > 0}
                                 <span
                                     class="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
                                     style="background-color: {secondary}; font-family: sans-serif;"
                                 >
-                                    {cartCount}
+                                    {localCartCount}
                                 </span>
                             {/if}
                         </div>
@@ -1791,8 +1829,7 @@
                                             }}
                                             class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left"
                                         >
-                                            <i class="ti ti-message text-base"
-                                            ></i>
+                                            <i class="ti ti-message text-base"></i>
                                             Chat Saya
                                             {#if chatUnreadCount > 0}
                                                 <span
@@ -1803,6 +1840,27 @@
                                                         ? '99+'
                                                         : chatUnreadCount}
                                                 </span>
+                                            {/if}
+                                        </button>
+                                        {#if (page.props as any).settings?.coins_enabled}
+                                            <button
+                                                onclick={() => {
+                                                    profileDropOpen = false;
+                                                    openCoinsModal();
+                                                }}
+                                                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
+                                            >
+                                                <i class="ti ti-coins text-base text-amber-500"></i> Poin Saya: <span class="font-bold text-slate-900 ml-1">{formatNumber(auth.coins_balance || 0)}</span>
+                                            </button>
+                                        {/if}
+                                        <button
+                                            onclick={toggleDarkMode}
+                                            class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
+                                        >
+                                            {#if isDark}
+                                                <i class="ti ti-sun text-base text-amber-500 animate-pulse"></i> Mode Terang
+                                            {:else}
+                                                <i class="ti ti-moon text-base text-indigo-500"></i> Mode Gelap
                                             {/if}
                                         </button>
                                     </div>
@@ -1875,6 +1933,17 @@
                     >
                 </Link>
 
+                <!-- Home Button (Mobile) - Only show if not on homepage -->
+                {#if page.url.split('?')[0] !== '/'}
+                    <Link
+                        href="/"
+                        class="text-white p-1.5 shrink-0 flex items-center justify-center"
+                        aria-label="Kembali ke Home"
+                    >
+                        <i class="ti ti-home text-2xl"></i>
+                    </Link>
+                {/if}
+
                 <!-- Mobile search -->
                 <form onsubmit={handleSearch} class="flex-grow">
                     <div class="relative">
@@ -1896,44 +1965,49 @@
 
                 <!-- Mobile right icons -->
                 <div class="flex items-center gap-2 shrink-0">
-                    <!-- Dark Mode Toggle (Mobile) -->
-                    <button
-                        onclick={toggleDarkMode}
-                        class="relative text-white p-1.5 shrink-0"
-                        aria-label={isDark ? 'Mode Terang' : 'Mode Gelap'}
-                    >
-                        {#if isDark}
-                            <i class="ti ti-sun text-2xl light-toggle-icon-enter"></i>
-                        {:else}
-                            <i class="ti ti-moon text-2xl dark-toggle-icon-enter"></i>
-                        {/if}
-                    </button>
-                    <!-- Coin Saya (mobile) -->
-                    {#if (page.props as any).settings?.coins_enabled}
+
+                    <!-- Dark Mode Toggle (Mobile) - Only show for guests in header -->
+                    {#if !auth}
                         <button
-                            onclick={openCoinsModal}
+                            onclick={toggleDarkMode}
                             class="relative text-white p-1.5 shrink-0"
-                            aria-label="Poin Saya"
+                            aria-label={isDark ? 'Mode Terang' : 'Mode Gelap'}
                         >
-                            <i class="ti ti-coins text-2xl"></i>
+                            {#if isDark}
+                                <i class="ti ti-sun text-2xl light-toggle-icon-enter"></i>
+                            {:else}
+                                <i class="ti ti-moon text-2xl dark-toggle-icon-enter"></i>
+                            {/if}
                         </button>
+                        <!-- Coin Saya (mobile) - Only show for guests in header -->
+                        {#if (page.props as any).settings?.coins_enabled}
+                            <button
+                                onclick={openCoinsModal}
+                                class="relative text-white p-1.5 shrink-0"
+                                aria-label="Poin Saya"
+                            >
+                                <i class="ti ti-coins text-2xl"></i>
+                            </button>
+                        {/if}
                     {/if}
 
                     <!-- Cart -->
                     <button
                         onclick={goToCart}
-                        class="relative text-white p-1.5"
+                        class="text-white p-1.5 flex items-center justify-center"
                         aria-label="Keranjang"
                     >
-                        <i class="ti ti-shopping-cart text-2xl"></i>
-                        {#if cartCount > 0}
-                            <span
-                                class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white"
-                                style="background-color: {secondary};"
-                            >
-                                {cartCount}
-                            </span>
-                        {/if}
+                        <div class="relative">
+                            <i class="ti ti-shopping-cart text-2xl"></i>
+                            {#if localCartCount > 0}
+                                <span
+                                    class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
+                                    style="background-color: {secondary}; font-family: sans-serif;"
+                                >
+                                    {localCartCount}
+                                </span>
+                            {/if}
+                        </div>
                     </button>
 
                     <!-- Notifications Bell (Mobile) -->
@@ -1943,18 +2017,20 @@
                                 isNotifOpen = !isNotifOpen;
                                 profileDropOpen = false;
                             }}
-                            class="relative text-white p-1.5"
+                            class="text-white p-1.5 flex items-center justify-center"
                             aria-label="Notifikasi"
                         >
-                            <i class="ti ti-bell text-2xl"></i>
-                            {#if unreadNotifCount > 0}
-                                <span
-                                    class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white bg-brand-orange border border-white/20 shadow-sm font-sans"
-                                    style="background-color: {secondary};"
-                                >
-                                    {unreadNotifCount}
-                                </span>
-                            {/if}
+                            <div class="relative">
+                                <i class="ti ti-bell text-2xl"></i>
+                                {#if unreadNotifCount > 0}
+                                    <span
+                                        class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
+                                        style="background-color: {secondary}; font-family: sans-serif;"
+                                    >
+                                        {unreadNotifCount}
+                                    </span>
+                                {/if}
+                            </div>
                         </button>
                     {/if}
 
@@ -2092,7 +2168,6 @@
                         </span>
                     {/if}
                 </button>
-
                 <Link
                     href="/about"
                     prefetch
@@ -2101,6 +2176,30 @@
                 >
                     <i class="ti ti-info-circle text-lg"></i> Tentang Kami
                 </Link>
+                {#if (page.props as any).settings?.coins_enabled}
+                    <button
+                        onclick={() => {
+                            profileDropOpen = false;
+                            openCoinsModal();
+                        }}
+                        class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
+                    >
+                        <i class="ti ti-coins text-lg text-amber-500"></i> Poin Saya: <span class="font-bold text-slate-900 ml-1">{formatNumber(auth.coins_balance || 0)}</span>
+                    </button>
+                {/if}
+                <button
+                    onclick={() => {
+                        profileDropOpen = false;
+                        toggleDarkMode();
+                    }}
+                    class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
+                >
+                    {#if isDark}
+                        <i class="ti ti-sun text-lg text-amber-500"></i> Mode Terang
+                    {:else}
+                        <i class="ti ti-moon text-lg text-indigo-500"></i> Mode Gelap
+                    {/if}
+                </button>
 
                 <button
                     onclick={logout}
