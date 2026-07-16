@@ -52,6 +52,10 @@ class BiteshipService
      */
     public static function isEnabled(): bool
     {
+        if (! config('app.logistic_enabled', true)) {
+            return false;
+        }
+
         $enabled = self::getSetting('biteship_enabled');
 
         return $enabled === '1' || $enabled === 'true' || $enabled === true;

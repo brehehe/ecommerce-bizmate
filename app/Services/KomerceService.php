@@ -797,6 +797,10 @@ class KomerceService
      */
     public static function isDeliveryEnabled(): bool
     {
+        if (! config('app.logistic_enabled', true)) {
+            return false;
+        }
+
         $enabled = self::getSetting('shipping_delivery_enabled');
 
         return $enabled === '1' || $enabled === 'true' || $enabled === true;
@@ -1836,7 +1840,7 @@ class KomerceService
             }
 
             // 3. Midtrans Snap
-            $midtransEnabled = (Setting::where('key', 'midtrans_api_enabled')->value('value') === '1');
+            $midtransEnabled = config('app.midtrans_enabled', true) && (Setting::where('key', 'midtrans_api_enabled')->value('value') === '1');
             $midtransFee = (float) (Setting::where('key', 'midtrans_admin_fee')->value('value') ?? 0);
             $midtransKey = self::getSetting('midtrans_server_key', 'app.midtrans.server_key');
 

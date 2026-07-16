@@ -352,6 +352,7 @@ class MasterDataController extends Controller
             ],
             'gateway_settings' => $gatewaySettings,
             'env_keys' => $envKeys,
+            'midtrans_enabled' => (bool) config('app.midtrans_enabled', true),
         ]);
     }
 
@@ -1104,6 +1105,10 @@ class MasterDataController extends Controller
      */
     public function logisticApi(): Response
     {
+        if (! config('app.logistic_enabled', true)) {
+            abort(404);
+        }
+
         $keys = [
             'shipping_delivery_enabled',
             'shipping_delivery_key',
@@ -1135,6 +1140,10 @@ class MasterDataController extends Controller
      */
     public function updateLogisticApi(Request $request): RedirectResponse
     {
+        if (! config('app.logistic_enabled', true)) {
+            abort(404);
+        }
+
         $allowed = [
             'shipping_delivery_enabled',
             'shipping_delivery_key',

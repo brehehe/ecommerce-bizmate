@@ -172,13 +172,13 @@ class HandleInertiaRequests extends Middleware
                 $refundTermsTransfer = $settings['refund_terms_transfer'] ?? '';
                 $refundTermsPoints = $settings['refund_terms_points'] ?? '';
 
-                $shippingDeliveryEnabled = ($settings['shipping_delivery_enabled'] ?? null) === '1';
+                $shippingDeliveryEnabled = config('app.logistic_enabled', true) && ($settings['shipping_delivery_enabled'] ?? null) === '1';
                 $paymentApiEnabled = ($settings['payment_api_enabled'] ?? null) === '1';
                 $paymentApiAdminFee = (float) ($settings['payment_api_admin_fee'] ?? 0);
                 $qrislyApiEnabled = ($settings['qrisly_api_enabled'] ?? null) === '1';
                 $qrislyApiAdminFee = (float) ($settings['qrisly_api_admin_fee'] ?? 0);
                 $komerceDeliveryUrl = KomerceService::getSetting('komerce_delivery_url', 'app.rajaongkir.delivery_url');
-                $midtransApiEnabled = ($settings['midtrans_api_enabled'] ?? null) === '1';
+                $midtransApiEnabled = config('app.midtrans_enabled', true) && ($settings['midtrans_api_enabled'] ?? null) === '1';
                 $midtransClientKey = $settings['midtrans_client_key'] ?? '';
                 $midtransSnapUrl = $settings['midtrans_snap_url'] ?? 'https://app.sandbox.midtrans.com';
 
@@ -292,6 +292,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'settings' => [
                 'membership_enabled' => (bool) config('app.membership_enabled', true),
+                'midtrans_enabled' => (bool) config('app.midtrans_enabled', true),
+                'logistic_enabled' => (bool) config('app.logistic_enabled', true),
                 'tax_enabled' => $taxEnabled,
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,

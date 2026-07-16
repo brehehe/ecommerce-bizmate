@@ -196,7 +196,7 @@ class CheckoutController extends Controller
             ->get();
 
         // Midtrans Core API enabled methods
-        $midtransEnabled = Setting::where('key', 'midtrans_api_enabled')->value('value') === '1';
+        $midtransEnabled = config('app.midtrans_enabled', true) && Setting::where('key', 'midtrans_api_enabled')->value('value') === '1';
         $midtransEnabledMethods = $midtransEnabled ? MidtransService::getEnabledMethods() : [];
         $midtransAdminFee = (float) (Setting::where('key', 'midtrans_admin_fee')->value('value') ?? 0);
 

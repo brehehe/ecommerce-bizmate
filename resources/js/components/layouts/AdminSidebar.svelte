@@ -14,6 +14,7 @@
     let sidebarContainer = $state<HTMLElement | null>(null);
     const user = $derived(page.props.auth?.user);
     const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
+    const isLogisticEnabled = $derived((page.props as any).settings?.logistic_enabled ?? true);
 
     $effect(() => {
         if (user && (window as any).Echo) {
@@ -436,10 +437,12 @@
                         'Pelanggan',
                     )}
                     {@render SubNavItem('/admin/master-data/couriers', 'Kurir')}
-                    {@render SubNavItem(
-                        '/admin/master-data/logistic-api',
-                        'Logistik API',
-                    )}
+                    {#if isLogisticEnabled}
+                        {@render SubNavItem(
+                            '/admin/master-data/logistic-api',
+                            'Logistik API',
+                        )}
+                    {/if}
                     {@render SubNavItem(
                         '/admin/master-data/payment-methods',
                         'Metode Bayar',

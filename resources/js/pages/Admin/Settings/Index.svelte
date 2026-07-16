@@ -6,6 +6,7 @@
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
     );
+    const isLogisticEnabled = $derived((page.props as any).settings?.logistic_enabled ?? true);
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { slide, fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
@@ -2093,33 +2094,35 @@
                                     {/if}
                                 </div>
 
-                                <div class="h-px bg-slate-100 my-2"></div>
+                                {#if isLogisticEnabled}
+                                    <div class="h-px bg-slate-100 my-2"></div>
 
-                                <!-- Logistik API Summary Card -->
-                                <div class="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2.5">
-                                            <div class="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
-                                                <i class="ti ti-truck-delivery text-white text-xs"></i>
+                                    <!-- Logistik API Summary Card -->
+                                    <div class="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center shrink-0">
+                                                    <i class="ti ti-truck-delivery text-white text-xs"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-black text-slate-800">Logistik API</p>
+                                                    <p class="text-[10px] text-slate-400">
+                                                        {#if form.shipping_delivery_enabled}
+                                                            <span class="text-blue-600 font-bold">Komerce Delivery aktif</span>
+                                                        {:else if form.biteship_enabled}
+                                                            <span class="text-emerald-600 font-bold">Biteship aktif</span>
+                                                        {:else}
+                                                            <span class="text-slate-400">Tidak ada provider aktif</span>
+                                                        {/if}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p class="text-xs font-black text-slate-800">Logistik API</p>
-                                                <p class="text-[10px] text-slate-400">
-                                                    {#if form.shipping_delivery_enabled}
-                                                        <span class="text-blue-600 font-bold">Komerce Delivery aktif</span>
-                                                    {:else if form.biteship_enabled}
-                                                        <span class="text-emerald-600 font-bold">Biteship aktif</span>
-                                                    {:else}
-                                                        <span class="text-slate-400">Tidak ada provider aktif</span>
-                                                    {/if}
-                                                </p>
-                                            </div>
+                                            <a href="/admin/master-data/logistic-api" class="px-2.5 py-1 text-[10px] font-black text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition flex items-center gap-1 shrink-0">
+                                                <i class="ti ti-settings text-xs"></i> Kelola
+                                            </a>
                                         </div>
-                                        <a href="/admin/master-data/logistic-api" class="px-2.5 py-1 text-[10px] font-black text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition flex items-center gap-1 shrink-0">
-                                            <i class="ti ti-settings text-xs"></i> Kelola
-                                        </a>
                                     </div>
-                                </div>
+                                {/if}
 
                                 <!-- Payment Gateway Summary Card -->
                                 <div class="rounded-xl border border-violet-100 bg-violet-50/40 p-3.5">

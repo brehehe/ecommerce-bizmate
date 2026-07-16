@@ -2016,7 +2016,7 @@ class StorefrontController extends Controller
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
-        $midtransEnabled = Setting::where('key', 'midtrans_api_enabled')->value('value') === '1';
+        $midtransEnabled = config('app.midtrans_enabled', true) && Setting::where('key', 'midtrans_api_enabled')->value('value') === '1';
         $midtransEnabledMethods = $midtransEnabled ? MidtransService::getEnabledMethods() : [];
 
         return Inertia::render('Storefront/TransactionDetail', [

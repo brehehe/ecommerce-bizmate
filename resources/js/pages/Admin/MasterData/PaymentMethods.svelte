@@ -13,7 +13,7 @@
 
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
 
-    let { paymentMethods = { data: [], links: [], total: 0 }, filters = {}, gateway_settings = {}, env_keys = {} } = $props();
+    let { paymentMethods = { data: [], links: [], total: 0 }, filters = {}, gateway_settings = {}, env_keys = {}, midtrans_enabled = true } = $props();
 
     // Midtrans Core API payment types definition (matches MidtransService::$paymentTypes)
     const midtransCoreApiMethods = [
@@ -394,6 +394,7 @@
             </div>
 
             <!-- Payment Gateway Section -->
+            {#if midtrans_enabled}
             <div class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-5">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
                     <div class="flex items-center gap-3">
@@ -514,6 +515,7 @@
                     </button>
                 </div>
             </div>
+            {/if}
 
 
             <!-- Main Section: Table Card -->
