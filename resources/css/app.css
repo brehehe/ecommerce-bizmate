@@ -520,11 +520,7 @@ html {
 .sf-dark .prose h4,
 .sf-dark .prose h5,
 .sf-dark .prose h6,
-.sf-dark .prose strong,
-.sf-dark :global(.prose h1),
-.sf-dark :global(.prose h2),
-.sf-dark :global(.prose h3),
-.sf-dark :global(.prose strong) {
+.sf-dark .prose strong {
     color: #f1f5f9 !important;
 }
 

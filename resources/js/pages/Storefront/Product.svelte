@@ -5266,7 +5266,9 @@
     }
 
     /* prose reset for product descriptions */
-    :global(.prose h1, .prose h2, .prose h3) {
+    :global(.prose h1),
+    :global(.prose h2),
+    :global(.prose h3) {
         font-weight: 700;
         margin-bottom: 0.5rem;
         color: #1e293b;
@@ -5274,7 +5276,8 @@
     :global(.prose p) {
         margin-bottom: 0.75rem;
     }
-    :global(.prose ul, .prose ol) {
+    :global(.prose ul),
+    :global(.prose ol) {
         padding-left: 1.25rem;
         margin-bottom: 0.75rem;
     }
