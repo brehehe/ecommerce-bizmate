@@ -32,7 +32,6 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\StorefrontController;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Route;
-
 Route::get('/', [StorefrontController::class, 'index'])->name('home');
 Route::get('/search', [StorefrontController::class, 'search'])->name('search');
 Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');

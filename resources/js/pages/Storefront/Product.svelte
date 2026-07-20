@@ -48,6 +48,7 @@
     });
 
     const page = usePage();
+    const enable3dModels = $derived((page.props as any).settings?.enable_3d_models ?? true);
 
     const primary = $derived(
         (page.props as any).theme?.primary_color ?? '#0c4cb4',
@@ -195,7 +196,7 @@
             });
         }
 
-        if (product.model_3d_path) {
+        if (enable3dModels && product.model_3d_path) {
             slides.push({
                 type: '3d' as const,
                 path: product.model_3d_path,
@@ -266,7 +267,7 @@
             });
         }
 
-        if (product.model_3d_path) {
+        if (enable3dModels && product.model_3d_path) {
             slides.push({
                 type: '3d' as const,
                 path: product.model_3d_path,

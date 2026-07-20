@@ -259,6 +259,7 @@ class HandleInertiaRequests extends Middleware
             // Fallback when database is not ready
         }
 
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -294,6 +295,7 @@ class HandleInertiaRequests extends Middleware
                 'membership_enabled' => (bool) config('app.membership_enabled', true),
                 'midtrans_enabled' => (bool) config('app.midtrans_enabled', true),
                 'logistic_enabled' => (bool) config('app.logistic_enabled', true),
+                'enable_3d_models' => (bool) config('app.enable_3d_models', true),
                 'tax_enabled' => $taxEnabled,
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,

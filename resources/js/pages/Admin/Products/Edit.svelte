@@ -22,6 +22,7 @@
     let globalTaxPercentage = $derived(
         page.props.settings?.tax_percentage ?? 0,
     );
+    let enable3dModels = $derived(page.props.settings?.enable_3d_models ?? true);
 
     // svelte-ignore state_referenced_locally
     const p = $state.snapshot(product);
@@ -4733,13 +4734,17 @@
                             class="text-base font-semibold text-slate-900 flex items-center gap-2"
                         >
                             <i class="ti ti-video text-brand-blueRoyal"></i> Media
-                            Interaktif (Video & 3D AR)
+                            Interaktif {#if enable3dModels}(Video & 3D AR){:else}(Video){/if}
                         </h3>
                         <p
                             class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
                         >
-                            Tambahkan video demonstrasi dan model 3D (format
-                            GLB/USDZ) untuk visual Augmented Reality di mobile.
+                            {#if enable3dModels}
+                                Tambahkan video demonstrasi dan model 3D (format
+                                GLB/USDZ) untuk visual Augmented Reality di mobile.
+                            {:else}
+                                Tambahkan video demonstrasi produk.
+                            {/if}
                         </p>
                     </div>
 
@@ -4828,191 +4833,193 @@
                             </div>
                         </div>
 
-                        <!-- 2. Model 3D Section -->
-                        <div
-                            class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
-                        >
-                            <div class="flex items-center justify-between mb-3">
-                                <h4
-                                    class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
-                                >
-                                    <i
-                                        class="ti ti-cube text-base text-slate-400"
-                                    ></i> Model 3D & Augmented Reality
-                                </h4>
-                                <button
-                                    type="button"
-                                    onclick={openImageTo3dModal}
-                                    class="px-2.5 py-1.5 bg-brand-blueRoyal/10 hover:bg-brand-blueRoyal/20 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
-                                >
-                                    <i class="ti ti-wand text-xs"></i> AI Gambar ke
-                                    3D
-                                </button>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- GLB File -->
-                                <div class="space-y-4">
-                                    <div
-                                        class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
+                        {#if enable3dModels}
+                            <!-- 2. Model 3D Section -->
+                            <div
+                                class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
+                            >
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4
+                                        class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
                                     >
-                                        {#if model3dFileName}
-                                            <div
-                                                class="w-full flex items-center gap-2 bg-green-50/30 p-2.5 rounded-lg border border-green-100"
-                                            >
+                                        <i
+                                            class="ti ti-cube text-base text-slate-400"
+                                        ></i> Model 3D & Augmented Reality
+                                    </h4>
+                                    <button
+                                        type="button"
+                                        onclick={openImageTo3dModal}
+                                        class="px-2.5 py-1.5 bg-brand-blueRoyal/10 hover:bg-brand-blueRoyal/20 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                        <i class="ti ti-wand text-xs"></i> AI Gambar ke
+                                        3D
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- GLB File -->
+                                    <div class="space-y-4">
+                                        <div
+                                            class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
+                                        >
+                                            {#if model3dFileName}
                                                 <div
-                                                    class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 shrink-0"
+                                                    class="w-full flex items-center gap-2 bg-green-50/30 p-2.5 rounded-lg border border-green-100"
                                                 >
-                                                    <i
-                                                        class="ti ti-cube-send text-base"
-                                                    ></i>
+                                                    <div
+                                                        class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600 shrink-0"
+                                                    >
+                                                        <i
+                                                            class="ti ti-cube-send text-base"
+                                                        ></i>
+                                                    </div>
+                                                    <div
+                                                        class="min-w-0 flex-1 text-left"
+                                                    >
+                                                        <p
+                                                            class="text-[10px] text-green-600 font-bold uppercase tracking-wider"
+                                                        >
+                                                            GLB Model Siap
+                                                        </p>
+                                                        <p
+                                                            class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5"
+                                                        >
+                                                            {model3dFileName}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onclick={removeModel3d}
+                                                        class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                        title="Hapus Model"
+                                                    >
+                                                        <i
+                                                            class="ti ti-trash text-sm"
+                                                        ></i>
+                                                    </button>
                                                 </div>
-                                                <div
-                                                    class="min-w-0 flex-1 text-left"
+                                            {:else}
+                                                <i
+                                                    class="ti ti-box-margin text-3xl text-slate-350 mb-1.5"
+                                                ></i>
+                                                <span
+                                                    class="text-xs font-bold text-slate-600 mb-0.5"
+                                                    >Model 3D (format GLB)</span
                                                 >
-                                                    <p
-                                                        class="text-[10px] text-green-600 font-bold uppercase tracking-wider"
-                                                    >
-                                                        GLB Model Siap
-                                                    </p>
-                                                    <p
-                                                        class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5"
-                                                    >
-                                                        {model3dFileName}
-                                                    </p>
-                                                </div>
+                                                <span
+                                                    class="text-[10px] text-slate-400 font-medium mb-3"
+                                                    >Format GLB Standar Web (Maks.
+                                                    50MB)</span
+                                                >
+                                                <input
+                                                    type="file"
+                                                    accept=".glb"
+                                                    onchange={handleModel3dFile}
+                                                    class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                />
                                                 <button
                                                     type="button"
-                                                    onclick={removeModel3d}
-                                                    class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
-                                                    title="Hapus Model"
+                                                    class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                                    >Pilih File GLB</button
                                                 >
-                                                    <i
-                                                        class="ti ti-trash text-sm"
-                                                    ></i>
-                                                </button>
-                                            </div>
-                                        {:else}
-                                            <i
-                                                class="ti ti-box-margin text-3xl text-slate-350 mb-1.5"
-                                            ></i>
-                                            <span
-                                                class="text-xs font-bold text-slate-600 mb-0.5"
-                                                >Model 3D (format GLB)</span
+                                            {/if}
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
                                             >
-                                            <span
-                                                class="text-[10px] text-slate-400 font-medium mb-3"
-                                                >Format GLB Standar Web (Maks.
-                                                50MB)</span
-                                            >
-                                            <input
-                                                type="file"
-                                                accept=".glb"
-                                                onchange={handleModel3dFile}
-                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                Atau URL Model GLB
+                                            </p>
+                                            <Input
+                                                id="model_3d_url"
+                                                placeholder="Cth: storage/products/models/item.glb"
+                                                bind:value={form.model_3d_url}
                                             />
-                                            <button
-                                                type="button"
-                                                class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
-                                                >Pilih File GLB</button
-                                            >
-                                        {/if}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label
-                                            for="model_3d_url"
-                                            class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
-                                            >Atau URL Model GLB</label
-                                        >
-                                        <Input
-                                            id="model_3d_url"
-                                            placeholder="Cth: storage/products/models/item.glb"
-                                            bind:value={form.model_3d_url}
-                                        />
-                                    </div>
-                                </div>
 
-                                <!-- USDZ File (iOS AR) -->
-                                <div class="space-y-4">
-                                    <div
-                                        class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
-                                    >
-                                        {#if model3dUsdzFileName}
-                                            <div
-                                                class="w-full flex items-center gap-2 bg-brand-blueRoyal/5 p-2.5 rounded-lg border border-brand-blueRoyal/10"
-                                            >
+                                    <!-- USDZ File (iOS AR) -->
+                                    <div class="space-y-4">
+                                        <div
+                                            class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-brand-blueRoyal/40 transition relative"
+                                        >
+                                            {#if model3dUsdzFileName}
                                                 <div
-                                                    class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0"
+                                                    class="w-full flex items-center gap-2 bg-brand-blueRoyal/5 p-2.5 rounded-lg border border-brand-blueRoyal/10"
                                                 >
-                                                    <i
-                                                        class="ti ti-brand-apple text-base"
-                                                    ></i>
+                                                    <div
+                                                        class="w-8 h-8 rounded-lg bg-brand-blueRoyal/10 flex items-center justify-center text-brand-blueRoyal shrink-0"
+                                                    >
+                                                        <i
+                                                            class="ti ti-brand-apple text-base"
+                                                        ></i>
+                                                    </div>
+                                                    <div
+                                                        class="min-w-0 flex-1 text-left"
+                                                    >
+                                                        <p
+                                                            class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider"
+                                                        >
+                                                            iOS USDZ Model Siap
+                                                        </p>
+                                                        <p
+                                                            class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5"
+                                                        >
+                                                            {model3dUsdzFileName}
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onclick={removeModel3dUsdz}
+                                                        class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
+                                                        title="Hapus Model iOS"
+                                                    >
+                                                        <i
+                                                            class="ti ti-trash text-sm"
+                                                        ></i>
+                                                    </button>
                                                 </div>
-                                                <div
-                                                    class="min-w-0 flex-1 text-left"
+                                            {:else}
+                                                <i
+                                                    class="ti ti-brand-apple text-3xl text-slate-350 mb-1.5"
+                                                ></i>
+                                                <span
+                                                    class="text-xs font-bold text-slate-600 mb-0.5"
+                                                    >Model iOS (format USDZ)</span
                                                 >
-                                                    <p
-                                                        class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider"
-                                                    >
-                                                        iOS USDZ Model Siap
-                                                    </p>
-                                                    <p
-                                                        class="text-xs text-slate-700 font-semibold truncate leading-tight mt-0.5"
-                                                    >
-                                                        {model3dUsdzFileName}
-                                                    </p>
-                                                </div>
+                                                <span
+                                                    class="text-[10px] text-slate-400 font-medium mb-3"
+                                                    >Untuk Augmented Reality di
+                                                    Safari iOS (Maks. 50MB)</span
+                                                >
+                                                <input
+                                                    type="file"
+                                                    accept=".usdz"
+                                                    onchange={handleModel3dUsdzFile}
+                                                    class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                />
                                                 <button
                                                     type="button"
-                                                    onclick={removeModel3dUsdz}
-                                                    class="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-red-500 transition shrink-0"
-                                                    title="Hapus Model iOS"
+                                                    class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                                    >Pilih File USDZ</button
                                                 >
-                                                    <i
-                                                        class="ti ti-trash text-sm"
-                                                    ></i>
-                                                </button>
-                                            </div>
-                                        {:else}
-                                            <i
-                                                class="ti ti-brand-apple text-3xl text-slate-350 mb-1.5"
-                                            ></i>
-                                            <span
-                                                class="text-xs font-bold text-slate-600 mb-0.5"
-                                                >Model iOS (format USDZ)</span
+                                            {/if}
+                                        </div>
+                                        <div>
+                                            <label
+                                                for="model_3d_usdz_url"
+                                                class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                                >Atau URL Model USDZ</label
                                             >
-                                            <span
-                                                class="text-[10px] text-slate-400 font-medium mb-3"
-                                                >Untuk Augmented Reality di
-                                                Safari iOS (Maks. 50MB)</span
-                                            >
-                                            <input
-                                                type="file"
-                                                accept=".usdz"
-                                                onchange={handleModel3dUsdzFile}
-                                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                            <Input
+                                                id="model_3d_usdz_url"
+                                                placeholder="Cth: storage/products/models/item.usdz"
+                                                bind:value={form.model_3d_usdz_url}
                                             />
-                                            <button
-                                                type="button"
-                                                class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
-                                                >Pilih File USDZ</button
-                                            >
-                                        {/if}
-                                    </div>
-                                    <div>
-                                        <label
-                                            for="model_3d_usdz_url"
-                                            class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
-                                            >Atau URL Model USDZ</label
-                                        >
-                                        <Input
-                                            id="model_3d_usdz_url"
-                                            placeholder="Cth: storage/products/models/item.usdz"
-                                            bind:value={form.model_3d_usdz_url}
-                                        />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        {/if}
                     </div>
                 </div>
 

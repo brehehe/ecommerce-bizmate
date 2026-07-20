@@ -16,6 +16,8 @@
     const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
     const isLogisticEnabled = $derived((page.props as any).settings?.logistic_enabled ?? true);
 
+
+
     $effect(() => {
         if (user && (window as any).Echo) {
             const channel = (window as any).Echo.private(
@@ -455,10 +457,12 @@
                         '/admin/master-data/stickers',
                         'Stiker Chat',
                     )}
-                    {@render SubNavItem(
-                        '/admin/master-data/loyalty-poin',
-                        'Loyalty Poin',
-                    )}
+                    {#if isMembershipEnabled}
+                        {@render SubNavItem(
+                            '/admin/master-data/loyalty-poin',
+                            'Loyalty Poin',
+                        )}
+                    {/if}
                     {@render SubNavItem(
                         '/admin/master-data/cost',
                         'Biaya',
