@@ -77,6 +77,7 @@ return [
             |------------------------------------------------------------------
             | demo.aplikasitokoonline.id (Reverb Hub - Server Pusat)
             |------------------------------------------------------------------
+            |
             */
             [
                 'key' => env('REVERB_APP_KEY'),
@@ -218,6 +219,64 @@ return [
                 ],
             ],
 
+            /*
+            |------------------------------------------------------------------
+            | tokoit.bizmate.id
+            |------------------------------------------------------------------
+            */
+            [
+                'key'    => '2q9sre1d22jc162rlcyx',
+                'secret' => 'hyychj8fgizox4oxiw7i',
+                'app_id' => '98476893',
+                'options' => [
+                    'host'   => 'demo.aplikasitokoonline.id',
+                    'port'   => 443,
+                    'scheme' => 'https',
+                    'useTLS' => true,
+                ],
+                'allowed_origins'            => ['https://tokoit.bizmate.id'],
+                'ping_interval'              => 60,
+                'activity_timeout'           => 30,
+                'max_connections'            => null,
+                'max_message_size'           => 10_000,
+                'accept_client_events_from'  => 'members',
+                'rate_limiting' => [
+                    'enabled'            => false,
+                    'max_attempts'       => 60,
+                    'decay_seconds'      => 60,
+                    'terminate_on_limit' => false,
+                ],
+            ],
+
+
+            /*
+            |------------------------------------------------------------------
+            | inglonet.bizmate.id
+            |------------------------------------------------------------------
+            */
+            [
+                'key'    => '382bs80lshkeca7n1mrx',
+                'secret' => 'fdeoovmjgoybi827l1ul',
+                'app_id' => '07493788',
+                'options' => [
+                    'host'   => 'demo.aplikasitokoonline.id',
+                    'port'   => 443,
+                    'scheme' => 'https',
+                    'useTLS' => true,
+                ],
+                'allowed_origins'            => ['https://inglonet.bizmate.id'],
+                'ping_interval'              => 60,
+                'activity_timeout'           => 30,
+                'max_connections'            => null,
+                'max_message_size'           => 10_000,
+                'accept_client_events_from'  => 'members',
+                'rate_limiting' => [
+                    'enabled'            => false,
+                    'max_attempts'       => 60,
+                    'decay_seconds'      => 60,
+                    'terminate_on_limit' => false,
+                ],
+            ],
         ],
 
     ],
