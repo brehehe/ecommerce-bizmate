@@ -697,7 +697,7 @@
                             <p class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produk terkait</p>
                             <p class="truncate text-xs font-medium text-slate-700">{chat.product.name}</p>
                         </div>
-                        <Link href="/admin/products/{chat.product.id}" class="shrink-0 text-xs font-medium transition-colors hover:underline" style="color: {primaryColor};">
+                        <Link href="/products/{chat.product.id}" class="shrink-0 text-xs font-medium transition-colors hover:underline" style="color: {primaryColor};">
                             Lihat →
                         </Link>
                     </div>

@@ -1050,111 +1050,98 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 6: PRODUK TERLARIS
 ═══════════════════════════════════════════════════ -->
-    <section id="bestsellers-section" class="mt-2 px-3 sm:px-5 lg:px-8">
-        <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
-            <div
-                class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100"
-            >
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
-                        style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                            primary,
-                            0.65,
-                        )});"
-                    >
-                        <i class="ti ti-trending-up text-lg"></i>
-                    </div>
-                    <div>
-                        <h2
-                            class="font-outfit font-black text-base sm:text-lg text-slate-800"
-                        >
-                            Produk Terlaris
-                        </h2>
-                        <p
-                            class="text-[10px] text-slate-400 font-bold uppercase tracking-wider"
-                        >
-                            Paling Banyak Dibeli
-                        </p>
-                    </div>
-                </div>
-                <a
-                    href="/produk-terlaris"
-                    class="text-xs font-bold flex items-center gap-1"
-                    style="color: {primary};"
-                >
-                    Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
-                </a>
-            </div>
-            <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
+    {#if bestSellerProducts && bestSellerProducts.length > 0}
+        <section id="bestsellers-section" class="mt-2 px-3 sm:px-5 lg:px-8">
+            <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
                 <div
-                    class="flex gap-4.5 {(!bestSellerProducts || bestSellerProducts.length < 5)
-                        ? 'justify-start sm:justify-center w-full'
-                        : ''}"
-                    style="width: max-content; min-width: 100%;"
+                    class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100"
                 >
-                    {#each (bestSellerProducts && bestSellerProducts.length > 0) ? bestSellerProducts : Array(8) as product, i}
-                        {@const isReal = (bestSellerProducts && bestSellerProducts.length > 0)}
-                        {@const img = isReal ? getProductImage(product) : null}
-                        {@const isPromo = isReal && product.is_promo}
-                        {@const price = isReal
-                            ? isPromo
-                                ? product.promo_price
-                                : (product.product_price?.price ?? 0)
-                            : 0}
-                        {@const originalPrice =
-                            isReal && isPromo ? product.original_price : 0}
-                        {@const discountPercentage =
-                            isReal && isPromo ? product.discount_percentage : 0}
-                        {@const avgRating = isReal
-                            ? product.avg_rating
-                                ? Number(product.avg_rating)
-                                : null
-                            : null}
-                        {@const reviewCount = isReal
-                            ? (product.review_count ?? 0)
-                            : 0}
-                        <a
-                            href={isReal
-                                ? `/products/${product.id}`
-                                : '#'}
-                            class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0 flex flex-col h-full"
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
+                            style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                primary,
+                                0.65,
+                            )});"
                         >
-                            <div
-                                class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
+                            <i class="ti ti-trending-up text-lg"></i>
+                        </div>
+                        <div>
+                            <h2
+                                class="font-outfit font-black text-base sm:text-lg text-slate-800"
                             >
-                                {#if img}
-                                    <img
-                                        src={img}
-                                        alt={product.name}
-                                        class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                        onerror={(e) => {
-                                            e.currentTarget.src =
-                                                '/noimage/image.png';
-                                        }}
-                                    />
-                                {:else if !isReal}
-                                    <div
-                                        class="w-full h-full bg-slate-200 animate-pulse"
-                                    ></div>
-                                {:else}
-                                    <img
-                                        src="/noimage/image.png"
-                                        alt="Tidak ada gambar"
-                                        class="w-full h-full object-cover"
-                                    />
-                                {/if}
-                                {#if isReal && isPromo && discountPercentage > 0}
-                                    <span
-                                        class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md"
-                                        style="background-color: {secondary};"
-                                    >
-                                        -{discountPercentage}%
-                                    </span>
-                                {/if}
-                            </div>
-                            <div class="p-3 flex-1 flex flex-col">
-                                {#if isReal}
+                                Produk Terlaris
+                            </h2>
+                            <p
+                                class="text-[10px] text-slate-400 font-bold uppercase tracking-wider"
+                            >
+                                Paling Banyak Dibeli
+                            </p>
+                        </div>
+                    </div>
+                    <a
+                        href="/produk-terlaris"
+                        class="text-xs font-bold flex items-center gap-1"
+                        style="color: {primary};"
+                    >
+                        Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
+                    </a>
+                </div>
+                <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
+                    <div
+                        class="flex gap-4.5 {bestSellerProducts.length < 5
+                            ? 'justify-start sm:justify-center w-full'
+                            : ''}"
+                        style="width: max-content; min-width: 100%;"
+                    >
+                        {#each bestSellerProducts as product}
+                            {@const img = getProductImage(product)}
+                            {@const isPromo = product.is_promo}
+                            {@const price = isPromo
+                                ? product.promo_price
+                                : (product.product_price?.price ?? 0)}
+                            {@const originalPrice =
+                                isPromo ? product.original_price : 0}
+                            {@const discountPercentage =
+                                isPromo ? product.discount_percentage : 0}
+                            {@const avgRating = product.avg_rating
+                                ? Number(product.avg_rating)
+                                : null}
+                            {@const reviewCount = product.review_count ?? 0}
+                            <a
+                                href={`/products/${product.id}`}
+                                class="w-36 sm:w-44 bg-white border border-slate-100 hover:border-slate-200 hover:shadow-md rounded-xl overflow-hidden transition group cursor-pointer shrink-0 flex flex-col h-full"
+                            >
+                                <div
+                                    class="relative aspect-square overflow-hidden border-b border-slate-50 group/img"
+                                >
+                                    {#if img}
+                                        <img
+                                            src={img}
+                                            alt={product.name}
+                                            class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                            onerror={(e) => {
+                                                e.currentTarget.src =
+                                                    '/noimage/image.png';
+                                            }}
+                                        />
+                                    {:else}
+                                        <img
+                                            src="/noimage/image.png"
+                                            alt="Tidak ada gambar"
+                                            class="w-full h-full object-cover"
+                                        />
+                                    {/if}
+                                    {#if isPromo && discountPercentage > 0}
+                                        <span
+                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md"
+                                            style="background-color: {secondary};"
+                                        >
+                                            -{discountPercentage}%
+                                        </span>
+                                    {/if}
+                                </div>
+                                <div class="p-3 flex-1 flex flex-col">
                                     <div>
                                         <p
                                             class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
@@ -1189,11 +1176,6 @@
                                                     class="text-[10px] text-slate-400"
                                                     >({reviewCount})</span
                                                 >
-                                                <!-- {:else}
-                                                <span
-                                                    class="text-[10px] text-slate-400 italic"
-                                                    >Belum ada ulasan</span
-                                                > -->
                                             {/if}
                                         </div>
                                         <hr class="border-slate-100 my-2" />
@@ -1213,30 +1195,14 @@
                                             {/if}
                                         </div>
                                     </div>
-                                {:else}
-                                    <div
-                                        class="space-y-1.5 animate-pulse flex-1 flex flex-col justify-between"
-                                    >
-                                        <div class="space-y-1.5">
-                                            <div
-                                                class="h-3 bg-slate-200 rounded w-full"
-                                            ></div>
-                                            <div
-                                                class="h-3 bg-slate-200 rounded w-3/4"
-                                            ></div>
-                                        </div>
-                                        <div
-                                            class="h-8 bg-slate-200 rounded-xl w-full mt-2"
-                                        ></div>
-                                    </div>
-                                {/if}
-                            </div>
-                        </a>
-                    {/each}
+                                </div>
+                            </a>
+                        {/each}
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    {/if}
 
     <!-- ═══════════════════════════════════════════════════
      SECTION 7: BANNER WIDE (full width promo)

@@ -126,7 +126,6 @@ class StorefrontController extends Controller
                     ->withCount('reviews as review_count')
                     ->where('active', true)
                     ->latest()
-                    ->take(12)
                     ->get();
 
                 $activePromotions = Promotion::with(['items'])
