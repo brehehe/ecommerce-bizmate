@@ -31,6 +31,11 @@ class SettingController extends Controller
             $settings[$dbKey] = KomerceService::getSetting($dbKey, $configPath);
         }
 
+        $settings['membership_enabled'] = (bool) config('app.membership_enabled', true);
+        $settings['midtrans_enabled'] = (bool) config('app.midtrans_enabled', true);
+        $settings['logistic_enabled'] = (bool) config('app.logistic_enabled', true);
+        $settings['enable_3d_models'] = (bool) config('app.enable_3d_models', true);
+
         $envKeys = [
             'rajaongkir_url' => (bool) config('app.rajaongkir.has_url_env', false),
             'rajaongkir_shipping_cost' => (bool) config('app.rajaongkir.has_shipping_cost_env', false),

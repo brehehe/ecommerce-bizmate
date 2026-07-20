@@ -6,7 +6,7 @@
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
     );
-    const isLogisticEnabled = $derived((page.props as any).settings?.logistic_enabled ?? true);
+    const isLogisticEnabled = $derived(((page.props as any).app_config?.logistic_enabled ?? (page.props as any).settings?.logistic_enabled) ?? true);
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { slide, fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';

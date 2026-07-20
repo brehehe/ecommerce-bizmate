@@ -13,8 +13,8 @@
     let isCmsOpen = $state(false);
     let sidebarContainer = $state<HTMLElement | null>(null);
     const user = $derived(page.props.auth?.user);
-    const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
-    const isLogisticEnabled = $derived((page.props as any).settings?.logistic_enabled ?? true);
+    const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
+    const isLogisticEnabled = $derived(((page.props as any).app_config?.logistic_enabled ?? (page.props as any).settings?.logistic_enabled) ?? true);
 
 
 

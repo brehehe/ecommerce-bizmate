@@ -37,7 +37,7 @@
     // Theme from settings
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
-    const isMembershipEnabled = $derived((page.props as any).settings?.membership_enabled ?? true);
+    const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
 
     const flash = $derived((page.props as any).flash);
 
@@ -1459,17 +1459,6 @@
                     </Link>
                 </div>
 
-                <!-- Home Button (Desktop) - Only show if not on homepage -->
-                {#if page.url.split('?')[0] !== '/'}
-                    <Link
-                        href="/"
-                        class="p-2 text-white hover:bg-white/20 rounded-xl transition flex items-center justify-center shrink-0"
-                        title="Kembali ke Home"
-                        aria-label="Kembali ke Home"
-                    >
-                        <i class="ti ti-home text-2xl"></i>
-                    </Link>
-                {/if}
 
                 <!-- Search bar (desktop) -->
                 <form
