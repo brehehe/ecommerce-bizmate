@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -544,7 +545,12 @@ class MasterDataController extends Controller
     public function storeCourier(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:couriers,code',
+            'code' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('couriers', 'code')->whereNull('deleted_at'),
+            ],
             'name' => 'required|string|max:255',
             'is_active' => 'nullable|boolean',
         ]);
@@ -564,7 +570,12 @@ class MasterDataController extends Controller
     public function updateCourier(Request $request, Courier $courier)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:50|unique:couriers,code,'.$courier->id,
+            'code' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('couriers', 'code')->ignore($courier->id)->whereNull('deleted_at'),
+            ],
             'name' => 'required|string|max:255',
             'is_active' => 'nullable|boolean',
         ]);
@@ -657,7 +668,12 @@ class MasterDataController extends Controller
     public function storeBrand(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:brands,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('brands', 'name')->whereNull('deleted_at'),
+            ],
             'is_active' => 'nullable|boolean',
         ]);
 
@@ -676,7 +692,12 @@ class MasterDataController extends Controller
     public function updateBrand(Request $request, Brand $brand)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:brands,name,'.$brand->id,
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('brands', 'name')->ignore($brand->id)->whereNull('deleted_at'),
+            ],
             'is_active' => 'nullable|boolean',
         ]);
 
