@@ -1398,6 +1398,7 @@
                                     {/if}
                                 {/each}
                             {/if}
+                        </tbody>
                     </table>
                 {/key}
                 </div>

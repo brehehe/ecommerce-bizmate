@@ -445,6 +445,7 @@
                                     </td>
                                 </tr>
                             {/each}
+                        </tbody>
                     </table>
                 {/key}
                 </div>
