@@ -15,6 +15,7 @@
     import SelectSearch from '@/components/ui/SelectSearch.svelte';
     import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
+    import ProductImageSearchModal from '@/components/ProductImageSearchModal.svelte';
 
     let { categories = [], brands = [], ai_enabled = false } = $props();
 
@@ -25,6 +26,18 @@
     let isGeneratingAi = $state(false);
     let aiKeywords = $state('');
     let showAiKeywords = $state(false);
+
+    // Image Search state & handler
+    let showImageSearchModal = $state(false);
+    function handleWebImageSelect(images) {
+        if (Array.isArray(images)) {
+            uploadedPhotos = [...uploadedPhotos, ...images];
+            showToast(`${images.length} gambar berhasil diunduh.`, 'success');
+        } else {
+            uploadedPhotos = [...uploadedPhotos, images];
+            showToast('Gambar otomatis berhasil diunduh.', 'success');
+        }
+    }
 
     async function generateAiDescription() {
         if (isGeneratingAi) return;
@@ -3740,6 +3753,22 @@
                             <span class="text-[10px] font-bold"
                                 >Tambah Foto</span
                             >
+                        </button>
+                    </div>
+                    <div class="mt-3 flex gap-2">
+                        <button
+                            type="button"
+                            onclick={() => {
+                                if (!form.name.trim()) {
+                                    showToast('Silakan isi nama produk terlebih dahulu untuk mencari gambar.', 'warning');
+                                    return;
+                                }
+                                showImageSearchModal = true;
+                            }}
+                            class="h-9 px-4 rounded-xl border border-brand-blueRoyal/20 bg-brand-blueRoyal/5 text-brand-blueRoyal hover:bg-brand-blueRoyal/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                            <i class="ti ti-search text-sm"></i>
+                            Cari Gambar Otomatis
                         </button>
                     </div>
                     <input
@@ -7793,4 +7822,11 @@
             </div>
         </div>
     {/if}
+
+    <ProductImageSearchModal
+        show={showImageSearchModal}
+        productName={form.name}
+        onselect={handleWebImageSelect}
+        onclose={() => showImageSearchModal = false}
+    />
 </AdminLayout>

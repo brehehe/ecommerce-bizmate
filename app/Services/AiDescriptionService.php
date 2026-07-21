@@ -139,13 +139,15 @@ class AiDescriptionService
 
         $parts[] = '';
         $parts[] = 'Panduan penulisan:';
-        $parts[] = '- Tulis dalam Bahasa Indonesia yang natural dan persuasif';
-        $parts[] = '- Mulai dengan paragraf pembuka yang menarik';
-        $parts[] = '- Sertakan keunggulan / fitur utama produk dalam format bullet list';
-        $parts[] = '- Akhiri dengan ajakan untuk membeli (soft sell)';
-        $parts[] = '- Panjang: 150–300 kata';
-        $parts[] = '- Format: HTML siap pakai (gunakan <p>, <ul>, <li>, <strong>)';
-        $parts[] = '- Jangan sertakan tag <html>, <body>, <head>, atau markdown';
+        $parts[] = '- Tulis dalam Bahasa Indonesia yang natural, profesional, dan sangat persuasif.';
+        $parts[] = '- Mulai dengan paragraf pembuka yang menarik dan mendalam untuk menarik minat pembeli.';
+        $parts[] = '- Buat bagian penjelasan detail mengenai spesifikasi, material, fungsionalitas, dan kegunaan produk sehari-hari.';
+        $parts[] = '- Sertakan keunggulan, manfaat, dan fitur utama produk secara detail dalam format bullet list (ul/li).';
+        $parts[] = '- Jelaskan target pengguna dan mengapa produk ini wajib dimiliki dibandingkan produk sejenis.';
+        $parts[] = '- Akhiri dengan penutup yang meyakinkan dan ajakan membeli (Call to Action / soft sell).';
+        $parts[] = '- Panjang: 400–600 kata agar deskripsi sangat lengkap, mendalam, dan informatif.';
+        $parts[] = '- Format: HTML siap pakai (gunakan <p>, <ul>, <li>, <strong>, <em>, <br>).';
+        $parts[] = '- Jangan sertakan tag <html>, <body>, <head>, atau markdown.';
 
         return implode("\n", $parts);
     }

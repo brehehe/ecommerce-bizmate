@@ -146,7 +146,8 @@ test('komerce webhook records event to webhook_events table after shipping proce
         'status' => 'delivered',
     ])->assertOk();
 
-    expect(WebhookEvent::where('source', 'komerce')->where('idempotency_key', 'ilike', 'komerce:shipping:%')->exists())->toBeTrue();
+    $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+    expect(WebhookEvent::where('source', 'komerce')->where('idempotency_key', $operator, 'komerce:shipping:%')->exists())->toBeTrue();
 });
 
 test('komerce webhook allows different statuses for the same booking code', function () {

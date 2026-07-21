@@ -5,8 +5,29 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    Storage::fake('public');
+    Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+
+    // Create a 1x1 dummy PNG image
+    $dummyPng = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==');
+
+    Http::fake([
+        'https://www.bing.com/images/search*' => Http::response(
+            '<html><body><a class="iusc" m="{&quot;murl&quot;:&quot;https://shopee.co.id/image1.jpg&quot;,&quot;turl&quot;:&quot;https://shopee.co.id/thumb1.jpg&quot;,&quot;desc&quot;:&quot;Imported Product Image&quot;}"></a></body></html>',
+            200
+        ),
+        'https://shopee.co.id/image1.jpg' => Http::response($dummyPng, 200, [
+            'Content-Type' => 'image/png',
+        ]),
+    ]);
+});
 
 test('admin can download product import template', function () {
     $admin = User::factory()->create();
@@ -77,6 +98,12 @@ test('admin can import simple product successfully', function () {
     $categorySport = Category::where('name', 'Sport')->first();
     expect($categorySport)->not->toBeNull();
     expect($product->categories->pluck('id'))->toContain($categorySport->id);
+
+    // Assert automatic image import
+    expect($product->images)->toHaveCount(1);
+    expect($product->images->first()->is_main)->toBeTrue();
+    expect($product->image)->not->toBeNull();
+    Storage::disk('public')->assertExists(str_replace('storage/', '', $product->image));
 });
 
 test('admin can update existing product by SKU during import', function () {

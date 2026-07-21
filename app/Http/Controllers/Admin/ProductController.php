@@ -4,11 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportProductsJob;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariationOption;
-use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
@@ -1425,6 +1425,161 @@ class ProductController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    public function exportProducts()
+    {
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="export_produk_'.date('Y-m-d_H-i-s').'.csv"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $columns = [
+            'Nama Produk',
+            'SKU',
+            'Kategori',
+            'Brand',
+            'Ringkasan Singkat',
+            'Deskripsi',
+            'Apakah Digital',
+            'Harga Jual',
+            'Harga Modal',
+            'Stok',
+            'Batas Minimum',
+            'Min Pembelian',
+            'Apakah Unlimited Stock',
+            'Berat (gram)',
+            'Panjang (cm)',
+            'Lebar (cm)',
+            'Tinggi (cm)',
+            'Spesifikasi',
+            'Variasi 1 Nama',
+            'Variasi 1 Nilai',
+            'Variasi 2 Nama',
+            'Variasi 2 Nilai',
+            'Harga Varian',
+            'Stok Varian',
+        ];
+
+        $callback = function () use ($columns) {
+            $file = fopen('php://output', 'w');
+
+            // Add UTF-8 BOM for Excel compatibility
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Write the Excel separator instruction
+            fwrite($file, "sep=,\n");
+
+            fputcsv($file, $columns);
+
+            Product::with([
+                'categories',
+                'brandRelation',
+                'productPrice',
+                'productStock',
+                'variations.options',
+                'variants.options',
+                'variants.productPrice',
+                'variants.productStock',
+            ])->chunk(100, function ($products) use ($file) {
+                foreach ($products as $product) {
+                    $categories = implode(', ', $product->categories->pluck('name')->toArray());
+
+                    $specs = [];
+                    if (is_array($product->specifications)) {
+                        foreach ($product->specifications as $spec) {
+                            if (isset($spec['name']) && isset($spec['value'])) {
+                                $specs[] = "{$spec['name']}: {$spec['value']}";
+                            }
+                        }
+                    }
+                    $specString = implode('; ', $specs);
+
+                    if ($product->variants && $product->variants->count() > 0) {
+                        $variations = $product->variations;
+                        $var1 = $variations->get(0);
+                        $var2 = $variations->get(1);
+
+                        $var1Name = $var1?->name ?? '';
+                        $var2Name = $var2?->name ?? '';
+
+                        foreach ($product->variants as $variant) {
+                            $var1Val = '';
+                            $var2Val = '';
+
+                            foreach ($variant->options as $option) {
+                                if ($var1 && $option->product_variation_id === $var1->id) {
+                                    $var1Val = $option->name;
+                                } elseif ($var2 && $option->product_variation_id === $var2->id) {
+                                    $var2Val = $option->name;
+                                }
+                            }
+
+                            fputcsv($file, [
+                                $product->name,
+                                $product->sku,
+                                $categories,
+                                $product->brand,
+                                $product->summary,
+                                $product->description,
+                                $product->is_digital ? '1' : '0',
+                                $product->productPrice?->price,
+                                $product->productPrice?->cost,
+                                $product->productStock?->stock,
+                                $product->productStock?->min_stock,
+                                $product->productStock?->min_purchase,
+                                $product->productStock?->is_unlimited ? '1' : '0',
+                                $product->weight,
+                                $product->length,
+                                $product->width,
+                                $product->height,
+                                $specString,
+                                $var1Name,
+                                $var1Val,
+                                $var2Name,
+                                $var2Val,
+                                $variant->productPrice?->price,
+                                $variant->productStock?->stock,
+                            ]);
+                        }
+                    } else {
+                        fputcsv($file, [
+                            $product->name,
+                            $product->sku,
+                            $categories,
+                            $product->brand,
+                            $product->summary,
+                            $product->description,
+                            $product->is_digital ? '1' : '0',
+                            $product->productPrice?->price,
+                            $product->productPrice?->cost,
+                            $product->productStock?->stock,
+                            $product->productStock?->min_stock,
+                            $product->productStock?->min_purchase,
+                            $product->productStock?->is_unlimited ? '1' : '0',
+                            $product->weight,
+                            $product->length,
+                            $product->width,
+                            $product->height,
+                            $specString,
+                            '',
+                            '',
+                            '',
+                            '',
+                            '',
+                            '',
+                        ]);
+                    }
+                }
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function importProducts(Request $request)
     {
         $request->validate([
@@ -1450,223 +1605,33 @@ class ProductController extends Controller
             'products.*.brand_name' => 'nullable|string',
             'products.*.variations' => 'nullable|array',
             'products.*.variants' => 'nullable|array',
+            'auto_fetch_images' => 'nullable|boolean',
         ]);
 
-        $globalTaxPercentage = (float) Setting::where('key', 'tax_percentage')->value('value') ?: 10;
+        $autoFetch = $request->boolean('auto_fetch_images', true);
 
         try {
-            \DB::transaction(function () use ($request, $globalTaxPercentage) {
-                foreach ($request->input('products') as $pData) {
-                    $sku = trim($pData['sku']);
-                    $slug = Str::slug($pData['name']).'-'.Str::random(5);
-
-                    $product = Product::where('sku', $sku)->first();
-                    if ($product) {
-                        $product->update([
-                            'name' => $pData['name'],
-                            'summary' => $pData['summary'] ?? null,
-                            'description' => $pData['description'],
-                            'weight' => $pData['weight'] ?? 0,
-                            'length' => $pData['length'] ?? 0,
-                            'width' => $pData['width'] ?? 0,
-                            'height' => $pData['height'] ?? 0,
-                            'tax_enabled' => ! empty($pData['tax_enabled']),
-                            'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
-                            'is_digital' => ! empty($pData['is_digital']),
-                            'specifications' => $pData['specifications'] ?? null,
-                        ]);
-                    } else {
-                        $product = Product::create([
-                            'name' => $pData['name'],
-                            'sku' => $sku,
-                            'slug' => $slug,
-                            'summary' => $pData['summary'] ?? null,
-                            'description' => $pData['description'],
-                            'weight' => $pData['weight'] ?? 0,
-                            'length' => $pData['length'] ?? 0,
-                            'width' => $pData['width'] ?? 0,
-                            'height' => $pData['height'] ?? 0,
-                            'tax_enabled' => ! empty($pData['tax_enabled']),
-                            'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
-                            'is_digital' => ! empty($pData['is_digital']),
-                            'active' => true,
-                            'specifications' => $pData['specifications'] ?? null,
-                        ]);
-                    }
-
-                    // Sync categories
-                    $categoryIds = [];
-                    if (! empty($pData['category_names'])) {
-                        $names = explode(',', $pData['category_names']);
-                        foreach ($names as $name) {
-                            $name = trim($name);
-                            if (! $name) {
-                                continue;
-                            }
-                            $category = Category::whereRaw('lower(name) = ?', [strtolower($name)])->first();
-                            if (! $category) {
-                                $baseSlug = Str::slug($name);
-                                $catSlug = $baseSlug;
-                                $count = 1;
-                                while (Category::where('slug', $catSlug)->exists()) {
-                                    $catSlug = $baseSlug.'-'.$count;
-                                    $count++;
-                                }
-                                $category = Category::create([
-                                    'name' => $name,
-                                    'slug' => $catSlug,
-                                    'icon' => 'ti-tag',
-                                    'order' => 0,
-                                ]);
-                            }
-                            $categoryIds[] = $category->id;
-                        }
-                    }
-                    if (! empty($categoryIds)) {
-                        $product->categories()->sync($categoryIds);
-                        $product->update(['category_id' => $categoryIds[0]]);
-                    }
-
-                    // Sync brand
-                    $brandIds = [];
-                    if (! empty($pData['brand_name'])) {
-                        $bName = trim($pData['brand_name']);
-                        if ($bName) {
-                            $brand = Brand::whereRaw('lower(name) = ?', [strtolower($bName)])->first();
-                            if (! $brand) {
-                                $baseSlug = Str::slug($bName);
-                                $bSlug = $baseSlug;
-                                $count = 1;
-                                while (Brand::where('slug', $bSlug)->exists()) {
-                                    $bSlug = $baseSlug.'-'.$count;
-                                    $count++;
-                                }
-                                $brand = Brand::create([
-                                    'name' => $bName,
-                                    'slug' => $bSlug,
-                                    'is_active' => true,
-                                    'order' => 0,
-                                ]);
-                            }
-                            $brandIds[] = $brand->id;
-                            $product->update([
-                                'brand_id' => $brand->id,
-                                'brand' => $brand->name,
-                            ]);
-                        }
-                    }
-                    $product->brands()->sync($brandIds);
-
-                    // Main price
-                    $product->productPrice()->updateOrCreate(
-                        ['product_variant_id' => null],
-                        [
-                            'price' => $pData['price'],
-                            'cost' => $pData['cost'] ?? null,
-                        ]
-                    );
-
-                    // Main stock
-                    $product->productStock()->updateOrCreate(
-                        ['product_variant_id' => null],
-                        [
-                            'stock' => $pData['stock'] ?? 0,
-                            'min_stock' => $pData['min_stock'] ?? 0,
-                            'min_purchase' => $pData['min_purchase'] ?? 1,
-                            'is_unlimited' => ! empty($pData['is_unlimited']),
-                        ]
-                    );
-
-                    // Variations / Variants
-                    if (! empty($pData['variations'])) {
-                        // Delete old variants & variations
-                        $product->variants()->each(function ($v) {
-                            $v->productPrice()->delete();
-                            $v->productStock()->delete();
-                            $v->options()->detach();
-                            $v->delete();
-                        });
-                        $product->variations()->each(function ($var) {
-                            $var->options()->delete();
-                            $var->delete();
-                        });
-
-                        // Create variations
-                        $variationMap = [];
-                        foreach ($pData['variations'] as $vData) {
-                            $variation = $product->variations()->create(['name' => $vData['name']]);
-                            foreach ($vData['options'] as $optData) {
-                                $option = $variation->options()->create([
-                                    'name' => $optData['name'],
-                                    'description' => null,
-                                    'image' => null,
-                                ]);
-                                $variationMap[$optData['name']] = $option->id;
-                            }
-                        }
-
-                        // Create variants
-                        if (! empty($pData['variants'])) {
-                            foreach ($pData['variants'] as $vCombData) {
-                                $variant = $product->variants()->create([
-                                    'sku' => $vCombData['sku'],
-                                    'weight' => null,
-                                    'length' => null,
-                                    'width' => null,
-                                    'height' => null,
-                                ]);
-
-                                // Custom Variant Price
-                                if (! empty($vCombData['is_custom']) && ! empty($vCombData['custom_price'])) {
-                                    $variant->productPrice()->create([
-                                        'product_id' => $product->id,
-                                        'price' => $vCombData['price'] ?: 0,
-                                        'cost' => $vCombData['cost'] ?: null,
-                                    ]);
-                                }
-
-                                // Custom Variant Stock
-                                if (! empty($vCombData['is_custom']) && ! empty($vCombData['custom_stock'])) {
-                                    $variant->productStock()->create([
-                                        'product_id' => $product->id,
-                                        'stock' => $vCombData['stock'] ?: 0,
-                                        'min_stock' => 0,
-                                        'min_purchase' => 1,
-                                        'is_unlimited' => false,
-                                    ]);
-                                }
-
-                                // Attach options
-                                $frontNames = explode('_', $vCombData['id']);
-                                $optionIdsToAttach = [];
-                                foreach ($frontNames as $optName) {
-                                    if (isset($variationMap[$optName])) {
-                                        $optionIdsToAttach[] = $variationMap[$optName];
-                                    }
-                                }
-                                $variant->options()->attach($optionIdsToAttach);
-                            }
-                        }
-                    }
-                }
-            });
+            ImportProductsJob::dispatch($request->input('products'), $autoFetch);
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json([
-                    'message' => 'Gagal melakukan import produk: '.$e->getMessage(),
+                    'message' => 'Gagal menjadwalkan import produk: '.$e->getMessage(),
                 ], 422);
             }
 
-            return redirect()->back()->withErrors(['error' => 'Gagal melakukan import produk: '.$e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Gagal menjadwalkan import produk: '.$e->getMessage()]);
         }
+
+        $count = count($request->input('products'));
+        $successMessage = "Import {$count} produk telah dijadwalkan di latar belakang (Supervisor). Proses ini akan mengimpor data & melengkapi foto produk secara otomatis.";
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => count($request->input('products')).' produk berhasil di-import.',
+                'message' => $successMessage,
             ]);
         }
 
-        return redirect()->back()->with('success', count($request->input('products')).' produk berhasil di-import.');
+        return redirect()->back()->with('success', $successMessage);
     }
 
     /**

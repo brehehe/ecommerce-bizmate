@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\KomerceShipmentController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\MembershipController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ProductImageSearchController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\ReportController;
@@ -206,7 +207,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::apiResource('categories', CategoryController::class)->except(['show']);
 
     // Products
+    Route::get('/products/search-web-images', [ProductImageSearchController::class, 'search'])->name('products.search-web-images');
+    Route::post('/products/proxy-web-image', [ProductImageSearchController::class, 'proxy'])->name('products.proxy-web-image');
     Route::get('/products/import/template', [ProductController::class, 'downloadImportTemplate'])->name('products.import.template');
+    Route::get('/products/export', [ProductController::class, 'exportProducts'])->name('products.export');
     Route::post('/products/import', [ProductController::class, 'importProducts'])->name('products.import');
     Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulk-delete');
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');

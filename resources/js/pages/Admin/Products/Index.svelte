@@ -21,6 +21,7 @@
     let importTaxEnabled = $state(false);
     let isImporting = $state(false);
     let importError = $state('');
+    let autoFetchImages = $state(true);
 
     // Trigger file selection
     function triggerFileSelect() {
@@ -366,7 +367,10 @@
                         document.querySelector('meta[name="csrf-token"]')
                             ?.content || '',
                 },
-                body: JSON.stringify({ products: finalPayload }),
+                body: JSON.stringify({
+                    products: finalPayload,
+                    auto_fetch_images: autoFetchImages,
+                }),
             });
 
             if (response.ok) {
@@ -411,6 +415,7 @@
         toggleActive as adminProductsToggleActive,
         bulkDelete as adminProductsBulkDelete,
         reorder as adminProductsReorder,
+        exportMethod as adminProductsExport,
     } from '@/routes/admin/products';
 
     let {
@@ -687,6 +692,12 @@
                 >
                     <i class="ti ti-file-import"></i> Import
                 </button>
+                <a
+                    href={adminProductsExport.url()}
+                    class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                >
+                    <i class="ti ti-file-export"></i> Export
+                </a>
                 <Link
                     href={adminProductsCreate.url()}
                     class="h-9 rounded-lg px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 flex items-center gap-2 cursor-pointer"
@@ -1254,7 +1265,7 @@
                                                 product.product_stock,
                                             )}
                                             {@const variantName =
-                                                variant.options
+                                                variant.options && variant.options.length > 0
                                                     ? variant.options
                                                           .map((o) => o.name)
                                                           .join(' - ')
@@ -1262,10 +1273,10 @@
                                             <tr
                                                 class="variant-row bg-slate-50/20 hover:bg-slate-50/50 border-b border-slate-100/80 transition duration-150"
                                             >
-                                                <td class="px-3 xl:px-4 py-3"
-                                                ></td>
+                                                <td class="px-3 xl:px-4 py-3"></td>
+                                                <td class="px-3 xl:px-4 py-3"></td>
                                                 <td
-                                                    class="px-3 xl:px-4 py-3 pl-16"
+                                                    class="px-3 xl:px-4 py-3 pl-10 xl:pl-12"
                                                     data-label="Varian"
                                                 >
                                                     <div
@@ -1294,16 +1305,19 @@
                                                         {/if}
                                                         <div class="min-w-0">
                                                             <p
-                                                                class="font-bold text-xs text-slate-700 truncate max-w-[220px]"
+                                                                class="font-semibold text-xs text-slate-700 truncate max-w-[180px] xl:max-w-[240px]"
                                                                 title={variantName}
                                                             >
                                                                 {variantName}
                                                             </p>
-                                                            <p
-                                                                class="text-[10px] text-slate-400 font-mono mt-0.5"
-                                                            >
-                                                                Kode Variasi: {variant.sku}
-                                                            </p>
+                                                            {#if variant.options && variant.options.length > 0}
+                                                                <p
+                                                                    class="text-[10px] text-slate-400 font-mono truncate max-w-[180px] xl:max-w-[240px] mt-0.5"
+                                                                    title={`Kode Variasi: ${variant.sku}`}
+                                                                >
+                                                                    Kode Variasi: {variant.sku}
+                                                                </p>
+                                                            {/if}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1924,6 +1938,18 @@
                             />
                         </div>
                     {/if}
+
+                    <!-- Image Auto Fetch Toggle -->
+                    <div
+                        class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs"
+                    >
+                        <Toggle
+                            bind:checked={autoFetchImages}
+                            label="Gambar Otomatis"
+                            description="Cari dan pasang gambar produk secara otomatis dari web jika produk tidak memiliki gambar"
+                            icon="ti-photo"
+                        />
+                    </div>
                 </div>
 
                 <!-- Step 2: Preview Area (Main Workspace Pane) -->
