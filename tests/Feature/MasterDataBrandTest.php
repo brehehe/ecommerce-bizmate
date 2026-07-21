@@ -248,3 +248,26 @@ test('admin can filter products by multiple categories and brands on index', fun
     expect($ids)->toContain($product2->id);
     expect($ids)->not->toContain($product1->id);
 });
+
+test('admin can create a brand with same name as a soft-deleted brand', function () {
+    $brand = Brand::create([
+        'name' => 'Nike',
+        'slug' => 'nike',
+        'is_active' => true,
+    ]);
+
+    $brand->delete();
+
+    $response = $this->actingAs($this->user)->post(route('admin.master-data.brands.store'), [
+        'name' => 'Nike',
+        'is_active' => true,
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('brands', [
+        'name' => 'Nike',
+        'slug' => 'nike',
+        'is_active' => true,
+        'deleted_at' => null,
+    ]);
+});
