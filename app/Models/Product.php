@@ -40,6 +40,7 @@ class Product extends Model
         'early_access_min_level_order',
         'model_3d_path',
         'model_3d_usdz_path',
+        'order',
     ];
 
     public function brandRelation()
@@ -98,7 +99,17 @@ class Product extends Model
         'height' => 'integer',
         'specifications' => 'array',
         'size_chart' => 'array',
+        'order' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Model $model) {
+            if (empty($model->order)) {
+                $model->order = (int) static::max('order') + 1;
+            }
+        });
+    }
 
     public function category(): BelongsTo
     {

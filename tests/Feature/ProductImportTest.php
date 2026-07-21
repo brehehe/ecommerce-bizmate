@@ -208,3 +208,41 @@ test('admin can import product with variations and variants combo', function () 
     expect($variantS->productStock->stock)->toBe(15);
     expect($variantS->options->first()->name)->toBe('S');
 });
+
+test('imported product automatically receives sequential order value', function () {
+    $admin = User::factory()->create();
+
+    // Create an existing product with order = 5
+    $p1 = Product::create([
+        'name' => 'Existing Product',
+        'sku' => 'EXIST-001',
+        'slug' => 'existing-product',
+        'description' => 'Desc',
+        'active' => true,
+        'order' => 5,
+    ]);
+
+    $payload = [
+        'products' => [
+            [
+                'name' => 'New Imported Product',
+                'sku' => 'SHOE-IMP-999',
+                'price' => 125000,
+                'cost' => 80000,
+                'stock' => 50,
+                'description' => 'A new imported shoe.',
+                'tax_enabled' => true,
+                'is_digital' => false,
+                'is_unlimited' => false,
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($admin)->post(route('admin.products.import'), $payload);
+    $response->assertRedirect();
+
+    $product = Product::where('sku', 'SHOE-IMP-999')->first();
+    expect($product)->not->toBeNull();
+    // Since the max order was 5, the new product should have order = 6
+    expect($product->order)->toBe(6);
+});
