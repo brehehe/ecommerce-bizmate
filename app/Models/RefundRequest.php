@@ -57,7 +57,7 @@ class RefundRequest extends Model
     public static function generateNumber(): string
     {
         $prefix = 'RFD-' . now()->format('Ymd') . '-';
-        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
         $last = static::where('refund_number', $operator, $prefix . '%')
             ->orderByDesc('refund_number')
             ->value('refund_number');

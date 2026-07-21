@@ -1575,7 +1575,7 @@ class CheckoutController extends Controller
             $maxUsesPerUser = $promotion->settings['max_uses_per_user'] ?? null;
             if ($user && $maxUsesPerUser !== null && $maxUsesPerUser !== '') {
                 $maxUses = (int) $maxUsesPerUser;
-                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
                 $usedCount = Transaction::where('user_id', $user->id)
                     ->where(function ($q) use ($promotion, $operator) {
                         $q->where('voucher_code', $promotion->code)

@@ -426,7 +426,7 @@ class Transaction extends Model
     public static function generateNumber(): string
     {
         $prefix = 'TRX-' . now()->format('Ymd') . '-';
-        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
         $last = static::where('transaction_number', $operator, $prefix . '%')
             ->orderByDesc('transaction_number')
             ->value('transaction_number');

@@ -877,7 +877,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
         // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
         if ($query) {
@@ -1371,7 +1371,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
         // Filter by keyword (similar to search method)
         if ($query) {
@@ -1555,7 +1555,7 @@ class StorefrontController extends Controller
             $productsQuery->where('is_digital', true);
         }
 
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
         // Filter by keyword (search in name, description, variant SKU, etc.)
         if ($query) {

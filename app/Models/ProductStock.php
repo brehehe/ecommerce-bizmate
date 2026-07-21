@@ -47,7 +47,7 @@ class ProductStock extends Model
 
             // If stock is 0 or less
             if ($productStock->stock <= 0) {
-                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
                 $exists = Notification::where('type', 'out_of_stock')
                     ->where('url', '/admin/store/stocks')
                     ->where('message', $operator, '%' . $productName . '%')
@@ -67,7 +67,7 @@ class ProductStock extends Model
             }
             // If stock is below or equal to min_stock
             elseif ($productStock->stock <= $productStock->min_stock) {
-                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
                 $exists = Notification::where('type', 'low_stock')
                     ->where('url', '/admin/store/stocks')
                     ->where('message', $operator, '%' . $productName . '%')

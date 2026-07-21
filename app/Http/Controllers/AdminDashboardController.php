@@ -563,7 +563,7 @@ class AdminDashboardController extends Controller
         // Product Stock Overview
         $search = $request->input('search');
         $driver = DB::connection()->getDriverName();
-        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'ilike';
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
 
         $stockQuery = DB::table('products')
             ->leftJoin('product_stocks', function ($join) {

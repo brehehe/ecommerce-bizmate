@@ -74,7 +74,7 @@ class ReturnRequest extends Model
     public static function generateNumber(): string
     {
         $prefix = 'RTR-' . now()->format('Ymd') . '-';
-        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
         $last = static::where('return_number', $operator, $prefix . '%')
             ->orderByDesc('return_number')
             ->value('return_number');
