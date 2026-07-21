@@ -21,7 +21,6 @@
     let importTaxEnabled = $state(false);
     let isImporting = $state(false);
     let importError = $state('');
-    let autoFetchImages = $state(true);
 
     // Trigger file selection
     function triggerFileSelect() {
@@ -423,7 +422,12 @@
         categories = [],
         brands = [],
         filters = { search: '', category: [], brand: [], status: 'all' },
+        import_auto_fetch_images = true,
+        ai_enabled = false,
     } = $props();
+
+    // svelte-ignore state_referenced_locally
+    let autoFetchImages = $state(import_auto_fetch_images);
 
     // svelte-ignore state_referenced_locally
     let searchInput = $state(filters.search || '');
@@ -1940,16 +1944,18 @@
                     {/if}
 
                     <!-- Image Auto Fetch Toggle -->
-                    <div
-                        class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs"
-                    >
-                        <Toggle
-                            bind:checked={autoFetchImages}
-                            label="Gambar Otomatis"
-                            description="Cari dan pasang gambar produk secara otomatis dari web jika produk tidak memiliki gambar"
-                            icon="ti-photo"
-                        />
-                    </div>
+                    {#if ai_enabled}
+                        <div
+                            class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs"
+                        >
+                            <Toggle
+                                bind:checked={autoFetchImages}
+                                label="Gambar Otomatis"
+                                description="Cari dan pasang gambar produk secara otomatis dari web jika produk tidak memiliki gambar"
+                                icon="ti-photo"
+                            />
+                        </div>
+                    {/if}
                 </div>
 
                 <!-- Step 2: Preview Area (Main Workspace Pane) -->

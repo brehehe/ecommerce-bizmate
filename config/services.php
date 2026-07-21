@@ -47,4 +47,8 @@ return [
         'model' => env('OPENAGENTIC_MODEL', 'claude-sonnet-4.5'),
     ],
 
+    'products' => [
+        'import_auto_fetch_images' => env('IMPORT_AUTO_FETCH_IMAGES', true),
+    ],
+
 ];

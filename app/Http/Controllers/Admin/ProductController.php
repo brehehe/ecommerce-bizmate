@@ -210,6 +210,8 @@ class ProductController extends Controller
             'products' => $products,
             'categories' => $categories,
             'brands' => $brands,
+            'import_auto_fetch_images' => (bool) config('services.products.import_auto_fetch_images', true),
+            'ai_enabled' => (bool) config('services.openagentic.enabled', false),
             'filters' => [
                 'search' => $request->get('search', ''),
                 'category' => array_values($categoryFilter),
@@ -1608,7 +1610,7 @@ class ProductController extends Controller
             'auto_fetch_images' => 'nullable|boolean',
         ]);
 
-        $autoFetch = $request->boolean('auto_fetch_images', true);
+        $autoFetch = $request->boolean('auto_fetch_images', (bool) config('services.products.import_auto_fetch_images', true));
 
         try {
             ImportProductsJob::dispatch($request->input('products'), $autoFetch);

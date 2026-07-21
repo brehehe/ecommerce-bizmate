@@ -3990,22 +3990,24 @@
                             >
                         </button>
                     </div>
-                    <div class="mt-3 flex gap-2">
-                        <button
-                            type="button"
-                            onclick={() => {
-                                if (!form.name.trim()) {
-                                    showToast('Silakan isi nama produk terlebih dahulu untuk mencari gambar.', 'warning');
-                                    return;
-                                }
-                                showImageSearchModal = true;
-                            }}
-                            class="h-9 px-4 rounded-xl border border-brand-blueRoyal/20 bg-brand-blueRoyal/5 text-brand-blueRoyal hover:bg-brand-blueRoyal/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                            <i class="ti ti-search text-sm"></i>
-                            Cari Gambar Otomatis
-                        </button>
-                    </div>
+                    {#if ai_enabled}
+                        <div class="mt-3 flex gap-2">
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    if (!form.name.trim()) {
+                                        showToast('Silakan isi nama produk terlebih dahulu untuk mencari gambar.', 'warning');
+                                        return;
+                                    }
+                                    showImageSearchModal = true;
+                                }}
+                                class="h-9 px-4 rounded-xl border border-brand-blueRoyal/20 bg-brand-blueRoyal/5 text-brand-blueRoyal hover:bg-brand-blueRoyal/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                                <i class="ti ti-search text-sm"></i>
+                                Cari Gambar Otomatis
+                            </button>
+                        </div>
+                    {/if}
                     <input
                         type="file"
                         id="multi-photo-input"
