@@ -1,6 +1,7 @@
 <script>
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { Link, useForm, router, usePage } from '@inertiajs/svelte';
+    import Sortable from 'sortablejs';
     import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
@@ -394,6 +395,7 @@
         destroy as adminProductsDestroy,
         toggleActive as adminProductsToggleActive,
         bulkDelete as adminProductsBulkDelete,
+        reorder as adminProductsReorder,
     } from '@/routes/admin/products';
 
     let {
@@ -411,6 +413,8 @@
     let filterBrands = $state(filters.brand || []);
     // svelte-ignore state_referenced_locally
     let filterStatus = $state(filters.status || 'all');
+    // svelte-ignore state_referenced_locally
+    let filterSort = $state(filters.sort || 'order-asc');
 
     let currentViewMode = $state('list'); // 'list' or 'grid'
 
@@ -517,6 +521,7 @@
                 category: filterCategories,
                 brand: filterBrands,
                 status: filterStatus,
+                sort: filterSort,
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -608,6 +613,43 @@
             expandedProducts.add(productId);
         }
         expandedProducts = new Set(expandedProducts);
+    }
+
+    function sortable(node, options) {
+        let sortableInstance = Sortable.create(node, options);
+        return {
+            update(newOptions) {
+                sortableInstance.option(newOptions);
+            },
+            destroy() {
+                sortableInstance.destroy();
+            },
+        };
+    }
+
+    let isReordering = $state(false);
+
+    function saveSortOrder() {
+        if (isReordering) return;
+        isReordering = true;
+
+        const startOrder = products.from || 1;
+        const rows = document.querySelectorAll('.product-row');
+        const data = Array.from(rows).map((row, index) => ({
+            id: row.dataset.id,
+            order: startOrder + index,
+        }));
+
+        router.post(
+            adminProductsReorder.url(),
+            { products: data },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    isReordering = false;
+                },
+            }
+        );
     }
 </script>
 
@@ -703,6 +745,23 @@
                                 <option value="draft">Status: Draft</option>
                             </select>
                         </div>
+                        <div class="w-full sm:w-44">
+                            <select
+                                bind:value={filterSort}
+                                onchange={applyFilters}
+                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                            >
+                                <option value="order-asc">Urutan Kustom</option>
+                                <option value="name-asc">Nama: A - Z</option>
+                                <option value="name-desc">Nama: Z - A</option>
+                                <option value="price-asc">Harga: Terendah</option>
+                                <option value="price-desc">Harga: Tertinggi</option>
+                                <option value="stock-asc">Stok: Terendah</option>
+                                <option value="stock-desc">Stok: Tertinggi</option>
+                                <option value="latest">Terbaru</option>
+                                <option value="oldest">Terlama</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -768,11 +827,13 @@
                         ? 'hidden'
                         : ''}"
                 >
+                {#key products.data}
                     <table
                         class="w-full responsive-table table-fixed"
                     >
                         <thead>
                             <tr class="bg-white">
+                                <th class="px-2 py-4 w-8 border-b border-slate-100"></th>
                                 <th
                                     class="px-3 xl:px-4 py-4 w-10 border-b border-slate-100"
                                     ><input
@@ -810,11 +871,17 @@
                         </thead>
                         <tbody
                             class="text-sm text-slate-700 divide-y divide-slate-100"
+                            use:sortable={{
+                                animation: 150,
+                                handle: '.product-drag-handle',
+                                draggable: '.product-row',
+                                onEnd: saveSortOrder,
+                            }}
                         >
                             {#if products.data.length === 0}
                                 <tr>
                                     <td
-                                        colspan="7"
+                                        colspan="8"
                                         class="px-6 py-12 text-center text-slate-400 font-medium"
                                     >
                                         <i
@@ -830,14 +897,20 @@
                                         product.variants &&
                                         product.variants.length > 0}
                                     <tr
-                                        class="table-row-hover transition {!product.active
+                                        class="product-row table-row-hover transition {!product.active
                                             ? 'bg-slate-50/30'
                                             : ''} {selectedProducts.includes(
                                             product.id,
                                         )
                                             ? 'bg-brand-blueRoyal/5'
                                             : ''}"
+                                        data-id={product.id}
                                     >
+                                        <td class="px-2 py-4 w-8 text-center">
+                                            <span class="text-slate-400 cursor-move product-drag-handle flex items-center justify-center" title="Geser Urutan">
+                                                <i class="ti ti-grip-vertical text-base"></i>
+                                            </span>
+                                        </td>
                                         <td class="px-3 xl:px-4 py-4" data-label="Pilih"
                                             ><input
                                                 type="checkbox"
@@ -1105,11 +1178,11 @@
                                                     <i
                                                         class="ti ti-trending-up text-emerald-500"
                                                     ></i>
-                                                    <span>0</span>
+                                                    <span>{product.performance_sold ?? 0}</span>
                                                 </div>
                                                 <span
                                                     class="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide leading-snug"
-                                                    >Rp 0</span
+                                                    >Rp {Number(product.performance_revenue ?? 0).toLocaleString('id-ID')}</span
                                                 >
                                             </div>
                                         </td>
@@ -1263,11 +1336,11 @@
                                                             <i
                                                                 class="ti ti-trending-up text-emerald-500"
                                                             ></i>
-                                                            <span>0</span>
+                                                            <span>{variant.performance_sold ?? 0}</span>
                                                         </div>
                                                         <span
                                                             class="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide"
-                                                            >Rp 0</span
+                                                            >Rp {Number(variant.performance_revenue ?? 0).toLocaleString('id-ID')}</span
                                                         >
                                                     </div>
                                                 </td>
@@ -1292,8 +1365,8 @@
                                     {/if}
                                 {/each}
                             {/if}
-                        </tbody>
                     </table>
+                {/key}
                 </div>
 
                 <!-- Grid Card View Container -->

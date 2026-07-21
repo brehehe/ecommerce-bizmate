@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('membership_benefits', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('membership_level_id')->constrained('membership_levels')->cascadeOnDelete();
 
             $table->enum('type', [

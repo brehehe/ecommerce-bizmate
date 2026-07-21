@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('membership_histories', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignUuid('from_level_id')->nullable()->constrained('membership_levels')->nullOnDelete();
             $table->foreignUuid('to_level_id')->constrained('membership_levels');

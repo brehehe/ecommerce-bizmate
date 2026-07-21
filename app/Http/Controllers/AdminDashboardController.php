@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\RefundRequest;
+use App\Models\ReturnRequest;
 use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\User;
@@ -59,12 +61,26 @@ class AdminDashboardController extends Controller
         $paidStatuses = Transaction::PAID_STATUSES;
 
         // Cache key per filter — invalidasi otomatis setiap 5 menit
-        $cacheKey = "dashboard_stats_{$filter}";
+        $cacheKey = "dashboard_stats_v2_{$filter}";
 
-        [$stats, $orderStats, $recentOrders, $topProducts, $chartData, $recentStockOut, $recentCustomers] = Cache::remember($cacheKey, 300, function () use (
+        [
+            $stats,
+            $orderStats,
+            $recentOrders,
+            $topProducts,
+            $chartData,
+            $recentStockOut,
+            $recentCustomers,
+            $refundStats,
+            $returnStats,
+            $refundPipeline,
+            $returnPipeline,
+            $recentRefunds,
+            $recentReturns
+        ] = Cache::remember($cacheKey, 300, function () use (
             $dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $paidStatuses
         ) {
-            // --- 1. Aggregate stats: current & previous period dalam 2 query ---
+            // --- 1. Aggregate stats: current & previous period ---
             $currentAgg = Transaction::whereIn('status', $paidStatuses)
                 ->whereBetween('created_at', [$dateFrom, $dateTo])
                 ->selectRaw('SUM(grand_total) as revenue, COUNT(id) as orders')
@@ -80,10 +96,10 @@ class AdminDashboardController extends Controller
             $currentOrders = (int) ($currentAgg->orders ?? 0);
             $previousOrders = (int) ($previousAgg->orders ?? 0);
 
-            // Products & customers — 1 query each with conditional aggregate
+            // Products & customers
             $productAgg = Product::selectRaw(
-                'COUNT(*) FILTER (WHERE active = true) as current_active,
-                 COUNT(*) FILTER (WHERE active = true AND created_at < ?) as previous_active',
+                'COUNT(CASE WHEN active = true THEN 1 END) as current_active,
+                 COUNT(CASE WHEN active = true AND created_at < ? THEN 1 END) as previous_active',
                 [$dateFrom]
             )->first();
 
@@ -93,7 +109,7 @@ class AdminDashboardController extends Controller
                 ->where('roles.name', 'Customer')
                 ->selectRaw(
                     'COUNT(*) as current_total,
-                     COUNT(*) FILTER (WHERE users.created_at < ?) as previous_total',
+                     COUNT(CASE WHEN users.created_at < ? THEN 1 END) as previous_total',
                     [$dateFrom]
                 )->first();
 
@@ -102,12 +118,14 @@ class AdminDashboardController extends Controller
             $currentCustomers = (int) ($customerAgg->current_total ?? 0);
             $previousCustomers = (int) ($customerAgg->previous_total ?? 0);
 
-            // Operational stats — 1 query dengan CASE WHEN
+            // Operational stats Transaction
             $opStats = Transaction::whereBetween('created_at', [$dateFrom, $dateTo])
                 ->selectRaw("
-                    COUNT(*) FILTER (WHERE status IN ('belum_bayar', 'menunggu')) as new_count,
-                    COUNT(*) FILTER (WHERE status IN ('diproses', 'dikemas')) as ready_count,
-                    COUNT(*) FILTER (WHERE status = 'dikirim') as shipping_count
+                    COUNT(CASE WHEN status = 'belum_bayar' THEN 1 END) as unpaid_count,
+                    COUNT(CASE WHEN status = 'menunggu' THEN 1 END) as pending_count,
+                    COUNT(CASE WHEN status IN ('belum_bayar', 'menunggu') THEN 1 END) as new_count,
+                    COUNT(CASE WHEN status IN ('diproses', 'dikemas') THEN 1 END) as ready_count,
+                    COUNT(CASE WHEN status = 'dikirim' THEN 1 END) as shipping_count
                 ")->first();
 
             $stats = [
@@ -122,9 +140,91 @@ class AdminDashboardController extends Controller
             ];
 
             $orderStats = [
+                'unpaidCount' => (int) ($opStats->unpaid_count ?? 0),
+                'pendingCount' => (int) ($opStats->pending_count ?? 0),
                 'newCount' => (int) ($opStats->new_count ?? 0),
                 'readyCount' => (int) ($opStats->ready_count ?? 0),
                 'shippingCount' => (int) ($opStats->shipping_count ?? 0),
+            ];
+
+            // --- 1B. Refund Aggregation & Pipeline ---
+            $currentRefundAgg = RefundRequest::whereBetween('created_at', [$dateFrom, $dateTo])
+                ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
+                ->first();
+
+            $prevRefundAgg = RefundRequest::whereBetween('created_at', [$prevDateFrom, $prevDateTo])
+                ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
+                ->first();
+
+            $currentRefundAmount = (float) ($currentRefundAgg->total_amount ?? 0);
+            $prevRefundAmount = (float) ($prevRefundAgg->total_amount ?? 0);
+            $currentRefundCount = (int) ($currentRefundAgg->total_count ?? 0);
+            $prevRefundCount = (int) ($prevRefundAgg->total_count ?? 0);
+
+            $refundStats = [
+                'count' => $currentRefundCount,
+                'totalAmount' => $currentRefundAmount,
+                'formattedAmount' => (new self)->formatRupiah($currentRefundAmount),
+                'countChange' => (new self)->getPercentageChange((float) $currentRefundCount, (float) $prevRefundCount),
+                'amountChange' => (new self)->getPercentageChange($currentRefundAmount, $prevRefundAmount),
+            ];
+
+            $refundStatusCounts = RefundRequest::whereBetween('created_at', [$dateFrom, $dateTo])
+                ->selectRaw("
+                    COUNT(CASE WHEN status = 'menunggu_konfirmasi' THEN 1 END) as pending_count,
+                    COUNT(CASE WHEN status = 'disetujui' THEN 1 END) as approved_count,
+                    COUNT(CASE WHEN status = 'selesai' THEN 1 END) as completed_count,
+                    COUNT(CASE WHEN status = 'ditolak' THEN 1 END) as rejected_count
+                ")->first();
+
+            $refundPipeline = [
+                'pending' => (int) ($refundStatusCounts->pending_count ?? 0),
+                'approved' => (int) ($refundStatusCounts->approved_count ?? 0),
+                'completed' => (int) ($refundStatusCounts->completed_count ?? 0),
+                'rejected' => (int) ($refundStatusCounts->rejected_count ?? 0),
+            ];
+
+            // --- 1C. Retur Aggregation & Pipeline ---
+            $currentReturnAgg = ReturnRequest::whereBetween('created_at', [$dateFrom, $dateTo])
+                ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
+                ->first();
+
+            $prevReturnAgg = ReturnRequest::whereBetween('created_at', [$prevDateFrom, $prevDateTo])
+                ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
+                ->first();
+
+            $currentReturnAmount = (float) ($currentReturnAgg->total_amount ?? 0);
+            $prevReturnAmount = (float) ($prevReturnAgg->total_amount ?? 0);
+            $currentReturnCount = (int) ($currentReturnAgg->total_count ?? 0);
+            $prevReturnCount = (int) ($prevReturnAgg->total_count ?? 0);
+
+            $returnStats = [
+                'count' => $currentReturnCount,
+                'totalAmount' => $currentReturnAmount,
+                'formattedAmount' => (new self)->formatRupiah($currentReturnAmount),
+                'countChange' => (new self)->getPercentageChange((float) $currentReturnCount, (float) $prevReturnCount),
+                'amountChange' => (new self)->getPercentageChange($currentReturnAmount, $prevReturnAmount),
+            ];
+
+            $returnStatusCounts = ReturnRequest::whereBetween('created_at', [$dateFrom, $dateTo])
+                ->selectRaw("
+                    COUNT(CASE WHEN status = 'menunggu_review' THEN 1 END) as pending_count,
+                    COUNT(CASE WHEN status = 'disetujui' THEN 1 END) as approved_count,
+                    COUNT(CASE WHEN status = 'barang_dikirim_customer' THEN 1 END) as in_transit_count,
+                    COUNT(CASE WHEN status = 'barang_diterima_toko' THEN 1 END) as received_count,
+                    COUNT(CASE WHEN status = 'refund_diproses' THEN 1 END) as refunding_count,
+                    COUNT(CASE WHEN status = 'selesai' THEN 1 END) as completed_count,
+                    COUNT(CASE WHEN status = 'ditolak' THEN 1 END) as rejected_count
+                ")->first();
+
+            $returnPipeline = [
+                'pending' => (int) ($returnStatusCounts->pending_count ?? 0),
+                'approved' => (int) ($returnStatusCounts->approved_count ?? 0),
+                'inTransit' => (int) ($returnStatusCounts->in_transit_count ?? 0),
+                'received' => (int) ($returnStatusCounts->received_count ?? 0),
+                'refunding' => (int) ($returnStatusCounts->refunding_count ?? 0),
+                'completed' => (int) ($returnStatusCounts->completed_count ?? 0),
+                'rejected' => (int) ($returnStatusCounts->rejected_count ?? 0),
             ];
 
             // --- 2. Recent Orders ---
@@ -165,6 +265,56 @@ class AdminDashboardController extends Controller
                     'status' => $uiStatus,
                 ];
             })->toArray();
+
+            // --- 2B. Recent Refunds ---
+            $recentRefunds = RefundRequest::with(['user', 'transaction'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function ($rf) {
+                    $customerName = $rf->user ? $rf->user->name : 'Guest';
+
+                    return [
+                        'id' => $rf->id,
+                        'refund_number' => $rf->refund_number,
+                        'transaction_number' => $rf->transaction?->transaction_number ?? '—',
+                        'transaction_id' => $rf->transaction_id,
+                        'customer' => $customerName,
+                        'email' => $rf->user?->email ?? '',
+                        'amount' => (float) $rf->refund_amount,
+                        'amount_formatted' => (new self)->formatRupiah((float) $rf->refund_amount),
+                        'method' => $rf->refund_method ?? 'Transfer Bank',
+                        'status' => $rf->status,
+                        'status_label' => RefundRequest::statusLabels()[$rf->status] ?? $rf->status,
+                        'reason' => $rf->reason ?? '-',
+                        'date' => $rf->created_at->translatedFormat('d M Y, H:i'),
+                    ];
+                })->toArray();
+
+            // --- 2C. Recent Returs ---
+            $recentReturns = ReturnRequest::with(['user', 'transaction'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function ($rt) {
+                    $customerName = $rt->user ? $rt->user->name : 'Guest';
+
+                    return [
+                        'id' => $rt->id,
+                        'return_number' => $rt->return_number,
+                        'transaction_number' => $rt->transaction?->transaction_number ?? '—',
+                        'transaction_id' => $rt->transaction_id,
+                        'customer' => $customerName,
+                        'email' => $rt->user?->email ?? '',
+                        'type' => $rt->type === 'tukar_barang' ? 'Tukar Barang' : 'Refund',
+                        'amount' => (float) $rt->refund_amount,
+                        'amount_formatted' => (new self)->formatRupiah((float) $rt->refund_amount),
+                        'status' => $rt->status,
+                        'status_label' => ReturnRequest::statusLabels()[$rt->status] ?? $rt->status,
+                        'reason' => $rt->reason ?? '-',
+                        'date' => $rt->created_at->translatedFormat('d M Y, H:i'),
+                    ];
+                })->toArray();
 
             // --- 3. Top Products ---
             $topProductsRaw = DB::table('transaction_items')
@@ -215,42 +365,78 @@ class AdminDashboardController extends Controller
                 ];
             }
 
-            // --- 4. Chart Data (6-month revenue trend) ---
+            // --- 4. Chart Data (6-month trend for Revenue, Refund, & Retur) ---
             $driver = DB::connection()->getDriverName();
-            $monthFormat = $driver === 'sqlite'
+            $monthFormatTx = $driver === 'sqlite'
                 ? "strftime('%Y-%m', transactions.created_at)"
                 : "TO_CHAR(transactions.created_at, 'YYYY-MM')";
+
+            $monthFormatSelf = $driver === 'sqlite'
+                ? "strftime('%Y-%m', created_at)"
+                : "TO_CHAR(created_at, 'YYYY-MM')";
 
             $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
 
             $monthlyRevenue = Transaction::whereIn('status', $paidStatuses)
                 ->where('created_at', '>=', $sixMonthsAgo)
                 ->selectRaw("
-                    {$monthFormat} as month,
+                    {$monthFormatTx} as month,
                     SUM(grand_total) as revenue
                 ")
-                ->groupBy(DB::raw($monthFormat))
+                ->groupBy(DB::raw($monthFormatTx))
+                ->orderBy('month', 'asc')
+                ->get();
+
+            $monthlyRefunds = RefundRequest::where('created_at', '>=', $sixMonthsAgo)
+                ->where('status', '!=', 'ditolak')
+                ->selectRaw("
+                    {$monthFormatSelf} as month,
+                    SUM(refund_amount) as amount
+                ")
+                ->groupBy(DB::raw($monthFormatSelf))
+                ->orderBy('month', 'asc')
+                ->get();
+
+            $monthlyReturns = ReturnRequest::where('created_at', '>=', $sixMonthsAgo)
+                ->where('status', '!=', 'ditolak')
+                ->selectRaw("
+                    {$monthFormatSelf} as month,
+                    SUM(refund_amount) as amount,
+                    COUNT(id) as total_count
+                ")
+                ->groupBy(DB::raw($monthFormatSelf))
                 ->orderBy('month', 'asc')
                 ->get();
 
             $chartLabels = [];
             $chartValues = [];
+            $chartRefundValues = [];
+            $chartReturnValues = [];
 
             for ($i = 5; $i >= 0; $i--) {
                 $date = Carbon::now()->subMonths($i);
                 $monthKey = $date->format('Y-m');
                 $monthLabel = $date->translatedFormat('M Y');
 
-                $row = $monthlyRevenue->firstWhere('month', $monthKey);
-                $revenue = $row ? (float) $row->revenue : 0.0;
+                $revRow = $monthlyRevenue->firstWhere('month', $monthKey);
+                $rfdRow = $monthlyRefunds->firstWhere('month', $monthKey);
+                $rtrRow = $monthlyReturns->firstWhere('month', $monthKey);
+
+                $revenue = $revRow ? (float) $revRow->revenue : 0.0;
+                $refundAmt = $rfdRow ? (float) $rfdRow->amount : 0.0;
+                $returnAmt = $rtrRow ? (float) $rtrRow->amount : 0.0;
 
                 $chartLabels[] = $monthLabel;
                 $chartValues[] = round($revenue / 1_000_000, 2);
+                $chartRefundValues[] = round($refundAmt / 1_000_000, 2);
+                $chartReturnValues[] = round($returnAmt / 1_000_000, 2);
             }
 
             $chartData = [
                 'labels' => $chartLabels,
                 'data' => $chartValues,
+                'refunds' => $chartRefundValues,
+                'returns' => $chartReturnValues,
             ];
 
             // --- 5. Recent Stock-Out ---
@@ -353,10 +539,24 @@ class AdminDashboardController extends Controller
                     ];
                 })->toArray();
 
-            return [$stats, $orderStats, $recentOrders, $topProducts, $chartData, $recentStockOut, $recentCustomers];
+            return [
+                $stats,
+                $orderStats,
+                $recentOrders,
+                $topProducts,
+                $chartData,
+                $recentStockOut,
+                $recentCustomers,
+                $refundStats,
+                $returnStats,
+                $refundPipeline,
+                $returnPipeline,
+                $recentRefunds,
+                $recentReturns,
+            ];
         });
 
-        // Product Stock Overview — all active products with stock info & total sold
+        // Product Stock Overview
         $search = $request->input('search');
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -438,6 +638,12 @@ class AdminDashboardController extends Controller
             'recentStockOut' => $recentStockOut,
             'recentCustomers' => $recentCustomers,
             'search' => $search,
+            'refundStats' => $refundStats,
+            'returnStats' => $returnStats,
+            'refundPipeline' => $refundPipeline,
+            'returnPipeline' => $returnPipeline,
+            'recentRefunds' => $recentRefunds,
+            'recentReturns' => $recentReturns,
         ]);
     }
 

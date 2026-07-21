@@ -11,21 +11,30 @@
 
     let {
         stats,
-        orderStats,
-        recentOrders,
-        topProducts,
-        chartData,
+        orderStats = { unpaidCount: 0, pendingCount: 0, newCount: 0, readyCount: 0, shippingCount: 0 },
+        recentOrders = [],
+        topProducts = [],
+        chartData = { labels: [], data: [], refunds: [], returns: [] },
         currentFilter: initialFilter = '7_hari',
         productStockInfo = { data: [] },
         recentStockOut = [],
         recentCustomers = [],
         search: initialSearch = '',
+        refundStats = { count: 0, totalAmount: 0, formattedAmount: 'Rp 0', countChange: { type: 'neutral', value: '0%' }, amountChange: { type: 'neutral', value: '0%' } },
+        returnStats = { count: 0, totalAmount: 0, formattedAmount: 'Rp 0', countChange: { type: 'neutral', value: '0%' }, amountChange: { type: 'neutral', value: '0%' } },
+        refundPipeline = { pending: 0, approved: 0, completed: 0, rejected: 0 },
+        returnPipeline = { pending: 0, approved: 0, inTransit: 0, received: 0, refunding: 0, completed: 0, rejected: 0 },
+        recentRefunds = [],
+        recentReturns = [],
     } = $props();
 
     // svelte-ignore state_referenced_locally
     let selectedFilter = $state(initialFilter);
     // svelte-ignore state_referenced_locally
     let stockSearchInput = $state(initialSearch);
+    let chartMetric = $state<'all' | 'revenue' | 'refund' | 'return'>('all');
+    let activePipelineTab = $state<'transactions' | 'refunds' | 'returns'>('transactions');
+
     let canvas: HTMLCanvasElement;
     let chartInstance: Chart | null = null;
 
@@ -46,38 +55,97 @@
                 chartInstance.destroy();
             }
 
-            const primaryColor = page.props.theme?.primary_color || '#0c4cb4';
+            const pColor = page.props.theme?.primary_color || '#0c4cb4';
 
-            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, primaryColor + '33'); // 20% opacity
-            gradient.addColorStop(1, primaryColor + '00'); // 0% opacity
+            let gradRevenue = ctx.createLinearGradient(0, 0, 0, 300);
+            gradRevenue.addColorStop(0, pColor + '33');
+            gradRevenue.addColorStop(1, pColor + '00');
+
+            let gradRefund = ctx.createLinearGradient(0, 0, 0, 300);
+            gradRefund.addColorStop(0, 'rgba(245, 158, 11, 0.25)');
+            gradRefund.addColorStop(1, 'rgba(245, 158, 11, 0.0)');
+
+            let gradReturn = ctx.createLinearGradient(0, 0, 0, 300);
+            gradReturn.addColorStop(0, 'rgba(139, 92, 246, 0.25)');
+            gradReturn.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
+
+            const datasets: any[] = [];
+
+            if (chartMetric === 'all' || chartMetric === 'revenue') {
+                datasets.push({
+                    label: 'Revenue (Rp Juta)',
+                    data: [...(chartData.data || [])],
+                    borderColor: pColor,
+                    backgroundColor: gradRevenue,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: pColor,
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4,
+                });
+            }
+
+            if (chartMetric === 'all' || chartMetric === 'refund') {
+                datasets.push({
+                    label: 'Refund (Rp Juta)',
+                    data: [...(chartData.refunds || [])],
+                    borderColor: '#f59e0b',
+                    backgroundColor: gradRefund,
+                    borderWidth: 2.5,
+                    borderDash: chartMetric === 'all' ? [4, 4] : [],
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#f59e0b',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4,
+                });
+            }
+
+            if (chartMetric === 'all' || chartMetric === 'return') {
+                datasets.push({
+                    label: 'Retur (Rp Juta)',
+                    data: [...(chartData.returns || [])],
+                    borderColor: '#8b5cf6',
+                    backgroundColor: gradReturn,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#8b5cf6',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4,
+                });
+            }
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: [...chartData.labels],
-                    datasets: [
-                        {
-                            label: 'Revenue (Rp Juta)',
-                            data: [...chartData.data],
-                            borderColor: primaryColor, // brand-blueRoyal dynamic
-                            backgroundColor: gradient,
-                            borderWidth: 3,
-                            pointBackgroundColor: '#ffffff',
-                            pointBorderColor: primaryColor,
-                            pointBorderWidth: 2,
-                            pointRadius: 5,
-                            pointHoverRadius: 7,
-                            fill: true,
-                            tension: 0.4,
-                        },
-                    ],
+                    datasets,
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'end',
+                            labels: {
+                                boxWidth: 12,
+                                usePointStyle: true,
+                                font: {
+                                    family: "'Plus Jakarta Sans', sans-serif",
+                                    size: 11,
+                                },
+                            },
+                        },
                         tooltip: {
                             backgroundColor: '#0f172a',
                             titleFont: {
@@ -90,7 +158,7 @@
                                 weight: 'bold',
                             },
                             padding: 12,
-                            displayColors: false,
+                            displayColors: true,
                         },
                     },
                     scales: {
@@ -103,6 +171,9 @@
                                     size: 11,
                                 },
                                 color: '#94a3b8',
+                                callback: function (val) {
+                                    return 'Rp ' + val + 'M';
+                                },
                             },
                         },
                         x: {
@@ -227,10 +298,10 @@
         <!-- Page header -->
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h1 class="text-xl font-semibold tracking-tight text-slate-900">Dashboard</h1>
-                <p class="mt-0.5 text-sm text-slate-500">Pantau performa bisnis dan aktivitas operasional toko.</p>
+                <h1 class="text-xl font-semibold tracking-tight text-slate-900">Dashboard Admin</h1>
+                <p class="mt-0.5 text-sm text-slate-500">Pantau performa transaksi, pengajuan refund, retur barang, dan stok.</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 <div class="relative">
                     <select
                         value={selectedFilter}
@@ -253,11 +324,25 @@
                     <i class="ti ti-receipt text-sm"></i>
                     <span class="hidden sm:inline">Transaksi</span>
                 </Link>
+                <Link
+                    href="/admin/refunds"
+                    class="inline-flex items-center gap-1.5 h-9 rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-medium text-amber-700 shadow-xs transition-colors hover:bg-amber-100"
+                >
+                    <i class="ti ti-rotate-2 text-sm"></i>
+                    <span class="hidden sm:inline">Refund</span>
+                </Link>
+                <Link
+                    href="/admin/returns"
+                    class="inline-flex items-center gap-1.5 h-9 rounded-lg border border-violet-200 bg-violet-50 px-3 text-sm font-medium text-violet-700 shadow-xs transition-colors hover:bg-violet-100"
+                >
+                    <i class="ti ti-replace text-sm"></i>
+                    <span class="hidden sm:inline">Retur</span>
+                </Link>
             </div>
         </div>
 
-        <!-- KPI stat cards -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <!-- KPI stat cards (6 grid columns) -->
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
 
             <!-- Revenue -->
             {@render StatCard({
@@ -274,16 +359,36 @@
                 icon: 'ti-shopping-cart',
                 iconBg: '#f0fdf4',
                 iconColor: '#16a34a',
-                label: 'Total Orders',
+                label: 'Total Transaksi',
                 value: stats.ordersCount,
                 change: stats.ordersChange,
+            })}
+
+            <!-- Refund -->
+            {@render StatCard({
+                icon: 'ti-rotate-2',
+                iconBg: '#fffbeb',
+                iconColor: '#d97706',
+                label: `Refund (${refundStats.count})`,
+                value: refundStats.formattedAmount,
+                change: refundStats.amountChange,
+            })}
+
+            <!-- Retur -->
+            {@render StatCard({
+                icon: 'ti-replace',
+                iconBg: '#f5f3ff',
+                iconColor: '#7c3aed',
+                label: `Retur (${returnStats.count})`,
+                value: returnStats.formattedAmount,
+                change: returnStats.countChange,
             })}
 
             <!-- Products -->
             {@render StatCard({
                 icon: 'ti-box',
-                iconBg: '#f5f3ff',
-                iconColor: '#7c3aed',
+                iconBg: '#eef2ff',
+                iconColor: '#4f46e5',
                 label: 'Produk Aktif',
                 value: stats.activeProductsCount,
                 change: stats.productsChange,
@@ -300,66 +405,210 @@
             })}
         </div>
 
-        <!-- Order pipeline -->
+        <!-- Multi-Pipeline Section (Tabbed & Interactive Operational Status) -->
         <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-sm font-semibold text-slate-800">Pipeline Pesanan</p>
-                    <p class="text-xs text-slate-400 mt-0.5">Status real-time pesanan masuk</p>
+                    <p class="text-sm font-semibold text-slate-800">Pipeline Operasional Real-Time</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Status alur proses transaksi, klaim refund, dan retur barang</p>
                 </div>
-                <Link href="/admin/transactions" class="text-xs font-medium transition-colors hover:text-slate-900" style="color: {primaryColor};">
-                    Lihat semua →
-                </Link>
+                <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
+                    <button
+                        type="button"
+                        onclick={() => (activePipelineTab = 'transactions')}
+                        class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'transactions' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                    >
+                        <i class="ti ti-receipt text-xs mr-1"></i> Transaksi
+                    </button>
+                    <button
+                        type="button"
+                        onclick={() => (activePipelineTab = 'refunds')}
+                        class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'refunds' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                    >
+                        <i class="ti ti-rotate-2 text-xs mr-1"></i> Refund ({refundPipeline.pending + refundPipeline.approved})
+                    </button>
+                    <button
+                        type="button"
+                        onclick={() => (activePipelineTab = 'returns')}
+                        class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'returns' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                    >
+                        <i class="ti ti-replace text-xs mr-1"></i> Retur ({returnPipeline.pending + returnPipeline.approved + returnPipeline.inTransit + returnPipeline.received + returnPipeline.refunding})
+                    </button>
+                </div>
             </div>
-            <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
-                <Link href="/admin/transactions?status=belum_bayar" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
-                        <i class="ti ti-clock"></i>
-                    </div>
-                    <div>
-                        <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.unpaidCount}</p>
-                        <p class="mt-1 text-xs text-slate-500">Belum Bayar</p>
-                    </div>
-                </Link>
-                <Link href="/admin/transactions?status=menunggu" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
-                        <i class="ti ti-loader"></i>
-                    </div>
-                    <div>
-                        <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.pendingCount}</p>
-                        <p class="mt-1 text-xs text-slate-500">Menunggu</p>
-                    </div>
-                </Link>
-                <Link href="/admin/transactions?status=diproses" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg" style="background-color: {primaryColor}15; color: {primaryColor};">
-                        <i class="ti ti-package"></i>
-                    </div>
-                    <div>
-                        <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.readyCount}</p>
-                        <p class="mt-1 text-xs text-slate-500">Diproses</p>
-                    </div>
-                </Link>
-                <Link href="/admin/transactions?status=dikirim" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
-                        <i class="ti ti-truck-delivery"></i>
-                    </div>
-                    <div>
-                        <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.shippingCount}</p>
-                        <p class="mt-1 text-xs text-slate-500">Dikirim</p>
-                    </div>
-                </Link>
-            </div>
+
+            <!-- Tab 1: Pipeline Transaksi -->
+            {#if activePipelineTab === 'transactions'}
+                <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+                    <Link href="/admin/transactions?status=belum_bayar" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
+                            <i class="ti ti-clock"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.unpaidCount ?? orderStats.newCount ?? 0}</p>
+                            <p class="mt-1 text-xs text-slate-500">Belum Bayar</p>
+                        </div>
+                    </Link>
+                    <Link href="/admin/transactions?status=menunggu" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
+                            <i class="ti ti-loader"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.pendingCount ?? 0}</p>
+                            <p class="mt-1 text-xs text-slate-500">Menunggu Konfirmasi</p>
+                        </div>
+                    </Link>
+                    <Link href="/admin/transactions?status=diproses" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg" style="background-color: {primaryColor}15; color: {primaryColor};">
+                            <i class="ti ti-package"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.readyCount ?? 0}</p>
+                            <p class="mt-1 text-xs text-slate-500">Diproses</p>
+                        </div>
+                    </Link>
+                    <Link href="/admin/transactions?status=dikirim" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
+                            <i class="ti ti-truck-delivery"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.shippingCount ?? 0}</p>
+                            <p class="mt-1 text-xs text-slate-500">Dikirim</p>
+                        </div>
+                    </Link>
+                </div>
+            {/if}
+
+            <!-- Tab 2: Pipeline Refund -->
+            {#if activePipelineTab === 'refunds'}
+                <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+                    <Link href="/admin/refunds?status=menunggu_konfirmasi" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
+                            <i class="ti ti-hourglass-low"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.pending}</p>
+                            <p class="mt-1 text-xs text-slate-500">Menunggu Konfirmasi</p>
+                        </div>
+                    </Link>
+                    <Link href="/admin/refunds?status=disetujui" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
+                            <i class="ti ti-circle-check"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.approved}</p>
+                            <p class="mt-1 text-xs text-slate-500">Disetujui</p>
+                        </div>
+                    </Link>
+                    <Link href="/admin/refunds?status=selesai" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
+                            <i class="ti ti-circle-check-filled"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.completed}</p>
+                            <p class="mt-1 text-xs text-slate-500">Refund Selesai</p>
+                        </div>
+                    </Link>
+                    <Link href="/admin/refunds?status=ditolak" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 text-lg">
+                            <i class="ti ti-circle-x"></i>
+                        </div>
+                        <div>
+                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.rejected}</p>
+                            <p class="mt-1 text-xs text-slate-500">Ditolak</p>
+                        </div>
+                    </Link>
+                </div>
+            {/if}
+
+            <!-- Tab 3: Pipeline Retur -->
+            {#if activePipelineTab === 'returns'}
+                <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-6 sm:divide-y-0 text-xs">
+                    <Link href="/admin/returns?status=menunggu_review" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Menunggu Review</span>
+                            <i class="ti ti-eye text-amber-500"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-800">{returnPipeline.pending}</p>
+                    </Link>
+                    <Link href="/admin/returns?status=disetujui" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Disetujui</span>
+                            <i class="ti ti-check text-blue-500"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-800">{returnPipeline.approved}</p>
+                    </Link>
+                    <Link href="/admin/returns?status=barang_dikirim_customer" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Dikirim Cust</span>
+                            <i class="ti ti-truck text-indigo-500"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-800">{returnPipeline.inTransit}</p>
+                    </Link>
+                    <Link href="/admin/returns?status=barang_diterima_toko" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Diterima Toko</span>
+                            <i class="ti ti-building-store text-violet-500"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-800">{returnPipeline.received}</p>
+                    </Link>
+                    <Link href="/admin/returns?status=refund_diproses" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Refund Diproses</span>
+                            <i class="ti ti-rotate-2 text-amber-600"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-800">{returnPipeline.refunding}</p>
+                    </Link>
+                    <Link href="/admin/returns?status=selesai" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-500">Selesai</span>
+                            <i class="ti ti-circle-check-filled text-emerald-600"></i>
+                        </div>
+                        <p class="text-lg font-bold text-slate-800">{returnPipeline.completed}</p>
+                    </Link>
+                </div>
+            {/if}
         </div>
 
-        <!-- Chart + Top Products -->
+        <!-- Interactive Chart Analytics + Top Products -->
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-            <!-- Revenue chart -->
+            <!-- Revenue, Refund, & Retur Chart -->
             <div class="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p class="text-sm font-semibold text-slate-800">Revenue Analytics</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Tren pendapatan per periode</p>
+                        <p class="text-sm font-semibold text-slate-800">Tren Finansial & Pengembalian</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Perbandingan Penjualan vs Refund & Retur (6 Bulan)</p>
+                    </div>
+                    <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
+                        <button
+                            type="button"
+                            onclick={() => (chartMetric = 'all')}
+                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'all' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            Semua
+                        </button>
+                        <button
+                            type="button"
+                            onclick={() => (chartMetric = 'revenue')}
+                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'revenue' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            Revenue
+                        </button>
+                        <button
+                            type="button"
+                            onclick={() => (chartMetric = 'refund')}
+                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'refund' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            Refund
+                        </button>
+                        <button
+                            type="button"
+                            onclick={() => (chartMetric = 'return')}
+                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'return' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            Retur
+                        </button>
                     </div>
                 </div>
                 <div class="p-5">
@@ -402,6 +651,129 @@
                     {/each}
                 </div>
             </div>
+        </div>
+
+        <!-- Grid Table 1: Recent Refunds + Recent Returs -->
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+            <!-- Recent Refunds Table -->
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Pengajuan Refund Terbaru</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian dana terkini</p>
+                    </div>
+                    <Link href="/admin/refunds" class="text-xs font-medium" style="color: {primaryColor};">
+                        Semua Refund →
+                    </Link>
+                </div>
+
+                {#if recentRefunds && recentRefunds.length > 0}
+                    <div class="overflow-x-auto" use:dragScroll>
+                        <table class="w-full responsive-table text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Refund</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Nominal</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each recentRefunds as refund}
+                                    <tr class="transition-colors hover:bg-slate-50/50">
+                                        <td class="px-4 py-3" data-label="No. Refund">
+                                            <Link
+                                                href="/admin/refunds/{refund.id}"
+                                                class="font-mono text-xs font-semibold text-amber-600 hover:underline"
+                                            >
+                                                {refund.refund_number}
+                                            </Link>
+                                            <p class="text-[10px] text-slate-400">Trx: {refund.transaction_number}</p>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Pelanggan">
+                                            <p class="font-medium text-slate-800">{refund.customer}</p>
+                                            <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{refund.email}</p>
+                                        </td>
+                                        <td class="px-4 py-3 font-semibold text-slate-800" data-label="Nominal">
+                                            {refund.amount_formatted}
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Status">
+                                            {@render RefundBadge(refund.status, refund.status_label)}
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {:else}
+                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                        <i class="ti ti-rotate-2 text-2xl text-slate-300 mb-2"></i>
+                        <p class="text-sm font-medium text-slate-500">Belum ada pengajuan refund</p>
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Recent Returs Table -->
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Pengajuan Retur Terbaru</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian & tukar barang</p>
+                    </div>
+                    <Link href="/admin/returns" class="text-xs font-medium" style="color: {primaryColor};">
+                        Semua Retur →
+                    </Link>
+                </div>
+
+                {#if recentReturns && recentReturns.length > 0}
+                    <div class="overflow-x-auto" use:dragScroll>
+                        <table class="w-full responsive-table text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Retur</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Tipe</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each recentReturns as ret}
+                                    <tr class="transition-colors hover:bg-slate-50/50">
+                                        <td class="px-4 py-3" data-label="No. Retur">
+                                            <Link
+                                                href="/admin/returns/{ret.id}"
+                                                class="font-mono text-xs font-semibold text-violet-600 hover:underline"
+                                            >
+                                                {ret.return_number}
+                                            </Link>
+                                            <p class="text-[10px] text-slate-400">Trx: {ret.transaction_number}</p>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Pelanggan">
+                                            <p class="font-medium text-slate-800">{ret.customer}</p>
+                                            <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{ret.email}</p>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Tipe">
+                                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {ret.type === 'Tukar Barang' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}">
+                                                {ret.type}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Status">
+                                            {@render ReturnBadge(ret.status, ret.status_label)}
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {:else}
+                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                        <i class="ti ti-replace text-2xl text-slate-300 mb-2"></i>
+                        <p class="text-sm font-medium text-slate-500">Belum ada pengajuan retur</p>
+                    </div>
+                {/if}
+            </div>
+
         </div>
 
         <!-- Recent transactions + Stock info -->
@@ -663,33 +1035,33 @@
 <!-- ── Snippets ─────────────────────────────────────────── -->
 
 {#snippet StatCard(props: { icon: string; iconBg: string; iconColor: string; label: string; value: any; change: { type: string; value: string } })}
-    <div class="group overflow-hidden rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
+    <div class="group overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
         <div class="flex items-start justify-between">
             <div
-                class="flex h-10 w-10 items-center justify-center rounded-lg text-lg transition-transform duration-200 group-hover:scale-105"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-base transition-transform duration-200 group-hover:scale-105"
                 style="background-color: {props.iconBg}; color: {props.iconColor};"
             >
                 <i class="ti {props.icon}"></i>
             </div>
             {#if props.change.type === 'up'}
-                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
-                    <i class="ti ti-trending-up text-xs"></i>
+                <span class="inline-flex items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
+                    <i class="ti ti-trending-up text-[10px]"></i>
                     {props.change.value}
                 </span>
             {:else if props.change.type === 'down'}
-                <span class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600">
-                    <i class="ti ti-trending-down text-xs"></i>
+                <span class="inline-flex items-center gap-0.5 rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold text-rose-600">
+                    <i class="ti ti-trending-down text-[10px]"></i>
                     {props.change.value}
                 </span>
             {:else}
-                <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                <span class="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                     {props.change.value}
                 </span>
             {/if}
         </div>
-        <div class="mt-4">
-            <p class="text-2xl font-bold tracking-tight text-slate-900">{props.value}</p>
-            <p class="mt-0.5 text-xs font-medium text-slate-500">{props.label}</p>
+        <div class="mt-3">
+            <p class="text-xl font-bold tracking-tight text-slate-900 truncate">{props.value}</p>
+            <p class="mt-0.5 text-[11px] font-medium text-slate-500 truncate">{props.label}</p>
         </div>
     </div>
 {/snippet}
@@ -705,5 +1077,32 @@
     }[status] ?? { label: status, cls: 'bg-slate-100 text-slate-600' }}
     <span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold {cfg.cls}">
         {cfg.label}
+    </span>
+{/snippet}
+
+{#snippet RefundBadge(status: string, label: string)}
+    {@const cfg = {
+        menunggu_konfirmasi: 'bg-amber-50 text-amber-700 border border-amber-200',
+        disetujui: 'bg-blue-50 text-blue-700 border border-blue-200',
+        selesai: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        ditolak: 'bg-rose-50 text-rose-700 border border-rose-200',
+    }[status] ?? 'bg-slate-100 text-slate-600'}
+    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {cfg}">
+        {label || status}
+    </span>
+{/snippet}
+
+{#snippet ReturnBadge(status: string, label: string)}
+    {@const cfg = {
+        menunggu_review: 'bg-amber-50 text-amber-700 border border-amber-200',
+        disetujui: 'bg-blue-50 text-blue-700 border border-blue-200',
+        barang_dikirim_customer: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+        barang_diterima_toko: 'bg-violet-50 text-violet-700 border border-violet-200',
+        refund_diproses: 'bg-purple-50 text-purple-700 border border-purple-200',
+        selesai: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        ditolak: 'bg-rose-50 text-rose-700 border border-rose-200',
+    }[status] ?? 'bg-slate-100 text-slate-600'}
+    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {cfg}">
+        {label || status}
     </span>
 {/snippet}

@@ -1,6 +1,7 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import { page, router } from '@inertiajs/svelte';
+    import Sortable from 'sortablejs';
     import { useForm } from '@inertiajs/svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
     import { showToast } from '@/utils/toast';
@@ -8,7 +9,7 @@
     import Input from '@/components/ui/Input.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
     import { fade } from 'svelte/transition';
-    import { bulkDelete as brandBulkDelete } from '@/routes/admin/master-data/brands';
+    import { bulkDelete as brandBulkDelete, reorder as brandReorder } from '@/routes/admin/master-data/brands';
 
     let { brands = { data: [], links: [], total: 0 }, filters = {} } = $props();
 
@@ -22,6 +23,8 @@
     let filterStatus = $state(filters.status || '');
     // svelte-ignore state_referenced_locally
     let perPage = $state(filters.perPage || 10);
+    // svelte-ignore state_referenced_locally
+    let filterSort = $state(filters.sort || 'order-asc');
     let searchTimeout: any;
 
     // Checkbox state
@@ -63,7 +66,7 @@
     function updateQuery() {
         router.get(
             '/admin/master-data/brands',
-            { search: searchQuery, perPage: perPage },
+            { search: searchQuery, perPage: perPage, sort: filterSort },
             { preserveState: true, replace: true },
         );
     }
@@ -193,6 +196,43 @@
             },
         );
     }
+
+    function sortable(node: HTMLElement, options: any) {
+        let sortableInstance = Sortable.create(node, options);
+        return {
+            update(newOptions: any) {
+                sortableInstance.option(newOptions);
+            },
+            destroy() {
+                sortableInstance.destroy();
+            },
+        };
+    }
+
+    let isReordering = $state(false);
+
+    function saveSortOrder() {
+        if (isReordering) return;
+        isReordering = true;
+
+        const startOrder = brands.from || 1;
+        const rows = document.querySelectorAll('.brand-row');
+        const data = Array.from(rows).map((row: any, index) => ({
+            id: row.dataset.id,
+            order: startOrder + index,
+        }));
+
+        router.post(
+            brandReorder.url(),
+            { brands: data },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    isReordering = false;
+                },
+            }
+        );
+    }
 </script>
 
 <svelte:head>
@@ -235,8 +275,23 @@
                     />
                 </div>
 
+                <!-- Sort Selector -->
+                <div class="shrink-0 w-full sm:w-44">
+                    <select
+                        bind:value={filterSort}
+                        onchange={updateQuery}
+                        class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                    >
+                        <option value="order-asc">Urutan Kustom</option>
+                        <option value="name-asc">Nama: A - Z</option>
+                        <option value="name-desc">Nama: Z - A</option>
+                        <option value="latest">Merek Terbaru</option>
+                        <option value="oldest">Merek Terlama</option>
+                    </select>
+                </div>
+
                 <!-- Search Bar -->
-                <div class="flex-grow sm:max-w-md w-full sm:ml-auto">
+                <div class="flex-grow sm:max-w-md w-full sm:ml-4">
                     <Input
                         type="text"
                         bind:value={searchQuery}
@@ -288,9 +343,11 @@
             {:else}
                 <!-- Table Area -->
                 <div class="overflow-x-auto">
+                {#key brands.data}
                     <table class="w-full text-left border-collapse responsive-table">
                         <thead>
                             <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="py-3 px-2 w-8 text-center"></th>
                                 <th class="py-3 px-4 w-12 text-center sm:table-cell hidden">
                                     <input
                                         type="checkbox"
@@ -305,12 +362,28 @@
                                 <th class="py-3 px-4 text-center">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 text-slate-700 text-sm">
+                        <tbody 
+                            class="divide-y divide-slate-100 text-slate-700 text-sm"
+                            use:sortable={{
+                                animation: 150,
+                                handle: '.brand-drag-handle',
+                                draggable: '.brand-row',
+                                onEnd: saveSortOrder,
+                            }}
+                        >
                             {#each brands.data as brand (brand.id)}
                                 {@const isActive = brand.is_active ?? true}
                                 {@const isSelected = selectedBrands.includes(brand.id)}
 
-                                <tr class="hover:bg-slate-55/30 transition border-b border-slate-100 {isSelected ? 'bg-slate-50/50' : ''}">
+                                <tr 
+                                    class="brand-row hover:bg-slate-55/30 transition border-b border-slate-100 {isSelected ? 'bg-slate-50/50' : ''}"
+                                    data-id={brand.id}
+                                >
+                                    <td class="py-3 px-2 text-center w-8">
+                                        <span class="text-slate-400 cursor-move brand-drag-handle flex items-center justify-center" title="Geser Urutan">
+                                            <i class="ti ti-grip-vertical text-base"></i>
+                                        </span>
+                                    </td>
                                     <td class="py-3 px-4 text-center sm:table-cell hidden">
                                         <input
                                             type="checkbox"
@@ -372,8 +445,8 @@
                                     </td>
                                 </tr>
                             {/each}
-                        </tbody>
                     </table>
+                {/key}
                 </div>
             {/if}
 

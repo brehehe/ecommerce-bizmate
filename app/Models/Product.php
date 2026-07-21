@@ -130,4 +130,12 @@ class Product extends Model
     {
         return $this->hasMany(ProductReview::class);
     }
+
+    /**
+     * Return items for this product.
+     */
+    public function returnItems()
+    {
+        return $this->hasMany(ReturnItem::class);
+    }
 }

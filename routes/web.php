@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AiProductDescriptionController;
 use App\Http\Controllers\Admin\AppConfigController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\StorefrontController;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Route;
+
 Route::get('/', [StorefrontController::class, 'index'])->name('home');
 Route::get('/search', [StorefrontController::class, 'search'])->name('search');
 Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');
@@ -208,7 +210,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/products/import', [ProductController::class, 'importProducts'])->name('products.import');
     Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulk-delete');
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
+    Route::post('/products/reorder', [ProductController::class, 'reorder'])->name('products.reorder');
     Route::resource('products', ProductController::class)->except(['show']);
+
+    // AI Features
+    Route::post('/ai/generate-description', [AiProductDescriptionController::class, 'generate'])->name('ai.generate-description');
 
     // Promotions
     Route::post('/promotions/{promotion}/toggle-active', [PromotionController::class, 'toggleActive'])->name('promotions.toggle-active');
@@ -259,6 +265,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::put('/master-data/brands/{brand}', [MasterDataController::class, 'updateBrand'])->name('master-data.brands.update');
     Route::delete('/master-data/brands/{brand}', [MasterDataController::class, 'destroyBrand'])->name('master-data.brands.destroy');
     Route::post('/master-data/brands/{brand}/toggle-active', [MasterDataController::class, 'toggleActiveBrand'])->name('master-data.brands.toggle-active');
+    Route::post('/master-data/brands/reorder', [MasterDataController::class, 'reorderBrands'])->name('master-data.brands.reorder');
 
     // Social Media
     Route::get('/master-data/social-media', [MasterDataController::class, 'socialMedia'])->name('master-data.social-media');

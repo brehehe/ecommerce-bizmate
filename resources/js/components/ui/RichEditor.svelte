@@ -13,7 +13,7 @@
     } = $props();
 
     let editorContainer = $state<HTMLDivElement | null>(null);
-    let quillInstance: any = null;
+    let quillInstance = $state<any>(null);
     let isUpdatingFromInside = false;
 
     onMount(async () => {
@@ -56,10 +56,26 @@
             value = html === '<p><br></p>' ? '' : html;
             isUpdatingFromInside = false;
         });
+
+        // Listen for custom imperative updates
+        editorContainer.addEventListener('update-html', (e: any) => {
+            if (quillInstance) {
+                isUpdatingFromInside = true;
+                quillInstance.root.innerHTML = e.detail || '';
+                value = e.detail || '';
+                isUpdatingFromInside = false;
+            }
+        });
     });
 
     // Reactive update from parent (value changes externally)
+    // Reactive update from parent (value changes externally)
     $effect(() => {
+        console.log('RichEditor $effect triggered', {
+            hasQuill: !!quillInstance,
+            isUpdatingFromInside,
+            value
+        });
         if (quillInstance && !isUpdatingFromInside) {
             const currentHTML = quillInstance.root.innerHTML;
             const targetHTML = value || '';
@@ -67,6 +83,14 @@
             // Normalize empty states
             const isEmptyTarget = targetHTML === '' || targetHTML === '<p><br></p>';
             const isEmptyCurrent = currentHTML === '' || currentHTML === '<p><br></p>';
+
+            console.log('RichEditor state comparison', {
+                currentHTML,
+                targetHTML,
+                isEmptyTarget,
+                isEmptyCurrent,
+                shouldUpdate: targetHTML !== currentHTML && !(isEmptyTarget && isEmptyCurrent)
+            });
 
             if (targetHTML !== currentHTML && !(isEmptyTarget && isEmptyCurrent)) {
                 quillInstance.root.innerHTML = targetHTML;

@@ -16,13 +16,69 @@
     import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
 
-    let { categories = [], brands = [], product } = $props();
+    let { categories = [], brands = [], product, ai_enabled = false } = $props();
 
     let globalTaxEnabled = $derived(page.props.settings?.tax_enabled ?? false);
     let globalTaxPercentage = $derived(
         page.props.settings?.tax_percentage ?? 0,
     );
     let enable3dModels = $derived(page.props.settings?.enable_3d_models ?? true);
+    let membershipEnabled = $derived(page.props.settings?.membership_enabled ?? true);
+
+    // AI Description state
+    let isGeneratingAi = $state(false);
+    let aiKeywords = $state('');
+    let showAiKeywords = $state(false);
+
+    async function generateAiDescription() {
+        if (isGeneratingAi) return;
+        if (!form.name) {
+            showToast('Isi nama produk terlebih dahulu.', 'warning');
+            return;
+        }
+        isGeneratingAi = true;
+        try {
+            const selectedCategoryNames = categories
+                .filter((c) => form.category_ids.includes(c.id))
+                .map((c) => c.name);
+            const selectedBrandNames = brands
+                .filter((b) => form.brand_ids.includes(b.id))
+                .map((b) => b.name);
+
+            const res = await fetch('/admin/ai/generate-description', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
+                },
+                body: JSON.stringify({
+                    name: form.name,
+                    categories: selectedCategoryNames,
+                    brands: selectedBrandNames,
+                    price: form.price ? String(form.price) : null,
+                    keywords: aiKeywords || null,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.message || 'Gagal menghasilkan deskripsi AI.', 'error');
+                return;
+            }
+            form.description = data.description;
+            
+            // Imperatively update RichEditor to bypass any reactivity issues
+            const editorEl = document.getElementById('description');
+            if (editorEl) {
+                editorEl.dispatchEvent(new CustomEvent('update-html', { detail: data.description }));
+            }
+
+            showToast('Deskripsi berhasil dibuat oleh AI! Silakan review dan edit sesuai kebutuhan.', 'success');
+        } catch (err) {
+            showToast('Terjadi kesalahan saat menghubungi AI.', 'error');
+        } finally {
+            isGeneratingAi = false;
+        }
+    }
 
     // svelte-ignore state_referenced_locally
     const p = $state.snapshot(product);
@@ -3970,63 +4026,65 @@
                     </div>
 
                     <!-- Membership Settings -->
-                    <div class="mb-6 space-y-3">
-                        <p class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pengaturan Membership</p>
+                    {#if membershipEnabled}
+                        <div class="mb-6 space-y-3">
+                            <p class="text-xs font-bold text-slate-600 uppercase tracking-wider">Pengaturan Membership</p>
 
-                        <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
-                            <Toggle
-                                bind:checked={form.is_exclusive}
-                                label="Produk Eksklusif Member"
-                                description="Hanya bisa dilihat dan dibeli oleh member dengan level tertentu"
-                                icon="ti-lock"
-                            />
-                            {#if form.is_exclusive}
-                                <div class="space-y-1.5 pt-1">
-                                    <label class="text-xs font-semibold text-slate-600">Minimum Level Order</label>
-                                    <input
-                                        type="number"
-                                        bind:value={form.exclusive_min_level_order}
-                                        min="0"
-                                        placeholder="0 = semua member"
-                                        class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
-                                    />
-                                    <p class="text-[10px] text-slate-400">0 = Member, 1 = Silver, 2 = Gold, 3 = Platinum, 4 = Diamond</p>
-                                </div>
-                            {/if}
-                        </div>
-
-                        <div class="p-4 bg-violet-50 border border-violet-200 rounded-2xl space-y-3">
-                            <Toggle
-                                bind:checked={form.is_early_access}
-                                label="Produk Early Access"
-                                description="Produk bisa diakses lebih awal oleh member tertentu sebelum dijual ke publik"
-                                icon="ti-eye"
-                            />
-                            {#if form.is_early_access}
-                                <div class="grid grid-cols-2 gap-3 pt-1">
-                                    <div class="space-y-1.5">
-                                        <label class="text-xs font-semibold text-slate-600">Early Access Sampai</label>
-                                        <input
-                                            type="datetime-local"
-                                            bind:value={form.early_access_until}
-                                            class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
-                                        />
-                                    </div>
-                                    <div class="space-y-1.5">
+                            <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                                <Toggle
+                                    bind:checked={form.is_exclusive}
+                                    label="Produk Eksklusif Member"
+                                    description="Hanya bisa dilihat dan dibeli oleh member dengan level tertentu"
+                                    icon="ti-lock"
+                                />
+                                {#if form.is_exclusive}
+                                    <div class="space-y-1.5 pt-1">
                                         <label class="text-xs font-semibold text-slate-600">Minimum Level Order</label>
                                         <input
                                             type="number"
-                                            bind:value={form.early_access_min_level_order}
+                                            bind:value={form.exclusive_min_level_order}
                                             min="0"
                                             placeholder="0 = semua member"
                                             class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
                                         />
+                                        <p class="text-[10px] text-slate-400">0 = Member, 1 = Silver, 2 = Gold, 3 = Platinum, 4 = Diamond</p>
                                     </div>
-                                </div>
-                                <p class="text-[10px] text-slate-400">Setelah tanggal early access, produk otomatis tersedia untuk semua pelanggan</p>
-                            {/if}
+                                {/if}
+                            </div>
+
+                            <div class="p-4 bg-violet-50 border border-violet-200 rounded-2xl space-y-3">
+                                <Toggle
+                                    bind:checked={form.is_early_access}
+                                    label="Produk Early Access"
+                                    description="Produk bisa diakses lebih awal oleh member tertentu sebelum dijual ke publik"
+                                    icon="ti-eye"
+                                />
+                                {#if form.is_early_access}
+                                    <div class="grid grid-cols-2 gap-3 pt-1">
+                                        <div class="space-y-1.5">
+                                            <label class="text-xs font-semibold text-slate-600">Early Access Sampai</label>
+                                            <input
+                                                type="datetime-local"
+                                                bind:value={form.early_access_until}
+                                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
+                                            />
+                                        </div>
+                                        <div class="space-y-1.5">
+                                            <label class="text-xs font-semibold text-slate-600">Minimum Level Order</label>
+                                            <input
+                                                type="number"
+                                                bind:value={form.early_access_min_level_order}
+                                                min="0"
+                                                placeholder="0 = semua member"
+                                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm focus:border-slate-400 focus:outline-none transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] text-slate-400">Setelah tanggal early access, produk otomatis tersedia untuk semua pelanggan</p>
+                                {/if}
+                            </div>
                         </div>
-                    </div>
+                    {/if}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
@@ -4079,13 +4137,63 @@
                         </div>
                     </div>
                     <div class="space-y-4">
-                        <!-- <Input
-                            bind:value={form.summary}
-                            id="summary"
-                            label="Ringkasan Singkat"
-                            placeholder="Satu kalimat tentang produk..."
-                            error={form.errors.summary}
-                        /> -->
+                        <!-- AI Description Generator -->
+                        {#if ai_enabled}
+                            <div class="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50 p-4">
+                                <div class="flex items-center justify-between gap-3 flex-wrap">
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-white">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2"/>
+                                                <path d="M7.5 13.5h.01M16.5 13.5h.01"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-semibold text-violet-900">Isi Deskripsi dengan AI</p>
+                                            <p class="text-xs text-violet-600">Generate deskripsi otomatis berdasarkan data produk</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onclick={() => showAiKeywords = !showAiKeywords}
+                                            class="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-50 transition-colors"
+                                        >
+                                            {showAiKeywords ? 'Sembunyikan' : '+ Kata Kunci'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onclick={generateAiDescription}
+                                            disabled={isGeneratingAi}
+                                            class="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            {#if isGeneratingAi}
+                                                <svg class="h-3.5 w-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                </svg>
+                                                Generating...
+                                            {:else}
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                                </svg>
+                                                Generate Deskripsi
+                                            {/if}
+                                        </button>
+                                    </div>
+                                </div>
+                                {#if showAiKeywords}
+                                    <div class="mt-3">
+                                        <input
+                                            type="text"
+                                            bind:value={aiKeywords}
+                                            placeholder="Tambahkan kata kunci atau fitur khusus (opsional)..."
+                                            class="w-full rounded-lg border border-violet-300 bg-white px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                                        />
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
                         <RichEditor
                             bind:value={form.description}
                             id="description"
@@ -4095,6 +4203,7 @@
                             error={form.errors.description}
                         />
                     </div>
+
                 </div>
 
                 <!-- Card: Master Harga & Stok -->

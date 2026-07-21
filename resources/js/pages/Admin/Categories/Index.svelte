@@ -419,13 +419,7 @@
             { categories: data },
             {
                 preserveScroll: true,
-                onSuccess: () => {
-                    showToast(
-                        'Urutan kategori berhasil diperbarui!',
-                        'success',
-                    );
-                },
-            },
+            }
         );
     }
 </script>

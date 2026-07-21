@@ -4,6 +4,8 @@ use App\Models\Category;
 use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\RefundRequest;
+use App\Models\ReturnRequest;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Models\User;
@@ -115,6 +117,12 @@ test('admin can view dashboard statistics', function () {
         ->where('topProducts.0.name', 'Lampu Hias')
         ->where('topProducts.0.sales', 2)
         ->has('chartData')
+        ->has('refundStats')
+        ->has('returnStats')
+        ->has('refundPipeline')
+        ->has('returnPipeline')
+        ->has('recentRefunds')
+        ->has('recentReturns')
     );
 });
 
@@ -192,5 +200,46 @@ test('admin can search and paginate stock information on dashboard', function ()
         ->where('search', 'MJ-L1')
         ->has('productStockInfo.data', 1)
         ->where('productStockInfo.data.0.name', 'Meja Lipat')
+    );
+});
+
+test('admin dashboard calculates refund and return statistics correctly', function () {
+    $admin = setupDashboardTestData();
+    $transaction = Transaction::first();
+
+    RefundRequest::create([
+        'refund_number' => 'RFD-TEST-00001',
+        'transaction_id' => $transaction->id,
+        'user_id' => $transaction->user_id,
+        'status' => 'menunggu_konfirmasi',
+        'refund_amount' => 50000,
+        'refund_method' => 'Transfer Bank',
+        'reason' => 'Barang cacat',
+    ]);
+
+    ReturnRequest::create([
+        'return_number' => 'RTR-TEST-00001',
+        'transaction_id' => $transaction->id,
+        'user_id' => $transaction->user_id,
+        'status' => 'menunggu_review',
+        'type' => 'tukar_barang',
+        'refund_amount' => 100000,
+        'reason' => 'Salah warna',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Admin/Dashboard')
+        ->where('refundStats.count', 1)
+        ->where('refundStats.totalAmount', 50000)
+        ->where('refundPipeline.pending', 1)
+        ->where('returnStats.count', 1)
+        ->where('returnStats.totalAmount', 100000)
+        ->where('returnPipeline.pending', 1)
+        ->has('recentRefunds', 1)
+        ->where('recentRefunds.0.refund_number', 'RFD-TEST-00001')
+        ->has('recentReturns', 1)
+        ->where('recentReturns.0.return_number', 'RTR-TEST-00001')
     );
 });

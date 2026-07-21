@@ -613,14 +613,40 @@ class MasterDataController extends Controller
             });
         }
 
+        $sort = $request->get('sort', 'order-asc');
+        switch ($sort) {
+            case 'order-asc':
+                $query->orderBy('order', 'asc')->orderBy('name', 'asc');
+                break;
+            case 'order-desc':
+                $query->orderBy('order', 'desc')->orderBy('name', 'asc');
+                break;
+            case 'name-asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name-desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'latest':
+                $query->latest();
+                break;
+            case 'oldest':
+                $query->oldest();
+                break;
+            default:
+                $query->orderBy('order', 'asc')->orderBy('name', 'asc');
+                break;
+        }
+
         $perPage = $request->get('perPage', 10);
-        $brands = $query->orderBy('order')->orderBy('name')->paginate($perPage)->withQueryString();
+        $brands = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('Admin/MasterData/Brands', [
             'brands' => $brands,
             'filters' => [
                 'search' => $request->search,
                 'perPage' => $perPage,
+                'sort' => $sort,
             ],
         ]);
     }
@@ -681,6 +707,26 @@ class MasterDataController extends Controller
         $brand->update(['is_active' => ! $brand->is_active]);
 
         return back()->with('success', 'Status brand berhasil diubah.');
+    }
+
+    /**
+     * Reorder brands.
+     */
+    public function reorderBrands(Request $request)
+    {
+        $request->validate([
+            'brands' => ['required', 'array'],
+            'brands.*.id' => ['required', 'exists:brands,id'],
+            'brands.*.order' => ['required', 'integer'],
+        ]);
+
+        foreach ($request->brands as $brandData) {
+            Brand::where('id', $brandData['id'])->update([
+                'order' => $brandData['order'],
+            ]);
+        }
+
+        return back()->with('success', 'Urutan brand berhasil diperbarui.');
     }
 
     /**

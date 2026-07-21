@@ -29,12 +29,91 @@ class ProductController extends Controller
             'productPrice',
             'productStock',
             'tierPrices',
+            'variants' => function ($v) {
+                $v->withSum(['transactionItems as total_qty_sold' => function ($q) {
+                    $q->whereHas('transaction', function ($t) {
+                        $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+                    });
+                }], 'quantity')
+                    ->withSum(['transactionItems as total_revenue' => function ($q) {
+                        $q->whereHas('transaction', function ($t) {
+                            $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+                        });
+                    }], 'subtotal')
+                    ->withSum(['returnItems as total_qty_returned' => function ($q) {
+                        $q->whereHas('returnRequest', function ($r) {
+                            $r->where('status', 'selesai');
+                        });
+                    }], 'quantity_returned')
+                    ->withSum(['returnItems as total_refund_amount' => function ($q) {
+                        $q->whereHas('returnRequest', function ($r) {
+                            $r->where('status', 'selesai');
+                        });
+                    }], 'refund_subtotal');
+            },
             'variants.options',
             'variants.productPrice',
             'variants.productStock',
             'variants.tierPrices',
             'variations.options',
-        ])->latest();
+        ]);
+
+        $sort = $request->get('sort', 'order-asc');
+        switch ($sort) {
+            case 'order-asc':
+                $query->orderBy('order', 'asc')->latest();
+                break;
+            case 'order-desc':
+                $query->orderBy('order', 'desc')->latest();
+                break;
+            case 'name-asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name-desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'price-asc':
+                $query->leftJoin('product_prices', function ($join) {
+                    $join->on('products.id', '=', 'product_prices.product_id')
+                        ->whereNull('product_prices.product_variant_id');
+                })
+                    ->select('products.*')
+                    ->orderBy('product_prices.price', 'asc');
+                break;
+            case 'price-desc':
+                $query->leftJoin('product_prices', function ($join) {
+                    $join->on('products.id', '=', 'product_prices.product_id')
+                        ->whereNull('product_prices.product_variant_id');
+                })
+                    ->select('products.*')
+                    ->orderBy('product_prices.price', 'desc');
+                break;
+            case 'stock-asc':
+                $query->leftJoin('product_stocks', function ($join) {
+                    $join->on('products.id', '=', 'product_stocks.product_id')
+                        ->whereNull('product_stocks.product_variant_id');
+                })
+                    ->select('products.*')
+                    ->orderBy('product_stocks.stock', 'asc');
+                break;
+            case 'stock-desc':
+                $query->leftJoin('product_stocks', function ($join) {
+                    $join->on('products.id', '=', 'product_stocks.product_id')
+                        ->whereNull('product_stocks.product_variant_id');
+                })
+                    ->select('products.*')
+                    ->orderBy('product_stocks.stock', 'desc');
+                break;
+            case 'latest':
+                $query->latest();
+                break;
+            case 'oldest':
+                $query->oldest();
+                break;
+            default:
+                $query->orderBy('order', 'asc')->latest();
+                break;
+        }
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -70,7 +149,51 @@ class ProductController extends Controller
             $query->where('active', $request->get('status') === 'active');
         }
 
+        $query->withSum(['transactionItems as total_qty_sold' => function ($q) {
+            $q->whereHas('transaction', function ($t) {
+                $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+            });
+        }], 'quantity');
+
+        $query->withSum(['transactionItems as total_revenue' => function ($q) {
+            $q->whereHas('transaction', function ($t) {
+                $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+            });
+        }], 'subtotal');
+
+        $query->withSum(['returnItems as total_qty_returned' => function ($q) {
+            $q->whereHas('returnRequest', function ($r) {
+                $r->where('status', 'selesai');
+            });
+        }], 'quantity_returned');
+
+        $query->withSum(['returnItems as total_refund_amount' => function ($q) {
+            $q->whereHas('returnRequest', function ($r) {
+                $r->where('status', 'selesai');
+            });
+        }], 'refund_subtotal');
+
         $products = $query->paginate(10)->withQueryString();
+
+        $products->getCollection()->transform(function ($product) {
+            $sold = (int) ($product->total_qty_sold ?? 0) - (int) ($product->total_qty_returned ?? 0);
+            $revenue = (float) ($product->total_revenue ?? 0) - (float) ($product->total_refund_amount ?? 0);
+
+            $product->performance_sold = max(0, $sold);
+            $product->performance_revenue = max(0.00, $revenue);
+
+            if ($product->variants) {
+                foreach ($product->variants as $variant) {
+                    $vSold = (int) ($variant->total_qty_sold ?? 0) - (int) ($variant->total_qty_returned ?? 0);
+                    $vRevenue = (float) ($variant->total_revenue ?? 0) - (float) ($variant->total_refund_amount ?? 0);
+
+                    $variant->performance_sold = max(0, $vSold);
+                    $variant->performance_revenue = max(0.00, $vRevenue);
+                }
+            }
+
+            return $product;
+        });
 
         $categories = Category::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->orderBy('name')->get();
@@ -92,6 +215,7 @@ class ProductController extends Controller
                 'category' => array_values($categoryFilter),
                 'brand' => array_values($brandFilter),
                 'status' => $request->get('status', 'all'),
+                'sort' => $sort,
             ],
         ]);
     }
@@ -104,6 +228,7 @@ class ProductController extends Controller
         return Inertia::render('Admin/Products/Create', [
             'categories' => $categories,
             'brands' => $brands,
+            'ai_enabled' => (bool) config('services.openagentic.enabled', false),
         ]);
     }
 
@@ -406,6 +531,7 @@ class ProductController extends Controller
             'product' => $product,
             'categories' => $categories,
             'brands' => $brands,
+            'ai_enabled' => (bool) config('services.openagentic.enabled', false),
         ]);
     }
 
@@ -1563,5 +1689,25 @@ class ProductController extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Reorder products.
+     */
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'products' => ['required', 'array'],
+            'products.*.id' => ['required', 'exists:products,id'],
+            'products.*.order' => ['required', 'integer'],
+        ]);
+
+        foreach ($request->products as $productData) {
+            Product::where('id', $productData['id'])->update([
+                'order' => $productData['order'],
+            ]);
+        }
+
+        return back()->with('success', 'Urutan produk berhasil diperbarui.');
     }
 }

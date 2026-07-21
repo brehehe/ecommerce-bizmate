@@ -40,4 +40,11 @@ return [
         'secret_key' => env('BITESHIP_SECRET_KEY'),
     ],
 
+    'openagentic' => [
+        'enabled' => env('AI_ENABLED', false),
+        'url' => env('OPENAGENTIC_API_URL', 'https://openagentic.id/api/v1'),
+        'key' => env('OPENAGENTIC_API_KEY'),
+        'model' => env('OPENAGENTIC_MODEL', 'claude-sonnet-4.5'),
+    ],
+
 ];
