@@ -73,15 +73,15 @@ class ReturnRequest extends Model
      */
     public static function generateNumber(): string
     {
-        $prefix = 'RTR-'.now()->format('Ymd').'-';
-        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
-        $last = static::where('return_number', $operator, $prefix.'%')
+        $prefix = 'RTR-' . now()->format('Ymd') . '-';
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $last = static::where('return_number', $operator, $prefix . '%')
             ->orderByDesc('return_number')
             ->value('return_number');
 
         $seq = $last ? (int) substr($last, -5) + 1 : 1;
 
-        return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
 
     public function transaction(): BelongsTo
@@ -131,7 +131,7 @@ class ReturnRequest extends Model
                         ->queue(new ReturnSubmitted($return, $storeName, $storeLogo));
                 }
             } catch (\Throwable $e) {
-                Log::error('Return submitted email failed: '.$e->getMessage());
+                Log::error('Return submitted email failed: ' . $e->getMessage());
             }
         });
 
@@ -146,7 +146,7 @@ class ReturnRequest extends Model
                             ->queue(new ReturnStatusChanged($return, $storeName, $storeLogo));
                     }
                 } catch (\Throwable $e) {
-                    Log::error('Return status change email failed: '.$e->getMessage());
+                    Log::error('Return status change email failed: ' . $e->getMessage());
                 }
             }
         });

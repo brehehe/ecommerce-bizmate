@@ -78,7 +78,7 @@ class StorefrontController extends Controller
         $popupBanner = $popupBannerJson ? json_decode($popupBannerJson, true) : null;
 
         return Inertia::render('Storefront/Home', [
-            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
             'featuredProducts' => Inertia::defer(function () {
@@ -166,7 +166,7 @@ class StorefrontController extends Controller
                     ->where('active', true)
                     ->whereIn('id', $bestSellerIds)
                     ->get()
-                    ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
+                    ->sortBy(fn($p) => array_search($p->id, $bestSellerIds))
                     ->values();
 
                 $activePromotions = Promotion::with(['items'])
@@ -204,7 +204,7 @@ class StorefrontController extends Controller
 
                 return $activeFlashSale;
             }),
-            'recentReviews' => Inertia::defer(fn () => ProductReview::with(['user', 'product.images', 'productVariant.options'])
+            'recentReviews' => Inertia::defer(fn() => ProductReview::with(['user', 'product.images', 'productVariant.options'])
                 ->latest()
                 ->take(8)
                 ->get()),
@@ -388,8 +388,8 @@ class StorefrontController extends Controller
 
         /** @var array{address: string, district_name: string, regency_name: string, province_name: string, postal_code: string, shipping_rate: string, enable_cod: string} $shippingSettings */
         $shippingInfo = [
-            'store_address' => trim(($shippingSettings['address'] ?? '').', '.($shippingSettings['district_name'] ?? '')),
-            'store_city' => trim(($shippingSettings['regency_name'] ?? '').', '.($shippingSettings['province_name'] ?? '')),
+            'store_address' => trim(($shippingSettings['address'] ?? '') . ', ' . ($shippingSettings['district_name'] ?? '')),
+            'store_city' => trim(($shippingSettings['regency_name'] ?? '') . ', ' . ($shippingSettings['province_name'] ?? '')),
             'postal_code' => $shippingSettings['postal_code'] ?? '',
             'shipping_rate' => (int) ($shippingSettings['shipping_rate'] ?? 0),
             'enable_cod' => ($shippingSettings['enable_cod'] ?? '0') === '1',
@@ -877,7 +877,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
 
         // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
         if ($query) {
@@ -982,10 +982,10 @@ class StorefrontController extends Controller
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/Search', [
-            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
-            'brands' => Inertia::defer(fn () => Brand::select('id', 'name', 'slug')
+            'brands' => Inertia::defer(fn() => Brand::select('id', 'name', 'slug')
                 ->where('is_active', true)
                 ->orderBy('order')
                 ->orderBy('name')
@@ -1147,7 +1147,7 @@ class StorefrontController extends Controller
                                 $p->setRelation('productPrice', $item->variant->productPrice);
                             }
                             $optionNames = $item->variant->options
-                                ? $item->variant->options->map(fn ($o) => $o->name)->join(' - ')
+                                ? $item->variant->options->map(fn($o) => $o->name)->join(' - ')
                                 : '';
                             if ($optionNames) {
                                 $p->name = "{$p->name} - {$optionNames}";
@@ -1371,7 +1371,7 @@ class StorefrontController extends Controller
         ])
             ->where('active', true);
 
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
 
         // Filter by keyword (similar to search method)
         if ($query) {
@@ -1428,7 +1428,7 @@ class StorefrontController extends Controller
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/ProdukTerlaris', [
-            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
             'products' => Inertia::defer(function () use ($productsQuery, $minPrice, $maxPrice, $sort) {
@@ -1555,7 +1555,7 @@ class StorefrontController extends Controller
             $productsQuery->where('is_digital', true);
         }
 
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+        $like = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
 
         // Filter by keyword (search in name, description, variant SKU, etc.)
         if ($query) {
@@ -1581,7 +1581,7 @@ class StorefrontController extends Controller
 
         return Inertia::render('Storefront/Category', [
             'category' => $categoryModel,
-            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
             'products' => Inertia::defer(function () use ($productsQuery, $minPrice, $maxPrice, $sort, $query) {
@@ -1812,7 +1812,7 @@ class StorefrontController extends Controller
             ->where('transaction_id', $transaction->id)
             ->get()
             ->keyBy(function ($review) {
-                return $review->product_id.'_'.$review->product_variant_id;
+                return $review->product_id . '_' . $review->product_variant_id;
             });
 
         // Auto-check gateway payment status if the transaction is still unpaid and is a gateway payment
@@ -1851,7 +1851,7 @@ class StorefrontController extends Controller
                             $transaction->load(['payments', 'payment']);
                         }
                     } catch (\Exception $e) {
-                        Log::error('Komerce Payment Auto-check Exception: '.$e->getMessage());
+                        Log::error('Komerce Payment Auto-check Exception: ' . $e->getMessage());
                     }
                 } elseif (str_contains($pmNameLower, 'midtrans')) {
                     try {
@@ -1878,7 +1878,7 @@ class StorefrontController extends Controller
                             $midtransOrderId = $transaction->transaction_number;
                         }
 
-                        $midtransUrl = rtrim($apiUrl, '/').'/v2/'.$midtransOrderId.'/status';
+                        $midtransUrl = rtrim($apiUrl, '/') . '/v2/' . $midtransOrderId . '/status';
 
                         $response = Http::withBasicAuth($serverKey, '')
                             ->timeout(10)
@@ -1914,7 +1914,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Midtrans Auto-check Exception: '.$e->getMessage());
+                        Log::error('Midtrans Auto-check Exception: ' . $e->getMessage());
                     }
                 } elseif (str_contains(strtolower($transaction->paymentMethod->name), 'flip')) {
                     try {
@@ -1922,7 +1922,7 @@ class StorefrontController extends Controller
                         $baseUrl = $transaction->paymentMethod->settings['url'] ?? config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
                         $billId = $latestPayment->gateway_transaction_id;
 
-                        $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/'.$billId.'/bill';
+                        $flipUrl = rtrim($baseUrl, '/') . '/v2/pwf/' . $billId . '/bill';
 
                         $response = Http::withBasicAuth($secretKey, '')
                             ->timeout(10)
@@ -1958,7 +1958,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Flip Auto-check Exception: '.$e->getMessage());
+                        Log::error('Flip Auto-check Exception: ' . $e->getMessage());
                     }
                 } else {
                     try {
@@ -1969,7 +1969,7 @@ class StorefrontController extends Controller
                             ? $transaction->paymentMethod->settings['url']
                             : config('app.xendit.url', 'https://api.xendit.co');
 
-                        $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices/'.$invoiceId;
+                        $xenditUrl = rtrim($baseUrl, '/') . '/v2/invoices/' . $invoiceId;
 
                         $response = Http::withBasicAuth($secretKey, '')
                             ->timeout(10)
@@ -2006,7 +2006,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Xendit Auto-check Exception: '.$e->getMessage());
+                        Log::error('Xendit Auto-check Exception: ' . $e->getMessage());
                     }
                 }
             }
@@ -2099,7 +2099,7 @@ class StorefrontController extends Controller
 
         $validated = $request->validate([
             'payment_method_id' => 'required|exists:payment_methods,id',
-            'midtrans_payment_type_key' => 'nullable|string|in:'.implode(',', array_keys(MidtransService::$paymentTypes)),
+            'midtrans_payment_type_key' => 'nullable|string|in:' . implode(',', array_keys(MidtransService::$paymentTypes)),
         ]);
 
         $paymentMethod = PaymentMethod::findOrFail($validated['payment_method_id']);
@@ -2113,7 +2113,7 @@ class StorefrontController extends Controller
         if ($midtransPaymentTypeKey && str_contains(strtolower($paymentMethod->name), 'midtrans')) {
             $user = $request->user();
             $result = MidtransService::charge(
-                ($transaction->transaction_number ?? $transaction->id).'-'.time(),
+                ($transaction->transaction_number ?? $transaction->id) . '-' . time(),
                 (int) $transaction->grand_total,
                 $midtransPaymentTypeKey,
                 [
@@ -2143,7 +2143,7 @@ class StorefrontController extends Controller
                 }
             } else {
                 return redirect()->route('transactions.show', $transaction->id)
-                    ->with('error', 'Metode pembayaran diubah tetapi gagal membuat charge Midtrans: '.($result['error'] ?? 'Unknown error'));
+                    ->with('error', 'Metode pembayaran diubah tetapi gagal membuat charge Midtrans: ' . ($result['error'] ?? 'Unknown error'));
             }
         }
 
@@ -2266,7 +2266,7 @@ class StorefrontController extends Controller
                 } else {
                     $path = $file->store('reviews', 'public');
                 }
-                $mediaPaths[] = '/storage/'.$path;
+                $mediaPaths[] = '/storage/' . $path;
             }
         }
 
@@ -2430,13 +2430,13 @@ class StorefrontController extends Controller
         $levels = MembershipLevel::orderBy('order', 'asc')
             ->with('activeBenefits')
             ->get()
-            ->map(fn ($l) => [
+            ->map(fn($l) => [
                 'id' => $l->id,
                 'name' => $l->name,
                 'order' => $l->order,
                 'badge_color' => $l->badge_color,
                 'icon' => $l->icon,
-                'benefits' => $l->activeBenefits->map(fn ($b) => [
+                'benefits' => $l->activeBenefits->map(fn($b) => [
                     'label' => $b->label,
                     'icon' => $b->icon,
                     'type' => $b->type,

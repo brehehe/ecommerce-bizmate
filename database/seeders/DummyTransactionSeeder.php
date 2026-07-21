@@ -97,8 +97,8 @@ class DummyTransactionSeeder extends Seeder
                 [
                     'label' => 'Rumah',
                     'receiver_name' => $customer->name,
-                    'phone_number' => '0812345678'.rand(10, 99),
-                    'full_address' => 'Jl. Merdeka No. '.rand(1, 150).', DKI Jakarta',
+                    'phone_number' => '0812345678' . rand(10, 99),
+                    'full_address' => 'Jl. Merdeka No. ' . rand(1, 150) . ', DKI Jakarta',
                     'is_primary' => true,
                 ]
             );
@@ -167,12 +167,12 @@ class DummyTransactionSeeder extends Seeder
             $grandTotal = $subtotal + $shippingFee + 1000; // subtotal + shipping + app fee (1000)
 
             // Generate Number
-            $prefix = 'TRX-'.$createdAt->format('Ymd').'-';
-            $last = Transaction::where('transaction_number', 'like', $prefix.'%')
+            $prefix = 'TRX-' . $createdAt->format('Ymd') . '-';
+            $last = Transaction::where('transaction_number', 'ilike', $prefix . '%')
                 ->orderByDesc('transaction_number')
                 ->value('transaction_number');
             $seq = $last ? (int) substr($last, -5) + 1 : 1;
-            $transactionNumber = $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
+            $transactionNumber = $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
 
             // Create Transaction
             $transaction = new Transaction;
@@ -195,10 +195,10 @@ class DummyTransactionSeeder extends Seeder
             $transaction->shipping_etd = '2-3 Hari';
 
             if (in_array($status, ['dikirim', 'selesai'])) {
-                $transaction->tracking_number = 'RSI'.rand(10000000, 99999999);
+                $transaction->tracking_number = 'RSI' . rand(10000000, 99999999);
             }
             if (in_array($status, ['diproses', 'dikemas', 'dikirim', 'selesai'])) {
-                $transaction->booking_code = 'ST-'.$transactionNumber;
+                $transaction->booking_code = 'ST-' . $transactionNumber;
             }
             if ($status === 'batal') {
                 $transaction->cancel_reason = 'Dibatalkan oleh pelanggan';
@@ -254,7 +254,7 @@ class DummyTransactionSeeder extends Seeder
                         $movement->quantity = $item['quantity'];
                         $movement->stock_before = $stockBefore;
                         $movement->stock_after = $stockAfter;
-                        $movement->notes = 'Penjualan #'.$transactionNumber;
+                        $movement->notes = 'Penjualan #' . $transactionNumber;
                         $movement->created_at = $createdAt;
                         $movement->updated_at = $createdAt;
                         $movement->save();
@@ -270,7 +270,7 @@ class DummyTransactionSeeder extends Seeder
                 $payment->payment_method_id = $paymentMethod->id;
                 $payment->amount = $grandTotal;
                 $payment->status = in_array($status, ['batal', 'menunggu']) ? 'pending' : 'confirmed';
-                $payment->notes = 'Pembayaran untuk #'.$transactionNumber;
+                $payment->notes = 'Pembayaran untuk #' . $transactionNumber;
                 if ($payment->status === 'confirmed') {
                     $payment->confirmed_at = $createdAt;
                 }

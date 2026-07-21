@@ -152,10 +152,10 @@ class Transaction extends Model
         static::saving(function (Transaction $transaction) {
             if ($transaction->shipping_courier === 'store_courier' && in_array($transaction->status, ['dikemas', 'out_for_pickup', 'dikirim'])) {
                 if (empty($transaction->booking_code)) {
-                    $transaction->booking_code = 'ST-'.$transaction->transaction_number;
+                    $transaction->booking_code = 'ST-' . $transaction->transaction_number;
                 }
                 if (empty($transaction->tracking_number)) {
-                    $transaction->tracking_number = 'RSI-'.str_replace('TRX-', '', $transaction->transaction_number).'-'.now()->format('Ymd');
+                    $transaction->tracking_number = 'RSI-' . str_replace('TRX-', '', $transaction->transaction_number) . '-' . now()->format('Ymd');
                 }
             }
         });
@@ -206,7 +206,7 @@ class Transaction extends Model
                                     'transaction_id' => $transaction->id,
                                     'amount' => $transaction->coins_earned,
                                     'type' => 'earn',
-                                    'description' => 'Mendapatkan Poin dari transaksi #'.$transaction->transaction_number,
+                                    'description' => 'Mendapatkan Poin dari transaksi #' . $transaction->transaction_number,
                                 ]);
                             }
                         }
@@ -226,7 +226,7 @@ class Transaction extends Model
                                     'transaction_id' => $transaction->id,
                                     'amount' => $transaction->coins_redeemed,
                                     'type' => 'refund',
-                                    'description' => 'Pengembalian Poin dari pembatalan transaksi #'.$transaction->transaction_number,
+                                    'description' => 'Pengembalian Poin dari pembatalan transaksi #' . $transaction->transaction_number,
                                 ]);
                             }
                         }
@@ -240,8 +240,8 @@ class Transaction extends Model
                         'out_for_pickup' => $transaction->shipping_courier === 'store_courier' ? 'Sudah dipick' : 'Kurir sedang dalam perjalanan untuk menjemput paket (Out for Pickup).',
                         'dikirim' => $transaction->shipping_courier === 'store_courier' ? 'Dalam Pengantaran' : 'Pesanan telah dikirim.',
                         'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
-                        'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
-                        default => 'Status pesanan diperbarui menjadi: '.$transaction->status,
+                        'batal' => 'Pesanan dibatalkan.' . ($transaction->cancel_reason ? ' Alasan: ' . $transaction->cancel_reason : ''),
+                        default => 'Status pesanan diperbarui menjadi: ' . $transaction->status,
                     };
 
                     $transaction->statusHistories()->create([
@@ -252,7 +252,7 @@ class Transaction extends Model
 
                     // Create database notification for the customer
                     try {
-                        $notifMessage = 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
+                        $notifMessage = 'Pesanan Anda #' . $transaction->transaction_number . ' kini ' . match ($transaction->status) {
                             'belum_bayar' => 'menunggu pembayaran.',
                             'menunggu' => 'menunggu konfirmasi pembayaran.',
                             'diproses' => 'sedang diproses.',
@@ -261,7 +261,7 @@ class Transaction extends Model
                             'dikirim' => 'telah dikirim.',
                             'selesai' => 'selesai / telah diterima.',
                             'batal' => 'dibatalkan.',
-                            default => 'diperbarui menjadi '.$transaction->status,
+                            default => 'diperbarui menjadi ' . $transaction->status,
                         };
 
                         if (in_array($transaction->status, ['diproses', 'dikirim', 'selesai'])) {
@@ -273,7 +273,7 @@ class Transaction extends Model
                                 $notifMessage .= ' Rincian produk digital Anda:';
                                 foreach ($digitalItems as $item) {
                                     if ($item->note) {
-                                        $notifMessage .= ' ['.$item->product_name.': '.$item->note.']';
+                                        $notifMessage .= ' [' . $item->product_name . ': ' . $item->note . ']';
                                     }
                                 }
                             }
@@ -284,7 +284,7 @@ class Transaction extends Model
                             'title' => 'Pembaruan Status Pesanan',
                             'message' => $notifMessage,
                             'type' => 'transaction_status',
-                            'url' => '/transactions/'.$transaction->id,
+                            'url' => '/transactions/' . $transaction->id,
                             'is_read' => false,
                         ]);
                     } catch (\Throwable $e) {
@@ -298,8 +298,8 @@ class Transaction extends Model
 
                         $title = $transaction->status === 'menunggu' ? 'Konfirmasi Pembayaran' : 'Pembaruan Status Pesanan';
                         $message = $transaction->status === 'menunggu'
-                            ? 'Ada konfirmasi pembayaran dari '.$customerName.' untuk transaksi #'.$transaction->transaction_number.' (Status: Menunggu Konfirmasi).'
-                            : 'Pesanan #'.$transaction->transaction_number.' oleh '.$customerName.' kini '.match ($transaction->status) {
+                            ? 'Ada konfirmasi pembayaran dari ' . $customerName . ' untuk transaksi #' . $transaction->transaction_number . ' (Status: Menunggu Konfirmasi).'
+                            : 'Pesanan #' . $transaction->transaction_number . ' oleh ' . $customerName . ' kini ' . match ($transaction->status) {
                                 'belum_bayar' => 'menunggu pembayaran',
                                 'menunggu' => 'menunggu konfirmasi pembayaran',
                                 'diproses' => 'sedang diproses',
@@ -308,15 +308,15 @@ class Transaction extends Model
                                 'dikirim' => 'telah dikirim',
                                 'selesai' => 'selesai / telah diterima',
                                 'batal' => 'dibatalkan',
-                                default => 'diperbarui menjadi '.$transaction->status,
-                            }.' (Status: '.$statusLabel.').';
+                                default => 'diperbarui menjadi ' . $transaction->status,
+                            } . ' (Status: ' . $statusLabel . ').';
 
                         Notification::create([
                             'user_id' => null, // null means Admin global
                             'title' => $title,
                             'message' => $message,
                             'type' => $transaction->status === 'menunggu' ? 'payment_proof' : 'transaction_status',
-                            'url' => '/admin/transactions/'.$transaction->id,
+                            'url' => '/admin/transactions/' . $transaction->id,
                             'is_read' => false,
                         ]);
                     } catch (\Throwable $e) {
@@ -337,7 +337,7 @@ class Transaction extends Model
                             ->queue(new OrderStatusChanged($transaction, $storeName, $storeLogo));
                     }
                 } catch (\Throwable $e) {
-                    Log::error('Order status change email failed for transaction '.$transaction->transaction_number.': '.$e->getMessage());
+                    Log::error('Order status change email failed for transaction ' . $transaction->transaction_number . ': ' . $e->getMessage());
                 }
             }
         });
@@ -350,9 +350,9 @@ class Transaction extends Model
                 Notification::create([
                     'user_id' => null, // null means Admin global
                     'title' => 'Pesanan Masuk Baru',
-                    'message' => 'Ada pesanan masuk atas nama '.$customerName.' dengan nomor transaksi #'.$transaction->transaction_number.' (Status: '.$statusLabel.').',
+                    'message' => 'Ada pesanan masuk atas nama ' . $customerName . ' dengan nomor transaksi #' . $transaction->transaction_number . ' (Status: ' . $statusLabel . ').',
                     'type' => 'new_order',
-                    'url' => '/admin/transactions/'.$transaction->id,
+                    'url' => '/admin/transactions/' . $transaction->id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {
@@ -365,7 +365,7 @@ class Transaction extends Model
                     $query->where('is_digital', true);
                 })->exists();
 
-                $message = 'Pesanan Anda #'.$transaction->transaction_number.' berhasil dibuat.';
+                $message = 'Pesanan Anda #' . $transaction->transaction_number . ' berhasil dibuat.';
                 if ($hasDigital) {
                     $message .= ' Catatan/kode produk digital Anda akan aktif setelah pembayaran dikonfirmasi.';
                 } else {
@@ -377,7 +377,7 @@ class Transaction extends Model
                     'title' => 'Pesanan Berhasil Dibuat',
                     'message' => $message,
                     'type' => 'transaction_status',
-                    'url' => '/transactions/'.$transaction->id,
+                    'url' => '/transactions/' . $transaction->id,
                     'is_read' => false,
                 ]);
             } catch (\Throwable $e) {
@@ -425,15 +425,15 @@ class Transaction extends Model
      */
     public static function generateNumber(): string
     {
-        $prefix = 'TRX-'.now()->format('Ymd').'-';
-        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
-        $last = static::where('transaction_number', $operator, $prefix.'%')
+        $prefix = 'TRX-' . now()->format('Ymd') . '-';
+        $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
+        $last = static::where('transaction_number', $operator, $prefix . '%')
             ->orderByDesc('transaction_number')
             ->value('transaction_number');
 
         $seq = $last ? (int) substr($last, -5) + 1 : 1;
 
-        return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
 
     public function user(): BelongsTo
@@ -545,7 +545,7 @@ class Transaction extends Model
      */
     public function getGrandTotalFormattedAttribute(): string
     {
-        return 'Rp '.number_format((float) $this->grand_total, 0, ',', '.');
+        return 'Rp ' . number_format((float) $this->grand_total, 0, ',', '.');
     }
 
     /**
@@ -553,7 +553,7 @@ class Transaction extends Model
      */
     public function getSubtotalFormattedAttribute(): string
     {
-        return 'Rp '.number_format((float) $this->subtotal, 0, ',', '.');
+        return 'Rp ' . number_format((float) $this->subtotal, 0, ',', '.');
     }
 
     /**
@@ -561,7 +561,7 @@ class Transaction extends Model
      */
     public function getDiscountAmountFormattedAttribute(): string
     {
-        return 'Rp '.number_format((float) $this->discount_amount, 0, ',', '.');
+        return 'Rp ' . number_format((float) $this->discount_amount, 0, ',', '.');
     }
 
     /**
@@ -569,7 +569,7 @@ class Transaction extends Model
      */
     public function getShippingCostFormattedAttribute(): string
     {
-        return 'Rp '.number_format((float) $this->shipping_fee, 0, ',', '.');
+        return 'Rp ' . number_format((float) $this->shipping_fee, 0, ',', '.');
     }
 
     /**

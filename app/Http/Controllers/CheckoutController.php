@@ -282,12 +282,12 @@ class CheckoutController extends Controller
             return back()->with('error', 'Tidak ada produk yang dipilih untuk checkout.');
         }
 
-        $isDigitalOnly = $cartItems->every(fn ($item) => $item->product->is_digital);
+        $isDigitalOnly = $cartItems->every(fn($item) => $item->product->is_digital);
         $isSelfPickup = $request->input('shipping_courier') === 'self_pickup';
 
         $rules = [
             'payment_method_id' => 'required|exists:payment_methods,id',
-            'midtrans_payment_type_key' => 'nullable|string|in:'.implode(',', array_keys(MidtransService::$paymentTypes)),
+            'midtrans_payment_type_key' => 'nullable|string|in:' . implode(',', array_keys(MidtransService::$paymentTypes)),
             'courier_id' => 'nullable|exists:couriers,id',
             'shipping_courier' => 'required|string|max:50',
             'shipping_service' => 'required|string|max:50',
@@ -320,7 +320,7 @@ class CheckoutController extends Controller
         $isCod = str_contains(strtolower($paymentMethod->name), 'cod');
         $courierLower = strtolower($request->shipping_courier);
         if ($isCod && in_array($courierLower, ['gosend', 'gojek', 'grab', 'grabexpress', 'lion'])) {
-            return back()->with('error', 'Metode pembayaran Cash on Delivery (COD) tidak didukung oleh kurir '.$request->shipping_courier.'.');
+            return back()->with('error', 'Metode pembayaran Cash on Delivery (COD) tidak didukung oleh kurir ' . $request->shipping_courier . '.');
         }
 
         // Get checked cart items
@@ -639,7 +639,7 @@ class CheckoutController extends Controller
                     'transaction_id' => $transaction->id,
                     'amount' => -$coinsRedeemed,
                     'type' => 'redeem',
-                    'description' => 'Penggunaan Poin untuk transaksi #'.$transaction->transaction_number,
+                    'description' => 'Penggunaan Poin untuk transaksi #' . $transaction->transaction_number,
                 ]);
             }
 
@@ -723,7 +723,7 @@ class CheckoutController extends Controller
                         'quantity' => -$item->quantity,
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
-                        'notes' => 'Penjualan - '.$transaction->transaction_number,
+                        'notes' => 'Penjualan - ' . $transaction->transaction_number,
                         'created_by' => $user->id,
                     ]);
                 }
@@ -753,12 +753,12 @@ class CheckoutController extends Controller
                             ]);
                         } else {
                             $errorMsg = $response['error'] ?? 'Gagal generate pembayaran QRIS Komerce.';
-                            Log::error('Komerce QRIS Creation Failed: '.$errorMsg);
+                            Log::error('Komerce QRIS Creation Failed: ' . $errorMsg);
                             $paymentData['gateway_status'] = 'FAILED_API';
                             $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                         }
                     } catch (\Exception $e) {
-                        Log::error('Komerce QRIS Exception: '.$e->getMessage());
+                        Log::error('Komerce QRIS Exception: ' . $e->getMessage());
                         $paymentData['gateway_status'] = 'FAILED_API';
                         $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                     }
@@ -774,12 +774,12 @@ class CheckoutController extends Controller
                             ]);
                         } else {
                             $errorMsg = $response['error'] ?? 'Gagal generate URL Komerce Payment.';
-                            Log::error('Komerce Payment URL Creation Failed: '.$errorMsg);
+                            Log::error('Komerce Payment URL Creation Failed: ' . $errorMsg);
                             $paymentData['gateway_status'] = 'FAILED_API';
                             $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                         }
                     } catch (\Exception $e) {
-                        Log::error('Komerce Payment URL Exception: '.$e->getMessage());
+                        Log::error('Komerce Payment URL Exception: ' . $e->getMessage());
                         $paymentData['gateway_status'] = 'FAILED_API';
                         $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                     }
@@ -812,12 +812,12 @@ class CheckoutController extends Controller
                                     ));
                                 } else {
                                     $errorMsg = $result['error'] ?? 'Gagal menghubungi Midtrans Core API.';
-                                    Log::error('Midtrans Core API Failed: '.$errorMsg);
+                                    Log::error('Midtrans Core API Failed: ' . $errorMsg);
                                     $paymentData['gateway_status'] = 'FAILED_API';
                                     $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                                 }
                             } catch (\Exception $e) {
-                                Log::error('Midtrans Core API Exception: '.$e->getMessage());
+                                Log::error('Midtrans Core API Exception: ' . $e->getMessage());
                                 $paymentData['gateway_status'] = 'FAILED_API';
                                 $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                             }
@@ -830,7 +830,7 @@ class CheckoutController extends Controller
                                     ? $paymentMethod->settings['url']
                                     : KomerceService::getSetting('midtrans_snap_url', 'app.midtrans.snap_url');
 
-                                $midtransUrl = rtrim($baseUrl, '/').'/snap/v1/transactions';
+                                $midtransUrl = rtrim($baseUrl, '/') . '/snap/v1/transactions';
 
                                 $payload = [
                                     'transaction_details' => [
@@ -859,12 +859,12 @@ class CheckoutController extends Controller
                                     $paymentData['gateway_response'] = json_encode($responseData);
                                 } else {
                                     $errorMsg = $response->json('error_messages')[0] ?? 'Gagal menghubungi Midtrans Snap.';
-                                    Log::error('Midtrans Snap Creation Failed: '.$errorMsg);
+                                    Log::error('Midtrans Snap Creation Failed: ' . $errorMsg);
                                     $paymentData['gateway_status'] = 'FAILED_API';
                                     $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                                 }
                             } catch (\Exception $e) {
-                                Log::error('Midtrans Connection Exception: '.$e->getMessage());
+                                Log::error('Midtrans Connection Exception: ' . $e->getMessage());
                                 $paymentData['gateway_status'] = 'FAILED_API';
                                 $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                             }
@@ -877,7 +877,7 @@ class CheckoutController extends Controller
                                 ? $paymentMethod->settings['url']
                                 : config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
 
-                            $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/bill';
+                            $flipUrl = rtrim($baseUrl, '/') . '/v2/pwf/bill';
 
                             $redirectUrl = env('FLIP_REDIRECT_URL') ?: route('transactions.show', $transaction->id);
 
@@ -891,7 +891,7 @@ class CheckoutController extends Controller
                             }
 
                             $payload = [
-                                'title' => 'Pembayaran Pesanan #'.$transaction->transaction_number,
+                                'title' => 'Pembayaran Pesanan #' . $transaction->transaction_number,
                                 'amount' => (int) $grandTotal,
                                 'type' => 'SINGLE',
                                 'redirect_url' => $redirectUrl,
@@ -911,12 +911,12 @@ class CheckoutController extends Controller
                                 $paymentData['gateway_response'] = json_encode($responseData);
                             } else {
                                 $errorMsg = $response->json('message') ?? 'Gagal menghubungi Flip API.';
-                                Log::error('Flip Bill Creation Failed: status='.$response->status().' body='.$response->body());
+                                Log::error('Flip Bill Creation Failed: status=' . $response->status() . ' body=' . $response->body());
                                 $paymentData['gateway_status'] = 'FAILED_API';
                                 $paymentData['gateway_response'] = json_encode(['error' => $errorMsg, 'response_body' => $response->body()]);
                             }
                         } catch (\Exception $e) {
-                            Log::error('Flip Connection Exception: '.$e->getMessage());
+                            Log::error('Flip Connection Exception: ' . $e->getMessage());
                             $paymentData['gateway_status'] = 'FAILED_API';
                             $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                         }
@@ -928,13 +928,13 @@ class CheckoutController extends Controller
                                 ? $paymentMethod->settings['url']
                                 : KomerceService::getSetting('xendit_url', 'app.xendit.url');
 
-                            $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices';
+                            $xenditUrl = rtrim($baseUrl, '/') . '/v2/invoices';
 
                             $payload = [
                                 'external_id' => $transaction->transaction_number,
                                 'amount' => (float) $grandTotal,
                                 'payer_email' => $user->email,
-                                'description' => 'Pembayaran Pesanan #'.$transaction->transaction_number.' di '.config('app.name'),
+                                'description' => 'Pembayaran Pesanan #' . $transaction->transaction_number . ' di ' . config('app.name'),
                                 'success_redirect_url' => route('transactions.show', $transaction->id),
                                 'failure_redirect_url' => route('transactions.show', $transaction->id),
                             ];
@@ -950,12 +950,12 @@ class CheckoutController extends Controller
                                 $paymentData['gateway_response'] = json_encode($responseData);
                             } else {
                                 $errorMsg = $response->json('message') ?? 'Terjadi kesalahan saat menghubungkan ke Xendit.';
-                                Log::error('Xendit Invoice Creation Failed: '.$errorMsg);
+                                Log::error('Xendit Invoice Creation Failed: ' . $errorMsg);
                                 $paymentData['gateway_status'] = 'FAILED_API';
                                 $paymentData['gateway_response'] = json_encode(['error' => $errorMsg]);
                             }
                         } catch (\Exception $e) {
-                            Log::error('Xendit Connection Exception: '.$e->getMessage());
+                            Log::error('Xendit Connection Exception: ' . $e->getMessage());
                             $paymentData['gateway_status'] = 'FAILED_API';
                             $paymentData['gateway_response'] = json_encode(['error' => $e->getMessage()]);
                         }
@@ -1003,7 +1003,7 @@ class CheckoutController extends Controller
 
             Mail::to($user->email)->queue(new OrderConfirmation($transaction, $storeName, $storeLogo));
         } catch (\Throwable $e) {
-            Log::error('Order confirmation email failed for transaction '.$transaction->transaction_number.': '.$e->getMessage());
+            Log::error('Order confirmation email failed for transaction ' . $transaction->transaction_number . ': ' . $e->getMessage());
         }
 
         return redirect()->route('transactions.show', $transaction->id)
@@ -1199,7 +1199,7 @@ class CheckoutController extends Controller
 
             $maxRadius = (float) (Setting::where('key', 'store_courier_max_radius')->value('value') ?? 50);
             if ($distance > $maxRadius) {
-                return response()->json(['error' => 'Jarak pengiriman melebihi radius maksimal Kurir Toko (maksimal '.$maxRadius.' km). Jarak saat ini: '.round($distance, 1).' km.'], 422);
+                return response()->json(['error' => 'Jarak pengiriman melebihi radius maksimal Kurir Toko (maksimal ' . $maxRadius . ' km). Jarak saat ini: ' . round($distance, 1) . ' km.'], 422);
             }
 
             // Check if distance should be rounded up to the nearest kilometer
@@ -1271,7 +1271,7 @@ class CheckoutController extends Controller
                                     [
                                         'value' => $fee,
                                         'etd' => '1-2 hari',
-                                        'note' => 'Jarak pengiriman: '.round($distance, 1).' km.',
+                                        'note' => 'Jarak pengiriman: ' . round($distance, 1) . ' km.',
                                     ],
                                 ],
                             ],
@@ -1400,7 +1400,7 @@ class CheckoutController extends Controller
 
         try {
             $response = Http::withHeaders(['key' => $apiKey])
-                ->get(rtrim($baseUrl, '/').'/city', [
+                ->get(rtrim($baseUrl, '/') . '/city', [
                     'province' => $request->province_id,
                 ]);
 
@@ -1462,11 +1462,11 @@ class CheckoutController extends Controller
         foreach ($codes as $c) {
             $membershipVoucher = $user
                 ? MembershipVoucher::where('code', $c)
-                    ->where('user_id', $user->id)
-                    ->where('status', 'active')
-                    ->where('valid_from', '<=', now()->toDateString())
-                    ->where('valid_until', '>=', now()->toDateString())
-                    ->first()
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->where('valid_from', '<=', now()->toDateString())
+                ->where('valid_until', '>=', now()->toDateString())
+                ->first()
                 : null;
 
             if ($membershipVoucher) {
@@ -1482,7 +1482,7 @@ class CheckoutController extends Controller
                 if ($subtotal < (float) $membershipVoucher->min_purchase) {
                     return [
                         'valid' => false,
-                        'message' => 'Minimum pembelian untuk voucher ini adalah '.number_format($membershipVoucher->min_purchase, 0, ',', '.'),
+                        'message' => 'Minimum pembelian untuk voucher ini adalah ' . number_format($membershipVoucher->min_purchase, 0, ',', '.'),
                         'promotion' => null,
                         'discount_type' => null,
                         'discount_value' => 0,
@@ -1575,7 +1575,7 @@ class CheckoutController extends Controller
             $maxUsesPerUser = $promotion->settings['max_uses_per_user'] ?? null;
             if ($user && $maxUsesPerUser !== null && $maxUsesPerUser !== '') {
                 $maxUses = (int) $maxUsesPerUser;
-                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
+                $operator = DB::connection()->getDriverName() === 'sqlite' ? 'ilike' : 'ilike';
                 $usedCount = Transaction::where('user_id', $user->id)
                     ->where(function ($q) use ($promotion, $operator) {
                         $q->where('voucher_code', $promotion->code)
@@ -1602,7 +1602,7 @@ class CheckoutController extends Controller
             if ($promotion->min_purchase && $subtotal < $promotion->min_purchase) {
                 return [
                     'valid' => false,
-                    'message' => 'Minimum pembelian Rp '.number_format($promotion->min_purchase, 0, ',', '.')." untuk menggunakan voucher \"{$promotion->code}\".",
+                    'message' => 'Minimum pembelian Rp ' . number_format($promotion->min_purchase, 0, ',', '.') . " untuk menggunakan voucher \"{$promotion->code}\".",
                     'promotion' => null,
                     'discount_type' => null,
                     'discount_value' => 0,

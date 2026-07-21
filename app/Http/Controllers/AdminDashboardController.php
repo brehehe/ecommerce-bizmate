@@ -78,7 +78,11 @@ class AdminDashboardController extends Controller
             $recentRefunds,
             $recentReturns
         ] = Cache::remember($cacheKey, 300, function () use (
-            $dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $paidStatuses
+            $dateFrom,
+            $dateTo,
+            $prevDateFrom,
+            $prevDateTo,
+            $paidStatuses
         ) {
             // --- 1. Aggregate stats: current & previous period ---
             $currentAgg = Transaction::whereIn('status', $paidStatuses)
@@ -239,7 +243,7 @@ class AdminDashboardController extends Controller
                 $customerEmail = $user ? $user->email : 'guest@email.com';
 
                 $initials = collect(explode(' ', $customerName))
-                    ->map(fn ($n) => strtoupper(substr($n, 0, 1)))
+                    ->map(fn($n) => strtoupper(substr($n, 0, 1)))
                     ->take(2)
                     ->implode('');
 
@@ -256,7 +260,7 @@ class AdminDashboardController extends Controller
 
                 return [
                     'raw_id' => $transaction->id,
-                    'id' => '#'.$transaction->transaction_number,
+                    'id' => '#' . $transaction->transaction_number,
                     'customer' => $customerName,
                     'email' => $customerEmail,
                     'initials' => $initials,
@@ -351,9 +355,9 @@ class AdminDashboardController extends Controller
                     if ($productModel->image) {
                         $imageUrl = str_starts_with($productModel->image, 'http')
                             ? $productModel->image
-                            : '/'.ltrim($productModel->image, '/');
+                            : '/' . ltrim($productModel->image, '/');
                     } elseif ($productModel->images->first()) {
-                        $imageUrl = '/'.ltrim($productModel->images->first()->path, '/');
+                        $imageUrl = '/' . ltrim($productModel->images->first()->path, '/');
                     }
                 }
 
@@ -453,7 +457,7 @@ class AdminDashboardController extends Controller
                     $imageUrl = null;
                     if ($mov->product && $mov->product->image) {
                         $img = $mov->product->image;
-                        $imageUrl = str_starts_with($img, 'http') ? $img : '/'.ltrim($img, '/');
+                        $imageUrl = str_starts_with($img, 'http') ? $img : '/' . ltrim($img, '/');
                     }
 
                     return [
@@ -495,7 +499,7 @@ class AdminDashboardController extends Controller
                         if ($item->product_image) {
                             $imageUrl = str_starts_with($item->product_image, 'http')
                                 ? $item->product_image
-                                : '/'.ltrim($item->product_image, '/');
+                                : '/' . ltrim($item->product_image, '/');
                         }
 
                         return [
@@ -525,7 +529,7 @@ class AdminDashboardController extends Controller
                 ->get()
                 ->map(function ($u) {
                     $initials = collect(explode(' ', $u->name))
-                        ->map(fn ($n) => strtoupper(substr($n, 0, 1)))
+                        ->map(fn($n) => strtoupper(substr($n, 0, 1)))
                         ->take(2)
                         ->implode('');
 
@@ -559,7 +563,7 @@ class AdminDashboardController extends Controller
         // Product Stock Overview
         $search = $request->input('search');
         $driver = DB::connection()->getDriverName();
-        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'ilike';
 
         $stockQuery = DB::table('products')
             ->leftJoin('product_stocks', function ($join) {
@@ -601,7 +605,7 @@ class AdminDashboardController extends Controller
                 if ($item->image) {
                     $imageUrl = str_starts_with($item->image, 'http')
                         ? $item->image
-                        : '/'.ltrim($item->image, '/');
+                        : '/' . ltrim($item->image, '/');
                 }
 
                 $stockStatus = 'normal';
@@ -653,16 +657,16 @@ class AdminDashboardController extends Controller
     private function formatRupiah(float $value): string
     {
         if ($value >= 1_000_000_000_000) {
-            return 'Rp '.number_format($value / 1_000_000_000_000, 1, ',', '.').' T';
+            return 'Rp ' . number_format($value / 1_000_000_000_000, 1, ',', '.') . ' T';
         }
         if ($value >= 1_000_000_000) {
-            return 'Rp '.number_format($value / 1_000_000_000, 1, ',', '.').' M';
+            return 'Rp ' . number_format($value / 1_000_000_000, 1, ',', '.') . ' M';
         }
         if ($value >= 1_000_000) {
-            return 'Rp '.number_format($value / 1_000_000, 1, ',', '.').' Jt';
+            return 'Rp ' . number_format($value / 1_000_000, 1, ',', '.') . ' Jt';
         }
 
-        return 'Rp '.number_format($value, 0, ',', '.');
+        return 'Rp ' . number_format($value, 0, ',', '.');
     }
 
     /**
@@ -684,9 +688,9 @@ class AdminDashboardController extends Controller
         $formatted = number_format(abs($change), 1, ',', '.');
 
         if ($change > 0) {
-            return ['value' => '+'.$formatted.'%', 'type' => 'up'];
+            return ['value' => '+' . $formatted . '%', 'type' => 'up'];
         } elseif ($change < 0) {
-            return ['value' => '-'.$formatted.'%', 'type' => 'down'];
+            return ['value' => '-' . $formatted . '%', 'type' => 'down'];
         }
 
         return ['value' => '0%', 'type' => 'neutral'];
