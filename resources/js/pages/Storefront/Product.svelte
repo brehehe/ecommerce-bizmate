@@ -5292,4 +5292,30 @@
         color: #2563eb;
         text-decoration: underline;
     }
+
+    /* Fix inline styles (background and text color) in dark mode inside product description */
+    :global(.dark .prose [style*="background-color"]),
+    :global(.sf-dark .prose [style*="background-color"]) {
+        background-color: transparent !important;
+    }
+    :global(.dark .prose [style*="color"]),
+    :global(.sf-dark .prose [style*="color"]) {
+        color: inherit !important;
+    }
+    
+    /* Ensure text colors inside prose are visible in dark mode */
+    :global(.dark .prose),
+    :global(.sf-dark .prose) {
+        color: #cbd5e1 !important; /* slate-300 */
+    }
+    :global(.dark .prose h1),
+    :global(.dark .prose h2),
+    :global(.dark .prose h3),
+    :global(.dark .prose strong),
+    :global(.sf-dark .prose h1),
+    :global(.sf-dark .prose h2),
+    :global(.sf-dark .prose h3),
+    :global(.sf-dark .prose strong) {
+        color: #f8fafc !important; /* slate-50 */
+    }
 </style>

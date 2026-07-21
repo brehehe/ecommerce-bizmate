@@ -204,7 +204,7 @@ class ImageSearchService
             $prompt .= 'Kembalikan respon HANYA dalam format array JSON berisi index angka saja yang lolos seleksi dan diurutkan dari yang terbaik, contoh: [2, 0, 5]. Jangan menulis teks analisis atau penjelasan lainnya.';
 
             $response = Http::withToken($apiKey)
-                ->timeout(12)
+                ->timeout(30)
                 ->post("{$apiUrl}/chat/completions", [
                     'model' => $model,
                     'messages' => [

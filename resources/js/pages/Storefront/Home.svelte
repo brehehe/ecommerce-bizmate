@@ -439,11 +439,27 @@
     let loadingMore = $state(false);
     let activeLightboxImage = $state<string | null>(null);
 
-    const allRecommendations = $derived(newProducts ? [...newProducts].reverse() : []);
+    let shuffledRecommendations = $state([]);
+
+    $effect(() => {
+        if (newProducts && newProducts.length > 0) {
+            let arr = [...newProducts];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            shuffledRecommendations = arr;
+        } else {
+            shuffledRecommendations = [];
+        }
+    });
+
     const recommendedProducts = $derived(
-        newProducts ? allRecommendations.slice(0, displayedCount) : undefined
+        shuffledRecommendations.length > 0 ? shuffledRecommendations.slice(0, displayedCount) : undefined
     );
-    const hasMore = $derived(newProducts ? (displayedCount < allRecommendations.length) : false);
+    const hasMore = $derived(
+        shuffledRecommendations.length > 0 ? (displayedCount < shuffledRecommendations.length) : false
+    );
 
     function setupObserver(node: HTMLElement) {
         const obs = new IntersectionObserver(
@@ -453,7 +469,7 @@
                     setTimeout(() => {
                         displayedCount = Math.min(
                             displayedCount + 10,
-                            allRecommendations.length,
+                            shuffledRecommendations.length,
                         );
                         loadingMore = false;
                     }, 800);
