@@ -7,7 +7,6 @@
         "pest-testing",
         "inertia-svelte-development",
         "tailwindcss-development",
-        "laravel-permission-development",
         "deploying-laravel-cloud"
     ]
 }
