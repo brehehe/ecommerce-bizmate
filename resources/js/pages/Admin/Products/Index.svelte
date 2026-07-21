@@ -380,7 +380,22 @@
                 router.reload();
             } else {
                 const data = await response.json();
-                importError = data.message || 'Gagal melakukan import produk.';
+                if (data.errors) {
+                    const errorMessages = [];
+                    for (const [key, messages] of Object.entries(data.errors)) {
+                        const match = key.match(/^products\.(\d+)\.(.+)$/);
+                        if (match) {
+                            const rowIndex = parseInt(match[1]) + 1;
+                            const field = match[2];
+                            errorMessages.push(`Baris ${rowIndex} (${field}): ${messages.join(', ')}`);
+                        } else {
+                            errorMessages.push(`${key}: ${messages.join(', ')}`);
+                        }
+                    }
+                    importError = errorMessages.join('\n');
+                } else {
+                    importError = data.message || 'Gagal melakukan import produk.';
+                }
             }
         } catch (err) {
             console.error(err);
@@ -1924,12 +1939,12 @@
 
                     {#if importError}
                         <div
-                            class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-xs text-rose-700 font-medium"
+                             class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-xs text-rose-700 font-medium"
                         >
                             <i
                                 class="ti ti-alert-circle text-lg shrink-0 mt-0.5"
                             ></i>
-                            <div>{importError}</div>
+                            <div class="whitespace-pre-line">{importError}</div>
                         </div>
                     {/if}
 
