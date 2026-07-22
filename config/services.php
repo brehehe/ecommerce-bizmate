@@ -48,7 +48,7 @@ return [
     ],
 
     'products' => [
-        'import_auto_fetch_images' => env('IMPORT_AUTO_FETCH_IMAGES', true),
+        'import_auto_fetch_images' => env('IMPORT_AUTO_FETCH_IMAGES', false),
     ],
 
 ];
