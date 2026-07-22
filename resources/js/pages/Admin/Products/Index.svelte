@@ -439,6 +439,8 @@
     let filterStatus = $state(filters.status || 'all');
     // svelte-ignore state_referenced_locally
     let filterSort = $state(filters.sort || 'order-asc');
+    // svelte-ignore state_referenced_locally
+    let filterPerPage = $state(filters.per_page || '10');
 
     let currentViewMode = $state('list'); // 'list' or 'grid'
 
@@ -546,6 +548,7 @@
                 brand: filterBrands,
                 status: filterStatus,
                 sort: filterSort,
+                per_page: filterPerPage,
             },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -735,8 +738,8 @@
         <!-- Advanced Data Table -->
         <div class="border border-slate-200 bg-white rounded-xl flex flex-col overflow-hidden shadow-xs">
             <!-- Filters Bar -->
-            <div class="p-4 border-b border-slate-150 flex flex-col xl:flex-row gap-3 justify-between items-stretch xl:items-center bg-slate-50/50">
-                <div class="flex-grow flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+            <div class="p-4 border-b border-slate-150 flex flex-col xl:flex-row xl:flex-wrap gap-3 justify-between items-stretch xl:items-center bg-slate-50/50">
+                <div class="flex-grow flex flex-col sm:flex-row gap-3 items-stretch sm:items-center flex-wrap">
                     <div class="relative flex-1 min-w-[240px]">
                         <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
                         <input
@@ -747,7 +750,7 @@
                             class="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-0 transition-colors"
                         />
                     </div>
-                    <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+                    <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 items-stretch sm:items-center">
                         <div class="w-full sm:w-48">
                             <SelectSearchMultiple
                                 bind:value={filterCategories}
@@ -790,6 +793,19 @@
                                 <option value="stock-desc">Stok: Tertinggi</option>
                                 <option value="latest">Terbaru</option>
                                 <option value="oldest">Terlama</option>
+                            </select>
+                        </div>
+                        <div class="w-full sm:w-40">
+                            <select
+                                bind:value={filterPerPage}
+                                onchange={applyFilters}
+                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                            >
+                                <option value="10">10 per halaman</option>
+                                <option value="25">25 per halaman</option>
+                                <option value="50">50 per halaman</option>
+                                <option value="100">100 per halaman</option>
+                                <option value="all">Semua Produk</option>
                             </select>
                         </div>
                     </div>

@@ -174,7 +174,12 @@ class ProductController extends Controller
             });
         }], 'refund_subtotal');
 
-        $products = $query->paginate(10)->withQueryString();
+        $perPage = $request->get('per_page', 10);
+        if ($perPage === 'all') {
+            $products = $query->paginate(999999)->withQueryString();
+        } else {
+            $products = $query->paginate((int) $perPage)->withQueryString();
+        }
 
         $products->getCollection()->transform(function ($product) {
             $sold = (int) ($product->total_qty_sold ?? 0) - (int) ($product->total_qty_returned ?? 0);
@@ -219,6 +224,7 @@ class ProductController extends Controller
                 'brand' => array_values($brandFilter),
                 'status' => $request->get('status', 'all'),
                 'sort' => $sort,
+                'per_page' => $request->get('per_page', '10'),
             ],
         ]);
     }
