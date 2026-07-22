@@ -237,52 +237,7 @@ class ImportProductsJob implements ShouldQueue
                 }
             });
 
-            if ($this->autoFetchImages) {
-                // Outside the transaction, download and store a default image for each imported product that has no photos
-                foreach ($importedProducts as $product) {
-                    if ($product->images()->count() === 0) {
-                        try {
-                            $searchService = app(ImageSearchService::class);
-                            $results = $searchService->search($product->name, 3);
-                            if (! empty($results)) {
-                                $firstImage = $results[0]['url'];
-
-                                // Download the image
-                                $imageResponse = Http::timeout(15)->get($firstImage);
-                                if ($imageResponse->successful()) {
-                                    $imgData = $imageResponse->body();
-                                    $mime = $imageResponse->header('Content-Type');
-
-                                    // Parse extension
-                                    $ext = 'jpg';
-                                    if (str_contains($mime, 'image/png') || str_contains($mime, 'png')) {
-                                        $ext = 'png';
-                                    } elseif (str_contains($mime, 'image/webp') || str_contains($mime, 'webp')) {
-                                        $ext = 'webp';
-                                    }
-
-                                    // Compress and save
-                                    $compressed = ImageHelper::compress($imgData, $ext, 75);
-                                    $filename = 'product_'.$product->id.'_'.time().'_import.'.$ext;
-                                    Storage::disk('public')->put('products/'.$filename, $compressed);
-
-                                    $product->images()->create([
-                                        'path' => 'storage/products/'.$filename,
-                                        'is_main' => true,
-                                        'sort_order' => 0,
-                                    ]);
-
-                                    $product->update(['image' => 'storage/products/'.$filename]);
-                                }
-                            }
-                        } catch (\Throwable $e) {
-                            Log::warning('Failed to automatically fetch image during import in background for product: '.$product->name, [
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
-                    }
-                }
-            }
+            // Automatic image fetching during import is completely disabled to avoid irrelevant/incorrect images.
         } catch (\Throwable $e) {
             Log::error('Background product import failed', [
                 'error' => $e->getMessage(),

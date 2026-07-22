@@ -1960,17 +1960,7 @@
                         </div>
                     {/if}
 
-                    <!-- Image Auto Fetch Toggle -->
-                    <div
-                        class="p-4 bg-white border border-slate-200 rounded-2xl shadow-2xs"
-                    >
-                        <Toggle
-                            bind:checked={autoFetchImages}
-                            label="Gambar Otomatis"
-                            description="Cari dan pasang gambar produk secara otomatis dari web jika produk tidak memiliki gambar"
-                            icon="ti-photo"
-                        />
-                    </div>
+
                 </div>
 
                 <!-- Step 2: Preview Area (Main Workspace Pane) -->
