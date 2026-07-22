@@ -1,12 +1,24 @@
 {
+    "agents": [
+        "claude_code",
+        "codex",
+        "factory",
+        "kiro",
+        "opencode",
+        "antigravity"
+    ],
     "cloud": true,
     "guidelines": true,
+    "packages": [
+        "spatie/laravel-permission"
+    ],
     "skills": [
         "laravel-best-practices",
         "wayfinder-development",
         "pest-testing",
         "inertia-svelte-development",
         "tailwindcss-development",
+        "laravel-permission-development",
         "deploying-laravel-cloud"
     ]
 }
