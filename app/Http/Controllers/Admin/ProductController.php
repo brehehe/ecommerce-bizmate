@@ -8,6 +8,7 @@ use App\Jobs\ImportProductsJob;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ProductVariationOption;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -913,6 +914,17 @@ class ProductController extends Controller
                 ];
 
                 if ($matchedVariant) {
+                    // If the new SKU is already taken by a DIFFERENT variant, keep the current SKU.
+                    $newSku = $variantData['sku'];
+                    $skuConflict = ProductVariant::where('sku', $newSku)
+                        ->where('id', '!=', $matchedVariant->id)
+                        ->exists();
+
+                    if ($skuConflict) {
+                        // Preserve the existing SKU to avoid unique constraint violation.
+                        unset($variantData['sku']);
+                    }
+
                     // Update existing
                     $matchedVariant->update($variantData);
                     $variant = $matchedVariant;

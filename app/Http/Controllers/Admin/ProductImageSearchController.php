@@ -50,7 +50,11 @@ class ProductImageSearchController extends Controller
             // Download the image content
             $response = Http::withHeaders([
                 'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            ])->timeout(20)->get($imageUrl);
+            ])->withOptions([
+                'curl' => [
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                ],
+            ])->timeout(15)->get($imageUrl);
 
             if (! $response->successful()) {
                 return response()->json([

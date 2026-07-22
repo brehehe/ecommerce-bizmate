@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AiProductDescriptionController;
+use App\Http\Controllers\Admin\AiProductImageController;
 use App\Http\Controllers\Admin\AppConfigController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
@@ -219,6 +220,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // AI Features
     Route::post('/ai/generate-description', [AiProductDescriptionController::class, 'generate'])->name('ai.generate-description');
+    Route::post('/ai/generate-image', [AiProductImageController::class, 'generate'])->name('ai.generate-image');
 
     // Promotions
     Route::post('/promotions/{promotion}/toggle-active', [PromotionController::class, 'toggleActive'])->name('promotions.toggle-active');

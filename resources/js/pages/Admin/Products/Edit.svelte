@@ -16,6 +16,8 @@
     import SelectSearchMultiple from '@/components/ui/SelectSearchMultiple.svelte';
     import Toggle from '@/components/ui/Toggle.svelte';
     import ProductImageSearchModal from '@/components/ProductImageSearchModal.svelte';
+    import ProductAiImageModal from '@/components/ProductAiImageModal.svelte';
+    import ProductCatalogBuilderModal from '@/components/ProductCatalogBuilderModal.svelte';
 
     let { categories = [], brands = [], product, ai_enabled = false } = $props();
 
@@ -23,6 +25,22 @@
     let globalTaxPercentage = $derived(
         page.props.settings?.tax_percentage ?? 0,
     );
+
+    // Catalog Builder state & handler
+    let showCatalogBuilderModal = $state(false);
+    function handleCatalogImageSelect(catalogImage) {
+        uploadedPhotos = [...uploadedPhotos, catalogImage];
+        showToast('Gambar katalog infografis berhasil ditambahkan.', 'success');
+    }
+
+    // AI Image state & handler
+    let showAiImageModal = $state(false);
+    function handleAiImageSelect(images) {
+        if (Array.isArray(images)) {
+            uploadedPhotos = [...uploadedPhotos, ...images];
+            showToast(`${images.length} gambar AI berhasil ditambahkan.`, 'success');
+        }
+    }
     let enable3dModels = $derived(page.props.settings?.enable_3d_models ?? true);
     let membershipEnabled = $derived(page.props.settings?.membership_enabled ?? true);
 
@@ -3990,24 +4008,44 @@
                             >
                         </button>
                     </div>
-                    {#if ai_enabled}
-                        <div class="mt-3 flex gap-2">
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        {#if ai_enabled}
                             <button
                                 type="button"
                                 onclick={() => {
-                                    if (!form.name.trim()) {
-                                        showToast('Silakan isi nama produk terlebih dahulu untuk mencari gambar.', 'warning');
-                                        return;
-                                    }
                                     showImageSearchModal = true;
                                 }}
-                                class="h-9 px-4 rounded-xl border border-brand-blueRoyal/20 bg-brand-blueRoyal/5 text-brand-blueRoyal hover:bg-brand-blueRoyal/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                class="h-9 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
                                 <i class="ti ti-search text-sm"></i>
                                 Cari Gambar Otomatis
                             </button>
-                        </div>
-                    {/if}
+                        {/if}
+                        {#if ai_enabled}
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    showAiImageModal = true;
+                                }}
+                                class="h-9 px-4 rounded-xl border border-brand-blueRoyal/20 bg-brand-blueRoyal/5 text-brand-blueRoyal hover:bg-brand-blueRoyal/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                                <i class="ti ti-sparkles text-sm"></i>
+                                Buat Gambar dengan AI
+                            </button>
+                            {#if uploadedPhotos.length > 0}
+                                <button
+                                    type="button"
+                                    onclick={() => {
+                                        showCatalogBuilderModal = true;
+                                    }}
+                                    class="h-9 px-4 rounded-xl border border-amber-600/20 bg-amber-500/5 text-amber-600 hover:bg-amber-500/10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                >
+                                    <i class="ti ti-layout-grid text-sm"></i>
+                                    Buat Infografis Katalog
+                                </button>
+                            {/if}
+                        {/if}
+                    </div>
                     <input
                         type="file"
                         id="multi-photo-input"
@@ -8060,10 +8098,29 @@
         </div>
     {/if}
 
+
+
     <ProductImageSearchModal
         show={showImageSearchModal}
         productName={form.name}
         onselect={handleWebImageSelect}
         onclose={() => showImageSearchModal = false}
+    />
+
+    <ProductAiImageModal
+        show={showAiImageModal}
+        productName={form.name}
+        productDescription={form.description}
+        onselect={handleAiImageSelect}
+        onclose={() => showAiImageModal = false}
+    />
+
+    <ProductCatalogBuilderModal
+        show={showCatalogBuilderModal}
+        productName={form.name}
+        productDescription={form.description}
+        productImages={uploadedPhotos}
+        onselect={handleCatalogImageSelect}
+        onclose={() => showCatalogBuilderModal = false}
     />
 </AdminLayout>

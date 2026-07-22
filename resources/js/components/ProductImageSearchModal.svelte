@@ -10,9 +10,10 @@
     let downloadingUrl = $state(null);
     let error = $state(null);
 
+    let isOpen = false;
     // Auto-search & reset when modal opens
     $effect(() => {
-        if (show) {
+        if (show && !isOpen) {
             query = productName;
             images = [];
             selectedUrls = [];
@@ -21,6 +22,7 @@
                 searchImages();
             }
         }
+        isOpen = show;
     });
 
     async function searchImages() {

@@ -53,7 +53,11 @@ class ImageSearchService
                 'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language' => 'en-US,en;q=0.9',
                 'Cookie' => 'SRCHHPGUSR=ADLT=DEMO&NRSLT=-1; MUID=2B3B4B5B6B7B8B9B0B1B2B3B4B5B6B7B; ULC=; _UR=;',
-            ])->timeout(15)->get($url);
+            ])->withOptions([
+                'curl' => [
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                ],
+            ])->timeout(10)->get($url);
 
             if (! $response->successful()) {
                 Log::warning('Bing image search request failed', [
@@ -101,7 +105,11 @@ class ImageSearchService
     {
         try {
             $url = 'https://customsearch.googleapis.com/customsearch/v1';
-            $response = Http::timeout(10)->get($url, [
+            $response = Http::withOptions([
+                'curl' => [
+                    CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                ],
+            ])->timeout(10)->get($url, [
                 'key' => $key,
                 'cx' => $cx,
                 'q' => $query,
@@ -204,7 +212,12 @@ class ImageSearchService
             $prompt .= 'Kembalikan respon HANYA dalam format array JSON berisi index angka saja yang lolos seleksi dan diurutkan dari yang terbaik, contoh: [2, 0, 5]. Jangan menulis teks analisis atau penjelasan lainnya.';
 
             $response = Http::withToken($apiKey)
-                ->timeout(30)
+                ->withOptions([
+                    'curl' => [
+                        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+                    ],
+                ])
+                ->timeout(20)
                 ->post("{$apiUrl}/chat/completions", [
                     'model' => $model,
                     'messages' => [
