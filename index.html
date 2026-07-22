@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Puter.js Premium Todo & AI Planner</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Puter.js SDK -->
+    <script src="https://js.puter.com/v2/"></script>
+
+    <style>
+        :root {
+            --primary: hsl(221, 83%, 53%);
+            --primary-hover: hsl(221, 83%, 45%);
+            --primary-light: hsl(221, 83%, 96%);
+            --success: hsl(142, 71%, 45%);
+            --success-light: hsl(142, 71%, 95%);
+            --danger: hsl(0, 84%, 60%);
+            --danger-light: hsl(0, 84%, 97%);
+            --background: hsl(210, 40%, 96%);
+            --card-bg: #ffffff;
+            --text-main: hsl(222, 47%, 11%);
+            --text-muted: hsl(215, 16%, 47%);
+            --border: hsl(214, 32%, 91%);
+            --shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--background);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Header Style */
+        .app-header {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .logo-section h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .auth-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--primary);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .user-status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: hsl(214, 32%, 85%);
+        }
+
+        .btn-danger {
+            background: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid hsl(0, 84%, 90%);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Grid Layout */
+        .app-body {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .app-body {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .panel-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Add Input area */
+        .input-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .input-control {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: var(--transition);
+            background: hsl(210, 40%, 99%);
+        }
+
+        .input-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        /* Filter Tab style */
+        .filter-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+        }
+
+        .tab {
+            padding: 0.5rem 0.25rem;
+            border: none;
+            background: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Todo List */
+        .todo-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 450px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: white;
+            transition: var(--transition);
+        }
+
+        .todo-item:hover {
+            border-color: hsl(221, 83%, 85%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+
+        .todo-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .todo-text {
+            font-size: 0.95rem;
+            flex: 1;
+            transition: var(--transition);
+        }
+
+        .todo-item.done {
+            background: hsl(210, 40%, 98%);
+            border-color: var(--border);
+        }
+
+        .todo-item.done .todo-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .btn-delete-task {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.5;
+            transition: var(--transition);
+        }
+
+        .todo-item:hover .btn-delete-task {
+            opacity: 1;
+        }
+
+        .btn-delete-task:hover {
+            color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        /* AI Assistant Panel */
+        .ai-panel {
+            background: linear-gradient(135deg, white 0%, var(--primary-light) 100%);
+            border-color: hsl(221, 83%, 90%);
+        }
+
+        .ai-prompt-area {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .ai-helper-text {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .ai-loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--primary-light);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Footer Info */
+        .todo-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .empty-state {
+            padding: 2.5rem 1rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .empty-icon {
+            font-size: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+
+        <!-- Top Header Navigation -->
+        <header class="app-header">
+            <div class="logo-section">
+                <h1>⚡ Puter Planner</h1>
+            </div>
+            <div class="auth-section" id="authSection">
+                <div class="user-status">Connecting to Puter...</div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="app-body">
+
+            <!-- Left: Personal Todo Panel -->
+            <section class="panel">
+                <div class="panel-title">
+                    <span>📋 My Tasks</span>
+                </div>
+
+                <!-- Add Input -->
+                <div class="input-row">
+                    <input id="taskInput" class="input-control" placeholder="What needs to be done?" />
+                    <button class="btn btn-primary" id="addBtn">
+                        Add Task
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-tabs">
+                    <button class="tab active" data-filter="all">All</button>
+                    <button class="tab" data-filter="active">Active</button>
+                    <button class="tab" data-filter="completed">Completed</button>
+                </div>
+
+                <!-- Todo List Render Container -->
+                <ul class="todo-list" id="list">
+                    <!-- Dynamic Items -->
+                </ul>
+
+                <!-- Footer Summary Info -->
+                <div class="todo-summary">
+                    <span id="itemsLeftCount">0 items left</span>
+                    <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;" id="clearCompletedBtn">
+                        Clear Completed
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right: Puter AI Assistant Panel -->
+            <section class="panel ai-panel">
+                <div class="panel-title">
+                    <span>🪄 AI Magic Planner</span>
+                </div>
+                <p class="ai-helper-text">
+                    Need help brainstorming or splitting a big project into actionable subtasks? Enter your goal, and Puter AI will generate tasks for you automatically!
+                </p>
+
+                <div class="ai-prompt-area">
+                    <input id="aiInput" class="input-control" placeholder="e.g. Plan a weekend trip to Bandung..." />
+                    <button class="btn btn-primary" id="aiBtn" style="background: hsl(263, 70%, 50%);">
+                        🪄 Ask AI to Plan
+                    </button>
+                </div>
+
+                <div class="ai-loading" id="aiLoading">
+                    <div class="spinner"></div>
+                    <span>AI is brainstorming your tasks...</span>
+                </div>
+            </section>
+
+        </main>
+
+    </div>
+
+    <script>
+        const STORAGE_KEY = "todo-list-demo";
+        let todos = [];
+        let currentFilter = "all";
+
+        // Auth management
+        async function updateAuthUI() {
+            const signedIn = await puter.auth.isSignedIn();
+            const authSection = document.getElementById("authSection");
+
+            if (signedIn) {
+                const user = await puter.auth.getUser();
+                const avatarChar = user.username.charAt(0).toUpperCase();
+                
+                authSection.innerHTML = `
+                    <div class="user-profile">
+                        <div class="user-avatar">${avatarChar}</div>
+                        <div class="user-info">
+                            <span class="user-name">${user.username}</span>
+                            <span class="user-status">Cloud Synced</span>
+                        </div>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;" onclick="handleSignOut()">
+                            Sign Out
+                        </button>
+                    </div>
+                `;
+            } else {
+                authSection.innerHTML = `
+                    <button class="btn btn-primary" onclick="handleSignIn()">
+                        Sign In with Puter
+                    </button>
+                `;
+            }
+        }
+
+        async function handleSignIn() {
+            try {
+                await puter.auth.signIn();
+                window.location.reload();
+            } catch (error) {
+                console.error("Sign in failed", error);
+            }
+        }
+
+        async function handleSignOut() {
+            try {
+                await puter.auth.signOut();
+                window.location.reload();
+            } catch (error) {
+                console.error("Sign out failed", error);
+            }
+        }
+
+        // KV Sync
+        async function loadTodos() {
+            try {
+                const data = await puter.kv.get(STORAGE_KEY);
+                if (data) {
+                    todos = JSON.parse(data);
+                } else {
+                    todos = [];
+                }
+                render();
+            } catch (error) {
+                console.error("Failed to load todos from Puter KV store", error);
+            }
+        }
+
+        async function saveTodos() {
+            try {
+                await puter.kv.set(STORAGE_KEY, JSON.stringify(todos));
+            } catch (error) {
+                console.error("Failed to save todos to Puter KV store", error);
+            }
+        }
+
+        // Render Todo List
+        function render() {
+            const list = document.getElementById("list");
+            list.innerHTML = "";
+
+            const filteredTodos = todos.filter(todo => {
+                if (currentFilter === "active") return !todo.done;
+                if (currentFilter === "completed") return todo.done;
+                return true;
+            });
+
+            if (filteredTodos.length === 0) {
+                const emptyState = document.createElement("div");
+                emptyState.className = "empty-state";
+                
+                let icon = "✨";
+                let text = "No tasks here! Add one above.";
+                if (currentFilter === "active") {
+                    icon = "🎉";
+                    text = "All tasks completed!";
+                } else if (currentFilter === "completed") {
+                    icon = "⏳";
+                    text = "No completed tasks yet.";
+                }
+
+                emptyState.innerHTML = `
+                    <div class="empty-icon">${icon}</div>
+                    <div>${text}</div>
+                `;
+                list.appendChild(emptyState);
+            } else {
+                filteredTodos.forEach((todo, filteredIndex) => {
+                    // Map filtered index back to absolute index in original array
+                    const originalIndex = todos.indexOf(todo);
+
+                    const li = document.createElement("li");
+                    li.className = `todo-item ${todo.done ? 'done' : ''}`;
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "todo-checkbox";
+                    checkbox.checked = todo.done;
+
+                    checkbox.onchange = async () => {
+                        todo.done = !todo.done;
+                        await saveTodos();
+                        render();
+                        
+                        if (todo.done) {
+                            puter.ui.notify(`Completed: "${todo.text}"`);
+                        }
+                    };
+
+                    const span = document.createElement("span");
+                    span.className = "todo-text";
+                    span.textContent = todo.text;
+
+                    const delBtn = document.createElement("button");
+                    delBtn.className = "btn-delete-task";
+                    delBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    `;
+
+                    delBtn.onclick = async () => {
+                        todos.splice(originalIndex, 1);
+                        await saveTodos();
+                        render();
+                        puter.ui.notify("Task deleted");
+                    };
+
+                    li.appendChild(checkbox);
+                    li.appendChild(span);
+                    li.appendChild(delBtn);
+                    list.appendChild(li);
+                });
+            }
+
+            // Update item counters
+            const activeCount = todos.filter(t => !t.done).length;
+            document.getElementById("itemsLeftCount").textContent = `${activeCount} item${activeCount !== 1 ? 's' : ''} left`;
+        }
+
+        // Add task handlers
+        async function addTask() {
+            const input = document.getElementById("taskInput");
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            todos.push({
+                text,
+                done: false
+            });
+
+            input.value = "";
+            await saveTodos();
+            render();
+            puter.ui.notify("Task added successfully");
+        }
+
+        document.getElementById("addBtn").onclick = addTask;
+        document.getElementById("taskInput").onkeypress = (e) => {
+            if (e.key === "Enter") addTask();
+        };
+
+        // Clear completed tasks
+        document.getElementById("clearCompletedBtn").onclick = async () => {
+            const initialCount = todos.length;
+            todos = todos.filter(t => !t.done);
+            
+            if (todos.length < initialCount) {
+                await saveTodos();
+                render();
+                puter.ui.notify("Cleared completed tasks");
+            }
+        };
+
+        // Tab filters handler
+        document.querySelectorAll(".filter-tabs .tab").forEach(tab => {
+            tab.onclick = (e) => {
+                document.querySelectorAll(".filter-tabs .tab").forEach(t => t.classList.remove("active"));
+                e.target.classList.add("active");
+                currentFilter = e.target.getAttribute("data-filter");
+                render();
+            };
+        });
+
+        // AI Assistant Magic Handler
+        document.getElementById("aiBtn").onclick = async () => {
+            const aiInput = document.getElementById("aiInput");
+            const aiBtn = document.getElementById("aiBtn");
+            const aiLoading = document.getElementById("aiLoading");
+            const prompt = aiInput.value.trim();
+
+            if (!prompt) {
+                puter.ui.alert("Please write a goal or project to plan first!");
+                return;
+            }
+
+            // UI State loading
+            aiBtn.disabled = true;
+            aiLoading.style.display = "flex";
+
+            try {
+                // Generate a highly structured prompt to prevent AI format breaking
+                const systemPrompt = `Generate a JSON array of 3-5 short, specific, actionable tasks to achieve the following goal: "${prompt}".
+Do NOT write any introduction or explanation, and do NOT wrap the response in markdown code blocks.
+Return ONLY a raw JSON array of strings.
+Example output format: ["Task 1 description", "Task 2 description"]`;
+
+                // Puter AI Chat API
+                const response = await puter.ai.chat(systemPrompt);
+                
+                let tasks = [];
+                try {
+                    let cleanResponse = response.trim();
+                    // Strip code blocks if AI fails to follow instructions
+                    if (cleanResponse.startsWith("```")) {
+                        cleanResponse = cleanResponse.replace(/^```json\s*/, "")
+                                                     .replace(/^```\s*/, "")
+                                                     .replace(/\s*```$/, "");
+                    }
+                    tasks = JSON.parse(cleanResponse);
+                } catch (jsonErr) {
+                    console.warn("JSON parsing failed, falling back to line parsing", jsonErr);
+                    // Line by line parsing fallback
+                    tasks = response.split('\n')
+                                    .map(line => line.replace(/^[-*\d.\s]+/, '').trim())
+                                    .filter(line => line.length > 0 && line.length < 100)
+                                    .slice(0, 5);
+                }
+
+                if (Array.isArray(tasks) && tasks.length > 0) {
+                    // Add tasks
+                    tasks.forEach(taskText => {
+                        todos.push({
+                            text: taskText,
+                            done: false
+                        });
+                    });
+
+                    await saveTodos();
+                    render();
+
+                    aiInput.value = "";
+                    puter.ui.notify(`🪄 Generated ${tasks.length} tasks!`);
+                } else {
+                    puter.ui.alert("Sorry, the AI could not formulate tasks. Please try another prompt.");
+                }
+
+            } catch (err) {
+                console.error("AI Generation failed", err);
+                puter.ui.alert("AI Planner error: " + err.message);
+            } finally {
+                // Restore UI state
+                aiBtn.disabled = false;
+                aiLoading.style.display = "none";
+            }
+        };
+
+        // App initialization
+        (async () => {
+            // Wait for puter to load
+            await updateAuthUI();
+            await loadTodos();
+        })();
+    </script>
+
+</body>
+
+</html>
