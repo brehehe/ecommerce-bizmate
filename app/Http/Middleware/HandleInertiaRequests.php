@@ -144,6 +144,7 @@ class HandleInertiaRequests extends Middleware
                 $setupTourCompleted = ($settings['setup_tour_completed'] ?? null) === '1';
                 $cartButtonStyle = $settings['storefront_cart_button_style'] ?? 'button';
                 $showIntroAnimation = ($settings['show_intro_animation'] ?? '1') !== '0';
+                $storefrontDefaultTheme = $settings['storefront_default_theme'] ?? 'light';
 
                 $coinsEnabled = ($settings['coins_enabled'] ?? null) === '1';
                 $coinConversionRate = (float) ($settings['coin_conversion_rate'] ?? 1);
@@ -311,6 +312,7 @@ class HandleInertiaRequests extends Middleware
                 'setup_tour_completed' => $setupTourCompleted,
                 'storefront_cart_button_style' => $cartButtonStyle,
                 'show_intro_animation' => $showIntroAnimation,
+                'storefront_default_theme' => $storefrontDefaultTheme,
 
                 'coins_enabled' => $coinsEnabled,
                 'coin_conversion_rate' => $coinConversionRate,

@@ -964,15 +964,23 @@
     }
 
     onMount(() => {
-        // Initialize dark mode from localStorage or system preference
+        // Initialize dark mode from localStorage or admin default or system preference
         const stored = localStorage.getItem('sf_theme');
         if (stored === 'dark') {
             isDark = true;
         } else if (stored === 'light') {
             isDark = false;
         } else {
-            // Follow system preference if no stored value
-            isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            // No user preference stored — use admin-configured default
+            const adminDefault = (page.props.settings as any)?.storefront_default_theme ?? 'light';
+            if (adminDefault === 'dark') {
+                isDark = true;
+            } else if (adminDefault === 'system') {
+                isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            } else {
+                // 'light' (or anything else) → always start light
+                isDark = false;
+            }
         }
         applyDarkMode(isDark);
 

@@ -117,6 +117,7 @@
         show_intro_animation:
             settings.show_intro_animation !== '0' &&
             settings.show_intro_animation !== false,
+        storefront_default_theme: settings.storefront_default_theme || 'light',
         enable_cod:
             settings.enable_cod === 'true' ||
             settings.enable_cod === true ||
@@ -2340,6 +2341,63 @@
                                     id="toggle-show-intro-animation"
                                     bind:checked={form.show_intro_animation}
                                 />
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="space-y-3">
+                                <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                    Tema Default Storefront
+                                </span>
+                                <p class="text-[11px] text-slate-400 font-bold">
+                                    Mode tampilan awal yang diterapkan ke pengunjung baru sebelum mereka mengubah preferensinya sendiri.
+                                </p>
+                                <div class="grid grid-cols-3 gap-2 mt-2">
+                                    <button
+                                        type="button"
+                                        onclick={() => (form.storefront_default_theme = 'light')}
+                                        class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
+                                               {form.storefront_default_theme === 'light'
+                                            ? 'border-blue-500 bg-blue-50/20'
+                                            : 'border-slate-200 bg-white'}"
+                                    >
+                                        <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-500 flex items-center justify-center mb-2">
+                                            <i class="ti ti-sun text-lg"></i>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-slate-700">Mode Terang</span>
+                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">Light</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick={() => (form.storefront_default_theme = 'dark')}
+                                        class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
+                                               {form.storefront_default_theme === 'dark'
+                                            ? 'border-blue-500 bg-blue-50/20'
+                                            : 'border-slate-200 bg-white'}"
+                                    >
+                                        <div class="w-8 h-8 rounded-full bg-slate-700 text-white flex items-center justify-center mb-2">
+                                            <i class="ti ti-moon text-lg"></i>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-slate-700">Mode Gelap</span>
+                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">Dark</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onclick={() => (form.storefront_default_theme = 'system')}
+                                        class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition duration-200 hover:bg-slate-50 cursor-pointer
+                                               {form.storefront_default_theme === 'system'
+                                            ? 'border-blue-500 bg-blue-50/20'
+                                            : 'border-slate-200 bg-white'}"
+                                    >
+                                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mb-2">
+                                            <i class="ti ti-device-laptop text-lg"></i>
+                                        </div>
+                                        <span class="text-[11px] font-bold text-slate-700">Ikut Perangkat</span>
+                                        <span class="text-[9px] text-slate-400 mt-0.5 leading-none">System</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
