@@ -1664,9 +1664,9 @@ class ProductController extends Controller
                 if (preg_match('/^data:image\/(\w+);base64,/', $photo)) {
                     $base64Data = substr($photo, strpos($photo, ',') + 1);
                     $decodedSize = strlen(base64_decode($base64Data));
-                    if ($decodedSize > 2 * 1024 * 1024) {
+                    if ($decodedSize > 10 * 1024 * 1024) {
                         throw ValidationException::withMessages([
-                            'photos' => ['Ukuran gambar produk maksimal 2MB.'],
+                            'photos' => ['Ukuran gambar produk maksimal 10MB.'],
                         ]);
                     }
                 }
@@ -1680,9 +1680,9 @@ class ProductController extends Controller
                         if (! empty($optData['image']) && preg_match('/^data:image\/(\w+);base64,/', $optData['image'])) {
                             $base64Data = substr($optData['image'], strpos($optData['image'], ',') + 1);
                             $decodedSize = strlen(base64_decode($base64Data));
-                            if ($decodedSize > 2 * 1024 * 1024) {
+                            if ($decodedSize > 10 * 1024 * 1024) {
                                 throw ValidationException::withMessages([
-                                    'variations' => ['Ukuran gambar opsi varian maksimal 2MB.'],
+                                    'variations' => ['Ukuran gambar opsi varian maksimal 10MB.'],
                                 ]);
                             }
                         }
