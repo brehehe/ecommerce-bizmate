@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { adjustColorOpacity } from '@/utils/color';
+
     import { onMount } from 'svelte';
     import { page, router } from '@inertiajs/svelte';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';

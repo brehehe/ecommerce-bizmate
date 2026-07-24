@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { adjustColorOpacity } from '@/utils/color';
+
     import { onMount } from 'svelte';
     import { page, router, Link, Deferred } from '@inertiajs/svelte';
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');

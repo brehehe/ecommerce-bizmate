@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { adjustColorOpacity } from '@/utils/color';
+
     import { onMount } from 'svelte';
     import { useForm, router, page, Link } from '@inertiajs/svelte';
 
