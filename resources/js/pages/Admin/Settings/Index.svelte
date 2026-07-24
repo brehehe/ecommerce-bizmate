@@ -114,6 +114,9 @@
 
         storefront_cart_button_style:
             settings.storefront_cart_button_style || 'button',
+        show_intro_animation:
+            settings.show_intro_animation !== '0' &&
+            settings.show_intro_animation !== false,
         enable_cod:
             settings.enable_cod === 'true' ||
             settings.enable_cod === true ||
@@ -2320,6 +2323,23 @@
                                         >
                                     </button>
                                 </div>
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                        Loading Awal (Intro Animation)
+                                    </span>
+                                    <p class="text-[11px] text-slate-400 font-bold mt-1">
+                                        Tampilkan animasi loading splash screen saat pengunjung pertama kali membuka halaman utama toko.
+                                    </p>
+                                </div>
+                                <Toggle
+                                    id="toggle-show-intro-animation"
+                                    bind:checked={form.show_intro_animation}
+                                />
                             </div>
                         </div>
                     </div>

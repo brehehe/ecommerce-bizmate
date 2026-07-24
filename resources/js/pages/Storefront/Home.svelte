@@ -228,13 +228,16 @@
     onDestroy(() => clearInterval(countdownTimer));
 
     onMount(() => {
-        if (!sessionStorage.getItem('storefront_intro_played')) {
+        const introEnabled = (page.props.settings as any)?.show_intro_animation !== false;
+        if (introEnabled && !sessionStorage.getItem('storefront_intro_played')) {
             showIntro = true;
             sessionStorage.setItem('storefront_intro_played', 'true');
             setTimeout(() => {
                 showIntro = false;
                 checkAndShowPopup();
             }, 1500);
+        } else if (!introEnabled) {
+            checkAndShowPopup();
         }
     });
 
