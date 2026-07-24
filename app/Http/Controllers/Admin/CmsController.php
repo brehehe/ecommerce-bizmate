@@ -44,10 +44,10 @@ class CmsController extends Controller
     public function updateBanners(Request $request): RedirectResponse
     {
         $request->validate([
-            'hero_files.*' => 'nullable|image|max:2048',
-            'side_files.*' => 'nullable|image|max:2048',
-            'middle_wide_file' => 'nullable|image|max:2048',
-            'popup_file' => 'nullable|image|max:2048',
+            'hero_files.*' => 'nullable|image|max:10240',
+            'side_files.*' => 'nullable|image|max:10240',
+            'middle_wide_file' => 'nullable|image|max:10240',
+            'popup_file' => 'nullable|image|max:10240',
         ]);
 
         $heroBanners = [];
@@ -58,7 +58,7 @@ class CmsController extends Controller
                 // Handle file upload for this specific hero banner index
                 if ($request->hasFile("hero_files.{$index}")) {
                     $file = $request->file("hero_files.{$index}");
-                    $path = ImageHelper::compressAndStore($file, 'banners', 'public');
+                    $path = ImageHelper::compressAndStore($file, 'banners', 'public', 85);
                     $imagePath = '/storage/'.$path;
                 }
 
@@ -78,7 +78,7 @@ class CmsController extends Controller
                 // Handle file upload for this specific side banner index
                 if ($request->hasFile("side_files.{$index}")) {
                     $file = $request->file("side_files.{$index}");
-                    $path = ImageHelper::compressAndStore($file, 'banners', 'public');
+                    $path = ImageHelper::compressAndStore($file, 'banners', 'public', 85);
                     $imagePath = '/storage/'.$path;
                 }
 
@@ -106,7 +106,7 @@ class CmsController extends Controller
 
             if ($request->hasFile('middle_wide_file')) {
                 $file = $request->file('middle_wide_file');
-                $path = ImageHelper::compressAndStore($file, 'banners', 'public');
+                $path = ImageHelper::compressAndStore($file, 'banners', 'public', 85);
                 $imagePath = '/storage/'.$path;
             }
 
@@ -129,7 +129,7 @@ class CmsController extends Controller
 
             if ($request->hasFile('popup_file')) {
                 $file = $request->file('popup_file');
-                $path = ImageHelper::compressAndStore($file, 'banners', 'public');
+                $path = ImageHelper::compressAndStore($file, 'banners', 'public', 85);
                 $imagePath = '/storage/'.$path;
             }
 

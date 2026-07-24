@@ -73,7 +73,7 @@
         const key = `hero_${index}`;
         delete uploadErrors[key];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { uploadErrors[key] = 'Maks. 2MB.'; target.value = ''; return; }
+        if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
         if (!await validateImageOrientation(file, 'landscape')) { uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).'; target.value = ''; return; }
         form.hero_files[index] = file;
         form.hero_banners[index].image = URL.createObjectURL(file);
@@ -85,7 +85,7 @@
         const key = `side_${index}`;
         delete uploadErrors[key];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { uploadErrors[key] = 'Maks. 2MB.'; target.value = ''; return; }
+        if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
         if (!await validateImageOrientation(file, 'portrait')) { uploadErrors[key] = 'Gambar harus potret (tinggi > lebar).'; target.value = ''; return; }
         form.side_files[index] = file;
         form.side_banners[index].image = URL.createObjectURL(file);
@@ -97,7 +97,7 @@
         const key = 'middle_wide';
         delete uploadErrors[key];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { uploadErrors[key] = 'Maks. 2MB.'; target.value = ''; return; }
+        if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
         if (!await validateImageOrientation(file, 'landscape')) { uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).'; target.value = ''; return; }
         form.middle_wide_file = file;
         form.middle_wide_banner.image = URL.createObjectURL(file);
@@ -109,7 +109,7 @@
         const key = 'popup';
         delete uploadErrors[key];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) { uploadErrors[key] = 'Maks. 2MB.'; target.value = ''; return; }
+        if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
         const orient = form.popup_banner.orientation || 'portrait';
         if (!await validateImageOrientation(file, orient)) {
             uploadErrors[key] = orient === 'portrait' ? 'Gambar harus potret (tinggi > lebar).' : 'Gambar harus lanskap (lebar > tinggi).';

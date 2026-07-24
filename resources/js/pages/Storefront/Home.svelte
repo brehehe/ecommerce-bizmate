@@ -567,20 +567,20 @@
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden aspect-[16/9] lg:aspect-[2.1/1] w-full bg-slate-100 group cursor-pointer shrink-0"
+                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0"
                 >
                     {#each heroBanners as banner, i}
                         <button
                             onclick={() => (activeLightboxImage = banner.image)}
-                            class="absolute inset-0 transition-opacity duration-700 {i ===
+                            class="block w-full transition-opacity duration-700 {i ===
                             activeHero
-                                ? 'opacity-100 z-10'
-                                : 'opacity-0 z-0'} w-full h-full text-left"
+                                ? 'opacity-100'
+                                : 'absolute inset-0 opacity-0 pointer-events-none'} text-left"
                         >
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-full object-cover"
+                                class="w-full h-auto block"
                             />
                         </button>
                     {/each}
@@ -629,12 +629,12 @@
                     {#each sideBanners as banner}
                         <button
                             onclick={() => (activeLightboxImage = banner.image)}
-                            class="flex-1 rounded-2xl overflow-hidden block bg-slate-100 aspect-[2.1/1] w-full relative text-left"
+                            class="rounded-2xl overflow-hidden block bg-slate-100 w-full text-left"
                         >
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-full object-cover hover:scale-105 transition duration-300"
+                                class="w-full h-auto block hover:scale-105 transition duration-300"
                             />
                         </button>
                     {/each}
