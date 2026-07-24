@@ -67,6 +67,18 @@
         });
     }
 
+    function validateImageMinHeight(file: File, minHeight: number): Promise<boolean> {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(img.src);
+                resolve(img.height >= minHeight);
+            };
+            img.onerror = () => resolve(false);
+        });
+    }
+
     async function handleHeroFileChange(index: number, e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
@@ -74,6 +86,7 @@
         delete uploadErrors[key];
         if (!file) return;
         if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
+        if (!await validateImageMinHeight(file, 350)) { uploadErrors[key] = 'Tinggi gambar minimal 350px.'; target.value = ''; return; }
         if (!await validateImageOrientation(file, 'landscape')) { uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).'; target.value = ''; return; }
         form.hero_files[index] = file;
         form.hero_banners[index].image = URL.createObjectURL(file);
@@ -86,6 +99,7 @@
         delete uploadErrors[key];
         if (!file) return;
         if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
+        if (!await validateImageMinHeight(file, 350)) { uploadErrors[key] = 'Tinggi gambar minimal 350px.'; target.value = ''; return; }
         if (!await validateImageOrientation(file, 'portrait')) { uploadErrors[key] = 'Gambar harus potret (tinggi > lebar).'; target.value = ''; return; }
         form.side_files[index] = file;
         form.side_banners[index].image = URL.createObjectURL(file);
@@ -98,6 +112,7 @@
         delete uploadErrors[key];
         if (!file) return;
         if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
+        if (!await validateImageMinHeight(file, 350)) { uploadErrors[key] = 'Tinggi gambar minimal 350px.'; target.value = ''; return; }
         if (!await validateImageOrientation(file, 'landscape')) { uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).'; target.value = ''; return; }
         form.middle_wide_file = file;
         form.middle_wide_banner.image = URL.createObjectURL(file);
@@ -110,6 +125,7 @@
         delete uploadErrors[key];
         if (!file) return;
         if (file.size > 10 * 1024 * 1024) { uploadErrors[key] = 'Maks. 10MB.'; target.value = ''; return; }
+        if (!await validateImageMinHeight(file, 350)) { uploadErrors[key] = 'Tinggi gambar minimal 350px.'; target.value = ''; return; }
         const orient = form.popup_banner.orientation || 'portrait';
         if (!await validateImageOrientation(file, orient)) {
             uploadErrors[key] = orient === 'portrait' ? 'Gambar harus potret (tinggi > lebar).' : 'Gambar harus lanskap (lebar > tinggi).';
