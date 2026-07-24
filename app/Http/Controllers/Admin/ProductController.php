@@ -291,11 +291,11 @@ class ProductController extends Controller
             'tier_prices.*.min_qty' => 'required|integer|min:2',
             'tier_prices.*.price' => 'required|numeric|min:0',
             'video_url' => 'nullable|string',
-            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:51200',
+            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:10240',
             'model_3d_url' => 'nullable|string',
-            'model_3d_file' => 'nullable|file|max:51200',
+            'model_3d_file' => 'nullable|file|max:10240',
             'model_3d_usdz_url' => 'nullable|string',
-            'model_3d_usdz_file' => 'nullable|file|max:51200',
+            'model_3d_usdz_file' => 'nullable|file|max:10240',
         ]);
 
         $this->validateBase64Images($request);
@@ -594,11 +594,11 @@ class ProductController extends Controller
             'tier_prices.*.min_qty' => 'required|integer|min:2',
             'tier_prices.*.price' => 'required|numeric|min:0',
             'video_url' => 'nullable|string',
-            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:51200',
+            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:10240',
             'model_3d_url' => 'nullable|string',
-            'model_3d_file' => 'nullable|file|max:51200',
+            'model_3d_file' => 'nullable|file|max:10240',
             'model_3d_usdz_url' => 'nullable|string',
-            'model_3d_usdz_file' => 'nullable|file|max:51200',
+            'model_3d_usdz_file' => 'nullable|file|max:10240',
         ]);
 
         $this->validateBase64Images($request);

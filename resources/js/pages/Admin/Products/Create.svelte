@@ -488,8 +488,21 @@
     function handleVideoFile(e) {
         const file = e.target.files[0];
         if (file) {
+            const validExts = ['.mp4', '.webm', '.mov', '.mkv'];
+            const isVideo = file.type.startsWith('video/') || validExts.some((ext) => file.name.toLowerCase().endsWith(ext));
+            if (!isVideo) {
+                showToast('File video harus berformat MP4, WEBM, atau MOV.', 'error');
+                e.target.value = '';
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast(`Video "${file.name}" melebihi batas ukuran 10MB.`, 'error');
+                e.target.value = '';
+                return;
+            }
             form.video_file = file;
             videoPreview = URL.createObjectURL(file);
+            showToast(`Video "${file.name}" berhasil dipilih.`, 'success');
         }
     }
 
@@ -501,8 +514,19 @@
     function handleModel3dFile(e) {
         const file = e.target.files[0];
         if (file) {
+            if (!file.name.toLowerCase().endsWith('.glb')) {
+                showToast('File model 3D harus berformat .glb', 'error');
+                e.target.value = '';
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast(`Model GLB "${file.name}" melebihi batas ukuran 10MB.`, 'error');
+                e.target.value = '';
+                return;
+            }
             form.model_3d_file = file;
             model3dFileName = file.name;
+            showToast(`Model GLB "${file.name}" berhasil dipilih.`, 'success');
         }
     }
 
@@ -943,8 +967,19 @@
     function handleModel3dUsdzFile(e) {
         const file = e.target.files[0];
         if (file) {
+            if (!file.name.toLowerCase().endsWith('.usdz')) {
+                showToast('File model iOS AR harus berformat .usdz', 'error');
+                e.target.value = '';
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast(`Model USDZ "${file.name}" melebihi batas ukuran 10MB.`, 'error');
+                e.target.value = '';
+                return;
+            }
             form.model_3d_usdz_file = file;
             model3dUsdzFileName = file.name;
+            showToast(`Model USDZ "${file.name}" berhasil dipilih.`, 'success');
         }
     }
 
@@ -3266,14 +3301,41 @@
 
     async function handlePhotoUpload(event) {
         const files = Array.from(event.target.files);
-        try {
-            const promises = files.map((file) => compressImageIfNeeded(file));
-            const results = await Promise.all(promises);
-            uploadedPhotos = [...uploadedPhotos, ...results];
-        } catch (error) {
-            console.error('Error processing upload:', error);
-            showToast('Gagal memproses beberapa gambar.', 'error');
+        if (!files || files.length === 0) return;
+
+        const maxFileSize = 10 * 1024 * 1024; // 10MB
+        const validFiles = [];
+        const errorMessages = [];
+
+        for (const file of files) {
+            if (!file.type || !file.type.startsWith('image/')) {
+                errorMessages.push(`"${file.name}" bukan file gambar yang valid.`);
+                continue;
+            }
+            if (file.size > maxFileSize) {
+                errorMessages.push(`"${file.name}" melebihi batas ukuran 10MB.`);
+                continue;
+            }
+            validFiles.push(file);
         }
+
+        if (errorMessages.length > 0) {
+            showToast(errorMessages.join(' '), 'error');
+        }
+
+        if (validFiles.length > 0) {
+            try {
+                const promises = validFiles.map((file) => compressImageIfNeeded(file));
+                const results = await Promise.all(promises);
+                uploadedPhotos = [...uploadedPhotos, ...results];
+                showToast(`${results.length} foto berhasil diunggah.`, 'success');
+            } catch (error) {
+                console.error('Error processing upload:', error);
+                showToast('Gagal memproses beberapa gambar.', 'error');
+            }
+        }
+
+        event.target.value = '';
     }
 
     function removePhoto(index) {
@@ -3819,6 +3881,12 @@
                         multiple
                         onchange={handlePhotoUpload}
                     />
+                    {#if form.errors.photos}
+                        <div class="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-600 text-xs font-semibold">
+                            <i class="ti ti-alert-circle text-base shrink-0"></i>
+                            <span>{form.errors.photos}</span>
+                        </div>
+                    {/if}
                 </div>
 
                 <!-- Card: Informasi Dasar -->
@@ -4740,7 +4808,7 @@
                                         >
                                         <span
                                             class="text-[10px] text-slate-400 font-medium mb-3"
-                                            >MP4, WEBM, atau MOV (Maks. 50MB)</span
+                                            >MP4, WEBM, atau MOV (Maks. 10MB)</span
                                         >
                                         <input
                                             type="file"
@@ -4851,7 +4919,7 @@
                                                 <span
                                                     class="text-[10px] text-slate-400 font-medium mb-3"
                                                     >Format GLB Standar Web (Maks.
-                                                    50MB)</span
+                                                    10MB)</span
                                                 >
                                                 <input
                                                     type="file"
@@ -4932,7 +5000,7 @@
                                                 <span
                                                     class="text-[10px] text-slate-400 font-medium mb-3"
                                                     >Untuk Augmented Reality di
-                                                    Safari iOS (Maks. 50MB)</span
+                                                    Safari iOS (Maks. 10MB)</span
                                                 >
                                                 <input
                                                     type="file"
