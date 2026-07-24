@@ -1,6 +1,6 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { page, router } from '@inertiajs/svelte';
+    import { page, router, Deferred } from '@inertiajs/svelte';
     import { Html5Qrcode } from 'html5-qrcode';
     import { onDestroy } from 'svelte';
     import { dragScroll } from '@/utils/dragScroll';
@@ -83,7 +83,7 @@
         }
 
         const validIds = selectedIds.filter((id) => {
-            const trx = transactions.data.find((t: any) => t.id === id);
+            const trx = (transactions?.data ?? []).find((t: any) => t.id === id);
             if (!trx) return false;
 
             if (['selesai', 'batal'].includes(trx.status)) return false;
@@ -108,7 +108,7 @@
 
         if (bulkStatusValue === 'dikirim') {
             // Open Bulk Resi Modal
-            const selectedTrxs = transactions.data.filter((t: any) =>
+            const selectedTrxs = (transactions?.data ?? []).filter((t: any) =>
                 validIds.includes(t.id),
             );
             bulkTrackingData = selectedTrxs.map((t: any) => ({
@@ -298,7 +298,7 @@
     }
 
     function toggleSelectAll() {
-        const selectableIds = transactions.data
+        const selectableIds = (transactions?.data ?? [])
             .filter((t: any) => t.status !== 'selesai' && t.status !== 'batal')
             .map((t: any) => t.id);
 
@@ -310,13 +310,15 @@
     }
 
     const allSelected = $derived(
-        transactions.data.filter(
-            (t: any) => t.status !== 'selesai' && t.status !== 'batal',
-        ).length > 0 &&
-            selectedIds.length ===
-                transactions.data.filter(
-                    (t: any) => t.status !== 'selesai' && t.status !== 'batal',
-                ).length,
+        transactions?.data && transactions.data.length > 0 ? (
+            transactions.data.filter(
+                (t: any) => t.status !== 'selesai' && t.status !== 'batal',
+            ).length > 0 &&
+                selectedIds.length ===
+                    transactions.data.filter(
+                        (t: any) => t.status !== 'selesai' && t.status !== 'batal',
+                    ).length
+        ) : false
     );
 
     function openResiModal(trx: any) {
@@ -667,170 +669,211 @@
         {/if}
 
         <!-- Table -->
-        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <!-- Table toolbar -->
-            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                <p class="text-sm text-slate-500">
-                    {#if transactions.total !== undefined}
-                        <span class="font-semibold text-slate-800">{transactions.total}</span> transaksi
-                    {/if}
-                </p>
-                <div class="flex items-center gap-2">
-                    <!-- Select all -->
-                    {#if transactions.data.length > 0}
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={selectedIds.length === transactions.data.length && transactions.data.length > 0}
-                                onchange={(e) => {
-                                    if (e.currentTarget.checked) {
-                                        selectedIds = transactions.data.map((t: any) => t.id);
-                                    } else {
-                                        selectedIds = [];
-                                    }
-                                }}
-                                class="rounded border-slate-300 accent-slate-900"
-                            />
-                            <span class="text-xs text-slate-500">Pilih semua</span>
-                        </label>
-                    {/if}
-                </div>
-            </div>
-
-            {#if transactions.data.length === 0}
-                <div class="flex flex-col items-center justify-center py-16 text-center px-4">
-                    <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
-                        <i class="ti ti-receipt-off text-xl"></i>
+        <!-- Table with Deferred Loading for Instant LCP -->
+        <Deferred data="transactions">
+            {#snippet fallback()}
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                        <div class="h-4 w-32 bg-slate-100 rounded animate-pulse"></div>
                     </div>
-                    <p class="text-sm font-medium text-slate-600">Tidak ada transaksi</p>
-                    <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full responsive-table">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="w-10 px-4 py-2.5"></th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Pesanan</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Pelanggan</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produk</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 animate-pulse">
+                                {#each Array(6) as _}
+                                    <tr>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-4 bg-slate-100 rounded"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-36 bg-slate-100 rounded"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-28 bg-slate-100 rounded"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-44 bg-slate-100 rounded"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-24 bg-slate-100 rounded"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-5 w-20 bg-slate-100 rounded-full"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-28 bg-slate-100 rounded"></div></td>
+                                        <td class="px-4 py-3.5"><div class="h-4 w-12 bg-slate-100 rounded"></div></td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            {:else}
-                <div class="overflow-x-auto" use:dragScroll>
-                    <table class="w-full responsive-table">
-                        <thead>
-                            <tr class="border-b border-slate-100 bg-slate-50/50">
-                                <th class="w-10 px-4 py-2.5"></th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Pesanan</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Pelanggan</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produk</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {#each transactions.data as trx}
-                                {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
-                                {@const isSelected = selectedIds.includes(trx.id)}
-                                <tr class="group transition-colors hover:bg-slate-50/50 {isSelected ? 'bg-blue-50/30' : ''}">
-                                    <!-- Checkbox -->
-                                    <td class="px-4 py-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onchange={() => {
-                                                if (isSelected) {
-                                                    selectedIds = selectedIds.filter((id: string) => id !== trx.id);
-                                                } else {
-                                                    selectedIds = [...selectedIds, trx.id];
-                                                }
-                                            }}
-                                            class="rounded border-slate-300 accent-slate-900"
-                                        />
-                                    </td>
+            {/snippet}
 
-                                    <!-- No. Transaksi -->
-                                    <td class="px-4 py-3" data-label="No. Pesanan">
-                                        <div>
-                                            <a
-                                                href="/admin/transactions/{trx.id}"
-                                                class="font-mono text-xs font-semibold transition-colors hover:underline"
-                                                style="color: {primary};"
-                                            >
-                                                {trx.transaction_number}
-                                            </a>
-                                            {#if trx.payment_method}
-                                                <p class="mt-0.5 text-[10px] text-slate-400">
-                                                    {typeof trx.payment_method === 'object' ? trx.payment_method.name : trx.payment_method}
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <!-- Table toolbar -->
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                    <p class="text-sm text-slate-500">
+                        {#if transactions && transactions.total !== undefined}
+                            <span class="font-semibold text-slate-800">{transactions.total}</span> transaksi
+                        {/if}
+                    </p>
+                    <div class="flex items-center gap-2">
+                        <!-- Select all -->
+                        {#if transactions && transactions.data && transactions.data.length > 0}
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={selectedIds.length === transactions.data.length && transactions.data.length > 0}
+                                    onchange={(e) => {
+                                        if (e.currentTarget.checked) {
+                                            selectedIds = transactions.data.map((t: any) => t.id);
+                                        } else {
+                                            selectedIds = [];
+                                        }
+                                    }}
+                                    class="rounded border-slate-300 accent-slate-900"
+                                />
+                                <span class="text-xs text-slate-500">Pilih semua</span>
+                            </label>
+                        {/if}
+                    </div>
+                </div>
+
+                {#if !transactions || !transactions.data || transactions.data.length === 0}
+                    <div class="flex flex-col items-center justify-center py-16 text-center px-4">
+                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                            <i class="ti ti-receipt-off text-xl"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">Tidak ada transaksi</p>
+                        <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
+                    </div>
+                {:else}
+                    <div class="overflow-x-auto" use:dragScroll>
+                        <table class="w-full responsive-table">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="w-10 px-4 py-2.5"></th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Pesanan</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Pelanggan</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produk</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each transactions.data as trx}
+                                    {@const statusStyle = statusColors[trx.status] ?? { bg: '#f1f5f9', text: '#475569' }}
+                                    {@const isSelected = selectedIds.includes(trx.id)}
+                                    <tr class="group transition-colors hover:bg-slate-50/50 {isSelected ? 'bg-blue-50/30' : ''}">
+                                        <!-- Checkbox -->
+                                        <td class="px-4 py-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onchange={() => {
+                                                    if (isSelected) {
+                                                        selectedIds = selectedIds.filter((id: string) => id !== trx.id);
+                                                    } else {
+                                                        selectedIds = [...selectedIds, trx.id];
+                                                    }
+                                                }}
+                                                class="rounded border-slate-300 accent-slate-900"
+                                            />
+                                        </td>
+
+                                        <!-- No. Transaksi -->
+                                        <td class="px-4 py-3" data-label="No. Pesanan">
+                                            <div>
+                                                <a
+                                                    href="/admin/transactions/{trx.id}"
+                                                    class="font-mono text-xs font-semibold transition-colors hover:underline"
+                                                    style="color: {primary};"
+                                                >
+                                                    {trx.transaction_number}
+                                                </a>
+                                                {#if trx.payment_method}
+                                                    <p class="mt-0.5 text-[10px] text-slate-400">
+                                                        {typeof trx.payment_method === 'object' ? trx.payment_method.name : trx.payment_method}
+                                                    </p>
+                                                {/if}
+                                            </div>
+                                        </td>
+
+                                        <!-- Pelanggan -->
+                                        <td class="px-4 py-3" data-label="Pelanggan">
+                                            <div>
+                                                <p class="text-sm font-medium text-slate-800">{trx.customer_name ?? '—'}</p>
+                                                {#if trx.customer_phone}
+                                                    <p class="text-xs text-slate-400">{trx.customer_phone}</p>
+                                                {/if}
+                                            </div>
+                                        </td>
+
+                                        <!-- Produk -->
+                                        <td class="px-4 py-3" data-label="Produk">
+                                            <p class="text-xs text-slate-600 line-clamp-2 max-w-48">
+                                                {trx.items_summary ?? '—'}
+                                            </p>
+                                        </td>
+
+                                        <!-- Total -->
+                                        <td class="px-4 py-3" data-label="Total">
+                                            <p class="text-sm font-semibold text-slate-800 whitespace-nowrap">{trx.grand_total_formatted ?? '—'}</p>
+                                            {#if (trx.admin_fee && parseFloat(trx.admin_fee) > 0) || (trx.application_fee && parseFloat(trx.application_fee) > 0)}
+                                                <p class="text-[9px] text-slate-400 mt-0.5 whitespace-nowrap">
+                                                    (Termasuk: {parseFloat(trx.admin_fee) > 0 ? 'Admin ' : ''}{parseFloat(trx.application_fee) > 0 ? 'Aplikasi' : ''})
                                                 </p>
                                             {/if}
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    <!-- Pelanggan -->
-                                    <td class="px-4 py-3" data-label="Pelanggan">
-                                        <div>
-                                            <p class="text-sm font-medium text-slate-800">{trx.customer_name ?? '—'}</p>
-                                            {#if trx.customer_phone}
-                                                <p class="text-xs text-slate-400">{trx.customer_phone}</p>
-                                            {/if}
-                                        </div>
-                                    </td>
-
-                                    <!-- Produk -->
-                                    <td class="px-4 py-3" data-label="Produk">
-                                        <p class="text-xs text-slate-600 line-clamp-2 max-w-48">
-                                            {trx.items_summary ?? '—'}
-                                        </p>
-                                    </td>
-
-                                    <!-- Total -->
-                                    <td class="px-4 py-3" data-label="Total">
-                                        <p class="text-sm font-semibold text-slate-800 whitespace-nowrap">{trx.grand_total_formatted ?? '—'}</p>
-                                        {#if (trx.admin_fee && parseFloat(trx.admin_fee) > 0) || (trx.application_fee && parseFloat(trx.application_fee) > 0)}
-                                            <p class="text-[9px] text-slate-400 mt-0.5 whitespace-nowrap">
-                                                (Termasuk: {parseFloat(trx.admin_fee) > 0 ? 'Admin ' : ''}{parseFloat(trx.application_fee) > 0 ? 'Aplikasi' : ''})
-                                            </p>
-                                        {/if}
-                                    </td>
-
-                                    <!-- Status -->
-                                    <td class="px-4 py-3" data-label="Status">
-                                        <span
-                                            class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
-                                            style="background-color: {statusStyle.bg}; color: {statusStyle.text};"
-                                        >
-                                            {statusLabels[trx.status] ?? trx.status}
-                                        </span>
-                                    </td>
-
-                                    <!-- Tanggal -->
-                                    <td class="px-4 py-3" data-label="Tanggal">
-                                        <p class="whitespace-nowrap text-xs text-slate-500">{trx.created_at_formatted ?? '—'}</p>
-                                    </td>
-
-                                    <!-- Aksi -->
-                                    <td class="px-4 py-3" data-label="Aksi">
-                                        <div class="flex items-center gap-1">
-                                            <a
-                                                href="/admin/transactions/{trx.id}"
-                                                class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                                                title="Detail"
+                                        <!-- Status -->
+                                        <td class="px-4 py-3" data-label="Status">
+                                            <span
+                                                class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold"
+                                                style="background-color: {statusStyle.bg}; color: {statusStyle.text};"
                                             >
-                                                <i class="ti ti-eye text-sm"></i>
-                                            </a>
-                                            <a
-                                                href="/admin/transactions/{trx.id}/print-invoice"
-                                                target="_blank"
-                                                class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                                                title="Cetak Invoice"
-                                            >
-                                                <i class="ti ti-printer text-sm"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
-                </div>
+                                                {statusLabels[trx.status] ?? trx.status}
+                                            </span>
+                                        </td>
 
-                <!-- Pagination -->
-                <Pagination paginator={transactions} itemLabel="transaksi" />
-            {/if}
-        </div>
+                                        <!-- Tanggal -->
+                                        <td class="px-4 py-3" data-label="Tanggal">
+                                            <p class="whitespace-nowrap text-xs text-slate-500">{trx.created_at_formatted ?? '—'}</p>
+                                        </td>
+
+                                        <!-- Aksi -->
+                                        <td class="px-4 py-3" data-label="Aksi">
+                                            <div class="flex items-center gap-1">
+                                                <a
+                                                    href="/admin/transactions/{trx.id}"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                                    title="Detail"
+                                                >
+                                                    <i class="ti ti-eye text-sm"></i>
+                                                </a>
+                                                <a
+                                                    href="/admin/transactions/{trx.id}/print-invoice"
+                                                    target="_blank"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                                    title="Cetak Invoice"
+                                                >
+                                                    <i class="ti ti-printer text-sm"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <Pagination paginator={transactions} itemLabel="transaksi" />
+                {/if}
+            </div>
+        </Deferred>
 
     </main>
 

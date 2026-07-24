@@ -132,13 +132,16 @@
             : defaultSideBanners,
     );
     const middleWide = $derived(
-        middleWideBanner && middleWideBanner.image
-            ? middleWideBanner
-            : {
-                  image: '/banners/flash-sale.png',
-                  alt: 'Flash Sale Promo',
-                  link: '#',
-              },
+        middleWideBanner && middleWideBanner.is_active === false
+            ? null
+            : (middleWideBanner && middleWideBanner.image
+                ? middleWideBanner
+                : {
+                      image: '/banners/flash-sale.png',
+                      alt: 'Flash Sale Promo',
+                      link: '#',
+                      is_active: true,
+                  })
     );
 
     let activeHero = $state(0);
@@ -1223,32 +1226,34 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 7: BANNER WIDE (full width promo)
 ═══════════════════════════════════════════════════ -->
-    <section class="px-3 sm:px-5 lg:px-8 mt-4 mb-4">
-        <div
-            class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
-        >
-            {#if middleWide.link && middleWide.link !== '#'}
-                <Link href={middleWide.link} class="block w-full">
-                    <img
-                        src={middleWide.image}
-                        alt={middleWide.alt}
-                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
-                    />
-                </Link>
-            {:else}
-                <button
-                    onclick={() => (activeLightboxImage = middleWide.image)}
-                    class="block w-full text-left"
-                >
-                    <img
-                        src={middleWide.image}
-                        alt={middleWide.alt}
-                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
-                    />
-                </button>
-            {/if}
-        </div>
-    </section>
+    {#if middleWide && middleWide.image}
+        <section class="px-3 sm:px-5 lg:px-8 mt-4 mb-4">
+            <div
+                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
+            >
+                {#if middleWide.link && middleWide.link !== '#'}
+                    <Link href={middleWide.link} class="block w-full">
+                        <img
+                            src={middleWide.image}
+                            alt={middleWide.alt}
+                            class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        />
+                    </Link>
+                {:else}
+                    <button
+                        onclick={() => (activeLightboxImage = middleWide.image)}
+                        class="block w-full text-left"
+                    >
+                        <img
+                            src={middleWide.image}
+                            alt={middleWide.alt}
+                            class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        />
+                    </button>
+                {/if}
+            </div>
+        </section>
+    {/if}
 
     <!-- ═══════════════════════════════════════════════════
      SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)

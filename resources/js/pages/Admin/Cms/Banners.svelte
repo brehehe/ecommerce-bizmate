@@ -18,7 +18,14 @@
     const form = useForm({
         hero_banners: heroBanners.length > 0 ? [...heroBanners] : [{ image: '/banners/promo-main.png', alt: 'Promo Spesial', link: '#' }],
         side_banners: sideBanners.length > 0 ? [...sideBanners] : [{ image: '/banners/fashion.png', alt: 'Fashion Diskon', link: '#' }],
-        middle_wide_banner: middleWideBanner || { image: '/banners/flash-sale.png', alt: 'Flash Sale Promo', link: '#' },
+        middle_wide_banner: middleWideBanner
+            ? {
+                  image: middleWideBanner.image || '',
+                  alt: middleWideBanner.alt || 'Flash Sale Promo',
+                  link: middleWideBanner.link || '#',
+                  is_active: middleWideBanner.is_active !== undefined ? !!middleWideBanner.is_active : true,
+              }
+            : { image: '/banners/flash-sale.png', alt: 'Flash Sale Promo', link: '#', is_active: true },
         popup_banner: popupBanner
             ? { image: popupBanner.image || '', alt: popupBanner.alt || 'Promo Spesial', link: popupBanner.link || '#', is_active: !!popupBanner.is_active, orientation: popupBanner.orientation || 'portrait' }
             : { image: '', alt: 'Promo Spesial', link: '#', is_active: false, orientation: 'portrait' },
@@ -338,7 +345,7 @@
 
                     <!-- Middle Wide Banner -->
                     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50/30 flex items-center">
+                        <div class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50/30 flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-sm shrink-0">
                                     <i class="ti ti-panorama text-white text-sm"></i>
@@ -348,6 +355,15 @@
                                     <p class="text-[11px] text-slate-400 font-medium">Banner memanjang tengah halaman (rasio 4.5:1)</p>
                                 </div>
                             </div>
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none shrink-0">
+                                <span class="text-xs font-bold {form.middle_wide_banner.is_active ? 'text-amber-600' : 'text-slate-400'}">
+                                    {form.middle_wide_banner.is_active ? 'Tampil (Show)' : 'Sembunyi (Hide)'}
+                                </span>
+                                <div class="relative">
+                                    <input type="checkbox" bind:checked={form.middle_wide_banner.is_active} class="sr-only peer" />
+                                    <div class="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:bg-amber-500 transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4 after:shadow-sm relative"></div>
+                                </div>
+                            </label>
                         </div>
                         <div class="p-5">
                             <div class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">

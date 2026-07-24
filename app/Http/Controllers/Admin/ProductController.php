@@ -150,35 +150,34 @@ class ProductController extends Controller
             $query->where('active', $request->get('status') === 'active');
         }
 
-        $query->withSum(['transactionItems as total_qty_sold' => function ($q) {
-            $q->whereHas('transaction', function ($t) {
-                $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
-            });
-        }], 'quantity');
-
-        $query->withSum(['transactionItems as total_revenue' => function ($q) {
-            $q->whereHas('transaction', function ($t) {
-                $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
-            });
-        }], 'subtotal');
-
-        $query->withSum(['returnItems as total_qty_returned' => function ($q) {
-            $q->whereHas('returnRequest', function ($r) {
-                $r->where('status', 'selesai');
-            });
-        }], 'quantity_returned');
-
-        $query->withSum(['returnItems as total_refund_amount' => function ($q) {
-            $q->whereHas('returnRequest', function ($r) {
-                $r->where('status', 'selesai');
-            });
-        }], 'refund_subtotal');
-
         $perPage = $request->get('per_page', 10);
-        if ($perPage === 'all') {
-            $products = $query->paginate(999999)->withQueryString();
-        } else {
-            $products = $query->paginate((int) $perPage)->withQueryString();
+        $limit = $perPage === 'all' ? 999999 : (int) $perPage;
+        $products = $query->paginate($limit)->withQueryString();
+
+        if (! $products->getCollection()->isEmpty()) {
+            $products->getCollection()->loadSum(['transactionItems as total_qty_sold' => function ($q) {
+                $q->whereHas('transaction', function ($t) {
+                    $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+                });
+            }], 'quantity');
+
+            $products->getCollection()->loadSum(['transactionItems as total_revenue' => function ($q) {
+                $q->whereHas('transaction', function ($t) {
+                    $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+                });
+            }], 'subtotal');
+
+            $products->getCollection()->loadSum(['returnItems as total_qty_returned' => function ($q) {
+                $q->whereHas('returnRequest', function ($r) {
+                    $r->where('status', 'selesai');
+                });
+            }], 'quantity_returned');
+
+            $products->getCollection()->loadSum(['returnItems as total_refund_amount' => function ($q) {
+                $q->whereHas('returnRequest', function ($r) {
+                    $r->where('status', 'selesai');
+                });
+            }], 'refund_subtotal');
         }
 
         $products->getCollection()->transform(function ($product) {

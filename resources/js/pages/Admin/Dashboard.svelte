@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { page, router, Link } from '@inertiajs/svelte';
+    import { page, router, Link, Deferred } from '@inertiajs/svelte';
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
@@ -35,7 +35,7 @@
     let chartMetric = $state<'all' | 'revenue' | 'refund' | 'return'>('all');
     let activePipelineTab = $state<'transactions' | 'refunds' | 'returns'>('transactions');
 
-    let canvas: HTMLCanvasElement;
+    let canvas = $state<HTMLCanvasElement>();
     let chartInstance: Chart | null = null;
 
     $effect(() => {
@@ -342,506 +342,586 @@
         </div>
 
         <!-- KPI stat cards (6 grid columns) -->
-        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <Deferred data={['stats', 'refundStats', 'returnStats']}>
+            {#snippet fallback()}
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 animate-pulse">
+                    {#each Array(6) as _}
+                        <div class="rounded-xl border border-slate-200 bg-white p-4 h-24 flex items-center justify-between">
+                            <div class="space-y-2 w-full">
+                                <div class="h-3 w-16 bg-slate-100 rounded-md"></div>
+                                <div class="h-6 w-24 bg-slate-200 rounded-md"></div>
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+            {/snippet}
 
-            <!-- Revenue -->
-            {@render StatCard({
-                icon: 'ti-wallet',
-                iconBg: primaryColor + '15',
-                iconColor: primaryColor,
-                label: 'Total Revenue',
-                value: stats.revenueFormatted,
-                change: stats.revenueChange,
-            })}
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
 
-            <!-- Orders -->
-            {@render StatCard({
-                icon: 'ti-shopping-cart',
-                iconBg: '#f0fdf4',
-                iconColor: '#16a34a',
-                label: 'Total Transaksi',
-                value: stats.ordersCount,
-                change: stats.ordersChange,
-            })}
+                <!-- Revenue -->
+                {@render StatCard({
+                    icon: 'ti-wallet',
+                    iconBg: primaryColor + '15',
+                    iconColor: primaryColor,
+                    label: 'Total Revenue',
+                    value: stats.revenueFormatted,
+                    change: stats.revenueChange,
+                })}
 
-            <!-- Refund -->
-            {@render StatCard({
-                icon: 'ti-rotate-2',
-                iconBg: '#fffbeb',
-                iconColor: '#d97706',
-                label: `Refund (${refundStats.count})`,
-                value: refundStats.formattedAmount,
-                change: refundStats.amountChange,
-            })}
+                <!-- Orders -->
+                {@render StatCard({
+                    icon: 'ti-shopping-cart',
+                    iconBg: '#f0fdf4',
+                    iconColor: '#16a34a',
+                    label: 'Total Transaksi',
+                    value: stats.ordersCount,
+                    change: stats.ordersChange,
+                })}
 
-            <!-- Retur -->
-            {@render StatCard({
-                icon: 'ti-replace',
-                iconBg: '#f5f3ff',
-                iconColor: '#7c3aed',
-                label: `Retur (${returnStats.count})`,
-                value: returnStats.formattedAmount,
-                change: returnStats.countChange,
-            })}
+                <!-- Refund -->
+                {@render StatCard({
+                    icon: 'ti-rotate-2',
+                    iconBg: '#fffbeb',
+                    iconColor: '#d97706',
+                    label: `Refund (${refundStats.count})`,
+                    value: refundStats.formattedAmount,
+                    change: refundStats.amountChange,
+                })}
 
-            <!-- Products -->
-            {@render StatCard({
-                icon: 'ti-box',
-                iconBg: '#eef2ff',
-                iconColor: '#4f46e5',
-                label: 'Produk Aktif',
-                value: stats.activeProductsCount,
-                change: stats.productsChange,
-            })}
+                <!-- Retur -->
+                {@render StatCard({
+                    icon: 'ti-replace',
+                    iconBg: '#f5f3ff',
+                    iconColor: '#7c3aed',
+                    label: `Retur (${returnStats.count})`,
+                    value: returnStats.formattedAmount,
+                    change: returnStats.countChange,
+                })}
 
-            <!-- Customers -->
-            {@render StatCard({
-                icon: 'ti-users',
-                iconBg: '#fff7ed',
-                iconColor: '#c2410c',
-                label: 'Pelanggan',
-                value: stats.customersCount,
-                change: stats.customersChange,
-            })}
-        </div>
+                <!-- Products -->
+                {@render StatCard({
+                    icon: 'ti-box',
+                    iconBg: '#eef2ff',
+                    iconColor: '#4f46e5',
+                    label: 'Produk Aktif',
+                    value: stats.activeProductsCount,
+                    change: stats.productsChange,
+                })}
+
+                <!-- Customers -->
+                {@render StatCard({
+                    icon: 'ti-users',
+                    iconBg: '#fff7ed',
+                    iconColor: '#c2410c',
+                    label: 'Pelanggan',
+                    value: stats.customersCount,
+                    change: stats.customersChange,
+                })}
+            </div>
+        </Deferred>
 
         <!-- Multi-Pipeline Section (Tabbed & Interactive Operational Status) -->
-        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <p class="text-sm font-semibold text-slate-800">Pipeline Operasional Real-Time</p>
-                    <p class="text-xs text-slate-400 mt-0.5">Status alur proses transaksi, klaim refund, dan retur barang</p>
+        <Deferred data={['orderStats', 'refundPipeline', 'returnPipeline']}>
+            {#snippet fallback()}
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-6 h-28 animate-pulse">
+                    <div class="h-4 bg-slate-200 rounded w-1/4 mb-3"></div>
+                    <div class="h-8 bg-slate-100 rounded w-3/4"></div>
                 </div>
-                <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
-                    <button
-                        type="button"
-                        onclick={() => (activePipelineTab = 'transactions')}
-                        class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'transactions' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                    >
-                        <i class="ti ti-receipt text-xs mr-1"></i> Transaksi
-                    </button>
-                    <button
-                        type="button"
-                        onclick={() => (activePipelineTab = 'refunds')}
-                        class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'refunds' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                    >
-                        <i class="ti ti-rotate-2 text-xs mr-1"></i> Refund ({refundPipeline.pending + refundPipeline.approved})
-                    </button>
-                    <button
-                        type="button"
-                        onclick={() => (activePipelineTab = 'returns')}
-                        class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'returns' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                    >
-                        <i class="ti ti-replace text-xs mr-1"></i> Retur ({returnPipeline.pending + returnPipeline.approved + returnPipeline.inTransit + returnPipeline.received + returnPipeline.refunding})
-                    </button>
+            {/snippet}
+
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Pipeline Operasional Real-Time</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Status alur proses transaksi, klaim refund, dan retur barang</p>
+                    </div>
+                    <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
+                        <button
+                            type="button"
+                            onclick={() => (activePipelineTab = 'transactions')}
+                            class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'transactions' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            <i class="ti ti-receipt text-xs mr-1"></i> Transaksi
+                        </button>
+                        <button
+                            type="button"
+                            onclick={() => (activePipelineTab = 'refunds')}
+                            class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'refunds' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            <i class="ti ti-rotate-2 text-xs mr-1"></i> Refund ({refundPipeline.pending + refundPipeline.approved})
+                        </button>
+                        <button
+                            type="button"
+                            onclick={() => (activePipelineTab = 'returns')}
+                            class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'returns' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                        >
+                            <i class="ti ti-replace text-xs mr-1"></i> Retur ({returnPipeline.pending + returnPipeline.approved + returnPipeline.inTransit + returnPipeline.received + returnPipeline.refunding})
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Tab 1: Pipeline Transaksi -->
+                {#if activePipelineTab === 'transactions'}
+                    <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+                        <Link href="/admin/transactions?status=belum_bayar" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
+                                <i class="ti ti-clock"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.unpaidCount ?? orderStats.newCount ?? 0}</p>
+                                <p class="mt-1 text-xs text-slate-500">Belum Bayar</p>
+                            </div>
+                        </Link>
+                        <Link href="/admin/transactions?status=menunggu" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
+                                <i class="ti ti-loader"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.pendingCount ?? 0}</p>
+                                <p class="mt-1 text-xs text-slate-500">Menunggu Konfirmasi</p>
+                            </div>
+                        </Link>
+                        <Link href="/admin/transactions?status=diproses" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg" style="background-color: {primaryColor}15; color: {primaryColor};">
+                                <i class="ti ti-package"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.readyCount ?? 0}</p>
+                                <p class="mt-1 text-xs text-slate-500">Diproses</p>
+                            </div>
+                        </Link>
+                        <Link href="/admin/transactions?status=dikirim" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
+                                <i class="ti ti-truck-delivery"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.shippingCount ?? 0}</p>
+                                <p class="mt-1 text-xs text-slate-500">Dikirim</p>
+                            </div>
+                        </Link>
+                    </div>
+                {/if}
+
+                <!-- Tab 2: Pipeline Refund -->
+                {#if activePipelineTab === 'refunds'}
+                    <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+                        <Link href="/admin/refunds?status=menunggu_konfirmasi" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
+                                <i class="ti ti-hourglass-low"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.pending}</p>
+                                <p class="mt-1 text-xs text-slate-500">Menunggu Konfirmasi</p>
+                            </div>
+                        </Link>
+                        <Link href="/admin/refunds?status=disetujui" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
+                                <i class="ti ti-circle-check"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.approved}</p>
+                                <p class="mt-1 text-xs text-slate-500">Disetujui</p>
+                            </div>
+                        </Link>
+                        <Link href="/admin/refunds?status=selesai" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
+                                <i class="ti ti-circle-check-filled"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.completed}</p>
+                                <p class="mt-1 text-xs text-slate-500">Refund Selesai</p>
+                            </div>
+                        </Link>
+                        <Link href="/admin/refunds?status=ditolak" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 text-lg">
+                                <i class="ti ti-circle-x"></i>
+                            </div>
+                            <div>
+                                <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.rejected}</p>
+                                <p class="mt-1 text-xs text-slate-500">Ditolak</p>
+                            </div>
+                        </Link>
+                    </div>
+                {/if}
+
+                <!-- Tab 3: Pipeline Retur -->
+                {#if activePipelineTab === 'returns'}
+                    <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-6 sm:divide-y-0 text-xs">
+                        <Link href="/admin/returns?status=menunggu_review" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500">Menunggu Review</span>
+                                <i class="ti ti-eye text-amber-500"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800">{returnPipeline.pending}</p>
+                        </Link>
+                        <Link href="/admin/returns?status=disetujui" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500">Disetujui</span>
+                                <i class="ti ti-check text-blue-500"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800">{returnPipeline.approved}</p>
+                        </Link>
+                        <Link href="/admin/returns?status=barang_dikirim_customer" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500">Dikirim Cust</span>
+                                <i class="ti ti-truck text-indigo-500"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800">{returnPipeline.inTransit}</p>
+                        </Link>
+                        <Link href="/admin/returns?status=barang_diterima_toko" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500">Diterima Toko</span>
+                                <i class="ti ti-building-store text-violet-500"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800">{returnPipeline.received}</p>
+                        </Link>
+                        <Link href="/admin/returns?status=refund_diproses" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500">Refund Diproses</span>
+                                <i class="ti ti-rotate-2 text-amber-600"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800">{returnPipeline.refunding}</p>
+                        </Link>
+                        <Link href="/admin/returns?status=selesai" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500">Selesai</span>
+                                <i class="ti ti-circle-check-filled text-emerald-600"></i>
+                            </div>
+                            <p class="text-lg font-bold text-slate-800">{returnPipeline.completed}</p>
+                        </Link>
+                    </div>
+                {/if}
             </div>
-
-            <!-- Tab 1: Pipeline Transaksi -->
-            {#if activePipelineTab === 'transactions'}
-                <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
-                    <Link href="/admin/transactions?status=belum_bayar" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
-                            <i class="ti ti-clock"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.unpaidCount ?? orderStats.newCount ?? 0}</p>
-                            <p class="mt-1 text-xs text-slate-500">Belum Bayar</p>
-                        </div>
-                    </Link>
-                    <Link href="/admin/transactions?status=menunggu" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
-                            <i class="ti ti-loader"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.pendingCount ?? 0}</p>
-                            <p class="mt-1 text-xs text-slate-500">Menunggu Konfirmasi</p>
-                        </div>
-                    </Link>
-                    <Link href="/admin/transactions?status=diproses" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg" style="background-color: {primaryColor}15; color: {primaryColor};">
-                            <i class="ti ti-package"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.readyCount ?? 0}</p>
-                            <p class="mt-1 text-xs text-slate-500">Diproses</p>
-                        </div>
-                    </Link>
-                    <Link href="/admin/transactions?status=dikirim" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
-                            <i class="ti ti-truck-delivery"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{orderStats.shippingCount ?? 0}</p>
-                            <p class="mt-1 text-xs text-slate-500">Dikirim</p>
-                        </div>
-                    </Link>
-                </div>
-            {/if}
-
-            <!-- Tab 2: Pipeline Refund -->
-            {#if activePipelineTab === 'refunds'}
-                <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
-                    <Link href="/admin/refunds?status=menunggu_konfirmasi" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 text-lg">
-                            <i class="ti ti-hourglass-low"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.pending}</p>
-                            <p class="mt-1 text-xs text-slate-500">Menunggu Konfirmasi</p>
-                        </div>
-                    </Link>
-                    <Link href="/admin/refunds?status=disetujui" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-lg">
-                            <i class="ti ti-circle-check"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.approved}</p>
-                            <p class="mt-1 text-xs text-slate-500">Disetujui</p>
-                        </div>
-                    </Link>
-                    <Link href="/admin/refunds?status=selesai" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-lg">
-                            <i class="ti ti-circle-check-filled"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.completed}</p>
-                            <p class="mt-1 text-xs text-slate-500">Refund Selesai</p>
-                        </div>
-                    </Link>
-                    <Link href="/admin/refunds?status=ditolak" class="flex items-center gap-3 p-4 transition-colors hover:bg-slate-50">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 text-lg">
-                            <i class="ti ti-circle-x"></i>
-                        </div>
-                        <div>
-                            <p class="text-xl font-bold text-slate-800 leading-none">{refundPipeline.rejected}</p>
-                            <p class="mt-1 text-xs text-slate-500">Ditolak</p>
-                        </div>
-                    </Link>
-                </div>
-            {/if}
-
-            <!-- Tab 3: Pipeline Retur -->
-            {#if activePipelineTab === 'returns'}
-                <div class="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-6 sm:divide-y-0 text-xs">
-                    <Link href="/admin/returns?status=menunggu_review" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500">Menunggu Review</span>
-                            <i class="ti ti-eye text-amber-500"></i>
-                        </div>
-                        <p class="text-lg font-bold text-slate-800">{returnPipeline.pending}</p>
-                    </Link>
-                    <Link href="/admin/returns?status=disetujui" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500">Disetujui</span>
-                            <i class="ti ti-check text-blue-500"></i>
-                        </div>
-                        <p class="text-lg font-bold text-slate-800">{returnPipeline.approved}</p>
-                    </Link>
-                    <Link href="/admin/returns?status=barang_dikirim_customer" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500">Dikirim Cust</span>
-                            <i class="ti ti-truck text-indigo-500"></i>
-                        </div>
-                        <p class="text-lg font-bold text-slate-800">{returnPipeline.inTransit}</p>
-                    </Link>
-                    <Link href="/admin/returns?status=barang_diterima_toko" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500">Diterima Toko</span>
-                            <i class="ti ti-building-store text-violet-500"></i>
-                        </div>
-                        <p class="text-lg font-bold text-slate-800">{returnPipeline.received}</p>
-                    </Link>
-                    <Link href="/admin/returns?status=refund_diproses" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500">Refund Diproses</span>
-                            <i class="ti ti-rotate-2 text-amber-600"></i>
-                        </div>
-                        <p class="text-lg font-bold text-slate-800">{returnPipeline.refunding}</p>
-                    </Link>
-                    <Link href="/admin/returns?status=selesai" class="flex flex-col gap-1 p-3 transition-colors hover:bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500">Selesai</span>
-                            <i class="ti ti-circle-check-filled text-emerald-600"></i>
-                        </div>
-                        <p class="text-lg font-bold text-slate-800">{returnPipeline.completed}</p>
-                    </Link>
-                </div>
-            {/if}
-        </div>
+        </Deferred>
 
         <!-- Interactive Chart Analytics + Top Products -->
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
             <!-- Revenue, Refund, & Retur Chart -->
             <div class="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
-                <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Tren Finansial & Pengembalian</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Perbandingan Penjualan vs Refund & Retur (6 Bulan)</p>
+                <Deferred data="chartData">
+                    {#snippet fallback()}
+                        <div class="p-6 h-[350px] animate-pulse flex flex-col justify-between">
+                            <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                            <div class="h-56 bg-slate-100 rounded-lg"></div>
+                        </div>
+                    {/snippet}
+
+                    <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Tren Finansial & Pengembalian</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Perbandingan Penjualan vs Refund & Retur (6 Bulan)</p>
+                        </div>
+                        <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
+                            <button
+                                type="button"
+                                onclick={() => (chartMetric = 'all')}
+                                class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'all' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                Semua
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => (chartMetric = 'revenue')}
+                                class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'revenue' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                Revenue
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => (chartMetric = 'refund')}
+                                class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'refund' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                Refund
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => (chartMetric = 'return')}
+                                class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'return' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                Retur
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
-                        <button
-                            type="button"
-                            onclick={() => (chartMetric = 'all')}
-                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'all' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            Semua
-                        </button>
-                        <button
-                            type="button"
-                            onclick={() => (chartMetric = 'revenue')}
-                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'revenue' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            Revenue
-                        </button>
-                        <button
-                            type="button"
-                            onclick={() => (chartMetric = 'refund')}
-                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'refund' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            Refund
-                        </button>
-                        <button
-                            type="button"
-                            onclick={() => (chartMetric = 'return')}
-                            class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'return' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            Retur
-                        </button>
+                    <div class="p-5">
+                        <div class="h-64">
+                            <canvas bind:this={canvas}></canvas>
+                        </div>
                     </div>
-                </div>
-                <div class="p-5">
-                    <div class="h-64">
-                        <canvas bind:this={canvas}></canvas>
-                    </div>
-                </div>
+                </Deferred>
             </div>
 
             <!-- Top products -->
             <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Top Produk</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Volume penjualan tertinggi</p>
+                <Deferred data="topProducts">
+                    {#snippet fallback()}
+                        <div class="p-6 h-[350px] animate-pulse space-y-4">
+                            <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+                            {#each Array(3) as _}
+                                <div class="flex items-center gap-3">
+                                    <div class="h-8 w-8 bg-slate-200 rounded-lg"></div>
+                                    <div class="h-4 bg-slate-100 rounded w-2/3"></div>
+                                </div>
+                            {/each}
+                        </div>
+                    {/snippet}
+
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Top Produk</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Volume penjualan tertinggi</p>
+                        </div>
+                        <Link href="/admin/products" class="text-xs font-medium" style="color: {primaryColor};">
+                            Semua →
+                        </Link>
                     </div>
-                    <Link href="/admin/products" class="text-xs font-medium" style="color: {primaryColor};">
-                        Semua →
-                    </Link>
-                </div>
-                <div class="divide-y divide-slate-100">
-                    {#each topProducts as product, i}
-                        <div class="flex items-center gap-3 px-5 py-3">
-                            <span class="w-5 shrink-0 text-center text-xs font-semibold text-slate-400">{i + 1}</span>
-                            <img src={product.image} alt={product.name} class="h-9 w-9 shrink-0 rounded-lg object-cover bg-slate-100" />
-                            <div class="min-w-0 flex-1">
-                                <p class="truncate text-sm font-medium text-slate-800">{product.name}</p>
-                                <p class="text-xs text-slate-400">{product.category}</p>
+                    <div class="divide-y divide-slate-100">
+                        {#each topProducts as product, i}
+                            <div class="flex items-center gap-3 px-5 py-3">
+                                <span class="w-5 shrink-0 text-center text-xs font-semibold text-slate-400">{i + 1}</span>
+                                <img src={product.image} alt={product.name} class="h-9 w-9 shrink-0 rounded-lg object-cover bg-slate-100" />
+                                <div class="min-w-0 flex-1">
+                                    <p class="truncate text-sm font-medium text-slate-800">{product.name}</p>
+                                    <p class="text-xs text-slate-400">{product.category}</p>
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    <p class="text-sm font-bold text-slate-800">{product.sales}</p>
+                                    <p class="text-[10px] font-semibold uppercase tracking-wide text-emerald-500">sold</p>
+                                </div>
                             </div>
-                            <div class="shrink-0 text-right">
-                                <p class="text-sm font-bold text-slate-800">{product.sales}</p>
-                                <p class="text-[10px] font-semibold uppercase tracking-wide text-emerald-500">sold</p>
+                        {:else}
+                            <div class="flex flex-col items-center justify-center py-10 text-center px-4">
+                                <i class="ti ti-chart-bar-off text-2xl text-slate-300 mb-2"></i>
+                                <p class="text-xs text-slate-400">Belum ada data produk</p>
                             </div>
-                        </div>
-                    {:else}
-                        <div class="flex flex-col items-center justify-center py-10 text-center px-4">
-                            <i class="ti ti-chart-bar-off text-2xl text-slate-300 mb-2"></i>
-                            <p class="text-xs text-slate-400">Belum ada data produk</p>
-                        </div>
-                    {/each}
-                </div>
+                        {/each}
+                    </div>
+                </Deferred>
             </div>
         </div>
 
         <!-- Grid Table 1: Recent Refunds + Recent Returs -->
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-            <!-- Recent Refunds Table -->
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Pengajuan Refund Terbaru</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian dana terkini</p>
+        <Deferred data={['recentRefunds', 'recentReturns']}>
+            {#snippet fallback()}
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div class="p-6 border border-slate-200 rounded-xl bg-white h-[250px] animate-pulse space-y-4">
+                        <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                        <div class="space-y-2">
+                            <div class="h-10 bg-slate-100 rounded"></div>
+                            <div class="h-10 bg-slate-100 rounded"></div>
+                        </div>
                     </div>
-                    <Link href="/admin/refunds" class="text-xs font-medium" style="color: {primaryColor};">
-                        Semua Refund →
-                    </Link>
+                    <div class="p-6 border border-slate-200 rounded-xl bg-white h-[250px] animate-pulse space-y-4">
+                        <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                        <div class="space-y-2">
+                            <div class="h-10 bg-slate-100 rounded"></div>
+                            <div class="h-10 bg-slate-100 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            {/snippet}
+
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
+                <!-- Recent Refunds Table -->
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Pengajuan Refund Terbaru</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian dana terkini</p>
+                        </div>
+                        <Link href="/admin/refunds" class="text-xs font-medium" style="color: {primaryColor};">
+                            Semua Refund →
+                        </Link>
+                    </div>
+
+                    {#if recentRefunds && recentRefunds.length > 0}
+                        <div class="overflow-x-auto" use:dragScroll>
+                            <table class="w-full responsive-table text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-100 bg-slate-50/50">
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Refund</th>
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Nominal</th>
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {#each recentRefunds as refund}
+                                        <tr class="transition-colors hover:bg-slate-50/50">
+                                            <td class="px-4 py-3" data-label="No. Refund">
+                                                <Link
+                                                    href="/admin/refunds/{refund.id}"
+                                                    class="font-mono text-xs font-semibold text-amber-600 hover:underline"
+                                                >
+                                                    {refund.refund_number}
+                                                </Link>
+                                                <p class="text-[10px] text-slate-400">Trx: {refund.transaction_number}</p>
+                                            </td>
+                                            <td class="px-4 py-3" data-label="Pelanggan">
+                                                <p class="font-medium text-slate-800">{refund.customer}</p>
+                                                <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{refund.email}</p>
+                                            </td>
+                                            <td class="px-4 py-3 font-semibold text-slate-800" data-label="Nominal">
+                                                {refund.amount_formatted}
+                                            </td>
+                                            <td class="px-4 py-3" data-label="Status">
+                                                {@render RefundBadge(refund.status, refund.status_label)}
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {:else}
+                        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                            <i class="ti ti-rotate-2 text-2xl text-slate-300 mb-2"></i>
+                            <p class="text-sm font-medium text-slate-500">Belum ada pengajuan refund</p>
+                        </div>
+                    {/if}
                 </div>
 
-                {#if recentRefunds && recentRefunds.length > 0}
-                    <div class="overflow-x-auto" use:dragScroll>
-                        <table class="w-full responsive-table text-xs">
-                            <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50">
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Refund</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Nominal</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {#each recentRefunds as refund}
-                                    <tr class="transition-colors hover:bg-slate-50/50">
-                                        <td class="px-4 py-3" data-label="No. Refund">
-                                            <Link
-                                                href="/admin/refunds/{refund.id}"
-                                                class="font-mono text-xs font-semibold text-amber-600 hover:underline"
-                                            >
-                                                {refund.refund_number}
-                                            </Link>
-                                            <p class="text-[10px] text-slate-400">Trx: {refund.transaction_number}</p>
-                                        </td>
-                                        <td class="px-4 py-3" data-label="Pelanggan">
-                                            <p class="font-medium text-slate-800">{refund.customer}</p>
-                                            <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{refund.email}</p>
-                                        </td>
-                                        <td class="px-4 py-3 font-semibold text-slate-800" data-label="Nominal">
-                                            {refund.amount_formatted}
-                                        </td>
-                                        <td class="px-4 py-3" data-label="Status">
-                                            {@render RefundBadge(refund.status, refund.status_label)}
-                                        </td>
-                                    </tr>
-                                {/each}
-                            </tbody>
-                        </table>
+                <!-- Recent Returs Table -->
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Pengajuan Retur Terbaru</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian & tukar barang</p>
+                        </div>
+                        <Link href="/admin/returns" class="text-xs font-medium" style="color: {primaryColor};">
+                            Semua Retur →
+                        </Link>
                     </div>
-                {:else}
-                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                        <i class="ti ti-rotate-2 text-2xl text-slate-300 mb-2"></i>
-                        <p class="text-sm font-medium text-slate-500">Belum ada pengajuan refund</p>
-                    </div>
-                {/if}
-            </div>
 
-            <!-- Recent Returs Table -->
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Pengajuan Retur Terbaru</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian & tukar barang</p>
-                    </div>
-                    <Link href="/admin/returns" class="text-xs font-medium" style="color: {primaryColor};">
-                        Semua Retur →
-                    </Link>
+                    {#if recentReturns && recentReturns.length > 0}
+                        <div class="overflow-x-auto" use:dragScroll>
+                            <table class="w-full responsive-table text-xs">
+                                <thead>
+                                    <tr class="border-b border-slate-100 bg-slate-50/50">
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Retur</th>
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Tipe</th>
+                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {#each recentReturns as ret}
+                                        <tr class="transition-colors hover:bg-slate-50/50">
+                                            <td class="px-4 py-3" data-label="No. Retur">
+                                                <Link
+                                                    href="/admin/returns/{ret.id}"
+                                                    class="font-mono text-xs font-semibold text-violet-600 hover:underline"
+                                                >
+                                                    {ret.return_number}
+                                                </Link>
+                                                <p class="text-[10px] text-slate-400">Trx: {ret.transaction_number}</p>
+                                            </td>
+                                            <td class="px-4 py-3" data-label="Pelanggan">
+                                                <p class="font-medium text-slate-800">{ret.customer}</p>
+                                                <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{ret.email}</p>
+                                            </td>
+                                            <td class="px-4 py-3" data-label="Tipe">
+                                                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {ret.type === 'Tukar Barang' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}">
+                                                    {ret.type}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3" data-label="Status">
+                                                {@render ReturnBadge(ret.status, ret.status_label)}
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {:else}
+                        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                            <i class="ti ti-replace text-2xl text-slate-300 mb-2"></i>
+                            <p class="text-sm font-medium text-slate-500">Belum ada pengajuan retur</p>
+                        </div>
+                    {/if}
                 </div>
 
-                {#if recentReturns && recentReturns.length > 0}
-                    <div class="overflow-x-auto" use:dragScroll>
-                        <table class="w-full responsive-table text-xs">
-                            <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50">
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Retur</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Tipe</th>
-                                    <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {#each recentReturns as ret}
-                                    <tr class="transition-colors hover:bg-slate-50/50">
-                                        <td class="px-4 py-3" data-label="No. Retur">
-                                            <Link
-                                                href="/admin/returns/{ret.id}"
-                                                class="font-mono text-xs font-semibold text-violet-600 hover:underline"
-                                            >
-                                                {ret.return_number}
-                                            </Link>
-                                            <p class="text-[10px] text-slate-400">Trx: {ret.transaction_number}</p>
-                                        </td>
-                                        <td class="px-4 py-3" data-label="Pelanggan">
-                                            <p class="font-medium text-slate-800">{ret.customer}</p>
-                                            <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{ret.email}</p>
-                                        </td>
-                                        <td class="px-4 py-3" data-label="Tipe">
-                                            <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {ret.type === 'Tukar Barang' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}">
-                                                {ret.type}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3" data-label="Status">
-                                            {@render ReturnBadge(ret.status, ret.status_label)}
-                                        </td>
-                                    </tr>
-                                {/each}
-                            </tbody>
-                        </table>
-                    </div>
-                {:else}
-                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                        <i class="ti ti-replace text-2xl text-slate-300 mb-2"></i>
-                        <p class="text-sm font-medium text-slate-500">Belum ada pengajuan retur</p>
-                    </div>
-                {/if}
             </div>
-
-        </div>
+        </Deferred>
 
         <!-- Recent transactions + Stock info -->
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
             <!-- Recent transactions -->
             <div class="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Transaksi Terbaru</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Pesanan masuk terkini</p>
-                    </div>
-                    <Link href="/admin/transactions" class="text-xs font-medium" style="color: {primaryColor};">
-                        Semua →
-                    </Link>
-                </div>
+                <Deferred data="recentOrders">
+                    {#snippet fallback()}
+                        <div class="p-6 h-[250px] animate-pulse space-y-4">
+                            <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                            <div class="space-y-2">
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                            </div>
+                        </div>
+                    {/snippet}
 
-                {#if recentOrders && recentOrders.length > 0}
-                    <div class="overflow-x-auto" use:dragScroll>
-                        <table class="w-full responsive-table">
-                            <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50">
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Pesanan</th>
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Pelanggan</th>
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</th>
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {#each recentOrders as order}
-                                    <tr class="group transition-colors hover:bg-slate-50/50">
-                                        <td class="px-5 py-3" data-label="No. Pesanan">
-                                            <Link
-                                                href="/admin/transactions/{order.raw_id}"
-                                                class="font-mono text-xs font-semibold transition-colors hover:underline"
-                                                style="color: {primaryColor};"
-                                            >
-                                                {order.id}
-                                            </Link>
-                                        </td>
-                                        <td class="px-5 py-3" data-label="Pelanggan">
-                                            <div>
-                                                <p class="text-sm font-medium text-slate-800">{order.customer}</p>
-                                                {#if order.email}
-                                                    <p class="text-xs text-slate-400">{order.email}</p>
-                                                {/if}
-                                            </div>
-                                        </td>
-                                        <td class="px-5 py-3" data-label="Total">
-                                            <p class="text-sm font-semibold text-slate-800">
-                                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(order.amount)}
-                                            </p>
-                                        </td>
-                                        <td class="px-5 py-3" data-label="Status">
-                                            {@render StatusBadge(order.status)}
-                                        </td>
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Transaksi Terbaru</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Pesanan masuk terkini</p>
+                        </div>
+                        <Link href="/admin/transactions" class="text-xs font-medium" style="color: {primaryColor};">
+                            Semua →
+                        </Link>
+                    </div>
+
+                    {#if recentOrders && recentOrders.length > 0}
+                        <div class="overflow-x-auto" use:dragScroll>
+                            <table class="w-full responsive-table">
+                                <thead>
+                                    <tr class="border-b border-slate-100 bg-slate-50/50">
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Pesanan</th>
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Pelanggan</th>
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total</th>
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
                                     </tr>
-                                {/each}
-                            </tbody>
-                        </table>
-                    </div>
-                {:else}
-                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                        <i class="ti ti-receipt-off text-2xl text-slate-300 mb-2"></i>
-                        <p class="text-sm font-medium text-slate-500">Belum ada transaksi</p>
-                        <p class="text-xs text-slate-400 mt-1">Transaksi baru akan muncul di sini</p>
-                    </div>
-                {/if}
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {#each recentOrders as order}
+                                        <tr class="group transition-colors hover:bg-slate-50/50">
+                                            <td class="px-5 py-3" data-label="No. Pesanan">
+                                                <Link
+                                                    href="/admin/transactions/{order.raw_id}"
+                                                    class="font-mono text-xs font-semibold transition-colors hover:underline"
+                                                    style="color: {primaryColor};"
+                                                >
+                                                    {order.id}
+                                                </Link>
+                                            </td>
+                                            <td class="px-5 py-3" data-label="Pelanggan">
+                                                <div>
+                                                    <p class="text-sm font-medium text-slate-800">{order.customer}</p>
+                                                    {#if order.email}
+                                                        <p class="text-xs text-slate-400">{order.email}</p>
+                                                    {/if}
+                                                </div>
+                                            </td>
+                                            <td class="px-5 py-3" data-label="Total">
+                                                <p class="text-sm font-semibold text-slate-800">
+                                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(order.amount)}
+                                                </p>
+                                            </td>
+                                            <td class="px-5 py-3" data-label="Status">
+                                                {@render StatusBadge(order.status)}
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {:else}
+                        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                            <i class="ti ti-receipt-off text-2xl text-slate-300 mb-2"></i>
+                            <p class="text-sm font-medium text-slate-500">Belum ada transaksi</p>
+                            <p class="text-xs text-slate-400 mt-1">Transaksi baru akan muncul di sini</p>
+                        </div>
+                    {/if}
+                </Deferred>
             </div>
 
             <!-- Stock info -->
@@ -910,124 +990,145 @@
 
         <!-- Recent customers -->
         <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                <div>
-                    <p class="text-sm font-semibold text-slate-800">Pelanggan Terbaru</p>
-                    <p class="text-xs text-slate-400 mt-0.5">Daftar pelanggan yang baru terdaftar</p>
-                </div>
-                <Link href="/admin/master-data/customers" class="text-xs font-medium transition-colors hover:text-slate-900" style="color: {primaryColor};">
-                    Semua →
-                </Link>
-            </div>
-            {#if recentCustomers && recentCustomers.length > 0}
-                <div class="overflow-x-auto" use:dragScroll>
-                    <table class="w-full responsive-table text-sm">
-                        <thead>
-                            <tr class="border-b border-slate-100 bg-slate-50/50">
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nama</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Email</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Telepon</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Gabung</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {#each recentCustomers as customer}
-                                <tr class="group transition-colors hover:bg-slate-50/50">
-                                    <td class="px-5 py-3" data-label="Nama">
-                                        <div class="flex items-center gap-2.5">
-                                            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                                                {customer.initials}
-                                            </div>
-                                            <p class="text-sm font-medium text-slate-800">{customer.name}</p>
-                                        </div>
-                                    </td>
-                                    <td class="px-5 py-3" data-label="Email">
-                                        <span class="text-xs text-slate-600">{customer.email}</span>
-                                    </td>
-                                    <td class="px-5 py-3" data-label="No. Telepon">
-                                        <span class="text-xs text-slate-600">{customer.phone}</span>
-                                    </td>
-                                    <td class="px-5 py-3" data-label="Tanggal Gabung">
-                                        <span class="text-xs text-slate-500">{customer.date}</span>
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
-                </div>
-            {:else}
-                <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                    <i class="ti ti-users-off text-2xl text-slate-300 mb-2"></i>
-                    <p class="text-sm font-medium text-slate-500">Belum ada pelanggan</p>
-                </div>
-            {/if}
-        </div>
+            <Deferred data="recentCustomers">
+                {#snippet fallback()}
+                    <div class="p-6 h-[250px] animate-pulse space-y-4">
+                        <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                        <div class="space-y-2">
+                            <div class="h-10 bg-slate-100 rounded"></div>
+                            <div class="h-10 bg-slate-100 rounded"></div>
+                        </div>
+                    </div>
+                {/snippet}
 
-        <!-- Recent stock out -->
-        {#if recentStockOut && recentStockOut.length > 0}
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
                     <div>
-                        <p class="text-sm font-semibold text-slate-800">Stok Keluar Terbaru</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Riwayat pergerakan stok terakhir</p>
+                        <p class="text-sm font-semibold text-slate-800">Pelanggan Terbaru</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Daftar pelanggan yang baru terdaftar</p>
                     </div>
-                    <Link href="/admin/stock-movements" class="text-xs font-medium" style="color: {primaryColor};">
+                    <Link href="/admin/master-data/customers" class="text-xs font-medium transition-colors hover:text-slate-900" style="color: {primaryColor};">
                         Semua →
                     </Link>
                 </div>
-                <div class="overflow-x-auto" use:dragScroll>
-                    <table class="w-full responsive-table">
-                        <thead>
-                            <tr class="border-b border-slate-100 bg-slate-50/50">
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produk</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Jumlah</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Transaksi</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Keterangan</th>
-                                <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {#each recentStockOut as mov}
-                                <tr class="transition-colors hover:bg-slate-50/50">
-                                    <td class="px-5 py-3" data-label="Produk">
-                                        <div>
-                                            <p class="text-sm font-medium text-slate-800">{mov.product_name}</p>
-                                            {#if mov.variant_name}
-                                                <p class="text-xs text-slate-400">{mov.variant_name}</p>
-                                            {/if}
-                                        </div>
-                                    </td>
-                                    <td class="px-5 py-3" data-label="Jumlah">
-                                        <span class="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600">
-                                            {mov.quantity}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-3" data-label="No. Transaksi">
-                                        {#if mov.transaction_number}
-                                            <Link
-                                                href="/admin/transactions/{mov.transaction_id}"
-                                                class="font-mono text-xs font-semibold hover:underline"
-                                                style="color: {primaryColor};"
-                                            >
-                                                {mov.transaction_number}
-                                            </Link>
-                                        {:else}
-                                            <span class="text-xs text-slate-400">—</span>
-                                        {/if}
-                                    </td>
-                                    <td class="px-5 py-3" data-label="Keterangan">
-                                        <span class="text-xs text-slate-500">{mov.notes ?? '—'}</span>
-                                    </td>
-                                    <td class="px-5 py-3" data-label="Tanggal">
-                                        <span class="whitespace-nowrap text-xs text-slate-500">{mov.date}</span>
-                                    </td>
+                {#if recentCustomers && recentCustomers.length > 0}
+                    <div class="overflow-x-auto" use:dragScroll>
+                        <table class="w-full responsive-table text-sm">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nama</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Email</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Telepon</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Gabung</th>
                                 </tr>
-                            {/each}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each recentCustomers as customer}
+                                    <tr class="group transition-colors hover:bg-slate-50/50">
+                                        <td class="px-5 py-3" data-label="Nama">
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                                                    {customer.initials}
+                                                </div>
+                                                <p class="text-sm font-medium text-slate-800">{customer.name}</p>
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-3" data-label="Email">
+                                            <span class="text-xs text-slate-600">{customer.email}</span>
+                                        </td>
+                                        <td class="px-5 py-3" data-label="No. Telepon">
+                                            <span class="text-xs text-slate-600">{customer.phone}</span>
+                                        </td>
+                                        <td class="px-5 py-3" data-label="Tanggal Gabung">
+                                            <span class="text-xs text-slate-500">{customer.date}</span>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                {:else}
+                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                        <i class="ti ti-users-off text-2xl text-slate-300 mb-2"></i>
+                        <p class="text-sm font-medium text-slate-500">Belum ada pelanggan</p>
+                    </div>
+                {/if}
+            </Deferred>
+        </div>
+
+        <!-- Recent stock out -->
+        <Deferred data="recentStockOut">
+            {#snippet fallback()}
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-6 h-[250px] animate-pulse space-y-4">
+                    <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                    <div class="h-28 bg-slate-100 rounded"></div>
                 </div>
-            </div>
-        {/if}
+            {/snippet}
+
+            {#if recentStockOut && recentStockOut.length > 0}
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Stok Keluar Terbaru</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Riwayat pergerakan stok terakhir</p>
+                        </div>
+                        <Link href="/admin/stock-movements" class="text-xs font-medium" style="color: {primaryColor};">
+                            Semua →
+                        </Link>
+                    </div>
+                    <div class="overflow-x-auto" use:dragScroll>
+                        <table class="w-full responsive-table">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Produk</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Jumlah</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Transaksi</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Keterangan</th>
+                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {#each recentStockOut as mov}
+                                    <tr class="transition-colors hover:bg-slate-50/50">
+                                        <td class="px-5 py-3" data-label="Produk">
+                                            <div>
+                                                <p class="text-sm font-medium text-slate-800">{mov.product_name}</p>
+                                                {#if mov.variant_name}
+                                                    <p class="text-xs text-slate-400">{mov.variant_name}</p>
+                                                {/if}
+                                            </div>
+                                        </td>
+                                        <td class="px-5 py-3" data-label="Jumlah">
+                                            <span class="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600">
+                                                {mov.quantity}
+                                            </span>
+                                        </td>
+                                        <td class="px-5 py-3" data-label="No. Transaksi">
+                                            {#if mov.transaction_number}
+                                                <Link
+                                                    href="/admin/transactions/{mov.transaction_id}"
+                                                    class="font-mono text-xs font-semibold hover:underline"
+                                                    style="color: {primaryColor};"
+                                                >
+                                                    {mov.transaction_number}
+                                                </Link>
+                                            {:else}
+                                                <span class="text-xs text-slate-400">—</span>
+                                            {/if}
+                                        </td>
+                                        <td class="px-5 py-3" data-label="Keterangan">
+                                            <span class="text-xs text-slate-500">{mov.notes ?? '—'}</span>
+                                        </td>
+                                        <td class="px-5 py-3" data-label="Tanggal">
+                                            <span class="whitespace-nowrap text-xs text-slate-500">{mov.date}</span>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {/if}
+        </Deferred>
 
     </main>
 </AdminLayout>

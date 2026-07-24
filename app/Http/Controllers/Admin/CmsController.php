@@ -114,6 +114,7 @@ class CmsController extends Controller
                 'image' => $imagePath,
                 'alt' => $middleInput['alt'] ?? '',
                 'link' => $middleInput['link'] ?? '#',
+                'is_active' => filter_var($middleInput['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
             ];
 
             Setting::updateOrCreate(

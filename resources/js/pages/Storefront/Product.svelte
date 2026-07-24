@@ -2275,11 +2275,6 @@
                                         >({reviews.length} ulasan)</span
                                     >
                                 </span>
-                            {:else}
-                                <span
-                                    class="text-slate-400 border-r border-slate-200 pr-3"
-                                    >Belum Ada Penilaian</span
-                                >
                             {/if}
                             <span class="border-r border-slate-200 pr-3"
                                 >{product.sold_count != null &&
@@ -3452,9 +3447,10 @@
         </div>
 
         <!-- Ulasan Section -->
-        <div
-            class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
-        >
+        {#if reviews && reviews.length > 0}
+            <div
+                class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
+            >
             <h3
                 class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
             >
@@ -3693,6 +3689,7 @@
                 </div>
             {/if}
         </div>
+        {/if}
     </div>
 
     <!-- ─────────────────────────────────────────────────────

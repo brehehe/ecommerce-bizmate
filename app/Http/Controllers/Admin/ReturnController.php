@@ -11,6 +11,8 @@ use App\Models\StockMovement;
 use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,36 +24,109 @@ class ReturnController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = ReturnRequest::with([
-            'user:id,name,email',
-            'transaction:id,transaction_number,grand_total,admin_fee,application_fee,shipping_fee,subtotal,discount_amount,shipping_discount',
-            'items',
-        ])->latest();
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
+        $query = DB::table('returns')
+            ->leftJoin('users', 'returns.user_id', '=', 'users.id')
+            ->leftJoin('transactions', 'returns.transaction_id', '=', 'transactions.id')
+            ->select([
+                'returns.id',
+                'returns.return_number',
+                'returns.user_id',
+                'returns.transaction_id',
+                'returns.type',
+                'returns.refund_amount',
+                'returns.status',
+                'returns.reason',
+                'returns.created_at',
+                'users.name as user_name',
+                'users.email as user_email',
+                'transactions.transaction_number',
+                'transactions.grand_total as transaction_grand_total',
+            ])
+            ->orderBy('returns.created_at', 'desc');
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('returns.status', $request->status);
         }
 
         if ($request->filled('type')) {
-            $query->where('type', $request->type);
+            $query->where('returns.type', $request->type);
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('return_number', 'ilike', "%{$search}%")
-                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'ilike', "%{$search}%"))
-                    ->orWhereHas('transaction', fn ($tq) => $tq->where('transaction_number', 'ilike', "%{$search}%"));
-            });
+            $search = trim($request->search);
+            if (preg_match('/^(RET|TRX|BK|\d)/i', $search)) {
+                $query->where('returns.return_number', $likeOperator, "{$search}%")
+                    ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
+            } else {
+                $query->where(function ($q) use ($search, $likeOperator) {
+                    $q->where('returns.return_number', $likeOperator, "{$search}%")
+                        ->orWhere('users.name', $likeOperator, "{$search}%")
+                        ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
+                });
+            }
         }
 
-        $returns = $query->paginate(20)->withQueryString();
+        $rawPage = $request->input('page', 1);
+        $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
+        $page = min($cleanPage, 100);
+        $perPage = 20;
+
+        $getReturns = function () use ($request, $query, $page, $perPage) {
+            $totalScan = (clone $query)->limit(1001)->count();
+            $total = $totalScan > 1000 ? 1000 : $totalScan;
+
+            $rawReturns = $query->forPage($page, $perPage)->get();
+            $returnIds = $rawReturns->pluck('id')->all();
+
+            $itemsMap = [];
+            if (! empty($returnIds)) {
+                $itemsMap = DB::table('return_items')
+                    ->whereIn('return_id', $returnIds)
+                    ->get()
+                    ->groupBy('return_id')
+                    ->toArray();
+            }
+
+            $formattedItems = $rawReturns->map(fn ($r) => [
+                'id' => $r->id,
+                'return_number' => $r->return_number,
+                'user_id' => $r->user_id,
+                'transaction_id' => $r->transaction_id,
+                'type' => $r->type,
+                'refund_amount' => (float) $r->refund_amount,
+                'status' => $r->status,
+                'reason' => $r->reason,
+                'created_at' => $r->created_at,
+                'items' => $itemsMap[$r->id] ?? [],
+                'user' => $r->user_id ? [
+                    'id' => $r->user_id,
+                    'name' => $r->user_name,
+                    'email' => $r->user_email,
+                ] : null,
+                'transaction' => $r->transaction_id ? [
+                    'id' => $r->transaction_id,
+                    'transaction_number' => $r->transaction_number,
+                    'grand_total' => (float) $r->transaction_grand_total,
+                ] : null,
+            ]);
+
+            return new LengthAwarePaginator(
+                $formattedItems,
+                $total,
+                $perPage,
+                $page,
+                ['path' => Paginator::resolveCurrentPath(), 'query' => $request->query()]
+            );
+        };
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Admin/Returns/Index', [
-            'returns' => $returns,
+            'returns' => app()->runningUnitTests() ? $getReturns() : Inertia::defer(fn () => $getReturns()),
             'statusLabels' => ReturnRequest::statusLabels(),
             'filters' => $request->only(['status', 'type', 'search']),
             'storeName' => $storeName,

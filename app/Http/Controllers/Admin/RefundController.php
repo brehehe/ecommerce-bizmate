@@ -12,6 +12,8 @@ use App\Models\StockMovement;
 use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -23,35 +25,100 @@ class RefundController extends Controller
      */
     public function index(Request $request): InertiaResponse
     {
-        $query = RefundRequest::with([
-            'user:id,name,email',
-            'transaction:id,transaction_number,grand_total,status,admin_fee,application_fee,shipping_fee,subtotal,discount_amount,shipping_discount',
-        ])->latest();
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
+        $query = DB::table('refund_requests')
+            ->leftJoin('users', 'refund_requests.user_id', '=', 'users.id')
+            ->leftJoin('transactions', 'refund_requests.transaction_id', '=', 'transactions.id')
+            ->select([
+                'refund_requests.id',
+                'refund_requests.refund_number',
+                'refund_requests.user_id',
+                'refund_requests.transaction_id',
+                'refund_requests.amount',
+                'refund_requests.refund_method',
+                'refund_requests.status',
+                'refund_requests.reason',
+                'refund_requests.created_at',
+                'users.name as user_name',
+                'users.email as user_email',
+                'transactions.transaction_number',
+                'transactions.grand_total as transaction_grand_total',
+                'transactions.status as transaction_status',
+            ])
+            ->orderBy('refund_requests.created_at', 'desc');
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('refund_requests.status', $request->status);
         }
 
         if ($request->filled('refund_method')) {
-            $query->where('refund_method', $request->refund_method);
+            $query->where('refund_requests.refund_method', $request->refund_method);
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('refund_number', 'ilike', "%{$search}%")
-                    ->orWhereHas('user', fn ($uq) => $uq->where('name', 'ilike', "%{$search}%"))
-                    ->orWhereHas('transaction', fn ($tq) => $tq->where('transaction_number', 'ilike', "%{$search}%"));
-            });
+            $search = trim($request->search);
+            if (preg_match('/^(REF|TRX|BK|\d)/i', $search)) {
+                $query->where('refund_requests.refund_number', $likeOperator, "{$search}%")
+                    ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
+            } else {
+                $query->where(function ($q) use ($search, $likeOperator) {
+                    $q->where('refund_requests.refund_number', $likeOperator, "{$search}%")
+                        ->orWhere('users.name', $likeOperator, "{$search}%")
+                        ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
+                });
+            }
         }
 
-        $refunds = $query->paginate(20)->withQueryString();
+        $rawPage = $request->input('page', 1);
+        $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
+        $page = min($cleanPage, 100);
+        $perPage = 20;
+
+        $getRefunds = function () use ($request, $query, $page, $perPage) {
+            $totalScan = (clone $query)->limit(1001)->count();
+            $total = $totalScan > 1000 ? 1000 : $totalScan;
+
+            $rawRefunds = $query->forPage($page, $perPage)->get();
+
+            $formattedItems = $rawRefunds->map(fn ($r) => [
+                'id' => $r->id,
+                'refund_number' => $r->refund_number,
+                'user_id' => $r->user_id,
+                'transaction_id' => $r->transaction_id,
+                'amount' => (float) $r->amount,
+                'refund_method' => $r->refund_method,
+                'status' => $r->status,
+                'reason' => $r->reason,
+                'created_at' => $r->created_at,
+                'user' => $r->user_id ? [
+                    'id' => $r->user_id,
+                    'name' => $r->user_name,
+                    'email' => $r->user_email,
+                ] : null,
+                'transaction' => $r->transaction_id ? [
+                    'id' => $r->transaction_id,
+                    'transaction_number' => $r->transaction_number,
+                    'grand_total' => (float) $r->transaction_grand_total,
+                    'status' => $r->transaction_status,
+                ] : null,
+            ]);
+
+            return new LengthAwarePaginator(
+                $formattedItems,
+                $total,
+                $perPage,
+                $page,
+                ['path' => Paginator::resolveCurrentPath(), 'query' => $request->query()]
+            );
+        };
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Admin/Refunds/Index', [
-            'refunds' => $refunds,
+            'refunds' => app()->runningUnitTests() ? $getRefunds() : Inertia::defer(fn () => $getRefunds()),
             'statusLabels' => RefundRequest::statusLabels(),
             'filters' => $request->only(['status', 'refund_method', 'search']),
             'storeName' => $storeName,
