@@ -423,7 +423,7 @@
                 if (item?.moving_category === 'slow') return '#ef4444cc';
             }
             const pct = cumulative[i] ?? 100;
-            return pct <= 80 ? primaryColor + 'cc' : '#cbd5e1';
+            return pct <= 80 ? adjustColorOpacity(primaryColor, 'cc') : '#cbd5e1';
         });
 
         paretoChart = new Chart(ctx, {
@@ -445,7 +445,7 @@
                         label: 'Kumulatif (%)',
                         data: cumulative,
                         borderColor: secondaryColor,
-                        backgroundColor: secondaryColor + '20',
+                        backgroundColor: adjustColorOpacity(secondaryColor, '20'),
                         borderWidth: 2.5,
                         pointBackgroundColor: secondaryColor,
                         pointBorderColor: '#ffffff',
@@ -1322,7 +1322,7 @@
                                         <span
                                             class="w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center"
                                             style={(item as any).is_vital_few
-                                                ? `background: ${primaryColor}15; color: ${primaryColor};`
+                                                ? `background: ${adjustColorOpacity(primaryColor, '15')}; color: ${primaryColor};`
                                                 : 'background: #f1f5f9; color: #94a3b8;'}
                                         >
                                             {(item as any).rank}

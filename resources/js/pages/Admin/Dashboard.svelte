@@ -58,8 +58,8 @@
             const pColor = page.props.theme?.primary_color || '#0c4cb4';
 
             let gradRevenue = ctx.createLinearGradient(0, 0, 0, 300);
-            gradRevenue.addColorStop(0, pColor + '33');
-            gradRevenue.addColorStop(1, pColor + '00');
+            gradRevenue.addColorStop(0, adjustColorOpacity(pColor, '33'));
+            gradRevenue.addColorStop(1, adjustColorOpacity(pColor, '00'));
 
             let gradRefund = ctx.createLinearGradient(0, 0, 0, 300);
             gradRefund.addColorStop(0, 'rgba(245, 158, 11, 0.25)');
@@ -361,7 +361,7 @@
                 <!-- Revenue -->
                 {@render StatCard({
                     icon: 'ti-wallet',
-                    iconBg: primaryColor + '15',
+                    iconBg: adjustColorOpacity(primaryColor, '15'),
                     iconColor: primaryColor,
                     label: 'Total Revenue',
                     value: stats.revenueFormatted,

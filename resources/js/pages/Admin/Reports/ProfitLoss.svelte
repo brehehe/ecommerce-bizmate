@@ -183,7 +183,7 @@
                                 label: 'Pendapatan (Rp)',
                                 data: cleanTrendData.map((d: any) => d.revenue),
                                 borderColor: primaryColor,
-                                backgroundColor: primaryColor + '22',
+                                backgroundColor: adjustColorOpacity(primaryColor, '22'),
                                 borderWidth: 2,
                                 fill: false,
                                 tension: 0.2,

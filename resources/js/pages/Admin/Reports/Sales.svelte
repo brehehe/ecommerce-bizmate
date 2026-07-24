@@ -242,8 +242,8 @@
             const ctx = trendCanvas.getContext('2d');
             if (ctx) {
                 let gradient = ctx.createLinearGradient(0, 0, 0, 300);
-                gradient.addColorStop(0, primaryColor + '33');
-                gradient.addColorStop(1, primaryColor + '00');
+                gradient.addColorStop(0, adjustColorOpacity(primaryColor, '33'));
+                gradient.addColorStop(1, adjustColorOpacity(primaryColor, '00'));
 
                 trendChart = new Chart(ctx, {
                     type: 'line',

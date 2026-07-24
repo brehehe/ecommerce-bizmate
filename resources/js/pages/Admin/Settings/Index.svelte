@@ -1298,7 +1298,7 @@
                             ? 'text-white shadow-sm'
                             : 'text-slate-500 bg-white border border-slate-200 hover:bg-slate-50'}"
                         style={activeTab === tab.id
-                            ? `background: linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc);`
+                            ? `background: linear-gradient(135deg, ${primaryColor}, ${adjustColorOpacity(primaryColor, 'cc')});`
                             : ''}
                     >
                         <i class="ti {tab.icon} text-sm"></i>
@@ -2650,7 +2650,7 @@
                                             ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
                                             : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
                                         style={currentPreset === preset.id
-                                            ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${preset.primary}33;`
+                                            ? `border-color: ${preset.primary}; box-shadow: 0 0 0 1px ${adjustColorOpacity(preset.primary, '33')};`
                                             : ''}
                                     >
                                         <div class="flex items-center gap-4">
@@ -2701,7 +2701,7 @@
                                         ? 'border-brand-teal bg-white shadow-soft ring-1 ring-brand-teal/20'
                                         : 'border-slate-100 hover:border-slate-200 bg-white hover:bg-slate-50'}"
                                     style={currentPreset === 'custom'
-                                        ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${form.primary_color}33;`
+                                        ? `border-color: ${form.primary_color}; box-shadow: 0 0 0 1px ${adjustColorOpacity(form.primary_color, '33')};`
                                         : ''}
                                     onclick={() => {
                                         forcedCustom = true;

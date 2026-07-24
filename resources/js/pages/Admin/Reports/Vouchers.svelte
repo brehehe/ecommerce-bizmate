@@ -166,7 +166,7 @@
                             label: 'Total Diskon',
                             data: cleanChartData.discount,
                             borderColor: secondaryColor,
-                            backgroundColor: secondaryColor + '20',
+                            backgroundColor: adjustColorOpacity(secondaryColor, '20'),
                             borderWidth: 2,
                             tension: 0.3,
                             type: 'line',

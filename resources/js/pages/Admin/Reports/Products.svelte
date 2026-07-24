@@ -189,7 +189,7 @@
                                 data: cleanChartData.topProducts.map(
                                     (p: any) => p.qty,
                                 ),
-                                backgroundColor: primaryColor + 'cc',
+                                backgroundColor: adjustColorOpacity(primaryColor, 'cc'),
                                 hoverBackgroundColor: primaryColor,
                                 borderRadius: 8,
                                 borderWidth: 0,

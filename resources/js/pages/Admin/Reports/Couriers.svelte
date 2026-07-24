@@ -256,7 +256,7 @@
                                 data: cleanRajaongkirBreakdown.map(
                                     (r: any) => r.total_orders,
                                 ),
-                                backgroundColor: primaryColor + 'cc',
+                                backgroundColor: adjustColorOpacity(primaryColor, 'cc'),
                                 borderColor: primaryColor,
                                 borderWidth: 1,
                                 borderRadius: 6,
