@@ -580,7 +580,7 @@
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-auto block"
+                                class="w-full h-auto max-h-[750px] object-contain block"
                             />
                         </button>
                     {/each}
@@ -634,7 +634,7 @@
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-auto block hover:scale-105 transition duration-300"
+                                class="w-full h-auto max-h-[750px] object-contain block hover:scale-105 transition duration-300"
                             />
                         </button>
                     {/each}
