@@ -216,10 +216,21 @@
     }
 
     function getProductImage(product: any) {
-        if (product.images?.length > 0)
-            return product.images[0].url || product.images[0].path;
-        if (product.image) return product.image;
-        return null;
+        let path = null;
+        if (product?.images?.length > 0) {
+            path = product.images[0].url || product.images[0].path;
+        } else if (product?.image) {
+            path = product.image;
+        }
+        if (!path || typeof path !== 'string') return null;
+        if (
+            path.startsWith('http://') ||
+            path.startsWith('https://') ||
+            path.startsWith('/')
+        ) {
+            return path;
+        }
+        return '/' + path;
     }
 
     function initProductsState(p: any) {
