@@ -534,10 +534,12 @@ class TransactionController extends Controller
     {
         if ($transactionId instanceof Transaction) {
             $transaction = $transactionId;
-        } elseif (Str::isUuid($transactionId) || is_numeric($transactionId)) {
+        } elseif (Str::isUuid($transactionId)) {
             $transaction = Transaction::findOrFail($transactionId);
         } else {
-            $transaction = Transaction::where('booking_code', $transactionId)->firstOrFail();
+            $transaction = Transaction::where('booking_code', $transactionId)
+                ->orWhere('transaction_number', $transactionId)
+                ->firstOrFail();
         }
 
         $transaction->load([

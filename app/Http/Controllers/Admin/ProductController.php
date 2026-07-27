@@ -787,7 +787,7 @@ class ProductController extends Controller
         foreach ($variationsInput as $vIndex => $vData) {
             // Find existing variation or create a new one
             $variation = null;
-            if (! empty($vData['id']) && is_numeric($vData['id'])) {
+            if (! empty($vData['id']) && Str::isUuid($vData['id'])) {
                 $variation = $product->variations()->find($vData['id']);
             }
 
@@ -808,7 +808,7 @@ class ProductController extends Controller
             if (! empty($vData['options'])) {
                 foreach ($vData['options'] as $oIndex => $optData) {
                     $option = null;
-                    if (! empty($optData['id']) && is_numeric($optData['id'])) {
+                    if (! empty($optData['id']) && Str::isUuid($optData['id'])) {
                         $option = $variation->options()->find($optData['id']);
                     }
 
@@ -844,7 +844,9 @@ class ProductController extends Controller
                         ]);
                     }
                     $keptOptionIds[] = $option->id;
-                    $optionIdMap[$optData['id']] = $option->id;
+                    if (isset($optData['id'])) {
+                        $optionIdMap[$optData['id']] = $option->id;
+                    }
                 }
             }
         }
@@ -880,8 +882,8 @@ class ProductController extends Controller
                 foreach ($frontIds as $fid) {
                     if (isset($optionIdMap[$fid])) {
                         $dbOptionIds[] = $optionIdMap[$fid];
-                    } elseif (is_numeric($fid)) {
-                        $dbOptionIds[] = (int) $fid;
+                    } elseif (Str::isUuid($fid)) {
+                        $dbOptionIds[] = $fid;
                     }
                 }
                 sort($dbOptionIds);
