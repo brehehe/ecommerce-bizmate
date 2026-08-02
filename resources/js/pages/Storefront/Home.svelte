@@ -134,14 +134,14 @@
     const middleWide = $derived(
         middleWideBanner && middleWideBanner.is_active === false
             ? null
-            : (middleWideBanner && middleWideBanner.image
-                ? middleWideBanner
-                : {
-                      image: '/banners/flash-sale.png',
-                      alt: 'Flash Sale Promo',
-                      link: '#',
-                      is_active: true,
-                  })
+            : middleWideBanner && middleWideBanner.image
+              ? middleWideBanner
+              : {
+                    image: '/banners/flash-sale.png',
+                    alt: 'Flash Sale Promo',
+                    link: '#',
+                    is_active: true,
+                },
     );
 
     let activeHero = $state(0);
@@ -228,8 +228,12 @@
     onDestroy(() => clearInterval(countdownTimer));
 
     onMount(() => {
-        const introEnabled = (page.props.settings as any)?.show_intro_animation !== false;
-        if (introEnabled && !sessionStorage.getItem('storefront_intro_played')) {
+        const introEnabled =
+            (page.props.settings as any)?.show_intro_animation !== false;
+        if (
+            introEnabled &&
+            !sessionStorage.getItem('storefront_intro_played')
+        ) {
             showIntro = true;
             sessionStorage.setItem('storefront_intro_played', 'true');
             setTimeout(() => {
@@ -287,6 +291,76 @@
     function fakeRating() {
         return (4.2 + Math.random() * 0.7).toFixed(1);
     }
+
+    const defaultQuickShortcuts = [
+        {
+            id: 'see-all',
+            name: 'Lihat Semua',
+            icon: 'launcher',
+            badge: null,
+            href: '/search',
+            gradient: 'from-blue-500 via-sky-400 to-teal-400',
+            textColor: 'text-white',
+        },
+        {
+            id: 'priority-shipping',
+            name: 'Pengiriman Prioritas',
+            icon: 'ti-box-seam',
+            badge: 'Baru',
+            badgeBg: 'bg-rose-500',
+            target: 'recommendations-section',
+            gradient: 'from-blue-600 to-indigo-600',
+            textColor: 'text-white',
+        },
+        {
+            id: 'special-discount',
+            name: 'Diskon s.d. 80%',
+            icon: 'ti-ticket',
+            badge: 'Promo',
+            badgeBg: 'bg-rose-500',
+            target: 'bestsellers-section',
+            gradient: 'from-pink-500 via-rose-500 to-red-500',
+            textColor: 'text-white',
+        },
+        {
+            id: 'flash-sale',
+            name: 'Flash Sale',
+            icon: 'ti-bolt',
+            badge: 'Hot',
+            badgeBg: 'bg-orange-500',
+            target: 'flash-sale-section',
+            gradient: 'from-amber-400 via-orange-500 to-red-500',
+            textColor: 'text-white',
+        },
+        {
+            id: 'rewards',
+            name: 'Tagihan & Poin',
+            icon: 'ti-receipt-2',
+            badge: null,
+            target: 'recommendations-section',
+            gradient: 'from-sky-400 via-blue-500 to-indigo-500',
+            textColor: 'text-white',
+        },
+        {
+            id: 'official-mart',
+            name: 'Supermarket',
+            icon: 'ti-basket',
+            badge: 'Gratis',
+            badgeBg: 'bg-emerald-500',
+            target: 'recommendations-section',
+            gradient: 'from-emerald-400 via-teal-500 to-green-600',
+            textColor: 'text-white',
+        },
+        {
+            id: 'gadgets',
+            name: 'Gadget & Elektronik',
+            icon: 'ti-devices',
+            badge: null,
+            target: 'recommendations-section',
+            gradient: 'from-purple-500 via-indigo-500 to-blue-600',
+            textColor: 'text-white',
+        },
+    ];
 
     function fakeSold() {
         return Math.floor(Math.random() * 900 + 100);
@@ -472,10 +546,14 @@
     });
 
     const recommendedProducts = $derived(
-        shuffledRecommendations.length > 0 ? shuffledRecommendations.slice(0, displayedCount) : undefined
+        shuffledRecommendations.length > 0
+            ? shuffledRecommendations.slice(0, displayedCount)
+            : undefined,
     );
     const hasMore = $derived(
-        shuffledRecommendations.length > 0 ? (displayedCount < shuffledRecommendations.length) : false
+        shuffledRecommendations.length > 0
+            ? displayedCount < shuffledRecommendations.length
+            : false,
     );
 
     function setupObserver(node: HTMLElement) {
@@ -578,7 +656,7 @@
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0"
+                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 max-h-[160px] sm:max-h-[350px]"
                 >
                     {#each heroBanners as banner, i}
                         <button
@@ -586,12 +664,12 @@
                             class="block w-full transition-opacity duration-700 {i ===
                             activeHero
                                 ? 'opacity-100'
-                                : 'absolute inset-0 opacity-0 pointer-events-none'} text-left"
+                                : 'absolute inset-0 opacity-0 pointer-events-none'} text-left h-full"
                         >
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-auto max-h-[350px] object-cover block"
+                                class="w-full h-full max-h-[160px] sm:max-h-[350px] object-cover block"
                             />
                         </button>
                     {/each}
@@ -655,67 +733,47 @@
     </section>
 
     <!-- ═══════════════════════════════════════════════════
-     SECTION 2: QUICK ACCESS STRIPS (Shopee/Tokped style)
-═══════════════════════════════════════════════════ -->
-    <!-- <section class="bg-white mt-2 px-3 sm:px-5 lg:px-8 py-3">
+     TRUST GUARANTEES STRIP (Clean Seamless Strip - No Card)
+    ═══════════════════════════════════════════════════ -->
+    <!-- <section class="px-3 sm:px-5 lg:px-8 pt-2 pb-1">
         <div class="max-w-6xl mx-auto">
-            <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                {#each [
-                    { icon: 'ti-layout-grid', label: 'Kategori', color: '#ff6b6b', target: 'categories-section' },
-                    { icon: 'ti-truck', label: 'Gratis Ongkir', color: '#1dd1a1' },
-                    { icon: 'ti-gift', label: 'Voucher', color: '#a29bfe' },
-                    { icon: 'ti-cash', label: 'COD', color: '#fd79a8' },
-                    { icon: 'ti-refresh', label: 'Retur Mudah', color: '#fdcb6e' },
-                    { icon: 'ti-star', label: 'Best Seller', color: '#e17055', target: 'bestsellers-section' },
-                    { icon: 'ti-sparkles', label: 'New Arrival', color: '#74b9ff', target: 'recommendations-section' },
-                    { icon: 'ti-tag', label: 'Flash Deals', color: '#6c5ce7', target: 'bestsellers-section' }
-                ] as item}
-                    <button
-                        onclick={() => {
-                            if (item.target) {
-                                document.getElementById(item.target)?.scrollIntoView({ behavior: 'smooth' });
-                            }
-                        }}
-                        class="flex flex-col items-center gap-1.5 py-3 px-1 hover:bg-slate-50 rounded-xl transition group"
-                    >
-                        <div
-                            class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm transition group-hover:scale-110"
-                            style="background-color: {item.color};"
-                        >
-                            <i class="ti {item.icon} text-lg"></i>
-                        </div>
-                        <span
-                            class="text-[10px] sm:text-xs font-bold text-slate-600 text-center leading-tight"
-                            >{item.label}</span
-                        >
-                    </button>
-                {/each}
+            <div
+                class="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar py-1 text-[11px] sm:text-xs font-semibold text-slate-700"
+            >
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <i class="ti ti-rotate-clockwise-2 text-blue-600 text-sm"></i>
+                    <span>Retur alasan apa pun</span>
+                </div>
+                <span class="text-slate-300 font-light shrink-0">|</span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <i class="ti ti-clock-bolt text-amber-500 text-sm"></i>
+                    <span>Jaminan tepat waktu</span>
+                </div>
+                <span class="text-slate-300 font-light shrink-0">|</span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <i class="ti ti-shield-check text-emerald-600 text-sm"></i>
+                    <span>Gratis perlindungan lengkap</span>
+                </div>
             </div>
         </div>
     </section> -->
 
     <!-- ═══════════════════════════════════════════════════
-     SECTION 3: KATEGORI
-═══════════════════════════════════════════════════ -->
+     SECTION 3: KATEGORI (Clean, Compact, Real Categories Only)
+    ═══════════════════════════════════════════════════ -->
     {#if categories === undefined}
-        <section id="categories-section" class="mt-2 px-3 sm:px-5 lg:px-8">
-            <div
-                class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm animate-pulse"
-            >
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-4">
-                    <div class="h-5 w-24 bg-slate-200 rounded-lg"></div>
-                    <div class="h-4 w-16 bg-slate-200 rounded-lg"></div>
+        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="h-4 w-20 bg-slate-200 rounded-md animate-pulse"></div>
+                    <div class="h-3 w-14 bg-slate-200 rounded-md animate-pulse"></div>
                 </div>
-                <!-- Categories scroll row -->
-                <div
-                    class="overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 py-2"
-                >
-                    <div class="flex gap-3">
-                        {#each Array(8) as _}
-                            <div class="flex flex-col items-center gap-2 w-16 sm:w-20">
-                                <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-100"></div>
-                                <div class="h-3 w-12 bg-slate-100 rounded-md"></div>
+                <div class="overflow-x-auto no-scrollbar py-1">
+                    <div class="flex gap-2.5 sm:gap-4">
+                        {#each Array(6) as _}
+                            <div class="flex flex-col items-center gap-1.5 w-14 sm:w-16 shrink-0 animate-pulse">
+                                <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-slate-200/70"></div>
+                                <div class="h-2.5 w-10 bg-slate-200/70 rounded"></div>
                             </div>
                         {/each}
                     </div>
@@ -723,64 +781,75 @@
             </div>
         </section>
     {:else if categories && categories.length > 0}
-        <section id="categories-section" class="mt-2 px-3 sm:px-5 lg:px-8">
-            <div
-                class="max-w-6xl mx-auto bg-white rounded-2xl py-4 px-4 sm:px-6 shadow-sm"
-            >
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-4">
-                    <h2
-                        class="font-outfit font-black text-base sm:text-lg text-slate-800"
-                    >
-                        Kategori
+        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
+            <div class="max-w-6xl mx-auto">
+                <!-- Section Header -->
+                <div class="flex items-center justify-between mb-2.5 px-0.5">
+                    <h2 class="font-outfit font-black text-sm sm:text-base text-slate-800 tracking-tight">
+                        Kategori Pilihan
                     </h2>
                     <Link
                         href="/search"
                         prefetch
-                        class="text-xs font-bold flex items-center gap-1"
+                        class="text-[11px] sm:text-xs font-bold flex items-center gap-0.5 transition hover:opacity-80"
                         style="color: {primary};"
                     >
-                        Lihat Semua <i class="ti ti-arrow-right text-xs"></i>
+                        Lihat Semua <i class="ti ti-chevron-right text-[10px]"></i>
                     </Link>
                 </div>
-                <!-- Categories scroll row -->
-                <div
-                    class="overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 py-2"
-                >
-                    <div class="flex gap-3 w-max sm:w-auto sm:flex-wrap">
+
+                <!-- Categories Scroll Row (No Card Box, Sleek & Compact) -->
+                <div class="overflow-x-auto no-scrollbar py-1">
+                    <div class="flex gap-3.5 sm:gap-5 w-max sm:w-auto">
+                        <!-- First Item: Lihat Semua -->
+                        <!-- <Link
+                            href="/search"
+                            prefetch
+                            class="flex flex-col items-center gap-1.5 group cursor-pointer w-[68px] sm:w-[76px] shrink-0 text-center"
+                        >
+                            <div
+                                class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-white/20 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden bg-gradient-to-br from-blue-500 via-sky-400 to-teal-400 shadow-xs"
+                            >
+                                <div class="grid grid-cols-2 gap-1 w-6 h-6 p-0.5 bg-white/95 rounded-xl shadow-2xs">
+                                    <div class="rounded-md bg-blue-500"></div>
+                                    <div class="rounded-md bg-orange-400"></div>
+                                    <div class="rounded-md bg-amber-400"></div>
+                                    <div class="rounded-md bg-emerald-500"></div>
+                                </div>
+                            </div>
+                            <span
+                                class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[72px] line-clamp-2 group-hover:text-slate-900 transition"
+                            >
+                                Lihat Semua
+                            </span>
+                        </Link> -->
+
+                        <!-- Real Database Categories -->
                         {#each categories as cat, i}
                             <Link
                                 href="/category/{cat.slug || cat.id}"
                                 prefetch
-                                class="flex flex-col items-center gap-2 group cursor-pointer w-16 sm:w-20"
+                                class="flex flex-col items-center gap-1.5 group cursor-pointer w-[68px] sm:w-[76px] shrink-0 text-center"
                             >
                                 <div
-                                    class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-sm transition group-hover:scale-110 group-hover:shadow-md border border-slate-100/50"
-                                    style="background: linear-gradient(135deg, {withOpacity(
-                                        primary,
-                                        0.08,
-                                    )}, {withOpacity(
-                                        secondary,
-                                        0.08,
-                                    )}); color: {primary};"
+                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-slate-200/80 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:border-slate-300 bg-white shadow-2xs"
+                                    style="color: {primary};"
                                 >
                                     {#if cat.image}
                                         <img
                                             src={cat.image}
                                             alt={cat.name}
-                                            class="w-9 h-9 object-contain"
+                                            class="w-7 h-7 sm:w-8 sm:h-8 object-contain"
                                         />
                                     {:else}
                                         <i
-                                            class="ti {getCategoryIcon(
-                                                cat,
-                                            )} text-2xl"
+                                            class="ti {getCategoryIcon(cat)} text-2xl sm:text-3xl"
                                             style="color: {primary};"
                                         ></i>
                                     {/if}
                                 </div>
                                 <span
-                                    class="text-[10px] sm:text-xs font-bold text-slate-600 text-center leading-tight group-hover:text-slate-800 transition"
+                                    class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[72px] line-clamp-2 group-hover:text-slate-900 transition"
                                 >
                                     {cat.name}
                                 </span>
@@ -818,9 +887,15 @@
                             >
                                 <div class="aspect-square bg-slate-100"></div>
                                 <div class="p-3 space-y-2">
-                                    <div class="h-3 bg-slate-150 rounded w-3/4"></div>
-                                    <div class="h-3 bg-slate-150 rounded w-1/2"></div>
-                                    <div class="h-4 bg-slate-150 rounded w-2/3 mt-2"></div>
+                                    <div
+                                        class="h-3 bg-slate-150 rounded w-3/4"
+                                    ></div>
+                                    <div
+                                        class="h-3 bg-slate-150 rounded w-1/2"
+                                    ></div>
+                                    <div
+                                        class="h-4 bg-slate-150 rounded w-2/3 mt-2"
+                                    ></div>
                                 </div>
                             </div>
                         {/each}
@@ -1120,7 +1195,9 @@
                         Lihat Semua <i class="ti ti-arrow-right text-sm"></i>
                     </a>
                 </div>
-                <div class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin">
+                <div
+                    class="overflow-x-auto pb-4 pt-4 px-3 sm:px-5 scrollbar-thin"
+                >
                     <div
                         class="flex gap-4.5 {bestSellerProducts.length < 5
                             ? 'justify-start sm:justify-center w-full'
@@ -1133,10 +1210,12 @@
                             {@const price = isPromo
                                 ? product.promo_price
                                 : (product.product_price?.price ?? 0)}
-                            {@const originalPrice =
-                                isPromo ? product.original_price : 0}
-                            {@const discountPercentage =
-                                isPromo ? product.discount_percentage : 0}
+                            {@const originalPrice = isPromo
+                                ? product.original_price
+                                : 0}
+                            {@const discountPercentage = isPromo
+                                ? product.discount_percentage
+                                : 0}
                             {@const avgRating = product.avg_rating
                                 ? Number(product.avg_rating)
                                 : null}
@@ -1279,8 +1358,10 @@
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                 >
-                    {#each (recommendedProducts && recommendedProducts.length > 0) ? recommendedProducts : Array(10) as product, i}
-                        {@const isReal = (recommendedProducts && recommendedProducts.length > 0)}
+                    {#each recommendedProducts && recommendedProducts.length > 0 ? recommendedProducts : Array(10) as product, i}
+                        {@const isReal =
+                            recommendedProducts &&
+                            recommendedProducts.length > 0}
                         {@const img = isReal ? getProductImage(product) : null}
                         {@const isPromo = isReal && product.is_promo}
                         {@const price = isReal
@@ -1304,9 +1385,7 @@
                             class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
                         >
                             <a
-                                href={isReal
-                                    ? `/products/${product.id}`
-                                    : '#'}
+                                href={isReal ? `/products/${product.id}` : '#'}
                                 class="flex flex-col flex-1 cursor-pointer"
                             >
                                 <!-- Rounded image container -->

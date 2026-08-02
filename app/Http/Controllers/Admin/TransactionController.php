@@ -83,11 +83,10 @@ class TransactionController extends Controller
             }
         }
 
-        // Deep Pagination Protection: Cap max page to 100 (1,000 items) to guarantee sub-millisecond execution
+        // Page resolution
         $rawPage = $request->input('page', 1);
         $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
-        $maxPage = 100;
-        $page = min($cleanPage, $maxPage);
+        $page = max(1, $cleanPage);
         $perPage = 10;
 
         $getTransactions = function () use ($request, $query, $page, $perPage) {
@@ -96,9 +95,7 @@ class TransactionController extends Controller
             if (! $isFiltered && ! app()->runningUnitTests()) {
                 $total = Cache::remember('transactions_total_count', 120, fn () => DB::table('transactions')->count());
             } else {
-                // Big Data Count Optimization: Cap count scan at 1,001 rows to avoid full table scans on large result sets
-                $totalScan = (clone $query)->limit(1001)->count();
-                $total = $totalScan > 1000 ? 1000 : $totalScan;
+                $total = (clone $query)->count();
             }
 
             $rawTransactions = $query->forPage($page, $perPage)->get();

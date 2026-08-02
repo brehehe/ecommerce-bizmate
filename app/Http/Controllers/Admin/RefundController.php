@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -73,12 +74,17 @@ class RefundController extends Controller
 
         $rawPage = $request->input('page', 1);
         $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
-        $page = min($cleanPage, 100);
+        $page = max(1, $cleanPage);
         $perPage = 20;
 
         $getRefunds = function () use ($request, $query, $page, $perPage) {
-            $totalScan = (clone $query)->limit(1001)->count();
-            $total = $totalScan > 1000 ? 1000 : $totalScan;
+            $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
+
+            if (! $isFiltered && ! app()->runningUnitTests()) {
+                $total = Cache::remember('refunds_total_count', 120, fn () => DB::table('refund_requests')->count());
+            } else {
+                $total = (clone $query)->count();
+            }
 
             $rawRefunds = $query->forPage($page, $perPage)->get();
 

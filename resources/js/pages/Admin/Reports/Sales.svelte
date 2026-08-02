@@ -458,46 +458,66 @@
         </div>
 
         <!-- Filter Card -->
-        <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4 print:hidden">
-            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div class="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4 print:hidden">
+            <!-- Top Row: Presets & Action Buttons -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <!-- Presets -->
-                <div class="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-2xl w-full xl:w-auto">
+                <div class="flex items-center gap-1 bg-slate-100/80 p-1 rounded-2xl border border-slate-200/50 w-full sm:w-auto">
                     <button
                         onclick={() => selectPreset('harian')}
-                        class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
+                        class="flex-1 sm:flex-none text-center px-4 py-1.5 text-[11px] font-bold rounded-xl transition-all duration-200 uppercase tracking-wider font-outfit cursor-pointer
                             {activePreset === 'harian' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Harian
                     </button>
                     <button
                         onclick={() => selectPreset('mingguan')}
-                        class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
+                        class="flex-1 sm:flex-none text-center px-4 py-1.5 text-[11px] font-bold rounded-xl transition-all duration-200 uppercase tracking-wider font-outfit cursor-pointer
                             {activePreset === 'mingguan' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Mingguan
                     </button>
                     <button
                         onclick={() => selectPreset('bulanan')}
-                        class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
+                        class="flex-1 sm:flex-none text-center px-4 py-1.5 text-[11px] font-bold rounded-xl transition-all duration-200 uppercase tracking-wider font-outfit cursor-pointer
                             {activePreset === 'bulanan' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Bulanan
                     </button>
                     <button
                         onclick={() => selectPreset('tahunan')}
-                        class="flex-1 xl:flex-none text-center px-4 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 whitespace-nowrap uppercase tracking-wider font-outfit
+                        class="flex-1 sm:flex-none text-center px-4 py-1.5 text-[11px] font-bold rounded-xl transition-all duration-200 uppercase tracking-wider font-outfit cursor-pointer
                             {activePreset === 'tahunan' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
                     >
                         Tahunan
                     </button>
                 </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto">
+                    <button
+                        onclick={resetFilters}
+                        class="flex-1 sm:flex-none px-4 py-2 bg-slate-100 hover:bg-slate-200/80 text-slate-600 font-bold rounded-xl text-xs transition duration-200 uppercase tracking-wider font-outfit cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                        <i class="ti ti-rotate-2 text-sm"></i>
+                        <span>Reset</span>
+                    </button>
+                    <button
+                        onclick={applyFilter}
+                        style="background-color: {primaryColor}"
+                        class="flex-1 sm:flex-none px-5 py-2 text-white font-bold rounded-xl text-xs hover:opacity-90 transition duration-200 shadow-xs uppercase tracking-wider font-outfit cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                        <i class="ti ti-filter text-sm"></i>
+                        <span>Terapkan Filter</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Advanced Filters Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-3 items-end pt-2 border-t border-slate-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-3.5 items-end">
                 <!-- Search Input -->
                 <div class="xl:col-span-3 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-search">Cari Penjualan</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" for="sales-search">Cari Penjualan</label>
                     <div class="relative">
                         <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input
@@ -506,45 +526,41 @@
                             bind:value={searchInput}
                             oninput={handleSearchInput}
                             placeholder="Cari produk, pelanggan, no. transaksi..."
-                            class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                         />
                     </div>
                 </div>
 
                 <!-- Custom Dates -->
                 <div class="xl:col-span-3 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="date-from">Periode Tanggal</label>
-                    <div class="flex items-center gap-2">
-                        <div class="relative flex-1">
-                            <input
-                                id="date-from"
-                                type="date"
-                                bind:value={dateFrom}
-                                onchange={() => activePreset = 'custom'}
-                                class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
-                            />
-                        </div>
-                        <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">s/d</span>
-                        <div class="relative flex-1">
-                            <input
-                                id="date-to"
-                                type="date"
-                                bind:value={dateTo}
-                                onchange={() => activePreset = 'custom'}
-                                class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
-                            />
-                        </div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" for="date-from">Periode Tanggal</label>
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <input
+                            id="date-from"
+                            type="date"
+                            bind:value={dateFrom}
+                            onchange={() => activePreset = 'custom'}
+                            class="w-full min-w-0 bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        />
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">s/d</span>
+                        <input
+                            id="date-to"
+                            type="date"
+                            bind:value={dateTo}
+                            onchange={() => activePreset = 'custom'}
+                            class="w-full min-w-0 bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        />
                     </div>
                 </div>
 
                 <!-- Payment Method Filter -->
                 <div class="xl:col-span-2 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-payment">Metode Bayar</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" for="sales-payment">Metode Bayar</label>
                     <select
                         id="sales-payment"
                         bind:value={paymentMethodFilter}
                         onchange={applyFilter}
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                     >
                         <option value="all">Semua Metode</option>
                         {#each paymentMethods as pm}
@@ -555,12 +571,12 @@
 
                 <!-- Status Filter -->
                 <div class="xl:col-span-2 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-status">Status</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" for="sales-status">Status</label>
                     <select
                         id="sales-status"
                         bind:value={statusFilter}
                         onchange={applyFilter}
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                     >
                         <option value="all">Semua Lunas</option>
                         <option value="belum_bayar">Belum Bayar</option>
@@ -575,12 +591,12 @@
 
                 <!-- Per Page Filter -->
                 <div class="xl:col-span-2 space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" for="sales-perpage">Per Halaman</label>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" for="sales-perpage">Per Halaman</label>
                     <select
                         id="sales-perpage"
                         bind:value={perPageFilter}
                         onchange={applyFilter}
-                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-755 text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blueRoyal/20 focus:border-brand-blueRoyal transition cursor-pointer"
                     >
                         <option value={10}>10</option>
                         <option value={15}>15</option>
@@ -589,22 +605,6 @@
                         <option value={100}>100</option>
                     </select>
                 </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row justify-end items-center gap-2 pt-2 border-t border-slate-50">
-                <button
-                    onclick={resetFilters}
-                    class="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition duration-200 uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
-                >
-                    Reset Filter
-                </button>
-                <button
-                    onclick={applyFilter}
-                    class="w-full sm:w-auto px-6 py-2.5 bg-brand-blueRoyal hover:bg-blue-800 text-white font-bold rounded-xl text-xs transition duration-200 shadow-md shadow-brand-blueRoyal/10 uppercase tracking-wider font-outfit shrink-0 cursor-pointer"
-                >
-                    Terapkan Filter
-                </button>
             </div>
         </div>
 

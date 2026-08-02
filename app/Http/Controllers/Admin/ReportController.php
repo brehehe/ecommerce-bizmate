@@ -117,16 +117,19 @@ class ReportController extends Controller
             $baseQueryNoStatus->where('payment_method_id', $request->payment_method_id);
         }
 
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         // Apply search filter (transaction number, customer name, product name)
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $baseQueryNoStatus->where(function ($q) use ($search) {
-                $q->where('transaction_number', 'ilike', "%{$search}%")
-                    ->orWhereHas('user', function ($uq) use ($search) {
-                        $uq->where('name', 'ilike', "%{$search}%");
+            $baseQueryNoStatus->where(function ($q) use ($search, $likeOperator) {
+                $q->where('transaction_number', $likeOperator, "%{$search}%")
+                    ->orWhereHas('user', function ($uq) use ($search, $likeOperator) {
+                        $uq->where('name', $likeOperator, "%{$search}%");
                     })
-                    ->orWhereHas('items', function ($iq) use ($search) {
-                        $iq->where('product_name', 'ilike', "%{$search}%");
+                    ->orWhereHas('items', function ($iq) use ($search, $likeOperator) {
+                        $iq->where('product_name', $likeOperator, "%{$search}%");
                     });
             });
         }
@@ -266,12 +269,15 @@ class ReportController extends Controller
             ->whereIn('transactions.status', $paidStatuses)
             ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
 
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         // Search filter
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('transaction_items.product_name', 'ilike', "%{$search}%")
-                    ->orWhere('transaction_items.product_sku', 'ilike', "%{$search}%");
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('transaction_items.product_name', $likeOperator, "%{$search}%")
+                    ->orWhere('transaction_items.product_sku', $likeOperator, "%{$search}%");
             });
         }
 
@@ -386,9 +392,11 @@ class ReportController extends Controller
         $netProfit = $grossProfit - $totalExpenses;
 
         $driver = DB::connection()->getDriverName();
-        $monthFormat = $driver === 'sqlite'
-            ? "strftime('%Y-%m', transactions.created_at)"
-            : "TO_CHAR(transactions.created_at, 'YYYY-MM')";
+        $monthFormat = match ($driver) {
+            'sqlite' => "strftime('%Y-%m', transactions.created_at)",
+            'pgsql' => "TO_CHAR(transactions.created_at, 'YYYY-MM')",
+            default => "DATE_FORMAT(transactions.created_at, '%Y-%m')",
+        };
 
         // Tren Bulanan Laba Rugi
         $monthlyTrend = Transaction::whereIn('status', $paidStatuses)
@@ -488,11 +496,14 @@ class ReportController extends Controller
             $q->where('name', 'Customer');
         });
 
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('email', 'ilike', "%{$search}%");
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('name', $likeOperator, "%{$search}%")
+                    ->orWhere('email', $likeOperator, "%{$search}%");
             });
         }
 
@@ -631,12 +642,14 @@ class ReportController extends Controller
         // Union keduanya
         $unionQuery = DB::query()->fromSub($simpleProductsQuery->unionAll($variantProductsQuery), 'all_stocks');
 
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         // Filter Pencarian
         if ($request->filled('search')) {
             $search = $request->search;
-            $unionQuery->where(function ($q) use ($search) {
-                $q->where('all_stocks.name', 'ilike', "%{$search}%")
-                    ->orWhere('all_stocks.sku', 'ilike', "%{$search}%");
+            $unionQuery->where(function ($q) use ($search, $likeOperator) {
+                $q->where('all_stocks.name', $likeOperator, "%{$search}%")
+                    ->orWhere('all_stocks.sku', $likeOperator, "%{$search}%");
             });
         }
 
@@ -1074,11 +1087,14 @@ class ReportController extends Controller
             ->withTrashed()
             ->whereBetween('product_reviews.created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()]);
 
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('user', fn ($u) => $u->where('name', 'ilike', "%{$search}%"))
-                    ->orWhereHas('product', fn ($p) => $p->where('name', 'ilike', "%{$search}%"))
-                    ->orWhere('comment', 'ilike', "%{$search}%");
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->whereHas('user', fn ($u) => $u->where('name', $likeOperator, "%{$search}%"))
+                    ->orWhereHas('product', fn ($p) => $p->where('name', $likeOperator, "%{$search}%"))
+                    ->orWhere('comment', $likeOperator, "%{$search}%");
             });
         }
 
@@ -1155,10 +1171,13 @@ class ReportController extends Controller
                 ]);
             }]);
 
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         if (! empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('email', 'ilike', "%{$search}%");
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('name', $likeOperator, "%{$search}%")
+                    ->orWhere('email', $likeOperator, "%{$search}%");
             });
         }
 
@@ -1278,8 +1297,11 @@ class ReportController extends Controller
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->whereNotNull('voucher_code');
 
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         if (! empty($search)) {
-            $query->where('voucher_code', 'ilike', "%{$search}%");
+            $query->where('voucher_code', $likeOperator, "%{$search}%");
         }
 
         $vouchersData = $query->selectRaw('

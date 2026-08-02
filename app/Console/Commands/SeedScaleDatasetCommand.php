@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-#[Signature('db:seed-scale {--count=100000 : Jumlah transaksi yang ingin dibuat}')]
+#[Signature('db:seed-scale {count? : Jumlah transaksi yang ingin dibuat} {--count= : Jumlah transaksi yang ingin dibuat}')]
 #[Description('Seed database dengan skala besar (jutaan data transaksi, refund, retur) untuk uji kinerja')]
 class SeedScaleDatasetCommand extends Command
 {
@@ -19,7 +19,7 @@ class SeedScaleDatasetCommand extends Command
      */
     public function handle(): int
     {
-        $count = (int) $this->option('count');
+        $count = (int) ($this->argument('count') ?? $this->option('count') ?? 100000);
 
         if ($count <= 0) {
             $this->error('Jumlah data (count) harus lebih besar dari 0.');

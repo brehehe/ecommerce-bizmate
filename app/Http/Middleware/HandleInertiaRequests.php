@@ -59,6 +59,8 @@ class HandleInertiaRequests extends Middleware
 
         $setupTourCompleted = false;
         $cartButtonStyle = 'button';
+        $showIntroAnimation = true;
+        $storefrontDefaultTheme = 'light';
 
         $coinsEnabled = false;
         $coinConversionRate = 1;

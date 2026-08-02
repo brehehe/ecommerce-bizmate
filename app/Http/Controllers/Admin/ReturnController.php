@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -71,12 +72,17 @@ class ReturnController extends Controller
 
         $rawPage = $request->input('page', 1);
         $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
-        $page = min($cleanPage, 100);
+        $page = max(1, $cleanPage);
         $perPage = 20;
 
         $getReturns = function () use ($request, $query, $page, $perPage) {
-            $totalScan = (clone $query)->limit(1001)->count();
-            $total = $totalScan > 1000 ? 1000 : $totalScan;
+            $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
+
+            if (! $isFiltered && ! app()->runningUnitTests()) {
+                $total = Cache::remember('returns_total_count', 120, fn () => DB::table('returns')->count());
+            } else {
+                $total = (clone $query)->count();
+            }
 
             $rawReturns = $query->forPage($page, $perPage)->get();
             $returnIds = $rawReturns->pluck('id')->all();

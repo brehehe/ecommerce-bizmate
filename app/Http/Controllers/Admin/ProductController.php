@@ -12,6 +12,7 @@ use App\Models\ProductVariant;
 use App\Models\ProductVariationOption;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,42 +23,10 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with([
-            'category',
-            'categories',
-            'brandRelation',
-            'brands',
-            'productPrice',
-            'productStock',
-            'tierPrices',
-            'variants' => function ($v) {
-                $v->withSum(['transactionItems as total_qty_sold' => function ($q) {
-                    $q->whereHas('transaction', function ($t) {
-                        $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
-                    });
-                }], 'quantity')
-                    ->withSum(['transactionItems as total_revenue' => function ($q) {
-                        $q->whereHas('transaction', function ($t) {
-                            $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
-                        });
-                    }], 'subtotal')
-                    ->withSum(['returnItems as total_qty_returned' => function ($q) {
-                        $q->whereHas('returnRequest', function ($r) {
-                            $r->where('status', 'selesai');
-                        });
-                    }], 'quantity_returned')
-                    ->withSum(['returnItems as total_refund_amount' => function ($q) {
-                        $q->whereHas('returnRequest', function ($r) {
-                            $r->where('status', 'selesai');
-                        });
-                    }], 'refund_subtotal');
-            },
-            'variants.options',
-            'variants.productPrice',
-            'variants.productStock',
-            'variants.tierPrices',
-            'variations.options',
-        ]);
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
+        $query = Product::query();
 
         $sort = $request->get('sort', 'order-asc');
         switch ($sort) {
@@ -118,9 +87,9 @@ class ProductController extends Controller
 
         if ($request->has('search')) {
             $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', "%{$search}%")
-                    ->orWhere('sku', 'ilike', "%{$search}%");
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('name', $likeOperator, "%{$search}%")
+                    ->orWhere('sku', $likeOperator, "%{$search}%");
             });
         }
 
@@ -155,6 +124,43 @@ class ProductController extends Controller
         $products = $query->paginate($limit)->withQueryString();
 
         if (! $products->getCollection()->isEmpty()) {
+            $products->getCollection()->load([
+                'category',
+                'categories',
+                'brandRelation',
+                'brands',
+                'productPrice',
+                'productStock',
+                'tierPrices',
+                'variants' => function ($v) {
+                    $v->withSum(['transactionItems as total_qty_sold' => function ($q) {
+                        $q->whereHas('transaction', function ($t) {
+                            $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+                        });
+                    }], 'quantity')
+                        ->withSum(['transactionItems as total_revenue' => function ($q) {
+                            $q->whereHas('transaction', function ($t) {
+                                $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);
+                            });
+                        }], 'subtotal')
+                        ->withSum(['returnItems as total_qty_returned' => function ($q) {
+                            $q->whereHas('returnRequest', function ($r) {
+                                $r->where('status', 'selesai');
+                            });
+                        }], 'quantity_returned')
+                        ->withSum(['returnItems as total_refund_amount' => function ($q) {
+                            $q->whereHas('returnRequest', function ($r) {
+                                $r->where('status', 'selesai');
+                            });
+                        }], 'refund_subtotal');
+                },
+                'variants.options',
+                'variants.productPrice',
+                'variants.productStock',
+                'variants.tierPrices',
+                'variations.options',
+            ]);
+
             $products->getCollection()->loadSum(['transactionItems as total_qty_sold' => function ($q) {
                 $q->whereHas('transaction', function ($t) {
                     $t->whereIn('status', ['diproses', 'dikemas', 'dikirim', 'selesai']);

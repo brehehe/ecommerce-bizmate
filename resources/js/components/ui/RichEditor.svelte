@@ -68,29 +68,14 @@
         });
     });
 
-    // Reactive update from parent (value changes externally)
-    // Reactive update from parent (value changes externally)
     $effect(() => {
-        console.log('RichEditor $effect triggered', {
-            hasQuill: !!quillInstance,
-            isUpdatingFromInside,
-            value
-        });
         if (quillInstance && !isUpdatingFromInside) {
             const currentHTML = quillInstance.root.innerHTML;
             const targetHTML = value || '';
-            
+
             // Normalize empty states
             const isEmptyTarget = targetHTML === '' || targetHTML === '<p><br></p>';
             const isEmptyCurrent = currentHTML === '' || currentHTML === '<p><br></p>';
-
-            console.log('RichEditor state comparison', {
-                currentHTML,
-                targetHTML,
-                isEmptyTarget,
-                isEmptyCurrent,
-                shouldUpdate: targetHTML !== currentHTML && !(isEmptyTarget && isEmptyCurrent)
-            });
 
             if (targetHTML !== currentHTML && !(isEmptyTarget && isEmptyCurrent)) {
                 quillInstance.root.innerHTML = targetHTML;

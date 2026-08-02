@@ -1940,22 +1940,23 @@
                         <i class="ti ti-home text-2xl"></i>
                     </Link>
                 {/if}
-
-                <!-- Mobile search -->
+                
+                <!-- Mobile search bar -->
                 <form onsubmit={handleSearch} class="flex-grow">
-                    <div class="relative">
+                    <div class="relative flex items-center bg-white rounded-full pl-3.5 pr-1 py-1 border border-slate-200/80 shadow-xs">
                         <input
                             type="text"
                             bind:value={searchQuery}
-                            placeholder="Cari produk..."
-                            class="w-full pl-3 pr-10 py-2 text-sm bg-white/20 rounded-xl border border-white/30 text-white placeholder-white/60 focus:outline-none focus:bg-white focus:text-slate-800 focus:placeholder-slate-400 transition"
+                            placeholder="Cari brand, produk, atau seller..."
+                            class="w-full text-xs sm:text-sm bg-transparent text-slate-800 placeholder-slate-400 focus:outline-none pr-2"
                         />
                         <button
                             type="submit"
                             aria-label="Search"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 text-white"
+                            class="w-7 h-7 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition hover:scale-105"
+                            style="background-color: {secondary || '#fa7315'};"
                         >
-                            <i class="ti ti-search text-lg"></i>
+                            <i class="ti ti-search text-xs font-bold"></i>
                         </button>
                     </div>
                 </form>
