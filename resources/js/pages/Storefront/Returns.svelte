@@ -151,7 +151,7 @@
             <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
                 <Link
                     href="/"
-                    class="p-2 hover:bg-slate-100 rounded-full transition"
+                    class="hidden md:flex p-2 hover:bg-slate-100 rounded-full transition items-center justify-center"
                 >
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                 </Link>

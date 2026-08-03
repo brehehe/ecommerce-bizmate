@@ -1444,7 +1444,7 @@
             <!-- Back Button -->
             <button
                 onclick={goBack}
-                class="w-9 h-9 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-full transition active:scale-95 shrink-0"
+                class="w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-slate-100 rounded-xl transition active:scale-95 shrink-0 cursor-pointer"
                 aria-label="Kembali"
             >
                 <i class="ti ti-arrow-left text-xl"></i>
@@ -1457,14 +1457,14 @@
                         type="text"
                         bind:value={searchQuery}
                         placeholder="Cari produk..."
-                        class="w-full pl-3.5 pr-10 py-1.5 text-xs bg-slate-100 rounded-xl border border-transparent focus:outline-none focus:bg-white focus:border-slate-300 transition"
+                        class="w-full pl-3.5 pr-9 py-1.5 text-xs bg-slate-100 rounded-xl border border-transparent focus:outline-none focus:bg-white focus:border-slate-300 transition"
                     />
                     <button
                         type="submit"
                         aria-label="Search"
-                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition flex items-center justify-center p-1"
                     >
-                        <i class="ti ti-search text-base"></i>
+                        <i class="ti ti-search text-xl"></i>
                     </button>
                 </form>
             </div>
@@ -1491,27 +1491,29 @@
                             );
                         }
                     }}
-                    class="relative w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition cursor-pointer"
+                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer active:scale-95 shrink-0"
                     aria-label="Keranjang"
                 >
-                    <i class="ti ti-shopping-cart text-lg"></i>
-                    {#if cartCount > 0}
-                        <span
-                            class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white"
-                            style="background-color: {secondary};"
-                        >
-                            {cartCount}
-                        </span>
-                    {/if}
+                    <div class="relative">
+                        <i class="ti ti-shopping-cart text-xl"></i>
+                        {#if cartCount > 0}
+                            <span
+                                class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white shadow-xs"
+                                style="background-color: {secondary}; font-family: sans-serif;"
+                            >
+                                {cartCount}
+                            </span>
+                        {/if}
+                    </div>
                 </button>
 
                 <!-- Menu Button -->
                 <button
                     onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-full transition"
+                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer active:scale-95 shrink-0"
                     aria-label="Menu"
                 >
-                    <i class="ti ti-dots text-lg"></i>
+                    <i class="ti ti-dots-vertical text-xl"></i>
                 </button>
             </div>
         </div>

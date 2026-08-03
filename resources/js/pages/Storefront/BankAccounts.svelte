@@ -197,7 +197,7 @@
                 >
                     <Link
                         href="/profile"
-                        class="p-2 hover:bg-slate-100 rounded-full transition shrink-0"
+                        class="hidden md:flex p-2 hover:bg-slate-100 rounded-full transition items-center justify-center shrink-0"
                     >
                         <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                     </Link>

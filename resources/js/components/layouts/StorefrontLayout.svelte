@@ -127,8 +127,20 @@
     );
 
     let localCartCount = $state(0);
+    // Track whether we've received a definitive server value this session
+    let _cartCountFromServer = $state(false);
     $effect(() => {
-        localCartCount = (page.props as any).cartCount || 0;
+        const serverCount = (page.props as any).cartCount;
+        if (serverCount !== undefined) {
+            // Server gave us a definitive value — trust it and update cache
+            localCartCount = serverCount;
+            localStorage.setItem('cart_count', String(serverCount));
+            _cartCountFromServer = true;
+        } else if (!_cartCountFromServer) {
+            // No server value yet — use localStorage as fallback (e.g. back navigation)
+            const cached = parseInt(localStorage.getItem('cart_count') || '0', 10);
+            localCartCount = cached;
+        }
     });
     const chatUnreadCount = $derived((page.props as any).chatUnreadCount || 0);
     const customerNotifications = $derived(
@@ -994,6 +1006,11 @@
             const navProps = event?.detail?.page?.props;
             if (navProps && navProps.cartCount !== undefined) {
                 localCartCount = navProps.cartCount;
+                localStorage.setItem('cart_count', String(navProps.cartCount));
+            } else {
+                // Back navigation may not carry cartCount — restore from localStorage
+                const cached = parseInt(localStorage.getItem('cart_count') || '0', 10);
+                if (cached > 0) { localCartCount = cached; }
             }
         });
 
@@ -1001,6 +1018,7 @@
             const pageProps = event.detail.page.props;
             if (pageProps && pageProps.cartCount !== undefined) {
                 localCartCount = pageProps.cartCount;
+                localStorage.setItem('cart_count', String(pageProps.cartCount));
             }
         });
 
@@ -1041,7 +1059,20 @@
             } else {
                 localCartCount = localCartCount + (e.detail?.delta ?? 1);
             }
+            // Persist to localStorage so back-navigation stays in sync
+            localStorage.setItem('cart_count', String(localCartCount));
         };
+
+        // Sync when page becomes visible again (e.g. browser back button)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                const cached = parseInt(localStorage.getItem('cart_count') || '0', 10);
+                if (cached > localCartCount) {
+                    localCartCount = cached;
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         window.addEventListener('open-login-modal', handleOpenLogin);
         window.addEventListener(
@@ -1064,6 +1095,7 @@
                 handleOpenDesktopChat,
             );
             window.removeEventListener('cart-updated', handleCartUpdated);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     });
 
@@ -1485,7 +1517,7 @@
                             aria-label="Search"
                             class="absolute right-3 text-white/90 hover:text-white transition flex items-center justify-center p-1"
                         >
-                            <i class="ti ti-search text-lg"></i>
+                            <i class="ti ti-search text-xl"></i>
                         </button>
                     </div>
                 </form>
@@ -1497,66 +1529,65 @@
                     {#if !auth}
                         <button
                             onclick={toggleDarkMode}
-                            class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                            class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                             title={isDark ? 'Mode Terang' : 'Mode Gelap'}
                         >
-                            {#if isDark}
-                                <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
-                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Terang</span>
-                            {:else}
-                                <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
-                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Gelap</span>
-                            {/if}
+                            <div class="w-6 h-6 flex items-center justify-center">
+                                {#if isDark}
+                                    <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
+                                {:else}
+                                    <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
+                                {/if}
+                            </div>
+                            <span class="text-[9px] font-bold text-white/80 mt-0.5">{isDark ? 'Terang' : 'Gelap'}</span>
                         </button>
                         <!-- Poin Saya (Desktop) - Only show for guests in header -->
                         {#if (page.props as any).settings?.coins_enabled}
                             <button
                                 onclick={openCoinsModal}
-                                class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                                class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                                 aria-label="Poin Saya"
                             >
-                                <i class="ti ti-coins text-xl"></i>
-                                <span
-                                    class="text-[9px] font-bold text-white/80 mt-0.5"
-                                >
-                                    Poin
-                                </span>
+                                <div class="w-6 h-6 flex items-center justify-center">
+                                    <i class="ti ti-coins text-xl"></i>
+                                </div>
+                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Poin</span>
                             </button>
                         {/if}
                     {/if}
 
                     <!-- Cart -->
-                    <button
-                        onclick={goToCart}
-                        class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                        aria-label="Keranjang"
-                    >
-                        <div class="relative">
-                            <i class="ti ti-shopping-cart text-xl"></i>
-                            {#if localCartCount > 0}
-                                <span
-                                    class="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
-                                    style="background-color: {secondary}; font-family: sans-serif;"
-                                >
-                                    {localCartCount}
-                                </span>
-                            {/if}
-                        </div>
-                        <span class="text-[9px] font-bold text-white/80 mt-0.5"
-                            >Keranjang</span
+                    <div class="relative">
+                        <button
+                            onclick={goToCart}
+                            class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                            aria-label="Keranjang"
                         >
-                    </button>
+                            <div class="w-6 h-6 flex items-center justify-center relative">
+                                <i class="ti ti-shopping-cart text-xl"></i>
+                                {#if localCartCount > 0}
+                                    <span
+                                        class="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
+                                        style="background-color: {secondary}; font-family: sans-serif;"
+                                    >
+                                        {localCartCount}
+                                    </span>
+                                {/if}
+                            </div>
+                            <span class="text-[9px] font-bold text-white/80 mt-0.5">Keranjang</span>
+                        </button>
+                    </div>
 
                     <!-- Notifications (Desktop) -->
                     {#if auth}
                         <div class="relative">
                             <button
                                 onclick={() => (isNotifOpen = !isNotifOpen)}
-                                class="relative p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                                class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                                 aria-label="Notifikasi"
                             >
-                                <div class="relative">
+                                <div class="w-6 h-6 flex items-center justify-center relative">
                                     <i class="ti ti-bell text-xl"></i>
                                     {#if unreadNotifCount > 0}
                                         <span
@@ -1903,7 +1934,7 @@
 
         {#if !hideMobileHeader}
             <div
-                class="flex md:hidden items-center gap-3 px-4 py-3"
+                class="flex md:hidden items-center gap-2 px-3 py-2.5"
                 style="background: linear-gradient(135deg, {primary}, {withOpacity(
                     primary,
                     0.85,
@@ -1929,15 +1960,32 @@
                     >
                 </Link>
 
-                <!-- Home Button (Mobile) - Only show if not on homepage -->
+                <!-- Back / Home Button (Mobile) -->
                 {#if page.url.split('?')[0] !== '/'}
-                    <Link
-                        href="/"
-                        class="text-white p-1.5 shrink-0 flex items-center justify-center"
-                        aria-label="Kembali ke Home"
-                    >
-                        <i class="ti ti-home text-2xl"></i>
-                    </Link>
+                    {@const currentPath = page.url.split('?')[0]}
+                    {@const isAccountPage = [
+                        '/profile', '/membership', '/chats', '/about',
+                    ].some(p => currentPath === p || currentPath.startsWith(p + '/')) ||
+                        currentPath.startsWith('/transactions') ||
+                        currentPath.startsWith('/returns') ||
+                        currentPath.startsWith('/refunds')}
+                    {#if isAccountPage}
+                        <button
+                            onclick={() => window.history.back()}
+                            class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition cursor-pointer"
+                            aria-label="Kembali"
+                        >
+                            <i class="ti ti-arrow-left text-xl"></i>
+                        </button>
+                    {:else}
+                        <Link
+                            href="/"
+                            class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition"
+                            aria-label="Kembali ke Home"
+                        >
+                            <i class="ti ti-home text-xl"></i>
+                        </Link>
+                    {/if}
                 {/if}
                 
                 <!-- Mobile search bar -->
@@ -1954,80 +2002,80 @@
                             aria-label="Search"
                             class="absolute right-2.5 text-white/90 hover:text-white transition flex items-center justify-center p-1"
                         >
-                            <i class="ti ti-search text-base font-bold"></i>
+                            <i class="ti ti-search text-xl"></i>
                         </button>
                     </div>
                 </form>
 
                 <!-- Mobile right icons -->
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-1.5 shrink-0">
 
                     <!-- Dark Mode Toggle (Mobile) - Only show for guests in header -->
                     {#if !auth}
                         <button
                             onclick={toggleDarkMode}
-                            class="relative text-white p-1.5 shrink-0"
+                            class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition"
                             aria-label={isDark ? 'Mode Terang' : 'Mode Gelap'}
                         >
                             {#if isDark}
-                                <i class="ti ti-sun text-2xl light-toggle-icon-enter"></i>
+                                <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
                             {:else}
-                                <i class="ti ti-moon text-2xl dark-toggle-icon-enter"></i>
+                                <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
                             {/if}
                         </button>
                         <!-- Coin Saya (mobile) - Only show for guests in header -->
                         {#if (page.props as any).settings?.coins_enabled}
                             <button
                                 onclick={openCoinsModal}
-                                class="relative text-white p-1.5 shrink-0"
+                                class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition"
                                 aria-label="Poin Saya"
                             >
-                                <i class="ti ti-coins text-2xl"></i>
+                                <i class="ti ti-coins text-xl"></i>
                             </button>
                         {/if}
                     {/if}
 
                     <!-- Cart -->
-                    <button
-                        onclick={goToCart}
-                        class="text-white p-1.5 flex items-center justify-center"
-                        aria-label="Keranjang"
-                    >
-                        <div class="relative">
-                            <i class="ti ti-shopping-cart text-2xl"></i>
-                            {#if localCartCount > 0}
-                                <span
-                                    class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
-                                    style="background-color: {secondary}; font-family: sans-serif;"
-                                >
-                                    {localCartCount}
-                                </span>
-                            {/if}
-                        </div>
-                    </button>
+                    <div class="relative shrink-0">
+                        <button
+                            onclick={goToCart}
+                            class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition"
+                            aria-label="Keranjang"
+                        >
+                            <i class="ti ti-shopping-cart text-xl"></i>
+                        </button>
+                        {#if localCartCount > 0}
+                            <span
+                                class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm pointer-events-none"
+                                style="background-color: {secondary}; font-family: sans-serif;"
+                            >
+                                {localCartCount}
+                            </span>
+                        {/if}
+                    </div>
 
                     <!-- Notifications Bell (Mobile) -->
                     {#if auth}
-                        <button
-                            onclick={() => {
-                                isNotifOpen = !isNotifOpen;
-                                profileDropOpen = false;
-                            }}
-                            class="text-white p-1.5 flex items-center justify-center"
-                            aria-label="Notifikasi"
-                        >
-                            <div class="relative">
-                                <i class="ti ti-bell text-2xl"></i>
-                                {#if unreadNotifCount > 0}
-                                    <span
-                                        class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
-                                        style="background-color: {secondary}; font-family: sans-serif;"
-                                    >
-                                        {unreadNotifCount}
-                                    </span>
-                                {/if}
-                            </div>
-                        </button>
+                        <div class="relative shrink-0">
+                            <button
+                                onclick={() => {
+                                    isNotifOpen = !isNotifOpen;
+                                    profileDropOpen = false;
+                                }}
+                                class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition"
+                                aria-label="Notifikasi"
+                            >
+                                <i class="ti ti-bell text-xl"></i>
+                            </button>
+                            {#if unreadNotifCount > 0}
+                                <span
+                                    class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm pointer-events-none"
+                                    style="background-color: {secondary}; font-family: sans-serif;"
+                                >
+                                    {unreadNotifCount}
+                                </span>
+                            {/if}
+                        </div>
                     {/if}
 
                     <!-- Profile / Login -->
@@ -2037,7 +2085,7 @@
                                 profileDropOpen = !profileDropOpen;
                                 isNotifOpen = false;
                             }}
-                            class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0"
+                            class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0 hover:opacity-90 transition"
                         >
                             {#if auth.avatar}
                                 <img
@@ -2056,10 +2104,10 @@
                     {:else}
                         <button
                             onclick={openLogin}
-                            class="text-white p-1.5"
+                            class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition"
                             aria-label="Masuk"
                         >
-                            <i class="ti ti-user-circle text-2xl"></i>
+                            <i class="ti ti-user-circle text-xl"></i>
                         </button>
                     {/if}
                 </div>
@@ -2070,7 +2118,7 @@
     <!-- Mobile profile dropdown -->
     {#if profileDropOpen && auth}
         <div
-            class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl"
+            class="md:hidden fixed top-[52px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl"
         >
             <div class="p-4 border-b border-slate-100 flex items-center gap-3">
                 <div

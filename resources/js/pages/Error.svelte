@@ -203,17 +203,17 @@
                 >
                     <button
                         onclick={goBack}
-                        class="flex-1 px-6 py-3.5 rounded-2xl border-2 border-slate-200 bg-white font-black text-xs text-slate-700 hover:bg-slate-50 hover:border-slate-350 active:scale-95 shadow-xs transition duration-200 flex items-center justify-center gap-2 cursor-pointer"
+                        class="flex-1 px-5 py-3 rounded-xl border-2 border-slate-200 bg-white font-black text-xs text-slate-700 hover:bg-slate-50 hover:border-slate-350 active:scale-95 shadow-xs transition duration-200 flex items-center justify-center gap-2 cursor-pointer"
                     >
-                        <i class="ti ti-arrow-left text-sm"></i>
+                        <i class="ti ti-arrow-left text-base"></i>
                         Kembali Ke Halaman
                     </button>
                     <Link
                         href="/"
-                        class="flex-1 px-6 py-3.5 rounded-2xl font-black text-xs text-white transition active:scale-95 shadow-lg shadow-slate-950/5 flex items-center justify-center gap-2 cursor-pointer"
+                        class="flex-1 px-5 py-3 rounded-xl font-black text-xs text-white transition active:scale-95 shadow-lg shadow-slate-950/5 flex items-center justify-center gap-2 cursor-pointer"
                         style="background: linear-gradient(135deg, {primary}, {secondary});"
                     >
-                        <i class="ti ti-home text-sm"></i>
+                        <i class="ti ti-home text-base"></i>
                         Beranda Toko
                     </Link>
                 </div>

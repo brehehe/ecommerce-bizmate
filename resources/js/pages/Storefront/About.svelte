@@ -35,7 +35,7 @@
             <div class="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-4 flex items-center gap-3">
                 <button
                     onclick={goBack}
-                    class="p-1 hover:bg-slate-100 rounded-full transition shrink-0"
+                    class="hidden md:flex p-1 hover:bg-slate-100 rounded-full transition items-center justify-center shrink-0"
                     aria-label="Kembali"
                 >
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>

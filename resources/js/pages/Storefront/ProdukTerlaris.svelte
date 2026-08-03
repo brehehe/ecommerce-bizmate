@@ -330,10 +330,10 @@
             <!-- Back button -->
             <button
                 onclick={goBack}
-                class="text-white p-1.5 shrink-0 flex items-center justify-center cursor-pointer active:scale-95 transition"
+                class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition cursor-pointer"
                 aria-label="Kembali"
             >
-                <i class="ti ti-arrow-left text-2xl"></i>
+                <i class="ti ti-arrow-left text-xl"></i>
             </button>
 
             <!-- Inline search input -->
@@ -361,7 +361,7 @@
                             }}
                             class="absolute right-2.5 text-white/80 hover:text-white transition"
                         >
-                            <i class="ti ti-x text-xs"></i>
+                            <i class="ti ti-x text-sm"></i>
                         </button>
                     {:else}
                         <button
@@ -369,82 +369,100 @@
                             aria-label="Search"
                             class="absolute right-2.5 text-white/90 hover:text-white transition flex items-center justify-center p-1"
                         >
-                            <i class="ti ti-search text-base font-bold"></i>
+                            <i class="ti ti-search text-xl"></i>
                         </button>
                     {/if}
                 </div>
             </form>
 
-            <!-- Cart icon -->
-            <button
-                onclick={() => {
-                    if (auth) {
-                        router.visit('/cart');
-                    } else {
-                        window.dispatchEvent(
-                            new CustomEvent('open-login-modal'),
-                        );
-                    }
-                }}
-                class="text-white p-1.5 flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition"
-                aria-label="Keranjang"
-            >
-                <div class="relative">
-                    <i class="ti ti-shopping-cart text-2xl"></i>
+            <!-- Right actions -->
+            <div class="flex items-center gap-1.5 shrink-0">
+                <!-- Cart icon -->
+                <div class="relative shrink-0">
+                    <button
+                        onclick={() => {
+                            if (auth) {
+                                router.visit('/cart');
+                            } else {
+                                window.dispatchEvent(
+                                    new CustomEvent('open-login-modal'),
+                                );
+                            }
+                        }}
+                        class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                        aria-label="Keranjang"
+                    >
+                        <i class="ti ti-shopping-cart text-xl"></i>
+                    </button>
                     {#if cartCount > 0}
                         <span
-                            class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-xs"
+                            class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-xs pointer-events-none"
                             style="background-color: {secondary}; font-family: sans-serif;"
                         >
                             {cartCount}
                         </span>
                     {/if}
                 </div>
-            </button>
 
-            <!-- Profile/Login icon -->
-            {#if auth}
-                <button
-                    onclick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.dispatchEvent(
-                            new CustomEvent('toggle-profile-dropdown'),
-                        );
-                    }}
-                    class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0 cursor-pointer hover:opacity-90 transition"
-                >
-                    {#if auth.avatar}
-                        <img
-                            src="/storage/{auth.avatar}"
-                            alt={auth.name}
-                            class="w-full h-full object-cover"
-                        />
-                    {:else}
-                        <div
-                            class="w-full h-full bg-white/20 flex items-center justify-center"
-                        >
-                            {auth.name
-                                .split(' ')
-                                .map((n: string) => n[0])
-                                .slice(0, 2)
-                                .join('')
-                                .toUpperCase()}
-                        </div>
-                    {/if}
-                </button>
-            {:else}
-                <button
-                    onclick={() =>
-                        window.dispatchEvent(
-                            new CustomEvent('open-login-modal'),
-                        )}
-                    class="text-white p-1.5 flex items-center justify-center shrink-0 cursor-pointer active:scale-95 transition"
-                    aria-label="Masuk"
-                >
-                    <i class="ti ti-user-circle text-2xl"></i>
-                </button>
-            {/if}
+                <!-- Notifications Bell -->
+                {#if auth}
+                    <button
+                        onclick={() => {
+                            window.dispatchEvent(
+                                new CustomEvent('toggle-notif-dropdown'),
+                            );
+                        }}
+                        class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition cursor-pointer"
+                        aria-label="Notifikasi"
+                    >
+                        <i class="ti ti-bell text-xl"></i>
+                    </button>
+                {/if}
+
+                <!-- Profile/Login icon -->
+                {#if auth}
+                    <button
+                        onclick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.dispatchEvent(
+                                new CustomEvent('toggle-profile-dropdown'),
+                            );
+                        }}
+                        class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0 cursor-pointer hover:opacity-90 transition"
+                    >
+                        {#if auth.avatar}
+                            <img
+                                src="/storage/{auth.avatar}"
+                                alt={auth.name}
+                                class="w-full h-full object-cover"
+                            />
+                        {:else}
+                            <div
+                                class="w-full h-full bg-white/20 flex items-center justify-center"
+                            >
+                                {auth.name
+                                    .split(' ')
+                                    .map((n: string) => n[0])
+                                    .slice(0, 2)
+                                    .join('')
+                                    .toUpperCase()}
+                            </div>
+                        {/if}
+                    </button>
+                {:else}
+                    <button
+                        onclick={() =>
+                            window.dispatchEvent(
+                                new CustomEvent('open-login-modal'),
+                            )}
+                        class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition cursor-pointer"
+                        aria-label="Masuk"
+                    >
+                        <i class="ti ti-user-circle text-xl"></i>
+                    </button>
+                {/if}
+            </div>
         </div>
 
         <!-- Row 2: Sort pills + Filter button -->

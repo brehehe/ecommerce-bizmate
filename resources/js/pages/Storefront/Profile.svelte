@@ -143,7 +143,7 @@
             >
                 <button
                     onclick={goBack}
-                    class="p-1 hover:bg-slate-100 rounded-full transition"
+                    class="hidden md:flex p-1 hover:bg-slate-100 rounded-full transition items-center justify-center"
                     aria-label="Kembali"
                 >
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>

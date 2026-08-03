@@ -158,7 +158,7 @@
                 <div class="flex items-center gap-3">
                     <Link
                         href="/"
-                        class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition flex items-center justify-center text-slate-700 dark:text-slate-200"
+                        class="hidden md:flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition items-center justify-center text-slate-700 dark:text-slate-200"
                     >
                         <i class="ti ti-arrow-left text-xl"></i>
                     </Link>
