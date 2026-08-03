@@ -1473,18 +1473,17 @@
                     onsubmit={handleSearch}
                     class="flex-grow max-w-3xl lg:max-w-4xl mx-6"
                 >
-                    <div class="relative">
+                    <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
                         <input
                             type="text"
                             bind:value={searchQuery}
-                            placeholder="Cari produk, merek, kategori..."
-                            class="w-full pl-4 pr-12 py-2.5 text-sm bg-white rounded-2xl border-2 border-transparent focus:border-white focus:outline-none focus:bg-white shadow-md"
+                            placeholder="Cari produk..."
+                            class="w-full pl-4 pr-10 py-2 text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
                         />
                         <button
                             type="submit"
                             aria-label="Search"
-                            class="absolute right-0 top-0 bottom-0 px-4 rounded-r-2xl text-white font-bold text-sm flex items-center gap-1.5 transition"
-                            style="background-color: {secondary};"
+                            class="absolute right-3 text-white/90 hover:text-white transition flex items-center justify-center p-1"
                         >
                             <i class="ti ti-search text-lg"></i>
                         </button>
@@ -1943,20 +1942,19 @@
                 
                 <!-- Mobile search bar -->
                 <form onsubmit={handleSearch} class="flex-grow">
-                    <div class="relative flex items-center bg-white rounded-full pl-3.5 pr-1 py-1 border border-slate-200/80 shadow-xs">
+                    <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
                         <input
                             type="text"
                             bind:value={searchQuery}
-                            placeholder="Cari brand, produk, atau seller..."
-                            class="w-full text-xs sm:text-sm bg-transparent text-slate-800 placeholder-slate-400 focus:outline-none pr-2"
+                            placeholder="Cari produk..."
+                            class="w-full pl-3.5 pr-9 py-1.5 text-xs sm:text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
                         />
                         <button
                             type="submit"
                             aria-label="Search"
-                            class="w-7 h-7 rounded-full text-white flex items-center justify-center shadow-xs shrink-0 transition hover:scale-105"
-                            style="background-color: {secondary || '#fa7315'};"
+                            class="absolute right-2.5 text-white/90 hover:text-white transition flex items-center justify-center p-1"
                         >
-                            <i class="ti ti-search text-xs font-bold"></i>
+                            <i class="ti ti-search text-base font-bold"></i>
                         </button>
                     </div>
                 </form>

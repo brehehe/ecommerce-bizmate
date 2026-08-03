@@ -110,11 +110,6 @@
 
     const defaultSideBanners = [
         {
-            image: '/banners/fashion.png',
-            alt: 'Fashion Lokal Diskon 50%',
-            link: '#',
-        },
-        {
             image: '/banners/gratis-ongkir.png',
             alt: 'Gratis Ongkir Semua Produk',
             link: '#',
@@ -765,15 +760,25 @@
         <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
             <div class="max-w-6xl mx-auto">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="h-4 w-20 bg-slate-200 rounded-md animate-pulse"></div>
-                    <div class="h-3 w-14 bg-slate-200 rounded-md animate-pulse"></div>
+                    <div
+                        class="h-4 w-20 bg-slate-200 rounded-md animate-pulse"
+                    ></div>
+                    <div
+                        class="h-3 w-14 bg-slate-200 rounded-md animate-pulse"
+                    ></div>
                 </div>
                 <div class="overflow-x-auto no-scrollbar py-1">
                     <div class="flex gap-2.5 sm:gap-4">
                         {#each Array(6) as _}
-                            <div class="flex flex-col items-center gap-1.5 w-14 sm:w-16 shrink-0 animate-pulse">
-                                <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-slate-200/70"></div>
-                                <div class="h-2.5 w-10 bg-slate-200/70 rounded"></div>
+                            <div
+                                class="flex flex-col items-center gap-1.5 w-14 sm:w-16 shrink-0 animate-pulse"
+                            >
+                                <div
+                                    class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-slate-200/70"
+                                ></div>
+                                <div
+                                    class="h-2.5 w-10 bg-slate-200/70 rounded"
+                                ></div>
                             </div>
                         {/each}
                     </div>
@@ -785,7 +790,9 @@
             <div class="max-w-6xl mx-auto">
                 <!-- Section Header -->
                 <div class="flex items-center justify-between mb-2.5 px-0.5">
-                    <h2 class="font-outfit font-black text-sm sm:text-base text-slate-800 tracking-tight">
+                    <h2
+                        class="font-outfit font-black text-sm sm:text-base text-slate-800 tracking-tight"
+                    >
                         Kategori Pilihan
                     </h2>
                     <Link
@@ -794,7 +801,8 @@
                         class="text-[11px] sm:text-xs font-bold flex items-center gap-0.5 transition hover:opacity-80"
                         style="color: {primary};"
                     >
-                        Lihat Semua <i class="ti ti-chevron-right text-[10px]"></i>
+                        Lihat Semua <i class="ti ti-chevron-right text-[10px]"
+                        ></i>
                     </Link>
                 </div>
 
@@ -843,7 +851,9 @@
                                         />
                                     {:else}
                                         <i
-                                            class="ti {getCategoryIcon(cat)} text-2xl sm:text-3xl"
+                                            class="ti {getCategoryIcon(
+                                                cat,
+                                            )} text-2xl sm:text-3xl"
                                             style="color: {primary};"
                                         ></i>
                                     {/if}
