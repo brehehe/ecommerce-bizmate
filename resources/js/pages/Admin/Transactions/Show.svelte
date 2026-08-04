@@ -1330,40 +1330,40 @@
                         </span>
                     </div>
 
-                    <div class="p-5 space-y-3.5">
-                        <div class="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
+                    <div class="p-5 space-y-3">
+                        <div class="flex items-center justify-between text-xs pb-2 border-b border-slate-100 gap-2">
                             <span class="text-slate-500 font-medium">Metode Pembayaran:</span>
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-slate-800">{paymentMethodLabel || 'Kasir Direct'}</span>
+                                <span class="font-extrabold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{paymentMethodLabel || 'Kasir Direct'}</span>
                                 <button
                                     type="button"
                                     onclick={openChangePaymentModal}
-                                    class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition active:scale-95 flex items-center gap-1 cursor-pointer shadow-2xs"
                                 >
                                     <i class="ti ti-edit text-xs"></i>
-                                    <span>Ganti Pembayaran</span>
+                                    <span>Ganti</span>
                                 </button>
                             </div>
                         </div>
 
                         {#if extractedChannel}
-                            <div class="flex items-center justify-between text-xs bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
-                                <span class="text-blue-900 font-bold">Sub-Channel Dipilih:</span>
-                                <span class="font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded">{extractedChannel}</span>
+                            <div class="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                                <span class="text-slate-600 font-bold">Sub-Channel Dipilih:</span>
+                                <span class="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{extractedChannel}</span>
                             </div>
                         {/if}
 
-                        <!-- QRIS Box Display (Always Live Scanable QR) -->
+                        <!-- QRIS Box Display (Compact & Live Scanable QR) -->
                         {#if isQRIS}
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-2">
+                            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-2">
                                 <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
                                     <i class="ti ti-qrcode text-base"></i>
                                     <span>Pembayaran QRIS Instant</span>
                                 </div>
-                                <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                                    <img src={qrCodeDataUrl} alt="QRIS Code" class="w-44 h-44 object-contain" />
+                                <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                    <img src={qrCodeDataUrl} alt="QRIS Code" class="w-36 h-36 object-contain" />
                                 </div>
-                                <p class="text-[11px] text-slate-500 max-w-xs">
+                                <p class="text-[10px] text-slate-500 max-w-xs">
                                     Pelanggan dapat melakukan scan menggunakan GoPay, OVO, Dana, ShopeePay, BCA Mobile, Livin', dll.
                                 </p>
                             </div>

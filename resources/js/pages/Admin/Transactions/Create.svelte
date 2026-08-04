@@ -466,107 +466,82 @@
 </script>
 
 <svelte:head>
-    <title>Kasir POS — Point of Sale (Tunai & Pickup Toko)</title>
+    <title>Kasir POS — Point of Sale</title>
 </svelte:head>
 
-<!-- FULLPAGE STANDALONE POS LAYOUT (Clean White Aesthetic) -->
-<div class="fixed inset-0 z-50 bg-slate-100 flex flex-col font-sans overflow-hidden select-none">
+<!-- FULLPAGE POS LAYOUT -->
+<div class="fixed inset-0 z-50 bg-slate-100 flex flex-col overflow-hidden select-none">
 
-    <!-- Standalone Professional White Top Bar -->
-    <header class="bg-white text-slate-900 px-6 py-3 flex items-center justify-between shadow-2xs shrink-0 z-20 border-b border-slate-200">
+    <!-- Top Bar -->
+    <header class="bg-white px-5 py-2.5 flex items-center justify-between border-b border-slate-200 shrink-0 shadow-2xs z-20">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-xs">
+            <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white text-lg shadow-xs">
                 <i class="ti ti-cash-register"></i>
             </div>
             <div>
                 <div class="flex items-center gap-2">
-                    <h1 class="text-base font-outfit font-black tracking-wide uppercase leading-tight text-slate-900">
-                        {storeName ? `${storeName} POS` : 'Point of Sale'}
+                    <h1 class="text-sm font-black tracking-wide uppercase text-slate-900">
+                        {storeName ? `${storeName} — Kasir` : 'Point of Sale'}
                     </h1>
-                    <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 tracking-wider">
-                        KASIR TUNAI TOKO
+                    <span class="hidden sm:inline-block text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 tracking-wider">
+                        TUNAI TOKO
                     </span>
                 </div>
-                <p class="text-[11px] text-slate-500 font-mono">
-                    {currentTime ? `${currentTime} WIB` : 'Mesin Kasir Direct'}
-                </p>
+                <p class="text-[10px] text-slate-400 font-mono">{currentTime || '—'}</p>
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
             <button
                 onclick={() => { showScanModal = true; startScanning(); }}
-                class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center gap-2 active:scale-95 shadow-2xs"
+                class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
             >
-                <i class="ti ti-scan text-base text-amber-600"></i>
-                <span>Scan SKU / Barcode</span>
+                <i class="ti ti-scan text-sm text-amber-600"></i>
+                <span class="hidden sm:inline">Scan Barcode</span>
             </button>
-
-            {#if cart.length > 0}
-                <button
-                    onclick={clearCart}
-                    class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
-                >
-                    <i class="ti ti-trash text-sm"></i>
-                    <span>Reset Keranjang ({cart.length})</span>
-                </button>
-            {/if}
-
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
             <a
                 href="/admin/transactions"
-                class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs"
-                title="Keluar dari mode Kasir"
+                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
             >
-                <i class="ti ti-power text-sm"></i>
-                <span>Keluar POS</span>
+                <i class="ti ti-arrow-left text-sm"></i>
+                <span class="hidden sm:inline">Kembali</span>
             </a>
         </div>
     </header>
 
-    <!-- POS Main Grid (100% Height Fill) -->
-    <div class="flex-1 p-4 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <!-- Main POS Grid -->
+    <div class="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 min-h-0">
 
-        <!-- LEFT COLUMN: Catalog Grid (7/12) -->
-        <div class="lg:col-span-7 flex flex-col h-full space-y-3 min-h-0">
+        <!-- LEFT: Catalog -->
+        <div class="lg:col-span-7 flex flex-col min-h-0 gap-2.5">
 
-            <!-- Search & Category Filter Header -->
-            <div class="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-2xs space-y-2.5 shrink-0">
+            <!-- Search + Category -->
+            <div class="bg-white rounded-2xl px-3 pt-3 pb-2.5 border border-slate-200 shadow-2xs shrink-0 space-y-2">
                 <Input
                     bind:value={searchQuery}
-                    placeholder="Cari nama produk, SKU, atau varian..."
+                    placeholder="Cari produk, SKU, atau varian..."
                     icon="ti-search"
                 />
-
-                <!-- Category Pills -->
-                <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
                     <button
                         onclick={() => selectedCat = 'all'}
-                        class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap
-                               {selectedCat === 'all'
-                            ? 'bg-blue-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
-                    >
-                        Semua ({products.length})
-                    </button>
+                        class="px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition
+                               {selectedCat === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
+                    >Semua ({products.length})</button>
                     {#each categories as cat}
                         <button
                             onclick={() => selectedCat = cat.id.toString()}
-                            class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap
-                                   {selectedCat === cat.id.toString()
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
-                        >
-                            {cat.name}
-                        </button>
+                            class="px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap transition
+                                   {selectedCat === cat.id.toString() ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
+                        >{cat.name}</button>
                     {/each}
                 </div>
             </div>
 
-            <!-- Product Cards Grid (Scrollable) -->
-            <div class="flex-1 overflow-y-auto pr-1 scrollbar-thin">
-                <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            <!-- Product Grid -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin min-h-0">
+                <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 pb-1">
                     {#each filteredProducts as p}
                         {@const imgUrl = p.images?.[0]?.url || p.images?.[0]?.path || p.image || null}
                         {@const priceStr = getProductPriceInfo(p)}
@@ -576,222 +551,200 @@
                         <button
                             type="button"
                             onclick={() => addProductToCart(p)}
-                            class="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:border-blue-500 hover:shadow-md transition text-left flex flex-col justify-between overflow-hidden group cursor-pointer active:scale-98"
+                            class="bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-md shadow-2xs transition text-left flex flex-col overflow-hidden group active:scale-98 cursor-pointer"
                         >
-                            <div class="p-2.5 space-y-2">
-                                <div class="relative w-full aspect-square rounded-xl bg-slate-50 overflow-hidden border border-slate-100">
-                                    {#if imgUrl}
-                                        <img src={imgUrl.startsWith('http') ? imgUrl : `/storage/${imgUrl}`} alt={p.name} class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                                    {:else}
-                                        <div class="w-full h-full flex items-center justify-center text-slate-300">
-                                            <i class="ti ti-package text-3xl"></i>
-                                        </div>
-                                    {/if}
-
-                                    <!-- Category Badge -->
-                                    <span class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[9px] font-extrabold text-slate-700 bg-white/90 shadow-2xs border border-slate-200/80 backdrop-blur-xs truncate max-w-[80%]">
-                                        {p.category?.name || 'Umum'}
+                            <div class="relative aspect-square w-full bg-slate-50 overflow-hidden">
+                                {#if imgUrl}
+                                    <img
+                                        src={imgUrl.startsWith('http') ? imgUrl : `/storage/${imgUrl}`}
+                                        alt={p.name}
+                                        class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                    />
+                                {:else}
+                                    <div class="w-full h-full flex items-center justify-center text-slate-200">
+                                        <i class="ti ti-package text-4xl"></i>
+                                    </div>
+                                {/if}
+                                <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-700 bg-white/90 border border-slate-200/70 truncate max-w-[75%]">
+                                    {p.category?.name || 'Umum'}
+                                </span>
+                                {#if hasVariants}
+                                    <span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200">
+                                        {p.variants.length} Varian
                                     </span>
-
-                                    <!-- Variant Indicator Badge -->
-                                    {#if hasVariants}
-                                        <span class="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded-md text-[9px] font-extrabold text-amber-900 bg-amber-100 border border-amber-200 shadow-2xs flex items-center gap-1">
-                                            <i class="ti ti-layers-subtract text-[10px]"></i>
-                                            {p.variants.length} Varian
-                                        </span>
-                                    {/if}
-                                </div>
-
-                                <div>
-                                    <h4 class="font-bold text-xs text-slate-800 line-clamp-2 leading-tight group-hover:text-blue-600 transition">
-                                        {p.name}
-                                    </h4>
-                                    {#if p.sku}
-                                        <p class="text-[10px] font-mono text-slate-400 mt-0.5 truncate">SKU: {p.sku}</p>
-                                    {/if}
-                                </div>
+                                {/if}
                             </div>
 
-                            <div class="p-2.5 pt-1.5 flex items-center justify-between border-t border-slate-100 bg-slate-50/60">
-                                <div class="min-w-0 flex-1">
-                                    <p class="font-black text-xs text-blue-700 truncate">{priceStr}</p>
-                                    <p class="text-[10px] font-medium text-slate-500">Stok: {stockStr}</p>
+                            <div class="p-2 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <p class="font-bold text-xs text-slate-800 line-clamp-2 leading-snug group-hover:text-blue-600 transition">{p.name}</p>
+                                    {#if p.sku}
+                                        <p class="text-[9px] font-mono text-slate-400 mt-0.5 truncate">SKU: {p.sku}</p>
+                                    {/if}
                                 </div>
-                                <div class="w-7 h-7 rounded-xl bg-blue-600 text-white group-hover:bg-blue-700 transition flex items-center justify-center shadow-2xs shrink-0">
-                                    <i class="ti {hasVariants ? 'ti-layers-subtract' : 'ti-plus'} text-xs font-bold"></i>
+                                <div class="flex items-center justify-between mt-1.5">
+                                    <div>
+                                        <p class="font-black text-[11px] text-blue-700 truncate">{priceStr}</p>
+                                        <p class="text-[9px] text-slate-400">Stok: {stockStr}</p>
+                                    </div>
+                                    <div class="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center group-hover:bg-blue-700 transition shadow-2xs shrink-0">
+                                        <i class="ti {hasVariants ? 'ti-layers-subtract' : 'ti-plus'} text-xs"></i>
+                                    </div>
                                 </div>
                             </div>
                         </button>
                     {:else}
-                        <div class="col-span-full bg-white rounded-2xl p-8 text-center border border-slate-200 space-y-2">
-                            <i class="ti ti-package-off text-4xl text-slate-300"></i>
-                            <p class="text-sm font-bold text-slate-700">Tidak ada produk ditemukan</p>
-                            <p class="text-xs text-slate-400">Coba gunakan kata kunci lain atau pilih kategori lain.</p>
+                        <div class="col-span-full bg-white rounded-2xl p-10 text-center border border-slate-200 border-dashed">
+                            <i class="ti ti-package-off text-4xl text-slate-300 mb-2 block"></i>
+                            <p class="text-sm font-bold text-slate-500">Tidak ada produk</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Coba kata kunci atau kategori lain.</p>
                         </div>
                     {/each}
                 </div>
             </div>
         </div>
 
-        <!-- RIGHT COLUMN: Order Cart Summary (5/12) - Fully Scrollable Layout -->
-        <div class="lg:col-span-5 bg-white rounded-3xl border border-slate-200 shadow-sm p-4 flex flex-col h-full overflow-y-auto scrollbar-thin space-y-3">
+        <!-- RIGHT: Cart + Checkout -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col min-h-0 overflow-hidden">
 
-            <!-- Header Order -->
-            <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 shrink-0">
-                <span class="font-outfit font-black text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <i class="ti ti-shopping-cart text-lg text-blue-600"></i>
-                    Keranjang Pesanan ({cart.length})
-                </span>
-                <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Direct Cashier
-                </span>
-            </div>
-
-            <!-- Customer Selection connected to SelectSearch UI component -->
-            <div class="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shrink-0">
-                <SelectSearch
-                    bind:value={selectedCustomerValue}
-                    options={customerOptions}
-                    label="PILIH PELANGGAN"
-                    placeholder="Pilih Pelanggan..."
-                />
-
-                {#if isWalkInCustomer}
-                    <div class="grid grid-cols-2 gap-1.5 pt-1">
-                        <Input
-                            bind:value={customerName}
-                            placeholder="Nama Pelanggan (Umum)"
-                        />
-                        <Input
-                            bind:value={customerPhone}
-                            placeholder="No. HP / WA (Opsional)"
-                        />
-                    </div>
+            <!-- Cart Header -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+                <div class="flex items-center gap-2">
+                    <i class="ti ti-shopping-cart text-base text-blue-600"></i>
+                    <span class="font-black text-sm text-slate-900">Keranjang</span>
+                    {#if cart.length > 0}
+                        <span class="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black flex items-center justify-center">{cart.length}</span>
+                    {/if}
+                </div>
+                {#if cart.length > 0}
+                    <button
+                        onclick={clearCart}
+                        class="text-[10px] text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1 transition"
+                    >
+                        <i class="ti ti-trash text-xs"></i> Kosongkan
+                    </button>
                 {/if}
             </div>
 
-            <!-- Cart Items List (Dedicated Scrollable Container) -->
-            <div class="bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80 space-y-2 min-h-[140px] max-h-56 overflow-y-auto scrollbar-thin shrink-0">
-                <div class="flex items-center justify-between border-b border-slate-200/60 pb-1.5 mb-2">
-                    <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
-                        DAFTAR BARANG DALAM KERANJANG ({cart.length})
-                    </span>
-                    {#if cart.length > 0}
-                        <button
-                            onclick={clearCart}
-                            class="text-[10px] text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1"
-                        >
-                            <i class="ti ti-trash text-xs"></i>
-                            Kosongkan
-                        </button>
+            <!-- Scrollable Inner -->
+            <div class="flex-1 overflow-y-auto scrollbar-thin px-3 py-2.5 space-y-2.5 min-h-0">
+
+                <!-- Customer -->
+                <div class="space-y-1.5">
+                    <SelectSearch
+                        bind:value={selectedCustomerValue}
+                        options={customerOptions}
+                        label="PELANGGAN"
+                        placeholder="Pilih Pelanggan..."
+                    />
+                    {#if isWalkInCustomer}
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <Input bind:value={customerName} placeholder="Nama (Opsional)" />
+                            <Input bind:value={customerPhone} placeholder="No. HP (Opsional)" />
+                        </div>
                     {/if}
                 </div>
 
-                {#each cart as item (item.id)}
-                    <div class="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs gap-2">
-                        <div class="flex items-center gap-2 min-w-0 flex-1">
-                            <div class="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden shrink-0">
-                                {#if item.image_url}
-                                    <img src={item.image_url.startsWith('http') ? item.image_url : `/storage/${item.image_url}`} alt={item.product_name} class="w-full h-full object-cover" />
-                                {:else}
-                                    <div class="w-full h-full flex items-center justify-center text-slate-300 text-xs">
-                                        <i class="ti ti-package"></i>
+                <!-- Cart Items -->
+                <div class="space-y-1.5">
+                    {#if cart.length === 0}
+                        <div class="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                            <i class="ti ti-shopping-cart-off text-3xl text-slate-300 mb-1.5"></i>
+                            <p class="text-xs font-bold text-slate-400">Keranjang masih kosong</p>
+                            <p class="text-[10px] text-slate-400">Klik produk di sebelah kiri untuk menambah</p>
+                        </div>
+                    {:else}
+                        {#each cart as item (item.id)}
+                            <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+                                <div class="w-9 h-9 rounded-lg bg-white border border-slate-200 overflow-hidden shrink-0">
+                                    {#if item.image_url}
+                                        <img src={item.image_url.startsWith('http') ? item.image_url : `/storage/${item.image_url}`} alt={item.product_name} class="w-full h-full object-cover" />
+                                    {:else}
+                                        <div class="w-full h-full flex items-center justify-center text-slate-300"><i class="ti ti-package text-sm"></i></div>
+                                    {/if}
+                                </div>
+
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-bold text-xs text-slate-800 truncate">{item.product_name}</p>
+                                    {#if item.variant_name}
+                                        <span class="text-[9px] font-bold text-amber-700 bg-amber-50 px-1 rounded">{item.variant_name}</span>
+                                    {/if}
+                                    <p class="text-[11px] font-black text-blue-700 mt-0.5">{fmt(item.unit_price * item.quantity)}</p>
+                                </div>
+
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <div class="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
+                                        <button
+                                            onclick={() => updateQty(item.id, -1)}
+                                            class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-slate-100 font-bold text-sm transition"
+                                        >-</button>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={!item.is_unlimited && item.stock_available > 0 ? item.stock_available : undefined}
+                                            value={item.quantity}
+                                            oninput={(e) => handleQtyInput(item, e)}
+                                            class="w-9 text-center font-extrabold text-xs text-slate-800 focus:outline-none focus:bg-blue-50 py-0.5 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <button
+                                            onclick={() => updateQty(item.id, 1)}
+                                            disabled={!item.is_unlimited && item.stock_available > 0 && item.quantity >= item.stock_available}
+                                            class="w-6 h-6 flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-30 font-bold text-sm transition"
+                                        >+</button>
                                     </div>
-                                {/if}
+                                    <button
+                                        onclick={() => removeLineItem(item.id)}
+                                        class="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition"
+                                    >
+                                        <i class="ti ti-trash text-xs"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="font-bold text-xs text-slate-800 truncate">{item.product_name}</p>
-                                {#if item.variant_name}
-                                    <span class="inline-block px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 font-extrabold text-[9px] truncate">
-                                        Varian: {item.variant_name}
-                                    </span>
-                                {/if}
-                                <p class="text-[11px] font-black text-slate-900">{fmt(item.unit_price)}</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <!-- Editable Qty Input & Stepper Buttons -->
-                            <div class="flex items-center rounded-lg bg-slate-50 border border-slate-200 p-0.5 shadow-2xs">
-                                <button
-                                    onclick={() => updateQty(item.id, -1)}
-                                    class="w-5 h-5 rounded hover:bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-bold transition active:scale-95"
-                                    title="Kurangi"
-                                >
-                                    -
-                                </button>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max={!item.is_unlimited && item.stock_available > 0 ? item.stock_available : undefined}
-                                    value={item.quantity}
-                                    oninput={(e) => handleQtyInput(item, e)}
-                                    class="w-11 text-center font-extrabold text-xs text-slate-800 focus:outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-400 rounded py-0.5 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                                <button
-                                    onclick={() => updateQty(item.id, 1)}
-                                    disabled={!item.is_unlimited && item.stock_available > 0 && item.quantity >= item.stock_available}
-                                    class="w-5 h-5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-transparent flex items-center justify-center text-slate-600 text-xs font-bold transition active:scale-95"
-                                    title="Tambah"
-                                >
-                                    +
-                                </button>
-                            </div>
-
-                            <button
-                                onclick={() => removeLineItem(item.id)}
-                                class="w-6 h-6 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition"
-                            >
-                                <i class="ti ti-trash text-xs"></i>
-                            </button>
-                        </div>
-                    </div>
-                {:else}
-                    <div class="p-6 text-center border-2 border-dashed border-slate-200 rounded-2xl space-y-1 bg-white">
-                        <i class="ti ti-shopping-cart-off text-3xl text-slate-300"></i>
-                        <p class="text-xs font-bold text-slate-500">Keranjang Kasir Kosong</p>
-                        <p class="text-[10px] text-slate-400">Klik produk pada katalog di sebelah kiri untuk menambah ke pesanan.</p>
-                    </div>
-                {/each}
-            </div>
-
-            <!-- Payment & Delivery Setup (ONLY Pickup & ONLY Cash / Tunai) -->
-            <div class="pt-2 border-t border-slate-200 space-y-2.5 shrink-0">
-
-                <!-- Metode Pembayaran -->
-                <div>
-                    <Select
-                        bind:value={selectedPaymentMethodId}
-                        options={paymentMethodOptions}
-                        label="METODE PEMBAYARAN"
-                    />
+                        {/each}
+                    {/if}
                 </div>
 
+            </div>
 
+            <!-- Checkout Footer (Sticky Bottom) -->
+            <div class="border-t border-slate-100 px-3 py-3 space-y-2 shrink-0 bg-white">
 
+                <!-- Payment Method -->
+                <Select
+                    bind:value={selectedPaymentMethodId}
+                    options={paymentMethodOptions}
+                    label="METODE PEMBAYARAN"
+                />
 
-
-                <!-- Total Amount Banner & Submit -->
-                <div class="p-3 rounded-2xl bg-blue-600 text-white flex items-center justify-between gap-3 shadow-md">
-                    <div>
-                        <span class="text-[9px] text-blue-100 uppercase tracking-widest block font-bold">TOTAL HARGA</span>
-                        <span class="font-outfit font-black text-xl text-white">{fmt(grandTotal)}</span>
+                <!-- Subtotal rows -->
+                {#if cart.length > 0}
+                    <div class="flex items-center justify-between text-xs text-slate-500 px-0.5">
+                        <span>{cart.reduce((s, i) => s + i.quantity, 0)} item</span>
+                        <span class="font-bold text-slate-700">Subtotal: {fmt(subtotal)}</span>
                     </div>
+                {/if}
 
+                <!-- Grand Total + Pay Button -->
+                <div class="flex items-center gap-2 bg-blue-600 text-white rounded-2xl p-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[9px] text-blue-200 font-bold uppercase tracking-widest">TOTAL</p>
+                        <p class="font-black text-xl leading-none">{fmt(grandTotal)}</p>
+                    </div>
                     <button
                         onclick={handleCheckoutPOS}
                         disabled={cart.length === 0 || isSubmitting}
-                        class="px-5 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 disabled:opacity-50 font-black text-xs shadow-sm transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                        class="px-5 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed font-black text-xs shadow-sm transition active:scale-95 flex items-center gap-1.5 shrink-0"
                     >
                         {#if isSubmitting}
                             <i class="ti ti-loader animate-spin text-sm"></i>
                             <span>Memproses...</span>
                         {:else}
-                            <i class="ti ti-check text-base"></i>
-                            <span>Proses & Bayar</span>
+                            <i class="ti ti-check text-sm"></i>
+                            <span>Bayar Sekarang</span>
                         {/if}
                     </button>
                 </div>
+
             </div>
 
         </div>
