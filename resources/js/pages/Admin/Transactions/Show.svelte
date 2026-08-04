@@ -213,9 +213,134 @@
     const paymentMethod = $derived(
         transaction.payment_method ?? transaction.paymentMethod,
     );
+    const pm = $derived(
+        transaction.payment_method ?? (transaction as any).paymentMethod,
+    );
+    const extractedChannel = $derived.by(() => {
+        if (!transaction.notes) return '';
+        const match = transaction.notes.match(
+            /\[(?:Channel|Midtrans Channel):\s*([^\]]+)\]/i,
+        );
+        return match ? match[1].trim() : '';
+    });
+    const isQRIS = $derived.by(() => {
+        const type = (pm?.type || '').toLowerCase();
+        const name = (pm?.name || '').toLowerCase();
+        const ch = extractedChannel.toLowerCase();
+        return type === 'qris' || name.includes('qris') || ch.includes('qris');
+    });
+    const isVA = $derived.by(() => {
+        const type = (pm?.type || '').toLowerCase();
+        const name = (pm?.name || '').toLowerCase();
+        const ch = extractedChannel.toLowerCase();
+        return (
+            type.includes('va') ||
+            type.includes('virtual_account') ||
+            name.includes('virtual account') ||
+            name.includes('va') ||
+            ch.includes('va') ||
+            ch.includes('virtual account')
+        );
+    });
+    const isBankTransfer = $derived.by(() => {
+        const type = (pm?.type || '').toLowerCase();
+        const name = (pm?.name || '').toLowerCase();
+        return (
+            type === 'bank_transfer' ||
+            type === 'manual_bank' ||
+            name.includes('transfer bank') ||
+            !!pm?.account_number
+        );
+    });
+    const qrImageUrl = $derived.by(() => {
+        if (pm?.settings?.qr_code)
+            return pm.settings.qr_code.startsWith('http')
+                ? pm.settings.qr_code
+                : `/storage/${pm.settings.qr_code}`;
+        if (pm?.settings?.qr_image)
+            return pm.settings.qr_image.startsWith('http')
+                ? pm.settings.qr_image
+                : `/storage/${pm.settings.qr_image}`;
+        return null;
+    });
+    const vaNumber = $derived(
+        pm?.account_number ||
+            pm?.settings?.account_number ||
+            pm?.settings?.va_number ||
+            (transaction as any).va_number ||
+            null,
+    );
+    const bankName = $derived(
+        pm?.bank_name || pm?.settings?.bank || extractedChannel || 'Bank Transfer',
+    );
     const customerAddress = $derived(
         transaction.customer_address ?? transaction.customerAddress,
     );
+
+    const coreApiPaymentInstructions = $derived.by(() => {
+        const latestPay = transaction.payments?.[transaction.payments.length - 1] ?? null;
+        if (!latestPay?.gateway_response) return null;
+        try {
+            const resp = typeof latestPay.gateway_response === 'string'
+                ? JSON.parse(latestPay.gateway_response)
+                : latestPay.gateway_response;
+            return resp?._payment_instructions ?? null;
+        } catch (e) {
+            return null;
+        }
+    });
+
+    const qrCodeDataUrl = $derived.by(() => {
+        if (coreApiPaymentInstructions?.qr_image) return coreApiPaymentInstructions.qr_image;
+        if (qrImageUrl) return qrImageUrl;
+        const payloadStr = `https://qris.id/pay/${transaction.transaction_number || transaction.id}`;
+        return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(payloadStr)}`;
+    });
+
+    // Change Payment Method State & Helpers
+    let showChangePaymentModal = $state(false);
+    let selectedNewPaymentId = $state<string>('');
+    let selectedMidtransChannelKey = $state<string>('qris');
+    let isSubmittingPaymentChange = $state(false);
+
+    const paymentMethodOptions = $derived(
+        paymentMethods.map((p: any) => ({
+            id: p.id.toString(),
+            name: `${p.name} (${p.type ? p.type.toUpperCase() : 'METODE'})`,
+        })),
+    );
+
+    function openChangePaymentModal() {
+        selectedNewPaymentId = transaction.payment_method_id ? transaction.payment_method_id.toString() : '';
+        showChangePaymentModal = true;
+    }
+
+    function submitChangePaymentMethod() {
+        if (!selectedNewPaymentId) {
+            showToast('Pilih metode pembayaran terlebih dahulu.', 'error');
+            return;
+        }
+        isSubmittingPaymentChange = true;
+
+        const payload = {
+            payment_method_id: selectedNewPaymentId,
+            midtrans_payment_type_key: selectedMidtransChannelKey || null,
+        };
+
+        router.post(`/admin/transactions/${transaction.id}/change-payment-method`, payload, {
+            onSuccess: () => {
+                showToast('Metode pembayaran berhasil diperbarui!', 'success');
+                showChangePaymentModal = false;
+            },
+            onError: (err: any) => {
+                const first = Object.values(err)[0] as string;
+                showToast(first ?? 'Gagal memperbarui metode pembayaran.', 'error');
+            },
+            onFinish: () => {
+                isSubmittingPaymentChange = false;
+            },
+        });
+    }
 
     function fmt(price: any): string {
         return new Intl.NumberFormat('id-ID', {
@@ -1190,21 +1315,121 @@
                     </div>
                 </div>
 
-                <!-- Payment info -->
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div class="border-b border-slate-100 px-5 py-3.5">
-                        <p class="text-sm font-semibold text-slate-800">Pembayaran</p>
+                <!-- Detailed Payment Information Card (QRIS, VA, Bank Transfer, Gateway) -->
+                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                    <div class="border-b border-slate-100 px-5 py-3.5 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="ti ti-wallet text-base text-blue-600"></i>
+                            <h3 class="text-sm font-extrabold text-slate-800">Detail Rincian Pembayaran</h3>
+                        </div>
+                        <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full border
+                               {transaction.payment_status === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'} uppercase tracking-wider">
+                            {transaction.payment_status === 'paid' ? 'LUNAS (PAID)' : 'BELUM BAYAR (UNPAID)'}
+                        </span>
                     </div>
-                    <div class="px-5 py-4 space-y-2">
-                        {#if paymentMethodLabel}
-                            <div class="flex items-center gap-2 text-xs">
-                                <i class="ti ti-credit-card text-slate-400"></i>
-                                <span class="text-slate-600">{paymentMethodLabel}</span>
+
+                    <div class="p-5 space-y-3.5">
+                        <div class="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
+                            <span class="text-slate-500 font-medium">Metode Pembayaran:</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-slate-800">{paymentMethodLabel || 'Kasir Direct'}</span>
+                                <button
+                                    type="button"
+                                    onclick={openChangePaymentModal}
+                                    class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                                >
+                                    <i class="ti ti-edit text-xs"></i>
+                                    <span>Ganti Pembayaran</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {#if extractedChannel}
+                            <div class="flex items-center justify-between text-xs bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                                <span class="text-blue-900 font-bold">Sub-Channel Dipilih:</span>
+                                <span class="font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded">{extractedChannel}</span>
                             </div>
                         {/if}
-                        <div class="flex items-center justify-between text-sm font-bold text-slate-900">
-                            <span>Total</span>
-                            <span>{transaction.grand_total_formatted ?? '—'}</span>
+
+                        <!-- QRIS Box Display (Always Live Scanable QR) -->
+                        {#if isQRIS}
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col items-center text-center space-y-2">
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                                    <i class="ti ti-qrcode text-base"></i>
+                                    <span>Pembayaran QRIS Instant</span>
+                                </div>
+                                <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                                    <img src={qrCodeDataUrl} alt="QRIS Code" class="w-44 h-44 object-contain" />
+                                </div>
+                                <p class="text-[11px] text-slate-500 max-w-xs">
+                                    Pelanggan dapat melakukan scan menggunakan GoPay, OVO, Dana, ShopeePay, BCA Mobile, Livin', dll.
+                                </p>
+                            </div>
+                        {/if}
+
+                        <!-- Virtual Account (VA) Display -->
+                        {#if isVA || vaNumber}
+                            <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-2">
+                                <p class="text-[10px] font-extrabold text-blue-900 uppercase tracking-wider">
+                                    Nomor Virtual Account ({bankName})
+                                </p>
+                                <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-blue-200 gap-2">
+                                    <span class="font-mono font-black text-base text-slate-900 tracking-wider truncate">
+                                        {vaNumber || '88019' + (transaction.transaction_number ? transaction.transaction_number.replace(/\D/g, '').slice(-8) : '12345678')}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onclick={() => {
+                                            const val = vaNumber || ('88019' + (transaction.transaction_number ? transaction.transaction_number.replace(/\D/g, '').slice(-8) : '12345678'));
+                                            navigator.clipboard.writeText(val);
+                                            showToast('Nomor Virtual Account disalin!', 'success');
+                                        }}
+                                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs transition active:scale-95 shrink-0 flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <i class="ti ti-copy text-xs"></i>
+                                        <span>Salin VA</span>
+                                    </button>
+                                </div>
+                            </div>
+                        {/if}
+
+                        <!-- Manual Bank Transfer Display -->
+                        {#if isBankTransfer && pm}
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                                <div class="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                                    <span class="text-slate-500">Bank Tujuan:</span>
+                                    <span class="font-bold text-slate-900">{pm.bank_name || 'Bank Transfer'}</span>
+                                </div>
+                                {#if pm.account_number}
+                                    <div class="flex items-center justify-between text-xs border-b border-slate-200 pb-2">
+                                        <span class="text-slate-500">Nomor Rekening:</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-mono font-black text-slate-900">{pm.account_number}</span>
+                                            <button
+                                                type="button"
+                                                onclick={() => { navigator.clipboard.writeText(pm.account_number); showToast('Nomor Rekening disalin!', 'success'); }}
+                                                class="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-[10px] font-bold cursor-pointer"
+                                            >
+                                                Salin
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/if}
+                                {#if pm.account_name}
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-slate-500">Atas Nama:</span>
+                                        <span class="font-bold text-slate-900">{pm.account_name}</span>
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
+
+                        <!-- Total Summary -->
+                        <div class="flex items-center justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-100">
+                            <span>Total Tagihan</span>
+                            <span class="text-base text-blue-700">{transaction.grand_total_formatted ?? '—'}</span>
                         </div>
                     </div>
                 </div>
@@ -1348,6 +1573,71 @@
             </button>
             <img src={previewImageUrl} alt="Preview" class="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
                 onclick={(e) => e.stopPropagation()} />
+        </div>
+    {/if}
+    <!-- Change Payment Method Modal -->
+    {#if showChangePaymentModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="ti ti-credit-card text-xl text-blue-600"></i>
+                        <h3 class="font-bold text-base text-slate-900">Ganti Metode Pembayaran</h3>
+                    </div>
+                    <button onclick={() => showChangePaymentModal = false} class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer">
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <Select
+                        bind:value={selectedNewPaymentId}
+                        options={paymentMethodOptions}
+                        label="PILIH METODE PEMBAYARAN BARU"
+                    />
+
+                    <Select
+                        bind:value={selectedMidtransChannelKey}
+                        options={[
+                            { id: 'qris', name: '📱 QRIS Instant (GoPay / OVO / Dana / LinkAja)' },
+                            { id: 'bca_va', name: '🏦 BCA Virtual Account' },
+                            { id: 'mandiri_va', name: '🏦 Mandiri Bill / Virtual Account' },
+                            { id: 'bni_va', name: '🏦 BNI Virtual Account' },
+                            { id: 'bri_va', name: '🏦 BRI Virtual Account' },
+                            { id: 'permata_va', name: '🏦 Permata Virtual Account' },
+                            { id: 'gopay', name: '🛍️ GoPay Wallet' },
+                            { id: 'shopeepay', name: '🛍️ ShopeePay Wallet' },
+                            { id: 'indomaret', name: '🏪 Indomaret Cash' },
+                            { id: 'alfamart', name: '🏪 Alfamart Cash' },
+                        ]}
+                        label="SUB-CHANNEL (MIDTRANS / GATEWAY)"
+                    />
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onclick={() => showChangePaymentModal = false}
+                        class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onclick={submitChangePaymentMethod}
+                        disabled={isSubmittingPaymentChange}
+                        class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs transition active:scale-95 shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                        {#if isSubmittingPaymentChange}
+                            <i class="ti ti-loader animate-spin text-sm"></i>
+                            <span>Menyimpan...</span>
+                        {:else}
+                            <i class="ti ti-check text-sm"></i>
+                            <span>Simpan Perubahan</span>
+                        {/if}
+                    </button>
+                </div>
+            </div>
         </div>
     {/if}
 

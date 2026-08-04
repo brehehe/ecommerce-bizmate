@@ -561,14 +561,24 @@
                 <h1 class="text-xl font-semibold tracking-tight text-slate-900">Transaksi</h1>
                 <p class="mt-0.5 text-sm text-slate-500">Kelola semua pesanan pelanggan</p>
             </div>
-            <button
-                onclick={openScanModal}
-                class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90 self-start sm:self-auto"
-                style="background-color: {secondary};"
-            >
-                <i class="ti ti-scan text-base"></i>
-                Scan QR / Barcode
-            </button>
+            <div class="flex items-center gap-2.5">
+                <a
+                    href="/admin/transactions/create"
+                    class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-xs transition-opacity hover:opacity-90 active:scale-95"
+                    style="background-color: {primary};"
+                >
+                    <i class="ti ti-cash-register text-base"></i>
+                    Buat Transaksi (POS)
+                </a>
+                <button
+                    onclick={openScanModal}
+                    class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-xs transition-opacity hover:opacity-90 active:scale-95"
+                    style="background-color: {secondary};"
+                >
+                    <i class="ti ti-scan text-base"></i>
+                    Scan QR / Barcode
+                </button>
+            </div>
         </div>
 
         <!-- Status tabs -->
@@ -709,45 +719,48 @@
                 </div>
             {/snippet}
 
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <!-- Table toolbar -->
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                    <p class="text-sm text-slate-500">
-                        {#if transactions && transactions.total !== undefined}
-                            <span class="font-semibold text-slate-800">{transactions.total}</span> transaksi
-                        {/if}
-                    </p>
-                    <div class="flex items-center gap-2">
-                        <!-- Select all -->
-                        {#if transactions && transactions.data && transactions.data.length > 0}
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedIds.length === transactions.data.length && transactions.data.length > 0}
-                                    onchange={(e) => {
-                                        if (e.currentTarget.checked) {
-                                            selectedIds = transactions.data.map((t: any) => t.id);
-                                        } else {
-                                            selectedIds = [];
-                                        }
-                                    }}
-                                    class="rounded border-slate-300 accent-slate-900"
-                                />
-                                <span class="text-xs text-slate-500">Pilih semua</span>
-                            </label>
-                        {/if}
-                    </div>
-                </div>
-
-                {#if !transactions || !transactions.data || transactions.data.length === 0}
-                    <div class="flex flex-col items-center justify-center py-16 text-center px-4">
-                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
-                            <i class="ti ti-receipt-off text-xl"></i>
+            {#if !transactions}
+                {@render tableSkeleton()}
+            {:else}
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <!-- Table toolbar -->
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                        <p class="text-sm text-slate-500">
+                            {#if transactions?.total !== undefined}
+                                <span class="font-semibold text-slate-800">{transactions.total}</span> transaksi
+                            {/if}
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <!-- Select all -->
+                            {#if (transactions?.data?.length ?? 0) > 0}
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.length === transactions.data.length && transactions.data.length > 0}
+                                        onchange={(e) => {
+                                            if (e.currentTarget.checked) {
+                                                selectedIds = transactions.data.map((t: any) => t.id);
+                                            } else {
+                                                selectedIds = [];
+                                            }
+                                        }}
+                                        class="rounded border-slate-300 accent-slate-900"
+                                    />
+                                    <span class="text-xs text-slate-500">Pilih semua</span>
+                                </label>
+                            {/if}
                         </div>
-                        <p class="text-sm font-medium text-slate-600">Tidak ada transaksi</p>
-                        <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
                     </div>
-                {:else}
+
+                    {#if (transactions?.data?.length ?? 0) === 0}
+                        <div class="flex flex-col items-center justify-center py-16 text-center px-4">
+                            <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                                <i class="ti ti-receipt-off text-xl"></i>
+                            </div>
+                            <p class="text-sm font-medium text-slate-600">Tidak ada transaksi</p>
+                            <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
+                        </div>
+                    {:else}
                     <div class="overflow-x-auto" use:dragScroll>
                         <table class="w-full responsive-table">
                             <thead>
@@ -873,6 +886,7 @@
                     <Pagination paginator={transactions} itemLabel="transaksi" />
                 {/if}
             </div>
+            {/if}
         </Deferred>
 
     </main>

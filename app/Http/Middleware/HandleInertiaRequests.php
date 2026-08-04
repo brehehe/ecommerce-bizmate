@@ -6,6 +6,7 @@ use App\Models\CartItem;
 use App\Models\ChatMessage;
 use App\Models\ChatSticker;
 use App\Models\Notification;
+use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\RefundRequest;
 use App\Models\ReturnRequest;
@@ -282,6 +283,10 @@ class HandleInertiaRequests extends Middleware
                     'birth_date' => $request->user()->birth_date,
                     'avatar' => $request->user()->avatar,
                     'coins_balance' => $request->user()->coins_balance,
+                    'is_seller' => (bool) $request->user()->is_seller,
+                    'store_name' => $request->user()->store_name ?: ($request->user()->is_seller ? 'Toko '.$request->user()->name : null),
+                    'store_slug' => $request->user()->store_slug ?: ($request->user()->is_seller ? \Illuminate\Support\Str::slug('store-'.$request->user()->name.'-'.$request->user()->id) : null),
+                    'store_logo' => $request->user()->store_logo,
                     'roles' => $request->user()->roles->map(fn ($role) => [
                         'name' => $role->name,
                     ]),
@@ -289,7 +294,24 @@ class HandleInertiaRequests extends Middleware
             ],
             'cartCount' => $request->user() ? CartItem::where('user_id', $request->user()->id)->count() : 0,
             'chatUnreadCount' => $request->user() ? ChatMessage::whereHas('chat', fn ($q) => $q->where('user_id', $request->user()->id))->where('sender_type', 'admin')->where('is_read', false)->count() : 0,
-            'adminChatUnreadCount' => $request->user() ? ChatMessage::where('sender_type', 'user')->where('is_read', false)->count() : 0,
+            'adminChatUnreadCount' => function () use ($request) {
+                $u = $request->user();
+                if (! $u) {
+                    return 0;
+                }
+                if ($u->is_seller && ! $u->hasAnyRole(['Super Admin', 'Admin'])) {
+                    $sellerProductIds = Product::where('user_id', $u->id)->pluck('id');
+
+                    return ChatMessage::where('sender_type', 'user')
+                        ->where('is_read', false)
+                        ->whereHas('chat', function ($cq) use ($u, $sellerProductIds) {
+                            $cq->whereIn('product_id', $sellerProductIds)
+                                ->orWhereHas('messages', fn ($mq) => $mq->where('sender_id', $u->id));
+                        })->count();
+                }
+
+                return ChatMessage::where('sender_type', 'user')->where('is_read', false)->count();
+            },
             'theme' => [
                 'primary_color' => $primaryColor,
                 'secondary_color' => $secondaryColor,
@@ -299,12 +321,14 @@ class HandleInertiaRequests extends Middleware
                 'midtrans_enabled' => (bool) config('app.midtrans_enabled', true),
                 'logistic_enabled' => (bool) config('app.logistic_enabled', true),
                 'enable_3d_models' => (bool) config('app.enable_3d_models', true),
+                'is_seller_enabled' => filter_var(Setting::where('key', 'is_seller')->value('value') ?? config('app.is_seller', false), FILTER_VALIDATE_BOOLEAN),
             ],
             'settings' => [
                 'membership_enabled' => (bool) config('app.membership_enabled', true),
                 'midtrans_enabled' => (bool) config('app.midtrans_enabled', true),
                 'logistic_enabled' => (bool) config('app.logistic_enabled', true),
                 'enable_3d_models' => (bool) config('app.enable_3d_models', true),
+                'is_seller_enabled' => filter_var(Setting::where('key', 'is_seller')->value('value') ?? config('app.is_seller', false), FILTER_VALIDATE_BOOLEAN),
                 'tax_enabled' => $taxEnabled,
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,

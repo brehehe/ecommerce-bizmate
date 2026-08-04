@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Promotion extends Model
@@ -11,6 +12,7 @@ class Promotion extends Model
     use HasUuids;
 
     protected $fillable = [
+        'user_id',
         'name',
         'type',
         'code',
@@ -37,6 +39,11 @@ class Promotion extends Model
         'min_purchase' => 'decimal:2',
         'max_discount' => 'decimal:2',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function items(): HasMany
     {

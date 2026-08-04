@@ -28,6 +28,9 @@ class ReturnController extends Controller
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
 
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
         $query = DB::table('returns')
             ->leftJoin('users', 'returns.user_id', '=', 'users.id')
             ->leftJoin('transactions', 'returns.transaction_id', '=', 'transactions.id')
@@ -47,6 +50,12 @@ class ReturnController extends Controller
                 'transactions.grand_total as transaction_grand_total',
             ])
             ->orderBy('returns.created_at', 'desc');
+
+        if ($isSeller) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $sellerTransactionIds = DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id');
+            $query->whereIn('returns.transaction_id', $sellerTransactionIds);
+        }
 
         if ($request->filled('status')) {
             $query->where('returns.status', $request->status);
@@ -75,10 +84,10 @@ class ReturnController extends Controller
         $page = max(1, $cleanPage);
         $perPage = 20;
 
-        $getReturns = function () use ($request, $query, $page, $perPage) {
+        $getReturns = function () use ($request, $query, $page, $perPage, $isSeller) {
             $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
 
-            if (! $isFiltered && ! app()->runningUnitTests()) {
+            if (! $isFiltered && ! $isSeller && ! app()->runningUnitTests()) {
                 $total = Cache::remember('returns_total_count', 120, fn () => DB::table('returns')->count());
             } else {
                 $total = (clone $query)->count();
@@ -143,8 +152,10 @@ class ReturnController extends Controller
     /**
      * Show a single return request detail.
      */
-    public function show(ReturnRequest $return): Response
+    public function show(Request $request, ReturnRequest $return): Response
     {
+        $this->authorizeSellerReturn($request, $return);
+
         $return->load([
             'user:id,name,email',
             'user.customerBankAccounts',
@@ -173,6 +184,7 @@ class ReturnController extends Controller
      */
     public function approve(Request $request, ReturnRequest $return): RedirectResponse
     {
+        $this->authorizeSellerReturn($request, $return);
         if ($return->status !== 'menunggu_review') {
             return back()->with('error', 'Retur tidak dapat disetujui pada status saat ini.');
         }
@@ -704,5 +716,24 @@ class ReturnController extends Controller
         }
 
         return back()->with('success', "Berhasil mengonfirmasi penerimaan {$count} barang retur.");
+    }
+
+    /**
+     * Authorize seller access to return request.
+     */
+    private function authorizeSellerReturn(Request $request, ReturnRequest $return): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $hasProduct = DB::table('transaction_items')
+                ->where('transaction_id', $return->transaction_id)
+                ->whereIn('product_id', $sellerProductIds)
+                ->exists();
+
+            if (! $hasProduct) {
+                abort(403, 'Anda tidak memiliki akses ke pengajuan retur ini.');
+            }
+        }
     }
 }

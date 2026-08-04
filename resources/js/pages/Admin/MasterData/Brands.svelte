@@ -17,6 +17,14 @@
         (page.props as any).theme?.primary_color ?? '#0c4cb4',
     );
 
+    const currentUser = $derived((page.props as any).auth?.user);
+    const isSeller = $derived(
+        currentUser?.is_seller &&
+            !currentUser?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ),
+    );
+
     // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
     // svelte-ignore state_referenced_locally
@@ -166,8 +174,10 @@
         if (!itemToDelete) return;
 
         router.delete(`/admin/master-data/brands/${itemToDelete.id}`, {
-            onSuccess: () => {
-                showToast('Brand berhasil dihapus', 'success');
+            onSuccess: (page: any) => {
+                if (!page.props?.flash?.error) {
+                    showToast('Brand berhasil dihapus', 'success');
+                }
                 deleteModalOpen = false;
                 itemToDelete = null;
             },
@@ -347,19 +357,23 @@
                     <table class="w-full text-left border-collapse responsive-table">
                         <thead>
                             <tr class="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                <th class="py-3 px-2 w-8 text-center"></th>
-                                <th class="py-3 px-4 w-12 text-center sm:table-cell hidden">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectAll}
-                                        onchange={toggleSelectAll}
-                                        class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
-                                    />
-                                </th>
+                                {#if !isSeller}
+                                    <th class="py-3 px-2 w-8 text-center"></th>
+                                    <th class="py-3 px-4 w-12 text-center sm:table-cell hidden">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectAll}
+                                            onchange={toggleSelectAll}
+                                            class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
+                                        />
+                                    </th>
+                                {/if}
                                 <th class="py-3 px-4">Nama Brand</th>
                                 <th class="py-3 px-4">Slug</th>
                                 <th class="py-3 px-4">Status</th>
-                                <th class="py-3 px-4 text-center">Aksi</th>
+                                {#if !isSeller}
+                                    <th class="py-3 px-4 text-center">Aksi</th>
+                                {/if}
                             </tr>
                         </thead>
                         <tbody 
@@ -379,19 +393,21 @@
                                     class="brand-row hover:bg-slate-55/30 transition border-b border-slate-100 {isSelected ? 'bg-slate-50/50' : ''}"
                                     data-id={brand.id}
                                 >
-                                    <td class="py-3 px-2 text-center w-8">
-                                        <span class="text-slate-400 cursor-move brand-drag-handle flex items-center justify-center" title="Geser Urutan">
-                                            <i class="ti ti-grip-vertical text-base"></i>
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4 text-center sm:table-cell hidden">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onchange={() => toggleSelect(brand.id)}
-                                            class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
-                                        />
-                                    </td>
+                                    {#if !isSeller}
+                                        <td class="py-3 px-2 text-center w-8">
+                                            <span class="text-slate-400 cursor-move brand-drag-handle flex items-center justify-center" title="Geser Urutan">
+                                                <i class="ti ti-grip-vertical text-base"></i>
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4 text-center sm:table-cell hidden">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onchange={() => toggleSelect(brand.id)}
+                                                class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
+                                            />
+                                        </td>
+                                    {/if}
                                     <td class="py-3.5 px-4" data-label="Nama Brand">
                                         <div class="flex items-center gap-3">
                                             <!-- Checkbox for Mobile View -->
@@ -417,32 +433,34 @@
                                             {isActive ? 'Aktif' : 'Nonaktif'}
                                         </span>
                                     </td>
-                                    <td class="py-3.5 px-4 text-center" data-label="Aksi">
-                                        <div class="flex items-center justify-end sm:justify-center gap-1.5">
-                                            <button
-                                                aria-label="Edit"
-                                                onclick={() => openEditModal(brand)}
-                                                class="w-7 h-7 rounded-md border border-slate-200 hover:bg-slate-50 hover:text-slate-800 text-slate-555 flex items-center justify-center transition-colors cursor-pointer"
-                                                title="Ubah Data"
-                                            >
-                                                <i class="ti ti-pencil text-xs"></i>
-                                            </button>
-                                            <button
-                                                onclick={() => toggleStatus(brand)}
-                                                class="w-7 h-7 rounded-md border border-slate-200 {isActive ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500' : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition-colors cursor-pointer"
-                                                title="Ubah Status (Aktif/Nonaktif)"
-                                            >
-                                                <i class="ti {isActive ? 'ti-ban' : 'ti-check'} text-xs"></i>
-                                            </button>
-                                            <button
-                                                onclick={() => confirmDelete(brand)}
-                                                class="w-7 h-7 rounded-md border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-555 flex items-center justify-center transition-colors cursor-pointer"
-                                                title="Hapus Brand"
-                                            >
-                                                <i class="ti ti-trash text-xs"></i>
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {#if !isSeller}
+                                        <td class="py-3.5 px-4 text-center" data-label="Aksi">
+                                            <div class="flex items-center justify-end sm:justify-center gap-1.5">
+                                                <button
+                                                    aria-label="Edit"
+                                                    onclick={() => openEditModal(brand)}
+                                                    class="w-7 h-7 rounded-md border border-slate-200 hover:bg-slate-50 hover:text-slate-800 text-slate-555 flex items-center justify-center transition-colors cursor-pointer"
+                                                    title="Ubah Data"
+                                                >
+                                                    <i class="ti ti-pencil text-xs"></i>
+                                                </button>
+                                                <button
+                                                    onclick={() => toggleStatus(brand)}
+                                                    class="w-7 h-7 rounded-md border border-slate-200 {isActive ? 'hover:bg-amber-50 hover:text-amber-600 text-slate-500' : 'hover:bg-emerald-50 hover:text-emerald-600 text-slate-400'} flex items-center justify-center transition-colors cursor-pointer"
+                                                    title="Ubah Status (Aktif/Nonaktif)"
+                                                >
+                                                    <i class="ti {isActive ? 'ti-ban' : 'ti-check'} text-xs"></i>
+                                                </button>
+                                                <button
+                                                    onclick={() => confirmDelete(brand)}
+                                                    class="w-7 h-7 rounded-md border border-slate-200 hover:bg-rose-50 hover:text-rose-600 text-slate-555 flex items-center justify-center transition-colors cursor-pointer"
+                                                    title="Hapus Brand"
+                                                >
+                                                    <i class="ti ti-trash text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    {/if}
                                 </tr>
                             {/each}
                         </tbody>

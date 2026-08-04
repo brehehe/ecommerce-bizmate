@@ -524,6 +524,7 @@
     let displayedCount = $state(10);
     let loadingMore = $state(false);
     let activeLightboxImage = $state<string | null>(null);
+    let sentinelEl = $state<HTMLElement | null>(null);
 
     let shuffledRecommendations = $state([]);
 
@@ -551,29 +552,38 @@
             : false,
     );
 
-    function setupObserver(node: HTMLElement) {
-        const obs = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && !loadingMore && hasMore) {
-                    loadingMore = true;
-                    setTimeout(() => {
-                        displayedCount = Math.min(
-                            displayedCount + 10,
-                            shuffledRecommendations.length,
-                        );
-                        loadingMore = false;
-                    }, 800);
-                }
-            },
-            { rootMargin: '150px' },
-        );
-        obs.observe(node);
-        return {
-            destroy() {
-                obs.disconnect();
-            },
-        };
+    function loadMoreRecommendations() {
+        if (loadingMore || !hasMore) return;
+        loadingMore = true;
+        setTimeout(() => {
+            displayedCount = Math.min(
+                displayedCount + 10,
+                shuffledRecommendations.length,
+            );
+            loadingMore = false;
+        }, 300);
     }
+
+    // IntersectionObserver for infinite scroll
+    let scrollObserver: IntersectionObserver | null = null;
+
+    $effect(() => {
+        if (sentinelEl) {
+            scrollObserver?.disconnect();
+            scrollObserver = new IntersectionObserver(
+                (entries) => {
+                    if (entries[0]?.isIntersecting && hasMore && !loadingMore) {
+                        loadMoreRecommendations();
+                    }
+                },
+                { threshold: 0.1 },
+            );
+            scrollObserver.observe(sentinelEl);
+        }
+        return () => {
+            scrollObserver?.disconnect();
+        };
+    });
 
     function directClick(node: HTMLElement, callback: (e: MouseEvent) => void) {
         let currentCallback = callback;
@@ -1546,67 +1556,35 @@
                     {/each}
                 </div>
 
-                <!-- Sentinel for Infinite Scroll -->
-                {#if hasMore}
-                    <div use:setupObserver class="h-10"></div>
-                {/if}
-
-                <!-- Loading Spinner & Skeletons -->
-                {#if loadingMore}
-                    <div
-                        class="mt-6 flex flex-col items-center justify-center gap-4"
-                    >
-                        <div
-                            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 w-full"
-                        >
-                            {#each Array(5) as _}
-                                <div
-                                    class="bg-white border border-slate-100 rounded-xl overflow-hidden animate-pulse"
+                <!-- Infinite scroll sentinel -->
+                {#if hasMore || loadingMore}
+                    <div bind:this={sentinelEl} class="mt-8 w-full flex justify-center py-4">
+                        {#if loadingMore}
+                            <div class="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 rounded-2xl shadow-xs text-slate-600 font-bold text-xs">
+                                <svg
+                                    class="animate-spin h-5 w-5"
+                                    style="color: {primary};"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
                                 >
-                                    <div
-                                        class="aspect-square bg-slate-100"
-                                    ></div>
-                                    <div class="p-3 space-y-2">
-                                        <div
-                                            class="h-3 bg-slate-100 rounded w-full"
-                                        ></div>
-                                        <div
-                                            class="h-3 bg-slate-100 rounded w-2/3"
-                                        ></div>
-                                        <div
-                                            class="h-4 bg-slate-100 rounded w-1/2 mt-2"
-                                        ></div>
-                                    </div>
-                                </div>
-                            {/each}
-                        </div>
-                        <!-- Modern pulsing indicator -->
-                        <div
-                            class="flex items-center gap-2 mt-4 text-slate-500 font-medium text-xs sm:text-sm animate-pulse"
-                        >
-                            <svg
-                                class="animate-spin h-5 w-5"
-                                style="color: {primary};"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <circle
-                                    class="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    stroke-width="4"
-                                ></circle>
-                                <path
-                                    class="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                ></path>
-                            </svg>
-                            Memuat rekomendasi lebih banyak...
-                        </div>
+                                    <circle
+                                        class="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        stroke-width="4"
+                                    ></circle>
+                                    <path
+                                        class="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                </svg>
+                                <span>Memuat produk lainnya...</span>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
             </div>

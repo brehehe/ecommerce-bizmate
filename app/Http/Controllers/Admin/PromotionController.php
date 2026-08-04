@@ -14,13 +14,20 @@ class PromotionController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $query = Promotion::with([
+            'user:id,name,store_name',
             'items.product.productPrice',
             'items.product.productStock',
             'items.variant.options',
             'items.variant.productPrice',
             'items.variant.productStock',
         ])->latest();
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -42,16 +49,21 @@ class PromotionController extends Controller
 
         // Calculate metrics
         $now = now();
-        $totalPromotions = Promotion::count();
+        $metricsQuery = Promotion::query();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $metricsQuery->where('user_id', $user->id);
+        }
 
-        $activePromotions = Promotion::where('is_active', true)
+        $totalPromotions = (clone $metricsQuery)->count();
+
+        $activePromotions = (clone $metricsQuery)->where('is_active', true)
             ->where('start_time', '<=', $now)
             ->where('end_time', '>=', $now)
             ->count();
 
-        $totalVouchers = Promotion::whereIn('type', ['voucher_belanja', 'voucher_gratis_ongkir'])->count();
+        $totalVouchers = (clone $metricsQuery)->whereIn('type', ['voucher_belanja', 'voucher_gratis_ongkir'])->count();
 
-        $activeFlashSales = Promotion::where('type', 'flash_sale')
+        $activeFlashSales = (clone $metricsQuery)->where('type', 'flash_sale')
             ->where('is_active', true)
             ->where('start_time', '<=', $now)
             ->where('end_time', '>=', $now)
@@ -69,6 +81,11 @@ class PromotionController extends Controller
         ]);
     }
 
+    public function show(Promotion $promotion)
+    {
+        return redirect()->route('admin.promotions.index');
+    }
+
     public function create()
     {
         $products = $this->getProductsForSelection();
@@ -80,6 +97,8 @@ class PromotionController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:promo_produk,promo_toko,voucher_belanja,voucher_gratis_ongkir,flash_sale,bundling_gift,special_deals'],
@@ -102,8 +121,12 @@ class PromotionController extends Controller
             'items.*.promo_stock' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $user) {
             $promotionData = collect($validated)->except('items')->toArray();
+
+            if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+                $promotionData['user_id'] = $user->id;
+            }
 
             // Format datetime local input to database timestamp format
             $promotionData['start_time'] = date('Y-m-d H:i:s', strtotime($validated['start_time']));
@@ -130,6 +153,13 @@ class PromotionController extends Controller
 
     public function edit(Promotion $promotion)
     {
+        $user = auth()->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            if ($promotion->user_id && $promotion->user_id !== $user->id) {
+                abort(403, 'Anda tidak memiliki akses ke promosi ini.');
+            }
+        }
+
         $promotion->load([
             'items.product.productPrice',
             'items.product.productStock',
@@ -147,6 +177,13 @@ class PromotionController extends Controller
 
     public function update(Request $request, Promotion $promotion)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            if ($promotion->user_id && $promotion->user_id !== $user->id) {
+                abort(403, 'Anda tidak memiliki akses ke promosi ini.');
+            }
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:promo_produk,promo_toko,voucher_belanja,voucher_gratis_ongkir,flash_sale,bundling_gift,special_deals'],
@@ -199,6 +236,13 @@ class PromotionController extends Controller
 
     public function destroy(Promotion $promotion)
     {
+        $user = auth()->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            if ($promotion->user_id && $promotion->user_id !== $user->id) {
+                abort(403, 'Anda tidak memiliki akses ke promosi ini.');
+            }
+        }
+
         $promotion->delete();
 
         return redirect()->back()->with('success', 'Promosi berhasil dihapus.');
@@ -206,6 +250,13 @@ class PromotionController extends Controller
 
     public function toggleActive(Promotion $promotion)
     {
+        $user = auth()->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            if ($promotion->user_id && $promotion->user_id !== $user->id) {
+                abort(403, 'Anda tidak memiliki akses ke promosi ini.');
+            }
+        }
+
         $promotion->update(['is_active' => ! $promotion->is_active]);
 
         return redirect()->back()->with('success', 'Status promosi berhasil diubah.');
@@ -213,14 +264,21 @@ class PromotionController extends Controller
 
     private function getProductsForSelection()
     {
-        return Product::with([
+        $user = auth()->user();
+        $query = Product::with([
             'productPrice',
             'productStock',
             'category',
             'variants.options',
             'variants.productPrice',
             'variants.productStock',
-        ])->get()->map(function ($product) {
+        ]);
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query->get()->map(function ($product) {
             $stock = $product->productStock?->is_unlimited ? 9999 : intval($product->productStock?->stock ?? 0);
 
             return [

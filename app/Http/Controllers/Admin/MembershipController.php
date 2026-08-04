@@ -22,10 +22,20 @@ class MembershipController extends Controller
 {
     public function __construct(protected MembershipService $membershipService) {}
 
+    protected function authorizeAdminOnly(?Request $request = null): void
+    {
+        $req = $request ?? request();
+        $user = $req->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            abort(403, 'Akses ini khusus untuk Admin.');
+        }
+    }
+
     // ── Dashboard ────────────────────────────────────────────
 
-    public function dashboard(): Response
+    public function dashboard(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $stats = $this->membershipService->getDashboardStats();
 
         $growthData = CustomerMembership::selectRaw("to_char(joined_at, 'YYYY-MM') as month, count(*) as total")
@@ -44,6 +54,7 @@ class MembershipController extends Controller
 
     public function levels(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $levels = MembershipLevel::withCount('customerMemberships')
             ->with('activeBenefits')
             ->withTrashed()
@@ -182,6 +193,7 @@ class MembershipController extends Controller
 
     public function showMember(User $user): Response
     {
+        $this->authorizeAdminOnly();
         $membership = CustomerMembership::with(['level.activeBenefits'])
             ->where('user_id', $user->id)
             ->first();
@@ -234,6 +246,7 @@ class MembershipController extends Controller
 
     public function members(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $query = CustomerMembership::with(['user', 'level'])
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->whereHas('user', function ($uq) use ($request) {
@@ -284,6 +297,7 @@ class MembershipController extends Controller
 
     public function histories(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $query = MembershipHistory::with(['user', 'fromLevel', 'toLevel', 'processedBy'])
             ->when($request->filled('search'), function ($q) use ($request) {
                 $q->whereHas('user', function ($uq) use ($request) {

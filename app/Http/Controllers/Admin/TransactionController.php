@@ -4,15 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\DigitalProductDelivered;
+use App\Models\Category;
 use App\Models\Chat;
 use App\Models\ChatMessage;
+use App\Models\Courier;
+use App\Models\PaymentMethod;
+use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Models\User;
 use App\Services\BiteshipService;
 use App\Services\KomerceService;
+use App\Services\MidtransService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +33,223 @@ use Inertia\Inertia;
 
 class TransactionController extends Controller
 {
+    /**
+     * Show POS / Cashier Direct Transaction Creation page.
+     */
+    public function create(Request $request)
+    {
+        // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
+        KomerceService::syncPaymentMethods();
+
+        $products = Product::with([
+            'productPrice',
+            'productStock',
+            'images',
+            'variants.productPrice',
+            'variants.productStock',
+            'variants.options',
+            'category',
+        ])
+            ->where('active', true)
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $categories = Category::orderBy('name', 'asc')->get();
+
+        $customers = User::select('id', 'name', 'email', 'phone_number')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $paymentMethods = PaymentMethod::where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->get();
+
+        // Midtrans settings
+        $midtransEnabled = config('app.midtrans_enabled', true) && Setting::where('key', 'midtrans_api_enabled')->value('value') === '1';
+        $midtransEnabledMethods = $midtransEnabled ? MidtransService::getEnabledMethods() : [];
+        $midtransAdminFee = (float) (Setting::where('key', 'midtrans_admin_fee')->value('value') ?? 0);
+
+        $couriers = Courier::where('is_active', true)
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+
+        return Inertia::render('Admin/Transactions/Create', [
+            'products' => $products,
+            'categories' => $categories,
+            'customers' => $customers,
+            'paymentMethods' => $paymentMethods,
+            'midtransEnabledMethods' => $midtransEnabledMethods,
+            'midtransAdminFee' => $midtransAdminFee,
+            'couriers' => $couriers,
+            'storeName' => $storeName,
+        ]);
+    }
+
+    /**
+     * Store POS / Cashier Direct Transaction.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'user_id' => 'nullable|exists:users,id',
+            'customer_name' => 'nullable|string|max:255',
+            'customer_email' => 'nullable|email|max:255',
+            'customer_phone' => 'nullable|string|max:255',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.variant_id' => 'nullable|exists:product_variants,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'payment_method_id' => 'nullable|exists:payment_methods,id',
+            'payment_method_name' => 'nullable|string|max:255',
+            'payment_status' => 'required|string|in:paid,unpaid,pending',
+            'status' => 'nullable|string',
+            'delivery_type' => 'required|string|in:direct_cashier,pickup,courier',
+            'shipping_cost' => 'nullable|numeric|min:0',
+            'discount_amount' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        return DB::transaction(function () use ($validated, $request) {
+            $user = $request->user();
+            $targetUserId = ! empty($validated['user_id']) ? $validated['user_id'] : $user->id;
+
+            // Generate unique transaction number TRX-POS-YYYYMMDD-XXXXX
+            $datePrefix = now()->format('Ymd');
+            $randomString = strtoupper(Str::random(5));
+            $trxNumber = 'TRX-POS-'.$datePrefix.'-'.$randomString;
+
+            // Calculate item subtotal
+            $subtotal = 0;
+            $itemsData = [];
+
+            foreach ($validated['items'] as $itemInput) {
+                $product = Product::with(['productPrice', 'images', 'variants.productPrice', 'variants.options'])->findOrFail($itemInput['product_id']);
+                $unitPrice = (float) $itemInput['unit_price'];
+                $qty = (int) $itemInput['quantity'];
+                $itemSubtotal = $unitPrice * $qty;
+                $subtotal += $itemSubtotal;
+
+                $variantId = $itemInput['variant_id'] ?? null;
+                $variantName = null;
+                $sku = $product->sku ?: ('SKU-'.$product->id);
+                $productImage = $product->images->first()?->url ?? $product->images->first()?->path ?? $product->image;
+
+                if ($variantId) {
+                    $matchedVar = $product->variants->firstWhere('id', $variantId);
+                    if ($matchedVar) {
+                        $variantName = $matchedVar->options->pluck('value')->join(', ') ?: $matchedVar->sku;
+                        if (! empty($matchedVar->sku)) {
+                            $sku = $matchedVar->sku;
+                        }
+                    }
+                }
+
+                $itemsData[] = [
+                    'product_id' => $product->id,
+                    'product_variant_id' => $variantId,
+                    'product_name' => $product->name,
+                    'product_sku' => $sku,
+                    'variant_name' => $variantName,
+                    'product_image' => $productImage,
+                    'harga_jual' => $unitPrice,
+                    'harga_akhir' => $unitPrice,
+                    'diskon_item' => 0,
+                    'hpp' => 0,
+                    'quantity' => $qty,
+                    'subtotal' => $itemSubtotal,
+                ];
+            }
+
+            $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
+            $discountAmount = (float) ($validated['discount_amount'] ?? 0);
+
+            // Tax from setting if enabled
+            $taxEnabled = filter_var(Setting::where('key', 'tax_enabled')->value('value') ?? config('app.tax_enabled', false), FILTER_VALIDATE_BOOLEAN);
+            $taxPct = (float) (Setting::where('key', 'tax_percentage')->value('value') ?? 0);
+            $taxAmount = $taxEnabled ? round($subtotal * ($taxPct / 100)) : 0;
+
+            $grandTotal = max(0, $subtotal + $shippingCost + $taxAmount - $discountAmount);
+
+            // Resolve transaction & payment status
+            $requestedStatus = $validated['status'] ?? null;
+            if ($requestedStatus) {
+                $status = $requestedStatus;
+                $isPaid = in_array($status, ['selesai', 'diproses', 'dikirim']);
+            } else {
+                $isPaid = $validated['payment_status'] === 'paid';
+                $status = $isPaid ? ($validated['delivery_type'] === 'direct_cashier' ? 'selesai' : 'diproses') : 'belum_bayar';
+            }
+            $paymentStatus = $isPaid ? 'paid' : ($validated['payment_status'] ?? 'unpaid');
+
+            $transaction = Transaction::create([
+                'user_id' => $targetUserId,
+                'transaction_number' => $trxNumber,
+                'status' => $status,
+                'payment_status' => $paymentStatus,
+                'payment_method_id' => $validated['payment_method_id'] ?? null,
+                'subtotal' => $subtotal,
+                'shipping_cost' => $shippingCost,
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
+                'grand_total' => $grandTotal,
+                'notes' => $validated['notes'] ?? 'Transaksi Kasir POS',
+                'customer_name' => $validated['customer_name'] ?? null,
+                'customer_email' => $validated['customer_email'] ?? null,
+                'customer_phone' => $validated['customer_phone'] ?? null,
+            ]);
+
+            // Save items & deduct stock
+            foreach ($itemsData as $item) {
+                TransactionItem::create([
+                    'transaction_id' => $transaction->id,
+                    'product_id' => $item['product_id'],
+                    'product_variant_id' => $item['product_variant_id'],
+                    'product_name' => $item['product_name'],
+                    'product_sku' => $item['product_sku'],
+                    'variant_name' => $item['variant_name'],
+                    'product_image' => $item['product_image'],
+                    'harga_jual' => $item['harga_jual'],
+                    'harga_akhir' => $item['harga_akhir'],
+                    'diskon_item' => $item['diskon_item'],
+                    'hpp' => $item['hpp'],
+                    'quantity' => $item['quantity'],
+                    'subtotal' => $item['subtotal'],
+                ]);
+
+                // Deduct Product Stock
+                if ($item['product_variant_id']) {
+                    $stockRecord = ProductStock::where('product_variant_id', $item['product_variant_id'])->first();
+                } else {
+                    $stockRecord = ProductStock::where('product_id', $item['product_id'])->whereNull('product_variant_id')->first();
+                }
+
+                if ($stockRecord) {
+                    $prevQty = (int) ($stockRecord->stock ?? 0);
+                    $newQty = max(0, $prevQty - $item['quantity']);
+                    $stockRecord->update(['stock' => $newQty]);
+
+                    StockMovement::create([
+                        'product_id' => $item['product_id'],
+                        'product_variant_id' => $item['product_variant_id'],
+                        'transaction_id' => $transaction->id,
+                        'type' => 'keluar',
+                        'quantity' => -$item['quantity'],
+                        'stock_before' => $prevQty,
+                        'stock_after' => $newQty,
+                        'notes' => 'Penjualan POS - '.$trxNumber,
+                        'created_by' => $user->id,
+                    ]);
+                }
+            }
+
+            return redirect()->route('admin.transactions.show', $transaction->id)
+                ->with('success', 'Transaksi Kasir POS #'.$trxNumber.' berhasil dibuat!');
+        });
+    }
+
     /**
      * Display list of all transactions.
      */
@@ -55,6 +278,17 @@ class TransactionController extends Controller
                 'payment_methods.type as payment_method_type',
             ])
             ->orderBy('transactions.created_at', 'desc');
+
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+        if ($isSeller) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $query->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')
+                    ->from('transaction_items')
+                    ->whereIn('product_id', $sellerProductIds);
+            });
+        }
 
         // Filter by status
         if ($request->filled('status')) {
@@ -89,10 +323,10 @@ class TransactionController extends Controller
         $page = max(1, $cleanPage);
         $perPage = 10;
 
-        $getTransactions = function () use ($request, $query, $page, $perPage) {
+        $getTransactions = function () use ($request, $query, $page, $perPage, $isSeller) {
             $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
 
-            if (! $isFiltered && ! app()->runningUnitTests()) {
+            if (! $isFiltered && ! $isSeller && ! app()->runningUnitTests()) {
                 $total = Cache::remember('transactions_total_count', 120, fn () => DB::table('transactions')->count());
             } else {
                 $total = (clone $query)->count();
@@ -199,6 +433,15 @@ class TransactionController extends Controller
      */
     public function show(Transaction $transaction)
     {
+        $user = auth()->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $hasProduct = $transaction->items()->whereIn('product_id', $sellerProductIds)->exists();
+            if (! $hasProduct) {
+                abort(403, 'Anda tidak memiliki akses ke transaksi ini.');
+            }
+        }
+
         $transaction->load([
             'user:id,name,email',
             'customerAddress',
@@ -213,13 +456,82 @@ class TransactionController extends Controller
         $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
             ->pluck('value', 'key');
 
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('name', 'asc')->get();
+        $midtransEnabledMethods = MidtransService::getEnabledMethods();
+
         return Inertia::render('Admin/Transactions/Show', [
             'transaction' => $transaction,
             'statusLabels' => Transaction::statusLabels(),
             'storeName' => $settings->get('store_name') ?? config('app.name'),
             'storeLogo' => $settings->get('store_logo'),
             'biteshipEnabled' => BiteshipService::isEnabled(),
+            'paymentMethods' => $paymentMethods,
+            'midtransEnabledMethods' => $midtransEnabledMethods,
         ]);
+    }
+
+    /**
+     * Change payment method for a transaction (Admin & Staff).
+     */
+    public function changePaymentMethod(Request $request, Transaction $transaction): RedirectResponse
+    {
+        $validated = $request->validate([
+            'payment_method_id' => 'required|exists:payment_methods,id',
+            'midtrans_payment_type_key' => 'nullable|string',
+        ]);
+
+        $paymentMethod = PaymentMethod::findOrFail($validated['payment_method_id']);
+        $midtransKey = $validated['midtrans_payment_type_key'] ?? null;
+
+        $notes = $transaction->notes ?? '';
+        if ($midtransKey) {
+            $channelLabel = strtoupper(str_replace('_', ' ', $midtransKey));
+            $notes = preg_replace('/\[(?:Channel|Midtrans Channel):\s*[^\]]+\]\s*/i', '', $notes);
+            $notes = "[Channel: {$channelLabel}] ".trim($notes);
+        }
+
+        $transaction->update([
+            'payment_method_id' => $paymentMethod->id,
+            'notes' => $notes,
+        ]);
+
+        // If Midtrans method chosen and midtransKey present, trigger charge
+        if ($midtransKey && str_contains(strtolower($paymentMethod->name), 'midtrans')) {
+            $user = $transaction->user ?? $request->user();
+            $result = MidtransService::charge(
+                ($transaction->transaction_number ?? $transaction->id).'-'.time(),
+                (int) $transaction->grand_total,
+                $midtransKey,
+                [
+                    'name' => $transaction->customer_name ?? $user->name,
+                    'email' => $transaction->customer_email ?? $user->email,
+                    'phone' => $transaction->customer_phone ?? '',
+                ]
+            );
+
+            if ($result['success']) {
+                $instructions = $result['data'];
+                $latestPayment = $transaction->payments()->latest()->first();
+                $gatewayResponse = ['_payment_instructions' => $instructions];
+                if ($latestPayment) {
+                    $latestPayment->update([
+                        'gateway_response' => json_encode($gatewayResponse),
+                        'gateway_transaction_id' => $result['raw']['transaction_id'] ?? null,
+                    ]);
+                } else {
+                    $transaction->payments()->create([
+                        'user_id' => $user->id,
+                        'payment_method_id' => $paymentMethod->id,
+                        'amount' => $transaction->grand_total,
+                        'status' => 'pending',
+                        'gateway_response' => json_encode($gatewayResponse),
+                        'gateway_transaction_id' => $result['raw']['transaction_id'] ?? null,
+                    ]);
+                }
+            }
+        }
+
+        return back()->with('success', 'Metode pembayaran transaksi berhasil diperbarui.');
     }
 
     /**
@@ -600,12 +912,18 @@ class TransactionController extends Controller
      */
     public function stockMovements(Request $request)
     {
+        $user = $request->user();
         $query = StockMovement::with([
             'product:id,name,sku',
             'productVariant:id,sku',
             'transaction:id,transaction_number',
             'createdByUser:id,name',
         ])->latest();
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $query->whereIn('product_id', $sellerProductIds);
+        }
 
         // Filter by type
         if ($request->filled('type')) {

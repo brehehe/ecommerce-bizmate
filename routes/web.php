@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'showCustomerProfile'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'updateCustomerProfile'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updateCustomerPassword'])->name('profile.password.update');
+    Route::post('/profile/become-seller', [ProfileController::class, 'becomeSeller'])->name('profile.become-seller');
     Route::get('/profile/coin-history', [ProfileController::class, 'coinHistory'])->name('profile.coin-history');
 
     // Customer Bank Accounts (Keep open as part of profile)
@@ -198,6 +199,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::put('/profile', [ProfileController::class, 'updateAdminProfile'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updateAdminPassword'])->name('profile.password.update');
 
+    // Seller Store Profile
+    Route::get('/seller/profile', [ProfileController::class, 'showSellerProfile'])->name('seller.profile.edit');
+    Route::put('/seller/profile', [ProfileController::class, 'updateSellerProfile'])->name('seller.profile.update');
+    Route::get('/seller/addresses', [CustomerAddressController::class, 'adminIndex'])->name('seller.addresses.index');
+    Route::post('/seller/addresses', [CustomerAddressController::class, 'store'])->name('seller.addresses.store');
+    Route::put('/seller/addresses/{address}', [CustomerAddressController::class, 'update'])->name('seller.addresses.update');
+    Route::delete('/seller/addresses/{address}', [CustomerAddressController::class, 'destroy'])->name('seller.addresses.destroy');
+    Route::post('/seller/addresses/{address}/make-primary', [CustomerAddressController::class, 'makePrimary'])->name('seller.addresses.make-primary');
+
     // CMS Banners
     Route::get('/cms/banners', [CmsController::class, 'banners'])->name('cms.banners');
     Route::post('/cms/banners', [CmsController::class, 'updateBanners'])->name('cms.banners.update');
@@ -205,7 +215,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Categories
     Route::post('/categories/bulk-delete', [CategoryController::class, 'bulkDelete'])->name('categories.bulk-delete');
     Route::post('/categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
-    Route::apiResource('categories', CategoryController::class)->except(['show']);
+    Route::apiResource('categories', CategoryController::class);
 
     // Products
     Route::get('/products/search-web-images', [ProductImageSearchController::class, 'search'])->name('products.search-web-images');
@@ -216,7 +226,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulk-delete');
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
     Route::post('/products/reorder', [ProductController::class, 'reorder'])->name('products.reorder');
-    Route::resource('products', ProductController::class)->except(['show']);
+    Route::resource('products', ProductController::class);
 
     // AI Features
     Route::post('/ai/generate-description', [AiProductDescriptionController::class, 'generate'])->name('ai.generate-description');
@@ -224,7 +234,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // Promotions
     Route::post('/promotions/{promotion}/toggle-active', [PromotionController::class, 'toggleActive'])->name('promotions.toggle-active');
-    Route::resource('promotions', PromotionController::class)->except(['show']);
+    Route::resource('promotions', PromotionController::class);
 
     // Store Management (Bulk Edits)
     Route::get('/store/prices', [ProductController::class, 'managePrices'])->name('store.prices');
@@ -315,11 +325,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
 
     // Transactions (Admin)
     Route::get('/transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
+    Route::get('/transactions/create', [AdminTransactionController::class, 'create'])->name('transactions.create');
+    Route::post('/transactions', [AdminTransactionController::class, 'store'])->name('transactions.store');
     Route::get('/transactions/find-by-number/{number}', [AdminTransactionController::class, 'findByNumber'])->name('transactions.find-by-number');
     Route::get('/transactions/{transaction}', [AdminTransactionController::class, 'show'])->name('transactions.show');
     Route::post('/transactions/{transaction}/status', [AdminTransactionController::class, 'updateStatus'])->name('transactions.update-status');
     Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
     Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
+    Route::post('/transactions/{transaction}/change-payment-method', [AdminTransactionController::class, 'changePaymentMethod'])->name('transactions.change-payment-method');
     Route::post('/transactions/{transaction}/tracking', [AdminTransactionController::class, 'updateTracking'])->name('transactions.update-tracking');
     Route::post('/transactions/{transaction}/items/{item}/note', [AdminTransactionController::class, 'updateItemNote'])->name('transactions.items.update-note');
     Route::post('/transactions/{transaction}/delivery-history', [AdminTransactionController::class, 'addDeliveryHistory'])->name('transactions.add-delivery-history');
@@ -398,3 +411,8 @@ Route::prefix('kurir')->name('kurir.')->group(function () {
 });
 
 Route::redirect('/kurir', '/kurir/dashboard');
+
+// Seller store public page — must be last to avoid conflicting with other routes
+Route::get('/{slug}', [StorefrontController::class, 'sellerStore'])
+    ->where('slug', '[a-z0-9\-]+')
+    ->name('seller.store');

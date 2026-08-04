@@ -13,6 +13,9 @@
     let isCmsOpen = $state(false);
     let sidebarContainer = $state<HTMLElement | null>(null);
     const user = $derived(page.props.auth?.user);
+    const isSeller = $derived(
+        user?.is_seller && !user?.roles?.some((r: any) => r.name === 'Super Admin' || r.name === 'Admin')
+    );
     const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
     const isLogisticEnabled = $derived(((page.props as any).app_config?.logistic_enabled ?? (page.props as any).settings?.logistic_enabled) ?? true);
 
@@ -391,7 +394,21 @@
 
         <div class="my-3 h-px bg-slate-100"></div>
 
-        <!-- Section: Sistem -->
+        <!-- Section: Profil Toko (Seller Only) -->
+        {#if isSeller}
+            <p
+                class="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            >
+                Profil Toko
+            </p>
+
+            {@render NavItem('/admin/profile', 'ti-user-circle', 'Profil Saya')}
+            {@render NavItem('/admin/seller/profile', 'ti-building-store', 'Info Toko & Alamat')}
+
+            <div class="my-3 h-px bg-slate-100"></div>
+        {/if}
+
+
         <p
             class="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
         >
@@ -429,15 +446,17 @@
                     class="ml-6 mt-0.5 space-y-0.5 border-l border-slate-100 pl-3"
                     transition:slide={{ duration: 150 }}
                 >
-                    {@render SubNavItem('/admin/master-data/admins', 'Admin')}
-                    {@render SubNavItem(
-                        '/admin/master-data/roles',
-                        'Roles & Akses',
-                    )}
-                    {@render SubNavItem(
-                        '/admin/master-data/customers',
-                        'Pelanggan',
-                    )}
+                    {#if !isSeller}
+                        {@render SubNavItem('/admin/master-data/admins', 'Admin')}
+                        {@render SubNavItem(
+                            '/admin/master-data/roles',
+                            'Roles & Akses',
+                        )}
+                        {@render SubNavItem(
+                            '/admin/master-data/customers',
+                            'Pelanggan',
+                        )}
+                    {/if}
                     {@render SubNavItem('/admin/master-data/couriers', 'Kurir')}
                     {#if isLogisticEnabled}
                         {@render SubNavItem(
@@ -449,15 +468,17 @@
                         '/admin/master-data/payment-methods',
                         'Metode Bayar',
                     )}
-                    {@render SubNavItem(
-                        '/admin/master-data/social-media',
-                        'Media Sosial',
-                    )}
+                    {#if !isSeller}
+                        {@render SubNavItem(
+                            '/admin/master-data/social-media',
+                            'Media Sosial',
+                        )}
+                    {/if}
                     {@render SubNavItem(
                         '/admin/master-data/stickers',
                         'Stiker Chat',
                     )}
-                    {#if isMembershipEnabled}
+                    {#if isMembershipEnabled && !isSeller}
                         {@render SubNavItem(
                             '/admin/master-data/loyalty-poin',
                             'Loyalty Poin',
@@ -471,54 +492,61 @@
             {/if}
         </div>
 
-        <!-- CMS dropdown -->
-        <div class="mb-0.5">
-            <button
-                type="button"
-                onclick={() => (isCmsOpen = !isCmsOpen)}
-                class="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm transition-colors
-                    {isCmsOpen || isActive('/admin/cms')
-                    ? 'font-semibold text-slate-900'
-                    : 'font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
-            >
-                <i
-                    class="ti ti-layout-cards w-4 text-center text-base
-                    {isCmsOpen || isActive('/admin/cms')
-                        ? ''
-                        : 'text-slate-400'}"
-                    style={isCmsOpen || isActive('/admin/cms')
-                        ? `color: ${primaryColor}`
-                        : ''}
-                ></i>
-                <span class="flex-1 text-left">Konten (CMS)</span>
-                <i
-                    class="ti ti-chevron-right text-xs text-slate-400 transition-transform duration-200
-                    {isCmsOpen ? 'rotate-90' : ''}"
-                ></i>
-            </button>
-
-            {#if isCmsOpen}
-                <div
-                    class="ml-6 mt-0.5 space-y-0.5 border-l border-slate-100 pl-3"
-                    transition:slide={{ duration: 150 }}
+        <!-- CMS dropdown (Admin Only) -->
+        {#if !isSeller}
+            <div class="mb-0.5">
+                <button
+                    type="button"
+                    onclick={() => (isCmsOpen = !isCmsOpen)}
+                    class="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm transition-colors
+                        {isCmsOpen || isActive('/admin/cms')
+                        ? 'font-semibold text-slate-900'
+                        : 'font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
                 >
-                    {@render SubNavItem(
-                        '/admin/cms/banners',
-                        'Banner & Slider',
-                    )}
-                </div>
-            {/if}
-        </div>
+                    <i
+                        class="ti ti-layout-cards w-4 text-center text-base
+                        {isCmsOpen || isActive('/admin/cms')
+                            ? ''
+                            : 'text-slate-400'}"
+                        style={isCmsOpen || isActive('/admin/cms')
+                            ? `color: ${primaryColor}`
+                            : ''}
+                    ></i>
+                    <span class="flex-1 text-left">Konten (CMS)</span>
+                    <i
+                        class="ti ti-chevron-right text-xs text-slate-400 transition-transform duration-200
+                        {isCmsOpen ? 'rotate-90' : ''}"
+                    ></i>
+                </button>
 
-        {@render NavItem('/admin/settings', 'ti-settings-2', 'Pengaturan')}
-        {@render NavItem(
-            '/zozzuehmqewbobfo',
-            'ti-adjustments-horizontal',
-            'Konfigurasi App',
-        )}
+                {#if isCmsOpen}
+                    <div
+                        class="ml-6 mt-0.5 space-y-0.5 border-l border-slate-100 pl-3"
+                        transition:slide={{ duration: 150 }}
+                    >
+                        {@render SubNavItem(
+                            '/admin/cms/banners',
+                            'Banner & Slider',
+                        )}
+                    </div>
+                {/if}
+            </div>
+        {/if}
 
-        <!-- Membership -->
-        {#if isMembershipEnabled}
+        {#if !isSeller}
+            {@render NavItem('/admin/settings', 'ti-settings-2', 'Pengaturan')}
+        {/if}
+
+        {#if !isSeller}
+            {@render NavItem(
+                '/zozzuehmqewbobfo',
+                'ti-adjustments-horizontal',
+                'Konfigurasi App',
+            )}
+        {/if}
+
+        <!-- Membership (Admin Only) -->
+        {#if isMembershipEnabled && !isSeller}
             {@render NavItem('/admin/membership/dashboard', 'ti-award', 'Membership')}
         {/if}
 

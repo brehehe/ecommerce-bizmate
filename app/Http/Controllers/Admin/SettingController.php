@@ -8,12 +8,25 @@ use App\Models\Courier;
 use App\Models\Setting;
 use App\Services\KomerceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class SettingController extends Controller
 {
-    public function edit()
+    protected function authorizeAdminOnly(Request $request): void
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            abort(403, 'Akses ini khusus untuk Admin.');
+        }
+    }
+
+    public function edit(Request $request)
+    {
+        $this->authorizeAdminOnly($request);
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
         // Get all settings and format as key => value pair
         $settings = Setting::pluck('value', 'key')->toArray();
 
@@ -36,6 +49,19 @@ class SettingController extends Controller
         $settings['logistic_enabled'] = (bool) config('app.logistic_enabled', true);
         $settings['enable_3d_models'] = (bool) config('app.enable_3d_models', true);
 
+        if ($isSeller) {
+            $settings['store_name'] = $user->store_name ?: $user->name;
+            $settings['store_description'] = $user->store_description ?? '';
+            $settings['store_phone'] = $user->phone_number ?? '';
+            $settings['store_email'] = $user->email ?? '';
+            if ($user->store_logo) {
+                $settings['store_logo'] = str_starts_with($user->store_logo, '/storage/') ? $user->store_logo : '/storage/'.$user->store_logo;
+            } elseif ($user->avatar) {
+                $settings['store_logo'] = str_starts_with($user->avatar, '/storage/') ? $user->avatar : '/storage/'.$user->avatar;
+            }
+            $settings['is_seller_settings'] = true;
+        }
+
         $envKeys = [
             'rajaongkir_url' => (bool) config('app.rajaongkir.has_url_env', false),
             'rajaongkir_shipping_cost' => (bool) config('app.rajaongkir.has_shipping_cost_env', false),
@@ -52,15 +78,43 @@ class SettingController extends Controller
             'settings' => $settings,
             'env_keys' => $envKeys,
             'couriers' => $couriers,
+            'isSeller' => $isSeller,
         ]);
     }
 
     public function update(Request $request)
     {
+        $this->authorizeAdminOnly($request);
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
         $request->validate([
             'store_logo' => 'nullable|image|max:2048',
             'store_icon' => 'nullable|image|max:2048',
         ]);
+
+        if ($isSeller) {
+            if ($request->hasFile('store_logo')) {
+                $path = ImageHelper::compressAndStore($request->file('store_logo'), 'logos', 'public');
+                $user->store_logo = '/storage/'.$path;
+            }
+            if ($request->filled('store_name')) {
+                $user->store_name = $request->input('store_name');
+                $user->store_slug = Str::slug($request->input('store_name')).'-'.substr($user->id, 0, 5);
+            }
+            if ($request->has('store_description')) {
+                $user->store_description = $request->input('store_description');
+            }
+            if ($request->filled('store_phone')) {
+                $user->phone_number = $request->input('store_phone');
+            }
+            if ($request->filled('store_email')) {
+                $user->email = $request->input('store_email');
+            }
+            $user->save();
+
+            return redirect()->back()->with('success', 'Pengaturan toko Anda berhasil disimpan.');
+        }
 
         $data = $request->except(['_token', 'store_logo', 'store_icon']);
 

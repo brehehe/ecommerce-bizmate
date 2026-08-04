@@ -12,11 +12,20 @@ use Inertia\Response;
 
 class CmsController extends Controller
 {
+    protected function authorizeAdminOnly(Request $request): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            abort(403, 'Akses ini khusus untuk Admin.');
+        }
+    }
+
     /**
      * Display the CMS Banner management page with existing banner data.
      */
-    public function banners(): Response
+    public function banners(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $heroBannersJson = Setting::where('key', 'hero_banners')->value('value');
         $heroBanners = $heroBannersJson ? json_decode($heroBannersJson, true) : [];
 
@@ -43,6 +52,7 @@ class CmsController extends Controller
      */
     public function updateBanners(Request $request): RedirectResponse
     {
+        $this->authorizeAdminOnly($request);
         $request->validate([
             'hero_files.*' => 'nullable|image|max:10240',
             'side_files.*' => 'nullable|image|max:10240',

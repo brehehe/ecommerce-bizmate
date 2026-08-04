@@ -150,6 +150,7 @@
         tax_rate: p.tax_rate || '',
         active: !!p.active,
         is_digital: !!p.is_digital,
+        condition: p.condition || 'new',
         is_exclusive: !!p.is_exclusive,
         exclusive_min_level_order: p.exclusive_min_level_order ?? 0,
         is_early_access: !!p.is_early_access,
@@ -4151,6 +4152,45 @@
                             error={form.errors.sku}
                         />
                     </div>
+
+                    <!-- Kondisi Produk -->
+                    <div class="mb-6 space-y-2">
+                        <label class="block text-xs font-semibold text-slate-700">Kondisi Produk</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onclick={() => (form.condition = 'new')}
+                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'new'
+                                    ? 'bg-emerald-50/80 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                            >
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'new' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                    <i class="ti ti-sparkles text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">Baru</p>
+                                    <p class="text-[10px] text-slate-500 leading-tight">100% Baru & Tersegel</p>
+                                </div>
+                            </button>
+
+                            <button
+                                type="button"
+                                onclick={() => (form.condition = 'used')}
+                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'used'
+                                    ? 'bg-amber-50/80 border-amber-500 text-amber-900 ring-2 ring-amber-500/20 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                            >
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                    <i class="ti ti-refresh text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold {form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Bekas / Second</p>
+                                    <p class="text-[10px] text-slate-500 leading-tight">Pernah Digunakan</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
                     <div
                         class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl"
                     >
@@ -4668,7 +4708,7 @@
                                 Spesifikasi Produk
                             </h3>
                             <p
-                                class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                                class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
                             >
                                 Tambahkan detail spesifikasi produk (misal:
                                 Bahan, Warna, Garansi)
@@ -4677,7 +4717,7 @@
                         <button
                             type="button"
                             onclick={addSpecification}
-                            class="px-3.5 py-2 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-bold rounded-xl flex items-center gap-1.5 transition duration-200 font-outfit uppercase tracking-wider"
+                            class="px-3 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer shrink-0"
                         >
                             <i class="ti ti-plus text-xs"></i> Tambah Spesifikasi
                         </button>
@@ -4698,7 +4738,7 @@
                             <button
                                 type="button"
                                 onclick={addSpecification}
-                                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black rounded-lg uppercase tracking-wider transition mt-3 font-outfit"
+                                class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition mt-3 cursor-pointer"
                             >
                                 Tambah Pertama
                             </button>
@@ -4748,7 +4788,7 @@
                     class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
                 >
                     <div
-                        class="flex items-center justify-between mb-4 border-b border-slate-150 pb-3"
+                        class="flex items-center justify-between mb-4 border-b border-slate-150 pb-3 gap-2"
                     >
                         <div>
                             <h3
@@ -4757,7 +4797,7 @@
                                 Panduan Ukuran & Kalkulator Rekomendasi
                             </h3>
                             <p
-                                class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                                class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
                             >
                                 Aktifkan untuk menampilkan tabel panduan ukuran
                                 pakaian dan kalkulator rekomendasi tinggi/berat
@@ -4983,7 +5023,7 @@
                             Interaktif {#if enable3dModels}(Video & 3D AR){:else}(Video){/if}
                         </h3>
                         <p
-                            class="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1"
+                            class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
                         >
                             {#if enable3dModels}
                                 Tambahkan video demonstrasi dan model 3D (format
@@ -5000,7 +5040,7 @@
                             class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
                         >
                             <h4
-                                class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"
+                                class="text-xs font-semibold text-slate-700 mb-3 flex items-center gap-1.5"
                             >
                                 <i class="ti ti-movie text-base text-slate-400"
                                 ></i> Video Produk
@@ -5051,17 +5091,16 @@
                                         />
                                         <button
                                             type="button"
-                                            class="px-3.5 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
+                                            class="px-3 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-semibold rounded-lg transition"
                                             >Pilih File</button
                                         >
                                     {/if}
                                 </div>
                                 <!-- Video URL -->
                                 <div class="flex flex-col justify-center">
-                                    <label
-                                        for="video_url"
-                                        class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
-                                        >Atau Masukkan URL / Path Video</label
+                                    <p
+                                        class="block text-xs font-medium text-slate-600 mb-1.5"
+                                        >Atau Masukkan URL / Path Video</p
                                     >
                                     <Input
                                         id="video_url"
@@ -5274,18 +5313,26 @@
                     class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
                 >
                     <div
-                        class="flex items-center justify-between mb-4 border-b border-slate-150 pb-3"
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-slate-150 pb-3"
                     >
-                        <h3
-                            class="text-base font-semibold text-slate-900"
-                        >
-                            Variasi Produk
-                        </h3>
-                        <Toggle
-                            bind:checked={enableVariants}
-                            label="Gunakan Variasi"
-                            description="Warna, Ukuran, dll"
-                        />
+                        <div>
+                            <h3
+                                class="text-base font-semibold text-slate-900"
+                            >
+                                Variasi Produk
+                            </h3>
+                            <p
+                                class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
+                            >
+                                Aktifkan jika produk memiliki pilihan warna, ukuran, atau variasi lainnya.
+                            </p>
+                        </div>
+                        <div class="self-start sm:self-center shrink-0">
+                            <Toggle
+                                bind:checked={enableVariants}
+                                label="Gunakan Variasi"
+                            />
+                        </div>
                     </div>
 
                     {#if enableVariants}
@@ -6135,25 +6182,25 @@
                     {/if}
                 </div>
 
-                <div class="flex justify-end gap-3">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-4 border-t border-slate-200">
                     <button
                         type="button"
                         disabled={form.processing}
                         onclick={submitAndCreate}
-                        class="px-6 py-3.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition flex items-center gap-2"
+                        class="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-250 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                     >
                         <i class="ti ti-circle-plus text-base"></i>
-                        {form.processing
+                        <span>{form.processing
                             ? 'Menyimpan...'
-                            : 'Simpan & Tambah Baru'}
+                            : 'Simpan & Tambah Baru'}</span>
                     </button>
                     <button
                         type="submit"
                         disabled={form.processing}
-                        class="px-8 py-3.5 bg-brand-blueRoyal text-white font-bold rounded-xl shadow-lg hover:bg-blue-800 transition flex items-center gap-2"
+                        class="w-full sm:w-auto px-7 py-2.5 bg-brand-blueRoyal text-white text-sm font-semibold rounded-xl shadow-md hover:bg-blue-800 transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                         <i class="ti ti-device-floppy text-base"></i>
-                        {form.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        <span>{form.processing ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
                     </button>
                 </div>
             </form>

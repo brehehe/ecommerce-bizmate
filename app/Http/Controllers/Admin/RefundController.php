@@ -29,6 +29,9 @@ class RefundController extends Controller
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
 
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
         $query = DB::table('refund_requests')
             ->leftJoin('users', 'refund_requests.user_id', '=', 'users.id')
             ->leftJoin('transactions', 'refund_requests.transaction_id', '=', 'transactions.id')
@@ -37,7 +40,7 @@ class RefundController extends Controller
                 'refund_requests.refund_number',
                 'refund_requests.user_id',
                 'refund_requests.transaction_id',
-                'refund_requests.amount',
+                'refund_requests.refund_amount',
                 'refund_requests.refund_method',
                 'refund_requests.status',
                 'refund_requests.reason',
@@ -49,6 +52,12 @@ class RefundController extends Controller
                 'transactions.status as transaction_status',
             ])
             ->orderBy('refund_requests.created_at', 'desc');
+
+        if ($isSeller) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $sellerTransactionIds = DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id');
+            $query->whereIn('refund_requests.transaction_id', $sellerTransactionIds);
+        }
 
         if ($request->filled('status')) {
             $query->where('refund_requests.status', $request->status);
@@ -77,10 +86,10 @@ class RefundController extends Controller
         $page = max(1, $cleanPage);
         $perPage = 20;
 
-        $getRefunds = function () use ($request, $query, $page, $perPage) {
+        $getRefunds = function () use ($request, $query, $page, $perPage, $isSeller) {
             $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
 
-            if (! $isFiltered && ! app()->runningUnitTests()) {
+            if (! $isFiltered && ! $isSeller && ! app()->runningUnitTests()) {
                 $total = Cache::remember('refunds_total_count', 120, fn () => DB::table('refund_requests')->count());
             } else {
                 $total = (clone $query)->count();
@@ -135,8 +144,10 @@ class RefundController extends Controller
     /**
      * Show a specific cancellation and refund request.
      */
-    public function show(RefundRequest $refund): InertiaResponse
+    public function show(Request $request, RefundRequest $refund): InertiaResponse
     {
+        $this->authorizeSellerRefund($request, $refund);
+
         $refund->load([
             'user:id,name,email',
             'user.customerBankAccounts',
@@ -160,6 +171,7 @@ class RefundController extends Controller
      */
     public function approve(Request $request, RefundRequest $refund): RedirectResponse
     {
+        $this->authorizeSellerRefund($request, $refund);
         if ($refund->status !== 'menunggu_konfirmasi') {
             return back()->with('error', 'Pengajuan ini tidak dapat disetujui pada status saat ini.');
         }
@@ -247,6 +259,8 @@ class RefundController extends Controller
      */
     public function reject(Request $request, RefundRequest $refund): RedirectResponse
     {
+        $this->authorizeSellerRefund($request, $refund);
+
         if ($refund->status !== 'menunggu_konfirmasi') {
             return back()->with('error', 'Pengajuan ini tidak dapat ditolak pada status saat ini.');
         }
@@ -282,6 +296,7 @@ class RefundController extends Controller
      */
     public function completeRefund(Request $request, RefundRequest $refund): RedirectResponse
     {
+        $this->authorizeSellerRefund($request, $refund);
         if ($refund->status !== 'disetujui' || $refund->refund_method !== 'transfer') {
             return back()->with('error', 'Status pengajuan tidak valid untuk diselesaikan.');
         }
@@ -490,6 +505,25 @@ class RefundController extends Controller
                     'notes' => 'Pembatalan transaksi - '.$transaction->transaction_number,
                     'created_by' => $adminUser->id,
                 ]);
+            }
+        }
+    }
+
+    /**
+     * Authorize seller access to refund request.
+     */
+    private function authorizeSellerRefund(Request $request, RefundRequest $refund): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $hasProduct = DB::table('transaction_items')
+                ->where('transaction_id', $refund->transaction_id)
+                ->whereIn('product_id', $sellerProductIds)
+                ->exists();
+
+            if (! $hasProduct) {
+                abort(403, 'Anda tidak memiliki akses ke pengajuan refund ini.');
             }
         }
     }

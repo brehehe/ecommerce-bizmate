@@ -28,6 +28,10 @@ class ProductController extends Controller
 
         $query = Product::query();
 
+        if ($request->user() && $request->user()->is_seller && ! $request->user()->hasAnyRole(['Super Admin', 'Admin'])) {
+            $query->where('user_id', $request->user()->id);
+        }
+
         $sort = $request->get('sort', 'order-asc');
         switch ($sort) {
             case 'order-asc':
@@ -278,6 +282,7 @@ class ProductController extends Controller
             'early_access_until' => 'nullable|date',
             'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
+            'condition' => 'nullable|string|in:new,used',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
@@ -370,6 +375,8 @@ class ProductController extends Controller
             'model_3d_usdz_url',
             'model_3d_usdz_file',
         ]);
+
+        $productData['user_id'] = $request->user()?->id;
 
         $product = Product::create($productData);
 
@@ -523,8 +530,15 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
 
-    public function edit(Product $product)
+    public function show(Product $product)
     {
+        return redirect()->route('products.edit', $product);
+    }
+
+    public function edit(Request $request, Product $product)
+    {
+        $this->authorizeSellerProduct($request, $product);
+
         $categories = Category::select('id', 'name')->get();
         $brands = Brand::orderBy('name')->get();
         $product->load([
@@ -551,6 +565,8 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        $this->authorizeSellerProduct($request, $product);
+
         Log::info('Product update request payload', $request->all());
 
         if ($request->has('category_id') && ! $request->has('category_ids')) {
@@ -581,6 +597,7 @@ class ProductController extends Controller
             'early_access_until' => 'nullable|date',
             'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
+            'condition' => 'nullable|string|in:new,used',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
@@ -1002,8 +1019,10 @@ class ProductController extends Controller
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil diperbarui.');
     }
 
-    public function destroy(Product $product)
+    public function destroy(Request $request, Product $product)
     {
+        $this->authorizeSellerProduct($request, $product);
+
         $product->delete();
 
         return redirect()->back()->with('success', 'Produk berhasil dihapus.');
@@ -1017,6 +1036,10 @@ class ProductController extends Controller
         ]);
 
         $ids = $request->input('ids');
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $ids = Product::whereIn('id', $ids)->where('user_id', $user->id)->pluck('id')->all();
+        }
 
         \DB::transaction(function () use ($ids) {
             foreach ($ids as $id) {
@@ -1030,8 +1053,10 @@ class ProductController extends Controller
         return redirect()->back()->with('success', 'Produk terpilih berhasil dihapus.');
     }
 
-    public function toggleActive(Product $product)
+    public function toggleActive(Request $request, Product $product)
     {
+        $this->authorizeSellerProduct($request, $product);
+
         $product->update(['active' => ! $product->active]);
 
         return redirect()->back()->with('success', 'Product status updated.');
@@ -1040,6 +1065,8 @@ class ProductController extends Controller
     public function managePrices(Request $request)
     {
         $search = $request->input('search');
+        $user = $request->user();
+
         $query = Product::with([
             'category',
             'productPrice',
@@ -1048,6 +1075,10 @@ class ProductController extends Controller
             'variants.productPrice',
             'variants.tierPrices',
         ])->latest();
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($search) {
             $query->where('name', 'ilike', "%{$search}%");
@@ -1081,9 +1112,14 @@ class ProductController extends Controller
             'products.*.variants.*.tier_prices.*.price' => 'required|numeric|min:0',
         ]);
 
-        \DB::transaction(function () use ($request) {
+        $user = $request->user();
+        \DB::transaction(function () use ($request, $user) {
             foreach ($request->input('products') as $pData) {
-                $product = Product::findOrFail($pData['id']);
+                $pQuery = Product::query();
+                if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+                    $pQuery->where('user_id', $user->id);
+                }
+                $product = $pQuery->findOrFail($pData['id']);
                 $product->update([
                     'tax_enabled' => ! empty($pData['tax_enabled']),
                 ]);
@@ -1147,12 +1183,18 @@ class ProductController extends Controller
     public function manageStocks(Request $request)
     {
         $search = $request->input('search');
+        $user = $request->user();
+
         $query = Product::with([
             'category',
             'productStock',
             'variants.options',
             'variants.productStock',
         ])->latest();
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($search) {
             $query->where('name', 'ilike', "%{$search}%");
@@ -1178,9 +1220,14 @@ class ProductController extends Controller
             'products.*.variants' => 'nullable|array',
         ]);
 
-        \DB::transaction(function () use ($request) {
+        $user = $request->user();
+        \DB::transaction(function () use ($request, $user) {
             foreach ($request->input('products') as $pData) {
-                $product = Product::findOrFail($pData['id']);
+                $pQuery = Product::query();
+                if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+                    $pQuery->where('user_id', $user->id);
+                }
+                $product = $pQuery->findOrFail($pData['id']);
 
                 $product->productStock()->updateOrCreate(
                     ['product_variant_id' => null],
@@ -1221,10 +1268,16 @@ class ProductController extends Controller
     public function manageShipping(Request $request)
     {
         $search = $request->input('search');
+        $user = $request->user();
+
         $query = Product::with([
             'category',
             'variants.options',
         ])->latest();
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $query->where('user_id', $user->id);
+        }
 
         if ($search) {
             $query->where('name', 'ilike', "%{$search}%");
@@ -1250,9 +1303,14 @@ class ProductController extends Controller
             'products.*.variants' => 'nullable|array',
         ]);
 
-        \DB::transaction(function () use ($request) {
+        $user = $request->user();
+        \DB::transaction(function () use ($request, $user) {
             foreach ($request->input('products') as $pData) {
-                $product = Product::findOrFail($pData['id']);
+                $pQuery = Product::query();
+                if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+                    $pQuery->where('user_id', $user->id);
+                }
+                $product = $pQuery->findOrFail($pData['id']);
                 $product->update([
                     'weight' => $pData['weight'] ?: 0,
                     'length' => $pData['length'] ?: 0,
@@ -1309,6 +1367,7 @@ class ProductController extends Controller
             'Brand',
             'Ringkasan Singkat',
             'Deskripsi',
+            'Kondisi (Baru/Bekas)',
             'Apakah Digital',
             'Harga Jual',
             'Harga Modal',
@@ -1452,8 +1511,10 @@ class ProductController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function exportProducts()
+    public function exportProducts(Request $request)
     {
+        $user = $request->user();
+
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="export_produk_'.date('Y-m-d_H-i-s').'.csv"',
@@ -1489,7 +1550,7 @@ class ProductController extends Controller
             'Stok Varian',
         ];
 
-        $callback = function () use ($columns) {
+        $callback = function () use ($columns, $user) {
             $file = fopen('php://output', 'w');
 
             // Add UTF-8 BOM for Excel compatibility
@@ -1500,7 +1561,7 @@ class ProductController extends Controller
 
             fputcsv($file, $columns);
 
-            Product::with([
+            $query = Product::with([
                 'categories',
                 'brandRelation',
                 'productPrice',
@@ -1509,7 +1570,13 @@ class ProductController extends Controller
                 'variants.options',
                 'variants.productPrice',
                 'variants.productStock',
-            ])->chunk(100, function ($products) use ($file) {
+            ])->latest();
+
+            if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+                $query->where('user_id', $user->id);
+            }
+
+            $query->chunk(100, function ($products) use ($file) {
                 foreach ($products as $product) {
                     $categories = implode(', ', $product->categories->pluck('name')->toArray());
 
@@ -1636,21 +1703,27 @@ class ProductController extends Controller
         ]);
 
         $autoFetch = $request->boolean('auto_fetch_images', (bool) config('services.products.import_auto_fetch_images', true));
+        $userId = $request->user()?->id;
+        $productsInput = $request->input('products');
+        $count = count($productsInput);
 
         try {
-            ImportProductsJob::dispatch($request->input('products'), $autoFetch);
+            if ($count <= 20) {
+                ImportProductsJob::dispatchSync($productsInput, $autoFetch, $userId);
+                $successMessage = "Berhasil mengimpor {$count} produk.";
+            } else {
+                ImportProductsJob::dispatch($productsInput, $autoFetch, $userId);
+                $successMessage = "Import {$count} produk telah dijadwalkan di latar belakang (Supervisor). Proses ini akan mengimpor data produk secara bertahap.";
+            }
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json([
-                    'message' => 'Gagal menjadwalkan import produk: '.$e->getMessage(),
+                    'message' => 'Gagal mengimpor produk: '.$e->getMessage(),
                 ], 422);
             }
 
-            return redirect()->back()->withErrors(['error' => 'Gagal menjadwalkan import produk: '.$e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Gagal mengimpor produk: '.$e->getMessage()]);
         }
-
-        $count = count($request->input('products'));
-        $successMessage = "Import {$count} produk telah dijadwalkan di latar belakang (Supervisor). Proses ini akan mengimpor data & melengkapi foto produk secara otomatis.";
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -1717,5 +1790,18 @@ class ProductController extends Controller
         }
 
         return back()->with('success', 'Urutan produk berhasil diperbarui.');
+    }
+
+    /**
+     * Authorize seller access to product.
+     */
+    private function authorizeSellerProduct(Request $request, Product $product): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            if ($product->user_id !== $user->id) {
+                abort(403, 'Anda tidak memiliki akses untuk mengelola produk ini.');
+            }
+        }
     }
 }

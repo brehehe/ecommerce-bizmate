@@ -64,23 +64,38 @@ class AdminDashboardController extends Controller
         $monthFormatSelf = $driver === 'sqlite' ? "strftime('%Y-%m', created_at)" : "TO_CHAR(created_at, 'YYYY-MM')";
         $sixMonthsAgo = Carbon::now()->subMonths(5)->startOfMonth();
 
-        // Cache key per filter — invalidasi otomatis setiap 5 menit
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+        $userId = $user ? $user->id : 'guest';
+
+        $sellerProductIds = $isSeller ? DB::table('products')->where('user_id', $userId)->pluck('id') : collect([]);
+        $sellerTransactionIds = $isSeller ? DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id') : collect([]);
+
+        // Cache key per filter & user — invalidasi otomatis setiap 5 menit
         $getKpis = function () use (
             $filter,
             $dateFrom,
             $dateTo,
             $prevDateFrom,
             $prevDateTo,
-            $paidStatuses
+            $paidStatuses,
+            $isSeller,
+            $userId,
+            $sellerProductIds,
+            $sellerTransactionIds
         ) {
-            return Cache::remember("dashboard_kpis_v2_{$filter}", 3600, function () use (
+            return Cache::remember("dashboard_kpis_v4_{$userId}_{$filter}", 3600, function () use (
                 $dateFrom,
                 $dateTo,
                 $prevDateFrom,
                 $prevDateTo,
-                $paidStatuses
+                $paidStatuses,
+                $isSeller,
+                $userId,
+                $sellerProductIds,
+                $sellerTransactionIds
             ) {
-                $usePreAggregated = ! app()->runningUnitTests() && DB::table('dashboard_daily_summaries')->exists();
+                $usePreAggregated = ! $isSeller && ! app()->runningUnitTests() && DB::table('dashboard_daily_summaries')->exists();
 
                 if ($usePreAggregated) {
                     $startDateStr = Carbon::parse($dateFrom)->toDateString();
@@ -113,41 +128,62 @@ class AdminDashboardController extends Controller
                     $currentReturnCount = (int) ($currentSummary->returns_count ?? 0);
                     $prevReturnCount = (int) ($previousSummary->returns_count ?? 0);
                 } else {
-                    $currentAgg = DB::table('transactions')->whereIn('status', $paidStatuses)
-                        ->whereBetween('created_at', [$dateFrom, $dateTo])
-                        ->selectRaw('SUM(grand_total) as revenue, COUNT(id) as orders')
-                        ->first();
+                    if ($isSeller) {
+                        $currentAgg = DB::table('transaction_items')
+                            ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
+                            ->whereIn('transactions.status', $paidStatuses)
+                            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+                            ->whereIn('transaction_items.product_id', $sellerProductIds)
+                            ->selectRaw('SUM(transaction_items.subtotal) as revenue, COUNT(DISTINCT transactions.id) as orders')
+                            ->first();
 
-                    $previousAgg = DB::table('transactions')->whereIn('status', $paidStatuses)
-                        ->whereBetween('created_at', [$prevDateFrom, $prevDateTo])
-                        ->selectRaw('SUM(grand_total) as revenue, COUNT(id) as orders')
-                        ->first();
+                        $previousAgg = DB::table('transaction_items')
+                            ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
+                            ->whereIn('transactions.status', $paidStatuses)
+                            ->whereBetween('transactions.created_at', [$prevDateFrom, $prevDateTo])
+                            ->whereIn('transaction_items.product_id', $sellerProductIds)
+                            ->selectRaw('SUM(transaction_items.subtotal) as revenue, COUNT(DISTINCT transactions.id) as orders')
+                            ->first();
+                    } else {
+                        $currentAgg = DB::table('transactions')->whereIn('status', $paidStatuses)
+                            ->whereBetween('created_at', [$dateFrom, $dateTo])
+                            ->selectRaw('SUM(grand_total) as revenue, COUNT(id) as orders')
+                            ->first();
+
+                        $previousAgg = DB::table('transactions')->whereIn('status', $paidStatuses)
+                            ->whereBetween('created_at', [$prevDateFrom, $prevDateTo])
+                            ->selectRaw('SUM(grand_total) as revenue, COUNT(id) as orders')
+                            ->first();
+                    }
 
                     $currentRevenue = (float) ($currentAgg->revenue ?? 0);
                     $previousRevenue = (float) ($previousAgg->revenue ?? 0);
                     $currentOrders = (int) ($currentAgg->orders ?? 0);
                     $previousOrders = (int) ($previousAgg->orders ?? 0);
 
-                    $currentRefundAgg = DB::table('refund_requests')->whereBetween('created_at', [$dateFrom, $dateTo])
-                        ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
-                        ->first();
+                    $currentRefundQuery = DB::table('refund_requests')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                    $prevRefundQuery = DB::table('refund_requests')->whereBetween('created_at', [$prevDateFrom, $prevDateTo]);
 
-                    $prevRefundAgg = DB::table('refund_requests')->whereBetween('created_at', [$prevDateFrom, $prevDateTo])
-                        ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
-                        ->first();
+                    $currentReturnQuery = DB::table('returns')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                    $prevReturnQuery = DB::table('returns')->whereBetween('created_at', [$prevDateFrom, $prevDateTo]);
+
+                    if ($isSeller) {
+                        $currentRefundQuery->whereIn('transaction_id', $sellerTransactionIds);
+                        $prevRefundQuery->whereIn('transaction_id', $sellerTransactionIds);
+                        $currentReturnQuery->whereIn('transaction_id', $sellerTransactionIds);
+                        $prevReturnQuery->whereIn('transaction_id', $sellerTransactionIds);
+                    }
+
+                    $currentRefundAgg = $currentRefundQuery->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')->first();
+                    $prevRefundAgg = $prevRefundQuery->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')->first();
 
                     $currentRefundAmount = (float) ($currentRefundAgg->total_amount ?? 0);
                     $prevRefundAmount = (float) ($prevRefundAgg->total_amount ?? 0);
                     $currentRefundCount = (int) ($currentRefundAgg->total_count ?? 0);
                     $prevRefundCount = (int) ($prevRefundAgg->total_count ?? 0);
 
-                    $currentReturnAgg = DB::table('returns')->whereBetween('created_at', [$dateFrom, $dateTo])
-                        ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
-                        ->first();
-
-                    $prevReturnAgg = DB::table('returns')->whereBetween('created_at', [$prevDateFrom, $prevDateTo])
-                        ->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')
-                        ->first();
+                    $currentReturnAgg = $currentReturnQuery->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')->first();
+                    $prevReturnAgg = $prevReturnQuery->selectRaw('SUM(refund_amount) as total_amount, COUNT(id) as total_count')->first();
 
                     $currentReturnAmount = (float) ($currentReturnAgg->total_amount ?? 0);
                     $prevReturnAmount = (float) ($prevReturnAgg->total_amount ?? 0);
@@ -155,26 +191,42 @@ class AdminDashboardController extends Controller
                     $prevReturnCount = (int) ($prevReturnAgg->total_count ?? 0);
                 }
 
-                $productAgg = DB::table('products')->selectRaw(
+                $productQuery = DB::table('products');
+                if ($isSeller) {
+                    $productQuery->where('user_id', $userId);
+                }
+                $productAgg = $productQuery->selectRaw(
                     'COUNT(CASE WHEN active = true THEN 1 END) as current_active,
                      COUNT(CASE WHEN active = true AND created_at < ? THEN 1 END) as previous_active',
                     [$dateFrom]
                 )->first();
 
-                $customerAgg = DB::table('users')
-                    ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-                    ->where('roles.name', 'Customer')
-                    ->selectRaw(
-                        'COUNT(*) as current_total,
-                         COUNT(CASE WHEN users.created_at < ? THEN 1 END) as previous_total',
-                        [$dateFrom]
-                    )->first();
+                if ($isSeller) {
+                    $currentCustomers = DB::table('transactions')
+                        ->whereIn('id', $sellerTransactionIds)
+                        ->distinct('user_id')
+                        ->count('user_id');
+                    $previousCustomers = DB::table('transactions')
+                        ->whereIn('id', $sellerTransactionIds)
+                        ->where('created_at', '<', $dateFrom)
+                        ->distinct('user_id')
+                        ->count('user_id');
+                } else {
+                    $customerAgg = DB::table('users')
+                        ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+                        ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                        ->where('roles.name', 'Customer')
+                        ->selectRaw(
+                            'COUNT(*) as current_total,
+                             COUNT(CASE WHEN users.created_at < ? THEN 1 END) as previous_total',
+                            [$dateFrom]
+                        )->first();
+                    $currentCustomers = (int) ($customerAgg->current_total ?? 0);
+                    $previousCustomers = (int) ($customerAgg->previous_total ?? 0);
+                }
 
                 $currentActiveProducts = (int) ($productAgg->current_active ?? 0);
                 $previousActiveProducts = (int) ($productAgg->previous_active ?? 0);
-                $currentCustomers = (int) ($customerAgg->current_total ?? 0);
-                $previousCustomers = (int) ($customerAgg->previous_total ?? 0);
 
                 return [
                     'stats' => [
@@ -205,12 +257,15 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getPipeline = function () use ($filter, $dateFrom, $dateTo) {
-            return Cache::remember("dashboard_pipeline_v2_{$filter}", 3600, function () use ($dateFrom, $dateTo) {
-                $opStats = DB::table('transactions')
+        $getPipeline = function () use ($filter, $dateFrom, $dateTo, $isSeller, $userId, $sellerTransactionIds) {
+            return Cache::remember("dashboard_pipeline_v4_{$userId}_{$filter}", 3600, function () use ($dateFrom, $dateTo, $isSeller, $sellerTransactionIds) {
+                $opQuery = DB::table('transactions')
                     ->whereIn('status', ['belum_bayar', 'menunggu', 'diproses', 'dikemas', 'dikirim'])
-                    ->where('created_at', '>=', $dateFrom)
-                    ->selectRaw("
+                    ->where('created_at', '>=', $dateFrom);
+                if ($isSeller) {
+                    $opQuery->whereIn('id', $sellerTransactionIds);
+                }
+                $opStats = $opQuery->selectRaw("
                         COUNT(CASE WHEN status = 'belum_bayar' THEN 1 END) as unpaid_count,
                         COUNT(CASE WHEN status = 'menunggu' THEN 1 END) as pending_count,
                         COUNT(CASE WHEN status IN ('belum_bayar', 'menunggu') THEN 1 END) as new_count,
@@ -218,16 +273,22 @@ class AdminDashboardController extends Controller
                         COUNT(CASE WHEN status = 'dikirim' THEN 1 END) as shipping_count
                     ")->first();
 
-                $refundStatusCounts = DB::table('refund_requests')->whereBetween('created_at', [$dateFrom, $dateTo])
-                    ->selectRaw("
+                $refundQuery = DB::table('refund_requests')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                if ($isSeller) {
+                    $refundQuery->whereIn('transaction_id', $sellerTransactionIds);
+                }
+                $refundStatusCounts = $refundQuery->selectRaw("
                         COUNT(CASE WHEN status = 'menunggu_konfirmasi' THEN 1 END) as pending_count,
                         COUNT(CASE WHEN status = 'disetujui' THEN 1 END) as approved_count,
                         COUNT(CASE WHEN status = 'selesai' THEN 1 END) as completed_count,
                         COUNT(CASE WHEN status = 'ditolak' THEN 1 END) as rejected_count
                     ")->first();
 
-                $returnStatusCounts = DB::table('returns')->whereBetween('created_at', [$dateFrom, $dateTo])
-                    ->selectRaw("
+                $returnQuery = DB::table('returns')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                if ($isSeller) {
+                    $returnQuery->whereIn('transaction_id', $sellerTransactionIds);
+                }
+                $returnStatusCounts = $returnQuery->selectRaw("
                         COUNT(CASE WHEN status = 'menunggu_review' THEN 1 END) as pending_count,
                         COUNT(CASE WHEN status = 'disetujui' THEN 1 END) as approved_count,
                         COUNT(CASE WHEN status = 'barang_dikirim_customer' THEN 1 END) as in_transit_count,
@@ -264,19 +325,22 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentOrders = function () {
-            return Cache::remember('dashboard_recent_orders_v2', 300, function () {
-                $recentTransactions = DB::table('transactions')
-                    ->leftJoin('users', 'transactions.user_id', '=', 'users.id')
-                    ->select([
-                        'transactions.id',
-                        'transactions.transaction_number',
-                        'transactions.grand_total',
-                        'transactions.status',
-                        'transactions.created_at',
-                        'users.name as user_name',
-                        'users.email as user_email',
-                    ])
+        $getRecentOrders = function () use ($isSeller, $userId, $sellerTransactionIds) {
+            return Cache::remember("dashboard_recent_orders_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+                $query = DB::table('transactions')
+                    ->leftJoin('users', 'transactions.user_id', '=', 'users.id');
+                if ($isSeller) {
+                    $query->whereIn('transactions.id', $sellerTransactionIds);
+                }
+                $recentTransactions = $query->select([
+                    'transactions.id',
+                    'transactions.transaction_number',
+                    'transactions.grand_total',
+                    'transactions.status',
+                    'transactions.created_at',
+                    'users.name as user_name',
+                    'users.email as user_email',
+                ])
                     ->orderBy('transactions.created_at', 'desc')
                     ->limit(5)
                     ->get();
@@ -315,24 +379,28 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentRefunds = function () {
-            return Cache::remember('dashboard_recent_refunds_v2', 300, function () {
-                return DB::table('refund_requests')
+        $getRecentRefunds = function () use ($isSeller, $userId, $sellerTransactionIds) {
+            return Cache::remember("dashboard_recent_refunds_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+                $query = DB::table('refund_requests')
                     ->leftJoin('users', 'refund_requests.user_id', '=', 'users.id')
-                    ->leftJoin('transactions', 'refund_requests.transaction_id', '=', 'transactions.id')
-                    ->select([
-                        'refund_requests.id',
-                        'refund_requests.refund_number',
-                        'refund_requests.transaction_id',
-                        'refund_requests.refund_amount',
-                        'refund_requests.refund_method',
-                        'refund_requests.status',
-                        'refund_requests.reason',
-                        'refund_requests.created_at',
-                        'users.email as user_email',
-                        'users.name as user_name',
-                        'transactions.transaction_number as transaction_number',
-                    ])
+                    ->leftJoin('transactions', 'refund_requests.transaction_id', '=', 'transactions.id');
+                if ($isSeller) {
+                    $query->whereIn('refund_requests.transaction_id', $sellerTransactionIds);
+                }
+
+                return $query->select([
+                    'refund_requests.id',
+                    'refund_requests.refund_number',
+                    'refund_requests.transaction_id',
+                    'refund_requests.refund_amount',
+                    'refund_requests.refund_method',
+                    'refund_requests.status',
+                    'refund_requests.reason',
+                    'refund_requests.created_at',
+                    'users.email as user_email',
+                    'users.name as user_name',
+                    'transactions.transaction_number as transaction_number',
+                ])
                     ->orderBy('refund_requests.created_at', 'desc')
                     ->limit(5)
                     ->get()
@@ -358,24 +426,28 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentReturns = function () {
-            return Cache::remember('dashboard_recent_returns_v2', 300, function () {
-                return DB::table('returns')
+        $getRecentReturns = function () use ($isSeller, $userId, $sellerTransactionIds) {
+            return Cache::remember("dashboard_recent_returns_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+                $query = DB::table('returns')
                     ->leftJoin('users', 'returns.user_id', '=', 'users.id')
-                    ->leftJoin('transactions', 'returns.transaction_id', '=', 'transactions.id')
-                    ->select([
-                        'returns.id',
-                        'returns.return_number',
-                        'returns.transaction_id',
-                        'returns.type',
-                        'returns.refund_amount',
-                        'returns.status',
-                        'returns.reason',
-                        'returns.created_at',
-                        'users.email as user_email',
-                        'users.name as user_name',
-                        'transactions.transaction_number as transaction_number',
-                    ])
+                    ->leftJoin('transactions', 'returns.transaction_id', '=', 'transactions.id');
+                if ($isSeller) {
+                    $query->whereIn('returns.transaction_id', $sellerTransactionIds);
+                }
+
+                return $query->select([
+                    'returns.id',
+                    'returns.return_number',
+                    'returns.transaction_id',
+                    'returns.type',
+                    'returns.refund_amount',
+                    'returns.status',
+                    'returns.reason',
+                    'returns.created_at',
+                    'users.email as user_email',
+                    'users.name as user_name',
+                    'transactions.transaction_number as transaction_number',
+                ])
                     ->orderBy('returns.created_at', 'desc')
                     ->limit(5)
                     ->get()
@@ -401,8 +473,12 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentCustomers = function () {
-            return Cache::remember('dashboard_recent_customers_v2', 300, function () {
+        $getRecentCustomers = function () use ($isSeller) {
+            if ($isSeller) {
+                return [];
+            }
+
+            return Cache::remember('dashboard_recent_customers_v3', 300, function () {
                 return DB::table('users')
                     ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
                     ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
@@ -435,26 +511,29 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentStockOut = function () use ($paidStatuses) {
-            return Cache::remember('dashboard_recent_stockout_v2', 300, function () use ($paidStatuses) {
-                $recentStockOut = DB::table('stock_movements')
+        $getRecentStockOut = function () use ($paidStatuses, $isSeller, $userId, $sellerProductIds) {
+            return Cache::remember("dashboard_recent_stockout_v3_{$userId}", 300, function () use ($paidStatuses, $isSeller, $sellerProductIds) {
+                $stockQuery = DB::table('stock_movements')
                     ->leftJoin('products', 'stock_movements.product_id', '=', 'products.id')
                     ->leftJoin('product_variants', 'stock_movements.product_variant_id', '=', 'product_variants.id')
-                    ->leftJoin('transactions', 'stock_movements.transaction_id', '=', 'transactions.id')
-                    ->select([
-                        'stock_movements.id',
-                        'stock_movements.quantity',
-                        'stock_movements.stock_before',
-                        'stock_movements.stock_after',
-                        'stock_movements.notes',
-                        'stock_movements.created_at',
-                        'products.name as product_name',
-                        'products.sku as product_sku',
-                        'products.image as product_image',
-                        'product_variants.sku as variant_sku',
-                        'transactions.transaction_number',
-                        'transactions.id as transaction_id',
-                    ])
+                    ->leftJoin('transactions', 'stock_movements.transaction_id', '=', 'transactions.id');
+                if ($isSeller) {
+                    $stockQuery->whereIn('stock_movements.product_id', $sellerProductIds);
+                }
+                $recentStockOut = $stockQuery->select([
+                    'stock_movements.id',
+                    'stock_movements.quantity',
+                    'stock_movements.stock_before',
+                    'stock_movements.stock_after',
+                    'stock_movements.notes',
+                    'stock_movements.created_at',
+                    'products.name as product_name',
+                    'products.sku as product_sku',
+                    'products.image as product_image',
+                    'product_variants.sku as variant_sku',
+                    'transactions.transaction_number',
+                    'transactions.id as transaction_id',
+                ])
                     ->where('stock_movements.type', 'keluar')
                     ->orderBy('stock_movements.created_at', 'desc')
                     ->limit(10)
@@ -483,10 +562,13 @@ class AdminDashboardController extends Controller
                     ->toArray();
 
                 if (empty($recentStockOut)) {
-                    $recentStockOut = DB::table('transaction_items')
+                    $itemQuery = DB::table('transaction_items')
                         ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-                        ->whereIn('transactions.status', $paidStatuses)
-                        ->selectRaw('
+                        ->whereIn('transactions.status', $paidStatuses);
+                    if ($isSeller) {
+                        $itemQuery->whereIn('transaction_items.product_id', $sellerProductIds);
+                    }
+                    $recentStockOut = $itemQuery->selectRaw('
                             transaction_items.id,
                             transaction_items.product_name,
                             transaction_items.product_sku,
@@ -527,13 +609,16 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getTopProducts = function () use ($filter, $dateFrom, $paidStatuses) {
-            return Cache::remember("dashboard_top_products_v2_{$filter}", 3600, function () use ($dateFrom, $paidStatuses) {
-                $topProductsRaw = DB::table('transaction_items')
+        $getTopProducts = function () use ($filter, $dateFrom, $paidStatuses, $isSeller, $userId, $sellerProductIds) {
+            return Cache::remember("dashboard_top_products_v3_{$userId}_{$filter}", 3600, function () use ($dateFrom, $paidStatuses, $isSeller, $sellerProductIds) {
+                $query = DB::table('transaction_items')
                     ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
                     ->whereIn('transactions.status', $paidStatuses)
-                    ->where('transactions.created_at', '>=', $dateFrom)
-                    ->selectRaw('
+                    ->where('transactions.created_at', '>=', $dateFrom);
+                if ($isSeller) {
+                    $query->whereIn('transaction_items.product_id', $sellerProductIds);
+                }
+                $topProductsRaw = $query->selectRaw('
                         transaction_items.product_id,
                         transaction_items.product_name as name,
                         SUM(transaction_items.quantity) as sales
@@ -582,16 +667,19 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getChartData = function () use ($paidStatuses, $sixMonthsAgo, $monthFormatTx, $monthFormatSelf) {
-            return Cache::remember('dashboard_chart_data_v2', 3600, function () use ($paidStatuses, $sixMonthsAgo, $monthFormatTx, $monthFormatSelf) {
+        $getChartData = function () use ($paidStatuses, $sixMonthsAgo, $monthFormatTx, $monthFormatSelf, $isSeller, $userId, $sellerTransactionIds) {
+            return Cache::remember("dashboard_chart_data_v3_{$userId}", 3600, function () use ($paidStatuses, $sixMonthsAgo, $monthFormatTx, $monthFormatSelf, $isSeller, $sellerTransactionIds) {
                 $chartLabels = [];
                 $chartValues = [];
                 $chartRefundValues = [];
                 $chartReturnValues = [];
 
-                $monthlyRevenue = DB::table('transactions')->whereIn('status', $paidStatuses)
-                    ->where('created_at', '>=', $sixMonthsAgo)
-                    ->selectRaw("
+                $txQuery = DB::table('transactions')->whereIn('status', $paidStatuses)
+                    ->where('created_at', '>=', $sixMonthsAgo);
+                if ($isSeller) {
+                    $txQuery->whereIn('id', $sellerTransactionIds);
+                }
+                $monthlyRevenue = $txQuery->selectRaw("
                         {$monthFormatTx} as month,
                         SUM(grand_total) as revenue
                     ")
@@ -599,9 +687,12 @@ class AdminDashboardController extends Controller
                     ->orderBy('month', 'asc')
                     ->get();
 
-                $monthlyRefunds = DB::table('refund_requests')->where('created_at', '>=', $sixMonthsAgo)
-                    ->where('status', '!=', 'ditolak')
-                    ->selectRaw("
+                $rfQuery = DB::table('refund_requests')->where('created_at', '>=', $sixMonthsAgo)
+                    ->where('status', '!=', 'ditolak');
+                if ($isSeller) {
+                    $rfQuery->whereIn('transaction_id', $sellerTransactionIds);
+                }
+                $monthlyRefunds = $rfQuery->selectRaw("
                         {$monthFormatSelf} as month,
                         SUM(refund_amount) as amount
                     ")
@@ -609,9 +700,12 @@ class AdminDashboardController extends Controller
                     ->orderBy('month', 'asc')
                     ->get();
 
-                $monthlyReturns = DB::table('returns')->where('created_at', '>=', $sixMonthsAgo)
-                    ->where('status', '!=', 'ditolak')
-                    ->selectRaw("
+                $rtQuery = DB::table('returns')->where('created_at', '>=', $sixMonthsAgo)
+                    ->where('status', '!=', 'ditolak');
+                if ($isSeller) {
+                    $rtQuery->whereIn('transaction_id', $sellerTransactionIds);
+                }
+                $monthlyReturns = $rtQuery->selectRaw("
                         {$monthFormatSelf} as month,
                         SUM(refund_amount) as amount,
                         COUNT(id) as total_count
@@ -658,6 +752,9 @@ class AdminDashboardController extends Controller
                     ->whereNull('product_stocks.product_variant_id');
             })
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->when($isSeller, function ($query) use ($userId) {
+                $query->where('products.user_id', $userId);
+            })
             ->when($search, function ($query) use ($search, $likeOperator) {
                 $query->where(function ($q) use ($search, $likeOperator) {
                     $q->where('products.name', $likeOperator, "%{$search}%")
@@ -722,6 +819,7 @@ class AdminDashboardController extends Controller
         };
 
         return Inertia::render('Admin/Dashboard', [
+            'isSeller' => $isSeller,
             'stats' => $getDeferred(fn () => $getKpis()['stats'], 'kpi_stats'),
             'orderStats' => $getDeferred(fn () => $getPipeline()['orderStats'], 'pipeline_stats'),
             'recentOrders' => $getDeferred(fn () => $getRecentOrders(), 'recent_orders'),

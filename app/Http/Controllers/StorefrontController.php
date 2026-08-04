@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\KomerceService;
 use App\Services\MembershipService;
 use App\Services\MidtransService;
+use App\Services\ProductService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -78,12 +79,13 @@ class StorefrontController extends Controller
         $popupBanner = $popupBannerJson ? json_decode($popupBannerJson, true) : null;
 
         return Inertia::render('Storefront/Home', [
-            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
             'featuredProducts' => Inertia::defer(function () {
                 $products = Product::with([
                     'category',
+                    'seller',
                     'productPrice',
                     'productStock',
                     'images',
@@ -114,6 +116,7 @@ class StorefrontController extends Controller
             'newProducts' => Inertia::defer(function () {
                 $products = Product::with([
                     'category',
+                    'seller',
                     'productPrice',
                     'productStock',
                     'images',
@@ -153,6 +156,7 @@ class StorefrontController extends Controller
 
                 $products = Product::with([
                     'category',
+                    'seller',
                     'productPrice',
                     'productStock',
                     'images',
@@ -166,7 +170,7 @@ class StorefrontController extends Controller
                     ->where('active', true)
                     ->whereIn('id', $bestSellerIds)
                     ->get()
-                    ->sortBy(fn($p) => array_search($p->id, $bestSellerIds))
+                    ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
                     ->values();
 
                 $activePromotions = Promotion::with(['items'])
@@ -204,7 +208,7 @@ class StorefrontController extends Controller
 
                 return $activeFlashSale;
             }),
-            'recentReviews' => Inertia::defer(fn() => ProductReview::with(['user', 'product.images', 'productVariant.options'])
+            'recentReviews' => Inertia::defer(fn () => ProductReview::with(['user', 'product.images', 'productVariant.options'])
                 ->latest()
                 ->take(8)
                 ->get()),
@@ -233,6 +237,8 @@ class StorefrontController extends Controller
         }
 
         $product->load([
+            'seller.customerAddresses',
+            'originAddress',
             'category',
             'categories',
             'brands',
@@ -257,6 +263,7 @@ class StorefrontController extends Controller
         $product->sold_count = (int) $soldCount;
 
         $relatedProducts = Product::with([
+            'seller',
             'productPrice',
             'images',
             'category',
@@ -388,8 +395,8 @@ class StorefrontController extends Controller
 
         /** @var array{address: string, district_name: string, regency_name: string, province_name: string, postal_code: string, shipping_rate: string, enable_cod: string} $shippingSettings */
         $shippingInfo = [
-            'store_address' => trim(($shippingSettings['address'] ?? '') . ', ' . ($shippingSettings['district_name'] ?? '')),
-            'store_city' => trim(($shippingSettings['regency_name'] ?? '') . ', ' . ($shippingSettings['province_name'] ?? '')),
+            'store_address' => trim(($shippingSettings['address'] ?? '').', '.($shippingSettings['district_name'] ?? '')),
+            'store_city' => trim(($shippingSettings['regency_name'] ?? '').', '.($shippingSettings['province_name'] ?? '')),
             'postal_code' => $shippingSettings['postal_code'] ?? '',
             'shipping_rate' => (int) ($shippingSettings['shipping_rate'] ?? 0),
             'enable_cod' => ($shippingSettings['enable_cod'] ?? '0') === '1',
@@ -841,241 +848,33 @@ class StorefrontController extends Controller
     /**
      * Display the storefront search/catalog listing page.
      */
-    public function search(Request $request)
+    public function search(Request $request, ProductService $productService)
     {
         $this->initMembership();
-        $query = $request->input('q');
-        $categoryId = $request->input('category');
-        $brandId = $request->input('brand');
-        $sort = $request->input('sort', 'relevance');
-        $minPrice = $request->input('min_price');
-        $maxPrice = $request->input('max_price');
-        $promoOnly = $request->boolean('promo');
-
-        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
-            ->orderBy('order')
-            ->get();
-
-        $brands = Brand::where('is_active', true)
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
-
-        // Build product query
-        $productsQuery = Product::with([
-            'category',
-            'categories',
-            'brandRelation',
-            'brands',
-            'productPrice',
-            'productStock',
-            'images',
-            'variants.productPrice',
-            'variants.options',
-            'variants.productStock',
-            'variations.options',
-        ])
-            ->where('active', true);
-
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
-
-        // Filter by keyword (search in name, description, category name, variant SKU, and variant options)
-        if ($query) {
-            $terms = array_filter(explode(' ', $query)); // Pisahkan kata berdasarkan spasi
-            $productsQuery->where(function ($q) use ($terms, $like) {
-                foreach ($terms as $term) {
-                    $q->where(function ($subQ) use ($term, $like) {
-                        // Cari di nama dan deskripsi produk
-                        $subQ->where('name', $like, "%{$term}%")
-                            ->orWhere('description', $like, "%{$term}%")
-                            // Cari di nama kategori
-                            ->orWhereHas('category', function ($qc) use ($term, $like) {
-                                $qc->where('name', $like, "%{$term}%");
-                            })
-                            ->orWhereHas('categories', function ($qc) use ($term, $like) {
-                                $qc->where('name', $like, "%{$term}%");
-                            })
-                            // Cari di SKU varian atau nama opsi varian (contoh: "Merah", "XL")
-                            ->orWhereHas('variants', function ($qv) use ($term, $like) {
-                                $qv->where('sku', $like, "%{$term}%")
-                                    ->orWhereHas('options', function ($qo) use ($term, $like) {
-                                        $qo->where('name', $like, "%{$term}%");
-                                    });
-                            });
-                    });
-                }
-            });
-        }
-
-        // Filter by category
-        if ($categoryId) {
-            $categoryIds = is_array($categoryId) ? $categoryId : [$categoryId];
-            $uuids = [];
-            $slugs = [];
-
-            foreach ($categoryIds as $cat) {
-                if (is_string($cat)) {
-                    $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $cat);
-                    if ($isUuid) {
-                        $uuids[] = $cat;
-                    } else {
-                        $slugs[] = $cat;
-                    }
-                }
-            }
-
-            $productsQuery->where(function ($q) use ($uuids, $slugs) {
-                if (! empty($uuids)) {
-                    $q->whereIn('category_id', $uuids)
-                        ->orWhereHas('categories', function ($sub) use ($uuids) {
-                            $sub->whereIn('categories.id', $uuids);
-                        });
-                }
-                if (! empty($slugs)) {
-                    $q->orWhereHas('category', function ($sub) use ($slugs) {
-                        $sub->whereIn('slug', $slugs);
-                    })
-                        ->orWhereHas('categories', function ($sub) use ($slugs) {
-                            $sub->whereIn('categories.slug', $slugs);
-                        });
-                }
-            });
-        }
-
-        // Filter by brand
-        if ($brandId) {
-            $brandIds = is_array($brandId) ? $brandId : [$brandId];
-            $uuids = [];
-            $slugs = [];
-
-            foreach ($brandIds as $br) {
-                if (is_string($br)) {
-                    $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $br);
-                    if ($isUuid) {
-                        $uuids[] = $br;
-                    } else {
-                        $slugs[] = $br;
-                    }
-                }
-            }
-
-            $productsQuery->where(function ($q) use ($uuids, $slugs) {
-                if (! empty($uuids)) {
-                    $q->whereIn('brand_id', $uuids)
-                        ->orWhereHas('brands', function ($sub) use ($uuids) {
-                            $sub->whereIn('brands.id', $uuids);
-                        });
-                }
-                if (! empty($slugs)) {
-                    $q->orWhereIn('brand', $slugs)
-                        ->orWhereHas('brandRelation', function ($sub) use ($slugs) {
-                            $sub->whereIn('slug', $slugs);
-                        })
-                        ->orWhereHas('brands', function ($sub) use ($slugs) {
-                            $sub->whereIn('brands.slug', $slugs);
-                        });
-                }
-            });
-        }
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/Search', [
-            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
-            'brands' => Inertia::defer(fn() => Brand::select('id', 'name', 'slug')
+            'brands' => Inertia::defer(fn () => Brand::select('id', 'name', 'slug')
                 ->where('is_active', true)
                 ->orderBy('order')
                 ->orderBy('name')
                 ->get()),
-            'products' => Inertia::defer(function () use ($productsQuery, $promoOnly, $minPrice, $maxPrice, $sort, $query) {
-                $productsCollection = $productsQuery->get();
-
-                $activePromotions = Promotion::with(['items'])
-                    ->where('is_active', true)
-                    ->where('start_time', '<=', now())
-                    ->where('end_time', '>=', now())
-                    ->get();
-
-                $productsCollection = $productsCollection->filter(function ($p) use ($activePromotions, $promoOnly, $minPrice, $maxPrice) {
-                    $this->applyPromotionsToProduct($p, $activePromotions);
-
-                    if ($promoOnly && ! $p->is_promo) {
-                        return false;
-                    }
-
-                    $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                    if ($minPrice && $price < $minPrice) {
-                        return false;
-                    }
-                    if ($maxPrice && $price > $maxPrice) {
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                if ($sort === 'price_asc') {
-                    $productsCollection = $productsCollection->sortBy(function ($p) {
-                        return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                    });
-                } elseif ($sort === 'price_desc') {
-                    $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                        return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                    });
-                } elseif ($sort === 'popular') {
-                    $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
-                    $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
-                        return $soldCounts[$p->id] ?? 0;
-                    });
-                } elseif ($sort === 'latest') {
-                    $productsCollection = $productsCollection->sortByDesc('created_at');
-                } else {
-                    if ($query) {
-                        $productsCollection = $productsCollection->sortByDesc(function ($p) use ($query) {
-                            $nameLower = strtolower($p->name);
-                            $queryLower = strtolower($query);
-                            if (str_starts_with($nameLower, $queryLower)) {
-                                return 2;
-                            }
-                            if (str_contains($nameLower, $queryLower)) {
-                                return 1;
-                            }
-
-                            return 0;
-                        });
-                    } else {
-                        $productsCollection = $productsCollection->sortByDesc('created_at');
-                    }
-                }
-
-                $page = request()->input('page', 1);
-                $perPage = 16;
-                $total = $productsCollection->count();
-
-                $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
-
-                return new LengthAwarePaginator(
-                    $paginatedItems,
-                    $total,
-                    $perPage,
-                    $page,
-                    [
-                        'path' => request()->url(),
-                        'query' => request()->query(),
-                    ]
-                );
-            }),
+            'products' => Inertia::defer(fn () => $productService->getFilteredProducts($request, 36)),
             'filters' => [
-                'q' => $query,
-                'category' => $categoryId,
-                'brand' => $brandId,
-                'sort' => $sort,
-                'min_price' => $minPrice,
-                'max_price' => $maxPrice,
-                'promo' => $promoOnly,
+                'q' => $request->input('q'),
+                'category' => $request->input('category'),
+                'brand' => $request->input('brand'),
+                'sort' => $request->input('sort', 'relevance'),
+                'min_price' => $request->input('min_price'),
+                'max_price' => $request->input('max_price'),
+                'promo' => $request->boolean('promo'),
+                'condition' => $request->input('condition', 'all'),
+                'rating' => $request->input('rating', ''),
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
@@ -1147,7 +946,7 @@ class StorefrontController extends Controller
                                 $p->setRelation('productPrice', $item->variant->productPrice);
                             }
                             $optionNames = $item->variant->options
-                                ? $item->variant->options->map(fn($o) => $o->name)->join(' - ')
+                                ? $item->variant->options->map(fn ($o) => $o->name)->join(' - ')
                                 : '';
                             if ($optionNames) {
                                 $p->name = "{$p->name} - {$optionNames}";
@@ -1301,7 +1100,7 @@ class StorefrontController extends Controller
 
         // Paginate
         $page = request()->input('page', 1);
-        $perPage = 16;
+        $perPage = 36;
         $total = $productsCollection->count();
         $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
 
@@ -1320,15 +1119,27 @@ class StorefrontController extends Controller
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/FlashSale', [
-            'categories' => $categories,
+            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
+                ->orderBy('order')
+                ->get()),
+            'brands' => Inertia::defer(fn () => Brand::select('id', 'name', 'slug')
+                ->where('is_active', true)
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get()),
             'products' => $productsPaginator,
             'activeFlashSale' => $activeFlashSale,
             'filters' => [
                 'q' => $query,
                 'category' => $categoryId,
+                'brand' => $request->input('brand'),
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
                 'sort' => $sort,
+                'type' => $request->input('type', 'all'),
+                'promo' => $request->boolean('promo'),
+                'condition' => $request->input('condition', 'all'),
+                'rating' => $request->input('rating', ''),
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
@@ -1338,7 +1149,7 @@ class StorefrontController extends Controller
     /**
      * Display the best sellers listing page.
      */
-    public function produkTerlaris(Request $request)
+    public function produkTerlaris(Request $request, ProductService $productService)
     {
         $this->initMembership();
         $query = $request->input('q');
@@ -1347,89 +1158,20 @@ class StorefrontController extends Controller
         $maxPrice = $request->input('max_price');
         $sort = $request->input('sort', 'popular');
 
-        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
-            ->orderBy('order')
-            ->get();
-
-        // Fetch active promotions to map onto products dynamically
-        $activePromotions = Promotion::with(['items'])
-            ->where('is_active', true)
-            ->where('start_time', '<=', now())
-            ->where('end_time', '>=', now())
-            ->get();
-
-        // Build product query
-        $productsQuery = Product::with([
-            'category',
-            'productPrice',
-            'productStock',
-            'images',
-            'variants.productPrice',
-            'variants.options',
-            'variants.productStock',
-            'variations.options',
-        ])
-            ->where('active', true);
-
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
-
-        // Filter by keyword (similar to search method)
-        if ($query) {
-            $terms = array_filter(explode(' ', $query));
-            $productsQuery->where(function ($q) use ($terms, $like) {
-                foreach ($terms as $term) {
-                    $q->where(function ($subQ) use ($term, $like) {
-                        $subQ->where('name', $like, "%{$term}%")
-                            ->orWhere('description', $like, "%{$term}%")
-                            ->orWhereHas('category', function ($qc) use ($term, $like) {
-                                $qc->where('name', $like, "%{$term}%");
-                            })
-                            ->orWhereHas('variants', function ($qv) use ($term, $like) {
-                                $qv->where('sku', $like, "%{$term}%")
-                                    ->orWhereHas('options', function ($qo) use ($term, $like) {
-                                        $qo->where('name', $like, "%{$term}%");
-                                    });
-                            });
-                    });
-                }
-            });
-        }
-
-        // Filter by category
-        if ($categoryId) {
-            $categoryIds = is_array($categoryId) ? $categoryId : [$categoryId];
-            $uuids = [];
-            $slugs = [];
-
-            foreach ($categoryIds as $cat) {
-                if (is_string($cat)) {
-                    $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $cat);
-                    if ($isUuid) {
-                        $uuids[] = $cat;
-                    } else {
-                        $slugs[] = $cat;
-                    }
-                }
-            }
-
-            $productsQuery->where(function ($q) use ($uuids, $slugs) {
-                if (! empty($uuids)) {
-                    $q->whereIn('category_id', $uuids);
-                }
-                if (! empty($slugs)) {
-                    $q->orWhereHas('category', function ($sub) use ($slugs) {
-                        $sub->whereIn('slug', $slugs);
-                    });
-                }
-            });
-        }
+        // Build product query with full filter support
+        $productsQuery = $productService->buildQuery($request);
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/ProdukTerlaris', [
-            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
+                ->get()),
+            'brands' => Inertia::defer(fn () => Brand::select('id', 'name', 'slug')
+                ->where('is_active', true)
+                ->orderBy('order')
+                ->orderBy('name')
                 ->get()),
             'products' => Inertia::defer(function () use ($productsQuery, $minPrice, $maxPrice, $sort) {
                 $productsCollection = $productsQuery->get();
@@ -1477,7 +1219,7 @@ class StorefrontController extends Controller
                 }
 
                 $page = request()->input('page', 1);
-                $perPage = 16;
+                $perPage = 36;
                 $total = $productsCollection->count();
 
                 $allProductIds = $productsCollection->pluck('id')->all();
@@ -1502,9 +1244,14 @@ class StorefrontController extends Controller
             'filters' => [
                 'q' => $query,
                 'category' => $categoryId,
+                'brand' => $request->input('brand'),
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
                 'sort' => $sort,
+                'type' => $request->input('type', 'all'),
+                'promo' => $request->boolean('promo'),
+                'condition' => $request->input('condition', 'all'),
+                'rating' => $request->input('rating', ''),
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
@@ -1516,7 +1263,7 @@ class StorefrontController extends Controller
      *
      * @return Response
      */
-    public function category(Request $request, string $category)
+    public function category(Request $request, string $category, ProductService $productService)
     {
         $this->initMembership();
         $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $category);
@@ -1525,144 +1272,33 @@ class StorefrontController extends Controller
             ? Category::where('id', $category)->firstOrFail()
             : Category::where('slug', $category)->firstOrFail();
 
-        $query = $request->input('q');
-        $minPrice = $request->input('min_price');
-        $maxPrice = $request->input('max_price');
-        $sort = $request->input('sort', 'latest');
-        $type = $request->input('type', 'all');
-
-        $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
-            ->orderBy('order')
-            ->get();
-
-        // Build product query
-        $productsQuery = Product::with([
-            'category',
-            'productPrice',
-            'productStock',
-            'images',
-            'variants.productPrice',
-            'variants.options',
-            'variants.productStock',
-            'variations.options',
-        ])
-            ->where('active', true)
-            ->where('category_id', $categoryModel->id);
-
-        if ($type === 'physical') {
-            $productsQuery->where('is_digital', false);
-        } elseif ($type === 'digital') {
-            $productsQuery->where('is_digital', true);
-        }
-
-        $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
-
-        // Filter by keyword (search in name, description, variant SKU, etc.)
-        if ($query) {
-            $terms = array_filter(explode(' ', $query));
-            $productsQuery->where(function ($q) use ($terms, $like) {
-                foreach ($terms as $term) {
-                    $q->where(function ($subQ) use ($term, $like) {
-                        $subQ->where('name', $like, "%{$term}%")
-                            ->orWhere('description', $like, "%{$term}%")
-                            ->orWhereHas('variants', function ($qv) use ($term, $like) {
-                                $qv->where('sku', $like, "%{$term}%")
-                                    ->orWhereHas('options', function ($qo) use ($term, $like) {
-                                        $qo->where('name', $like, "%{$term}%");
-                                    });
-                            });
-                    });
-                }
-            });
-        }
+        // Pass category model ID to request filters
+        $request->merge(['category' => $categoryModel->id]);
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
 
         return Inertia::render('Storefront/Category', [
             'category' => $categoryModel,
-            'categories' => Inertia::defer(fn() => Category::select('id', 'name', 'slug', 'image', 'icon')
+            'categories' => Inertia::defer(fn () => Category::select('id', 'name', 'slug', 'image', 'icon')
                 ->orderBy('order')
                 ->get()),
-            'products' => Inertia::defer(function () use ($productsQuery, $minPrice, $maxPrice, $sort, $query) {
-                $productsCollection = $productsQuery->get();
-
-                $activePromotions = Promotion::with(['items'])
-                    ->where('is_active', true)
-                    ->where('start_time', '<=', now())
-                    ->where('end_time', '>=', now())
-                    ->get();
-
-                $productsCollection = $productsCollection->filter(function ($p) use ($activePromotions, $minPrice, $maxPrice) {
-                    $this->applyPromotionsToProduct($p, $activePromotions);
-
-                    $price = $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                    if ($minPrice && $price < $minPrice) {
-                        return false;
-                    }
-                    if ($maxPrice && $price > $maxPrice) {
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                if ($sort === 'price_asc') {
-                    $productsCollection = $productsCollection->sortBy(function ($p) {
-                        return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                    });
-                } elseif ($sort === 'price_desc') {
-                    $productsCollection = $productsCollection->sortByDesc(function ($p) {
-                        return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
-                    });
-                } elseif ($sort === 'popular') {
-                    $soldCounts = $this->getSoldCountsForProducts($productsCollection->pluck('id')->all());
-                    $productsCollection = $productsCollection->sortByDesc(function ($p) use ($soldCounts) {
-                        return $soldCounts[$p->id] ?? 0;
-                    });
-                } elseif ($sort === 'latest') {
-                    $productsCollection = $productsCollection->sortByDesc('created_at');
-                } else {
-                    if ($query) {
-                        $productsCollection = $productsCollection->sortByDesc(function ($p) use ($query) {
-                            $nameLower = strtolower($p->name);
-                            $queryLower = strtolower($query);
-                            if (str_starts_with($nameLower, $queryLower)) {
-                                return 2;
-                            }
-                            if (str_contains($nameLower, $queryLower)) {
-                                return 1;
-                            }
-
-                            return 0;
-                        });
-                    } else {
-                        $productsCollection = $productsCollection->sortByDesc('created_at');
-                    }
-                }
-
-                $page = request()->input('page', 1);
-                $perPage = 16;
-                $total = $productsCollection->count();
-                $paginatedItems = $productsCollection->slice(($page - 1) * $perPage, $perPage)->values();
-
-                return new LengthAwarePaginator(
-                    $paginatedItems,
-                    $total,
-                    $perPage,
-                    $page,
-                    [
-                        'path' => request()->url(),
-                        'query' => request()->query(),
-                    ]
-                );
-            }),
+            'brands' => Inertia::defer(fn () => Brand::select('id', 'name', 'slug')
+                ->where('is_active', true)
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get()),
+            'products' => Inertia::defer(fn () => $productService->getFilteredProducts($request, 36)),
             'filters' => [
-                'q' => $query,
-                'min_price' => $minPrice,
-                'max_price' => $maxPrice,
-                'sort' => $sort,
-                'type' => $type,
+                'q' => $request->input('q'),
+                'brand' => $request->input('brand'),
+                'min_price' => $request->input('min_price'),
+                'max_price' => $request->input('max_price'),
+                'sort' => $request->input('sort', 'latest'),
+                'type' => $request->input('type', 'all'),
+                'promo' => $request->boolean('promo'),
+                'condition' => $request->input('condition', 'all'),
+                'rating' => $request->input('rating', ''),
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
@@ -1812,7 +1448,7 @@ class StorefrontController extends Controller
             ->where('transaction_id', $transaction->id)
             ->get()
             ->keyBy(function ($review) {
-                return $review->product_id . '_' . $review->product_variant_id;
+                return $review->product_id.'_'.$review->product_variant_id;
             });
 
         // Auto-check gateway payment status if the transaction is still unpaid and is a gateway payment
@@ -1851,7 +1487,7 @@ class StorefrontController extends Controller
                             $transaction->load(['payments', 'payment']);
                         }
                     } catch (\Exception $e) {
-                        Log::error('Komerce Payment Auto-check Exception: ' . $e->getMessage());
+                        Log::error('Komerce Payment Auto-check Exception: '.$e->getMessage());
                     }
                 } elseif (str_contains($pmNameLower, 'midtrans')) {
                     try {
@@ -1878,7 +1514,7 @@ class StorefrontController extends Controller
                             $midtransOrderId = $transaction->transaction_number;
                         }
 
-                        $midtransUrl = rtrim($apiUrl, '/') . '/v2/' . $midtransOrderId . '/status';
+                        $midtransUrl = rtrim($apiUrl, '/').'/v2/'.$midtransOrderId.'/status';
 
                         $response = Http::withBasicAuth($serverKey, '')
                             ->timeout(10)
@@ -1914,7 +1550,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Midtrans Auto-check Exception: ' . $e->getMessage());
+                        Log::error('Midtrans Auto-check Exception: '.$e->getMessage());
                     }
                 } elseif (str_contains(strtolower($transaction->paymentMethod->name), 'flip')) {
                     try {
@@ -1922,7 +1558,7 @@ class StorefrontController extends Controller
                         $baseUrl = $transaction->paymentMethod->settings['url'] ?? config('app.flip.base_url', 'https://bigflip.id/big_sandbox_api');
                         $billId = $latestPayment->gateway_transaction_id;
 
-                        $flipUrl = rtrim($baseUrl, '/') . '/v2/pwf/' . $billId . '/bill';
+                        $flipUrl = rtrim($baseUrl, '/').'/v2/pwf/'.$billId.'/bill';
 
                         $response = Http::withBasicAuth($secretKey, '')
                             ->timeout(10)
@@ -1958,7 +1594,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Flip Auto-check Exception: ' . $e->getMessage());
+                        Log::error('Flip Auto-check Exception: '.$e->getMessage());
                     }
                 } else {
                     try {
@@ -1969,7 +1605,7 @@ class StorefrontController extends Controller
                             ? $transaction->paymentMethod->settings['url']
                             : config('app.xendit.url', 'https://api.xendit.co');
 
-                        $xenditUrl = rtrim($baseUrl, '/') . '/v2/invoices/' . $invoiceId;
+                        $xenditUrl = rtrim($baseUrl, '/').'/v2/invoices/'.$invoiceId;
 
                         $response = Http::withBasicAuth($secretKey, '')
                             ->timeout(10)
@@ -2006,7 +1642,7 @@ class StorefrontController extends Controller
                             }
                         }
                     } catch (\Exception $e) {
-                        Log::error('Xendit Auto-check Exception: ' . $e->getMessage());
+                        Log::error('Xendit Auto-check Exception: '.$e->getMessage());
                     }
                 }
             }
@@ -2099,7 +1735,7 @@ class StorefrontController extends Controller
 
         $validated = $request->validate([
             'payment_method_id' => 'required|exists:payment_methods,id',
-            'midtrans_payment_type_key' => 'nullable|string|in:' . implode(',', array_keys(MidtransService::$paymentTypes)),
+            'midtrans_payment_type_key' => 'nullable|string|in:'.implode(',', array_keys(MidtransService::$paymentTypes)),
         ]);
 
         $paymentMethod = PaymentMethod::findOrFail($validated['payment_method_id']);
@@ -2113,7 +1749,7 @@ class StorefrontController extends Controller
         if ($midtransPaymentTypeKey && str_contains(strtolower($paymentMethod->name), 'midtrans')) {
             $user = $request->user();
             $result = MidtransService::charge(
-                ($transaction->transaction_number ?? $transaction->id) . '-' . time(),
+                ($transaction->transaction_number ?? $transaction->id).'-'.time(),
                 (int) $transaction->grand_total,
                 $midtransPaymentTypeKey,
                 [
@@ -2143,7 +1779,7 @@ class StorefrontController extends Controller
                 }
             } else {
                 return redirect()->route('transactions.show', $transaction->id)
-                    ->with('error', 'Metode pembayaran diubah tetapi gagal membuat charge Midtrans: ' . ($result['error'] ?? 'Unknown error'));
+                    ->with('error', 'Metode pembayaran diubah tetapi gagal membuat charge Midtrans: '.($result['error'] ?? 'Unknown error'));
             }
         }
 
@@ -2266,7 +1902,7 @@ class StorefrontController extends Controller
                 } else {
                     $path = $file->store('reviews', 'public');
                 }
-                $mediaPaths[] = '/storage/' . $path;
+                $mediaPaths[] = '/storage/'.$path;
             }
         }
 
@@ -2430,13 +2066,13 @@ class StorefrontController extends Controller
         $levels = MembershipLevel::orderBy('order', 'asc')
             ->with('activeBenefits')
             ->get()
-            ->map(fn($l) => [
+            ->map(fn ($l) => [
                 'id' => $l->id,
                 'name' => $l->name,
                 'order' => $l->order,
                 'badge_color' => $l->badge_color,
                 'icon' => $l->icon,
-                'benefits' => $l->activeBenefits->map(fn($b) => [
+                'benefits' => $l->activeBenefits->map(fn ($b) => [
                     'label' => $b->label,
                     'icon' => $b->icon,
                     'type' => $b->type,
@@ -2449,6 +2085,89 @@ class StorefrontController extends Controller
 
         return Inertia::render('Storefront/Membership', [
             'levels' => $levels,
+            'storeName' => $storeName,
+            'storeLogo' => $storeLogo,
+        ]);
+    }
+
+    /**
+     * Display a seller's public storefront page.
+     */
+    public function sellerStore(Request $request, string $slug): Response
+    {
+        $isSellerEnabled = filter_var(
+            Setting::where('key', 'is_seller')->value('value') ?? config('app.is_seller', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (! $isSellerEnabled) {
+            abort(404);
+        }
+
+        $this->initMembership();
+
+        $seller = User::where('store_slug', $slug)
+            ->where('is_seller', true)
+            ->firstOrFail();
+
+        $sort = $request->input('sort', 'latest');
+        $search = $request->input('q', '');
+
+        $productsQuery = Product::with([
+            'productPrice',
+            'productStock',
+            'images',
+            'variants.productPrice',
+            'variants.options',
+            'variants.productStock',
+            'variations.options',
+        ])
+            ->withAvg('reviews as avg_rating', 'rating')
+            ->withCount('reviews as review_count')
+            ->where('user_id', $seller->id)
+            ->where('active', true);
+
+        if ($search) {
+            $productsQuery->where('name', 'ilike', "%{$search}%");
+        }
+
+        match ($sort) {
+            'price_asc' => $productsQuery->join('product_prices', 'products.id', '=', 'product_prices.product_id')->orderBy('product_prices.price', 'asc')->select('products.*'),
+            'price_desc' => $productsQuery->join('product_prices', 'products.id', '=', 'product_prices.product_id')->orderBy('product_prices.price', 'desc')->select('products.*'),
+            'popular' => $productsQuery->withCount(['transactionItems as sold_count' => fn ($q) => $q->whereHas('transaction', fn ($t) => $t->where('status', 'selesai'))])->orderByDesc('sold_count'),
+            default => $productsQuery->latest(),
+        };
+
+        $products = $productsQuery->paginate(24)->withQueryString();
+
+        // Apply promotions
+        $activePromotions = Promotion::with(['items'])
+            ->where('is_active', true)
+            ->where('start_time', '<=', now())
+            ->where('end_time', '>=', now())
+            ->get();
+
+        foreach ($products as $product) {
+            $this->applyPromotionsToProduct($product, $activePromotions);
+        }
+
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+        $storeLogo = Setting::where('key', 'store_logo')->value('value');
+
+        return Inertia::render('Storefront/SellerStore', [
+            'seller' => [
+                'id' => $seller->id,
+                'name' => $seller->name,
+                'store_name' => $seller->store_name,
+                'store_slug' => $seller->store_slug,
+                'store_logo' => $seller->store_logo,
+                'store_description' => $seller->store_description,
+            ],
+            'products' => $products,
+            'filters' => [
+                'q' => $search,
+                'sort' => $sort,
+            ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);

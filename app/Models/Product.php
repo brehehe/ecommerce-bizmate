@@ -12,6 +12,8 @@ class Product extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
+        'user_id',
+        'origin_address_id',
         'name',
         'slug',
         'sku',
@@ -41,7 +43,23 @@ class Product extends Model
         'model_3d_path',
         'model_3d_usdz_path',
         'order',
+        'condition',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function originAddress(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAddress::class, 'origin_address_id');
+    }
 
     public function brandRelation()
     {

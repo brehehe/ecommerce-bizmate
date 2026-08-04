@@ -6,10 +6,12 @@ use App\Helpers\ImageHelper;
 use App\Models\CoinHistory;
 use App\Models\CustomerBankAccount;
 use App\Models\Setting;
+use App\Services\BiteshipService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,10 +35,47 @@ class ProfileController extends Controller
                 'birth_date' => $request->user()->birth_date,
                 'avatar' => $request->user()->avatar,
                 'coins_balance' => $request->user()->coins_balance,
+                'is_seller' => $request->user()->is_seller,
+                'store_name' => $request->user()->store_name,
+                'store_slug' => $request->user()->store_slug,
+                'store_description' => $request->user()->store_description,
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
+    }
+
+    /**
+     * Activate seller store profile for customer.
+     */
+    public function becomeSeller(Request $request): RedirectResponse
+    {
+        $isSellerEnabled = filter_var(
+            Setting::where('key', 'is_seller')->value('value') ?? config('app.is_seller', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (! $isSellerEnabled) {
+            return back()->with('error', 'Fitur penjual / toko sedang tidak aktif.');
+        }
+
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'store_name' => 'required|string|max:255',
+            'store_description' => 'nullable|string|max:1000',
+        ], [
+            'store_name.required' => 'Nama Toko / Penjual wajib diisi.',
+        ]);
+
+        $user->update([
+            'is_seller' => true,
+            'store_name' => $validated['store_name'],
+            'store_slug' => Str::slug($validated['store_name']).'-'.substr($user->id, 0, 5),
+            'store_description' => $validated['store_description'] ?? null,
+        ]);
+
+        return redirect()->route('admin.dashboard')->with('success', 'Toko Anda berhasil diaktifkan! Selamat berjualan.');
     }
 
     /**
@@ -125,6 +164,81 @@ class ProfileController extends Controller
                 'coins_balance' => $request->user()->coins_balance,
             ],
         ]);
+    }
+
+    /**
+     * Show the seller's store profile edit page.
+     */
+    public function showSellerProfile(Request $request): Response
+    {
+        $user = $request->user();
+
+        if (! $user->is_seller) {
+            abort(403, 'Akses hanya untuk seller.');
+        }
+
+        $addresses = $user->customerAddresses()
+            ->orderByDesc('is_primary')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $isBiteshipEnabled = BiteshipService::isEnabled();
+        $isRajaOngkirEnabled = ! empty(Setting::where('key', 'rajaongkir_shipping_cost')->value('value'));
+
+        return Inertia::render('Admin/SellerProfile', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'avatar' => $user->avatar,
+                'store_name' => $user->store_name,
+                'store_slug' => $user->store_slug,
+                'store_logo' => $user->store_logo,
+                'store_description' => $user->store_description,
+            ],
+            'addresses' => $addresses,
+            'isBiteshipEnabled' => $isBiteshipEnabled,
+            'isRajaOngkirEnabled' => $isRajaOngkirEnabled,
+        ]);
+    }
+
+    /**
+     * Update the seller's store profile information.
+     */
+    public function updateSellerProfile(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user->is_seller) {
+            abort(403, 'Akses hanya untuk seller.');
+        }
+
+        $request->validate([
+            'store_name' => 'required|string|max:255',
+            'store_description' => 'nullable|string|max:1000',
+            'store_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ], [
+            'store_name.required' => 'Nama toko wajib diisi.',
+            'store_logo.image' => 'File harus berupa gambar.',
+            'store_logo.max' => 'Ukuran logo maksimal 2MB.',
+        ]);
+
+        $user->store_name = $request->input('store_name');
+        $user->store_description = $request->input('store_description');
+        $user->store_slug = Str::slug($request->input('store_name')).'-'.substr($user->id, 0, 5);
+
+        if ($request->hasFile('store_logo')) {
+            if ($user->store_logo) {
+                Storage::disk('public')->delete($user->store_logo);
+            }
+            $path = ImageHelper::compressAndStore($request->file('store_logo'), 'store-logos', 'public');
+            $user->store_logo = $path;
+        }
+
+        $user->save();
+
+        return redirect()->back()->with('success', 'Info toko berhasil diperbarui!');
     }
 
     /**

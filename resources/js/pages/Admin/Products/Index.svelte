@@ -29,6 +29,9 @@
 
     // JS CSV Parser
     function parseCSV(text) {
+        if (text.charCodeAt(0) === 0xFEFF) {
+            text = text.slice(1);
+        }
         // Simple delimiter detection
         let delimiter = ',';
         const firstLine = text.split(/\r?\n/)[0] || '';
@@ -96,41 +99,53 @@
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                const text = event.target.result;
+                let text = event.target.result || '';
+                if (text.charCodeAt(0) === 0xFEFF) {
+                    text = text.slice(1);
+                }
                 const rows = parseCSV(text);
                 if (rows.length < 2) {
                     importError = 'File CSV kosong atau tidak valid.';
                     return;
                 }
 
-                const headers = rows[0].map((h) => h.trim().toLowerCase());
+                const headers = rows[0].map((h) => h.replace(/^\uFEFF/, '').trim().toLowerCase());
+
+                const findHeader = (names) => {
+                    for (const n of names) {
+                        const idx = headers.indexOf(n.toLowerCase());
+                        if (idx !== -1) return idx;
+                    }
+                    return -1;
+                };
 
                 // Map header names to indices
                 const headerMap = {
-                    name: headers.indexOf('nama produk'),
-                    sku: headers.indexOf('sku'),
-                    categories: headers.indexOf('kategori'),
-                    brand: headers.indexOf('brand'),
-                    summary: headers.indexOf('ringkasan singkat'),
-                    price: headers.indexOf('harga jual'),
-                    cost: headers.indexOf('harga modal'),
-                    stock: headers.indexOf('stok'),
-                    min_stock: headers.indexOf('batas minimum'),
-                    min_purchase: headers.indexOf('min pembelian'),
-                    weight: headers.indexOf('berat (gram)'),
-                    length: headers.indexOf('panjang (cm)'),
-                    width: headers.indexOf('lebar (cm)'),
-                    height: headers.indexOf('tinggi (cm)'),
-                    description: headers.indexOf('deskripsi'),
-                    is_digital: headers.indexOf('apakah digital'),
-                    is_unlimited: headers.indexOf('apakah unlimited stock'),
-                    specifications: headers.indexOf('spesifikasi'),
-                    var1_name: headers.indexOf('variasi 1 nama'),
-                    var1_val: headers.indexOf('variasi 1 nilai'),
-                    var2_name: headers.indexOf('variasi 2 nama'),
-                    var2_val: headers.indexOf('variasi 2 nilai'),
-                    var_price: headers.indexOf('harga varian'),
-                    var_stock: headers.indexOf('stok varian'),
+                    name: findHeader(['nama produk', 'nama', 'name', 'product name', 'title']),
+                    sku: findHeader(['sku', 'kode sku', 'code']),
+                    categories: findHeader(['kategori', 'category', 'categories']),
+                    brand: findHeader(['brand', 'merk', 'merek']),
+                    summary: findHeader(['ringkasan singkat', 'ringkasan', 'summary']),
+                    price: findHeader(['harga jual', 'harga', 'price']),
+                    cost: findHeader(['harga modal', 'modal', 'cost', 'hpp']),
+                    stock: findHeader(['stok', 'stock', 'qty']),
+                    min_stock: findHeader(['batas minimum', 'min stock', 'min_stock']),
+                    min_purchase: findHeader(['min pembelian', 'min purchase', 'min_purchase']),
+                    weight: findHeader(['berat (gram)', 'berat', 'weight']),
+                    length: findHeader(['panjang (cm)', 'panjang', 'length']),
+                    width: findHeader(['lebar (cm)', 'lebar', 'width']),
+                    height: findHeader(['tinggi (cm)', 'tinggi', 'height']),
+                    description: findHeader(['deskripsi', 'description', 'detail']),
+                    is_digital: findHeader(['apakah digital', 'is_digital', 'digital']),
+                    is_unlimited: findHeader(['apakah unlimited stock', 'is_unlimited', 'unlimited']),
+                    specifications: findHeader(['spesifikasi', 'specifications', 'specs']),
+                    condition: findHeader(['kondisi (baru/bekas)', 'kondisi', 'condition']),
+                    var1_name: findHeader(['variasi 1 nama', 'variasi 1', 'variant 1 name']),
+                    var1_val: findHeader(['variasi 1 nilai', 'variant 1 value']),
+                    var2_name: findHeader(['variasi 2 nama', 'variasi 2', 'variant 2 name']),
+                    var2_val: findHeader(['variasi 2 nilai', 'variant 2 value']),
+                    var_price: findHeader(['harga varian', 'variant price']),
+                    var_stock: findHeader(['stok varian', 'variant stock']),
                 };
 
                 if (headerMap.name === -1 || headerMap.sku === -1) {
@@ -238,6 +253,14 @@
                                           headerMap.is_unlimited
                                       ]?.toLowerCase() === 'ya'
                                     : false,
+                            condition:
+                                headerMap.condition !== -1
+                                    ? ['used', 'bekas', 'second'].includes(
+                                          row[headerMap.condition]?.trim().toLowerCase()
+                                      )
+                                        ? 'used'
+                                        : 'new'
+                                    : 'new',
                             specifications: specifications,
                             variations: [],
                             variants: [],
@@ -1018,11 +1041,20 @@
                                                         title={product.name}
                                                         >{product.name}</Link
                                                     >
-                                                    <p
-                                                        class="text-[11px] text-slate-500 font-mono mt-0.5"
-                                                    >
-                                                        SKU Induk: {product.sku}
-                                                    </p>
+                                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                                        <p class="text-[11px] text-slate-500 font-mono">
+                                                            SKU Induk: {product.sku}
+                                                        </p>
+                                                        {#if product.condition === 'used'}
+                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200">
+                                                                <i class="ti ti-refresh text-[10px]"></i> Bekas
+                                                            </span>
+                                                        {:else}
+                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200">
+                                                                <i class="ti ti-sparkles text-[10px]"></i> Baru
+                                                            </span>
+                                                        {/if}
+                                                    </div>
                                                     {#if product.brands && product.brands.length > 0}
                                                         <p
                                                             class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5"

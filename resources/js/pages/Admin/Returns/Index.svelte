@@ -349,145 +349,154 @@
 
         <!-- Table container -->
         <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <!-- Table toolbar -->
-            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                <p class="text-sm text-slate-500">
-                    {#if returns.total !== undefined}
-                        <span class="font-semibold text-slate-800">{returns.total}</span> pengajuan retur
-                    {/if}
-                </p>
-                <div class="flex items-center gap-2">
-                    {#if returns.data.length > 0 && selectableReturns.length > 0}
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={allSelected}
-                                onchange={toggleSelectAll}
-                                class="rounded border-slate-300 accent-slate-900"
-                            />
-                            <span class="text-xs text-slate-500">Pilih semua</span>
-                        </label>
-                    {/if}
-                </div>
-            </div>
-
-            {#if returns.data.length === 0}
-                <div class="flex flex-col items-center justify-center py-16 text-center px-4">
-                    <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
-                        <i class="ti ti-arrow-back-up text-xl"></i>
-                    </div>
-                    <p class="text-sm font-medium text-slate-600">Tidak ada pengajuan retur</p>
-                    <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
+            {#if !returns}
+                <div class="p-8 space-y-4 animate-pulse">
+                    <div class="h-6 bg-slate-200 rounded w-1/4"></div>
+                    <div class="h-10 bg-slate-100 rounded w-full"></div>
+                    <div class="h-10 bg-slate-100 rounded w-full"></div>
+                    <div class="h-10 bg-slate-100 rounded w-full"></div>
                 </div>
             {:else}
-                <div class="overflow-x-auto" use:dragScroll>
-                    <table class="w-full text-left border-collapse responsive-table">
-                        <thead>
-                            <tr class="border-b border-slate-100 bg-slate-50/50">
-                                <th class="w-10 px-4 py-2.5"></th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Retur</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Customer</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Transaksi</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Jenis</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nominal</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Items</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
-                                <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
-                            {#each returns.data as ret (ret.id)}
-                                {@const statusStyle = statusColors[ret.status] ?? { bg: '#f1f5f9', text: '#475569' }}
-                                <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100">
-                                    <td class="py-5 px-4 w-12 text-center">
-                                        {#if ret.status === 'menunggu_review' || ret.status === 'barang_dikirim_customer'}
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedIds.includes(ret.id)}
-                                                onchange={() => toggleSelect(ret.id)}
-                                                class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
-                                            />
-                                        {:else}
-                                            <input
-                                                type="checkbox"
-                                                disabled
-                                                class="rounded border-slate-200 text-slate-200 w-4 h-4 cursor-not-allowed opacity-30"
-                                            />
-                                        {/if}
-                                    </td>
-                                    <td class="px-4 py-3" data-label="No. Retur">
-                                        <p class="font-bold text-slate-800 font-mono text-xs">
-                                            {ret.return_number}
-                                        </p>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Customer">
-                                        <div>
-                                            <p class="font-bold text-slate-800 text-sm">
-                                                {ret.user?.name ?? '-'}
-                                            </p>
-                                            <p class="text-[11px] text-slate-400 font-bold">
-                                                {ret.user?.email ?? ''}
-                                            </p>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Transaksi">
-                                        <div>
-                                            <p class="font-mono text-xs font-bold text-slate-700">
-                                                {ret.transaction?.transaction_number ?? '-'}
-                                            </p>
-                                            <p class="text-[11px] text-slate-400 font-bold mt-0.5">
-                                                {fmt(ret.transaction?.grand_total)}
-                                            </p>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Jenis">
-                                        {#if ret.type === 'refund'}
-                                            <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-700 border border-cyan-200/50">
-                                                <i class="ti ti-cash-banknote text-xs"></i>
-                                                Pengembalian Dana
-                                            </span>
-                                        {:else}
-                                            <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200/50">
-                                                <i class="ti ti-package-import text-xs"></i>
-                                                Penggantian Barang
-                                            </span>
-                                        {/if}
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Nominal">
-                                        <span class="font-black text-slate-800 text-sm">{fmt(ret.refund_amount)}</span>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Items">
-                                        <span class="text-slate-600 font-semibold">{(ret.items ?? []).length} item</span>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Status">
-                                        <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider" style="background:{statusStyle.bg}; color:{statusStyle.text}">
-                                            {statusLabels[ret.status] ?? ret.status}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Tanggal">
-                                        <span class="text-xs text-slate-500 font-bold">{fmtDate(ret.created_at)}</span>
-                                    </td>
-                                    <td class="px-4 py-3" data-label="Aksi">
-                                        <a
-                                            href="/admin/returns/{ret.id}"
-                                            class="inline-flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl text-white transition font-outfit uppercase tracking-wider"
-                                            style="background:{primary};"
-                                            title="Detail Retur"
-                                        >
-                                            <i class="ti ti-eye text-sm"></i>
-                                            Detail
-                                        </a>
-                                    </td>
-                                </tr>
-                            {/each}
-                        </tbody>
-                    </table>
+                <!-- Table toolbar -->
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                    <p class="text-sm text-slate-500">
+                        {#if returns?.total !== undefined}
+                            <span class="font-semibold text-slate-800">{returns.total}</span> pengajuan retur
+                        {/if}
+                    </p>
+                    <div class="flex items-center gap-2">
+                        {#if (returns?.data?.length ?? 0) > 0 && selectableReturns.length > 0}
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onchange={toggleSelectAll}
+                                    class="rounded border-slate-300 accent-slate-900"
+                                />
+                                <span class="text-xs text-slate-500">Pilih semua</span>
+                            </label>
+                        {/if}
+                    </div>
                 </div>
 
-                <!-- Pagination -->
-                {#if returns.last_page > 1}
-                    <Pagination data={returns} params={{ status: filterStatus, search: filterSearch, type: filterType }} />
+                {#if (returns?.data?.length ?? 0) === 0}
+                    <div class="flex flex-col items-center justify-center py-16 text-center px-4">
+                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                            <i class="ti ti-arrow-back-up text-xl"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">Tidak ada pengajuan retur</p>
+                        <p class="mt-1 text-xs text-slate-400">Coba ubah filter atau kata kunci pencarian</p>
+                    </div>
+                {:else}
+                    <div class="overflow-x-auto" use:dragScroll>
+                        <table class="w-full text-left border-collapse responsive-table">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/50">
+                                    <th class="w-10 px-4 py-2.5"></th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Retur</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Customer</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Transaksi</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Jenis</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nominal</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Items</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Status</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal</th>
+                                    <th class="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                                {#each returns?.data ?? [] as ret (ret.id)}
+                                    {@const statusStyle = statusColors[ret.status] ?? { bg: '#f1f5f9', text: '#475569' }}
+                                    <tr class="hover:bg-slate-50/50 transition duration-150 border-b border-slate-100">
+                                        <td class="py-5 px-4 w-12 text-center">
+                                            {#if ret.status === 'menunggu_review' || ret.status === 'barang_dikirim_customer'}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(ret.id)}
+                                                    onchange={() => toggleSelect(ret.id)}
+                                                    class="rounded border-slate-300 text-slate-900 focus:ring-slate-500 w-4 h-4 cursor-pointer"
+                                                />
+                                            {:else}
+                                                <input
+                                                    type="checkbox"
+                                                    disabled
+                                                    class="rounded border-slate-200 text-slate-200 w-4 h-4 cursor-not-allowed opacity-30"
+                                                />
+                                            {/if}
+                                        </td>
+                                        <td class="px-4 py-3" data-label="No. Retur">
+                                            <p class="font-bold text-slate-800 font-mono text-xs">
+                                                {ret.return_number}
+                                            </p>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Customer">
+                                            <div>
+                                                <p class="font-bold text-slate-800 text-sm">
+                                                    {ret.user?.name ?? '-'}
+                                                </p>
+                                                <p class="text-[11px] text-slate-400 font-bold">
+                                                    {ret.user?.email ?? ''}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Transaksi">
+                                            <div>
+                                                <p class="font-mono text-xs font-bold text-slate-700">
+                                                    {ret.transaction?.transaction_number ?? '-'}
+                                                </p>
+                                                <p class="text-[11px] text-slate-400 font-bold mt-0.5">
+                                                    {fmt(ret.transaction?.grand_total)}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Jenis">
+                                            {#if ret.type === 'refund'}
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-700 border border-cyan-200/50">
+                                                    <i class="ti ti-cash-banknote text-xs"></i>
+                                                    Pengembalian Dana
+                                                </span>
+                                            {:else}
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200/50">
+                                                    <i class="ti ti-package-import text-xs"></i>
+                                                    Penggantian Barang
+                                                </span>
+                                            {/if}
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Nominal">
+                                            <span class="font-black text-slate-800 text-sm">{fmt(ret.refund_amount)}</span>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Items">
+                                            <span class="text-slate-600 font-semibold">{(ret.items ?? []).length} item</span>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Status">
+                                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider" style="background:{statusStyle.bg}; color:{statusStyle.text}">
+                                                {statusLabels[ret.status] ?? ret.status}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Tanggal">
+                                            <span class="text-xs text-slate-500 font-bold">{fmtDate(ret.created_at)}</span>
+                                        </td>
+                                        <td class="px-4 py-3" data-label="Aksi">
+                                            <a
+                                                href="/admin/returns/{ret.id}"
+                                                class="inline-flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl text-white transition font-outfit uppercase tracking-wider"
+                                                style="background:{primary};"
+                                                title="Detail Retur"
+                                            >
+                                                <i class="ti ti-eye text-sm"></i>
+                                                Detail
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {/each}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {#if returns?.last_page > 1}
+                        <Pagination data={returns} params={{ status: filterStatus, search: filterSearch, type: filterType }} />
+                    {/if}
                 {/if}
             {/if}
         </div>

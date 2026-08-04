@@ -13,7 +13,7 @@ Broadcast::channel('chat.{chatId}', function ($user, $chatId) {
         return false;
     }
 
-    return (string) $chat->user_id === (string) $user->id || ! $user->hasRole('Customer');
+    return (string) $chat->user_id === (string) $user->id || $user->is_seller || $user->hasAnyRole(['Super Admin', 'Admin']) || ! $user->hasRole('Customer');
 });
 
 Broadcast::channel('user.{userId}', function ($user, $userId) {
@@ -21,5 +21,5 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
 });
 
 Broadcast::channel('admin', function ($user) {
-    return ! $user->hasRole('Customer');
+    return $user->hasAnyRole(['Super Admin', 'Admin']) || $user->is_seller || ! $user->hasRole('Customer');
 });

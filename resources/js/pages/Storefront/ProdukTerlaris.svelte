@@ -3,17 +3,25 @@
     import { page, Link, router } from '@inertiajs/svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
     import { showToast } from '@/utils/toast';
+    import Toggle from '@/components/ui/Toggle.svelte';
     import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
+    import Pagination from '@/components/ui/Pagination.svelte';
 
     let {
-        categories = undefined,
-        products = undefined,
+        categories = [],
+        brands = [],
+        products = { data: [], links: [] },
         filters = {
             q: '',
             category: '',
+            brand: '',
             min_price: '',
             max_price: '',
             sort: 'popular',
+            type: 'all',
+            promo: false,
+            condition: 'all',
+            rating: '',
         },
         storeName = '',
     } = $props();
@@ -81,6 +89,22 @@
     let minPrice = $state(filters.min_price || '');
     // svelte-ignore state_referenced_locally
     let maxPrice = $state(filters.max_price || '');
+    function getBrandsFromFilter(val: any) {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        return typeof val === 'string' ? val.split(',') : [val.toString()];
+    }
+
+    // svelte-ignore state_referenced_locally
+    let selectedBrands = $state(getBrandsFromFilter(filters.brand));
+    // svelte-ignore state_referenced_locally
+    let selectedType = $state(filters.type || 'all');
+    // svelte-ignore state_referenced_locally
+    let promoOnly = $state(filters.promo || false);
+    // svelte-ignore state_referenced_locally
+    let selectedCondition = $state(filters.condition || 'all');
+    // svelte-ignore state_referenced_locally
+    let selectedRating = $state(filters.rating || '');
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
@@ -89,9 +113,14 @@
     $effect(() => {
         searchQ = filters.q || '';
         selectedCategories = getCategoriesFromFilter(filters.category);
+        selectedBrands = getBrandsFromFilter(filters.brand);
         minPrice = filters.min_price || '';
         maxPrice = filters.max_price || '';
         selectedSort = filters.sort || 'popular';
+        selectedType = filters.type || 'all';
+        promoOnly = filters.promo || false;
+        selectedCondition = filters.condition || 'all';
+        selectedRating = filters.rating || '';
     });
 
     function applyFilters(closeDrawer = true) {
@@ -101,9 +130,14 @@
             {
                 q: searchQ,
                 category: selectedCategories,
+                brand: selectedBrands,
                 min_price: minPrice,
                 max_price: maxPrice,
                 sort: selectedSort,
+                type: selectedType,
+                promo: promoOnly ? 1 : 0,
+                condition: selectedCondition,
+                rating: selectedRating,
             },
             {
                 preserveState: true,
@@ -115,9 +149,14 @@
     function resetFilters(keepMobileOpen = false) {
         searchQ = '';
         selectedCategories = [];
+        selectedBrands = [];
         minPrice = '';
         maxPrice = '';
         selectedSort = 'popular';
+        selectedType = 'all';
+        promoOnly = false;
+        selectedCondition = 'all';
+        selectedRating = '';
 
         if (!keepMobileOpen) {
             showMobileFilters = false;
@@ -156,6 +195,21 @@
         applyFilters(false);
     }
 
+    function selectBrand(brandSlug: string) {
+        if (selectedBrands.includes(brandSlug)) {
+            selectedBrands = selectedBrands.filter(
+                (slug) => slug !== brandSlug,
+            );
+        } else {
+            selectedBrands = [...selectedBrands, brandSlug];
+        }
+    }
+
+    function selectBrandDesktop(brandSlug: string) {
+        selectBrand(brandSlug);
+        applyFilters(false);
+    }
+
     function formatPrice(price: any) {
         const n = Number(price);
         if (!n) return 'Rp 0';
@@ -180,105 +234,61 @@
         return '/' + path;
     }
 
-    // ── Infinite Scroll ──────────────────────────────────────────────────────
-    // svelte-ignore state_referenced_locally
+    // ── Pagination ────────────────────────────────────────────────────────────
     let allProducts = $state<any[]>(products?.data || []);
     let isLoadingMore = $state(false);
-    // svelte-ignore state_referenced_locally
     let currentPage = $state(products?.current_page || 1);
-    // svelte-ignore state_referenced_locally
-    let nextPageUrl = $state(products?.next_page_url || null);
+    let lastPage = $state(products?.last_page || 1);
+    let total = $state(products?.total || 0);
 
     $effect(() => {
         if (!products) return;
-        if (products.current_page === 1) {
-            allProducts = products.data || [];
-        } else {
-            const existingIds = new Set(allProducts.map((p: any) => p.id));
-            const newItems = (products.data || []).filter(
-                (p: any) => !existingIds.has(p.id),
-            );
-            if (newItems.length > 0) {
-                allProducts = [...allProducts, ...newItems];
-            }
-        }
+        allProducts = products.data || [];
         currentPage = products.current_page || 1;
-        nextPageUrl = products.next_page_url || null;
+        lastPage = products.last_page || 1;
+        total = products.total || 0;
         isLoadingMore = false;
     });
 
-    async function loadMore() {
-        if (isLoadingMore || !nextPageUrl) return;
+    function goToPage(page: number) {
+        if (page < 1 || page > lastPage || page === currentPage) return;
         isLoadingMore = true;
-
-        let fetchUrl = nextPageUrl;
-        if (fetchUrl.startsWith('http://') || fetchUrl.startsWith('https://')) {
-            try {
-                const urlObj = new URL(fetchUrl);
-                fetchUrl = urlObj.pathname + urlObj.search;
-            } catch (e) {
-                console.error('URL parse error:', e);
-            }
-        }
-
-        try {
-            const response = await fetch(fetchUrl, {
-                headers: {
-                    'X-Inertia': 'true',
-                    'X-Inertia-Partial-Component': 'Storefront/ProdukTerlaris',
-                    'X-Inertia-Partial-Data': 'products',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-Inertia-Version': page.version || '',
+        router.get(
+            '/produk-terlaris',
+            {
+                q: searchQ,
+                category: selectedCategories,
+                min_price: minPrice,
+                max_price: maxPrice,
+                sort: selectedSort,
+                page,
+            },
+            {
+                preserveState: true,
+                replace: true,
+                onFinish: () => {
+                    isLoadingMore = false;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
-            });
-
-            if (response.status === 409) {
-                window.location.reload();
-                return;
-            }
-
-            if (response.ok) {
-                const json = await response.json();
-                const newProductsPaginator = json.props?.products;
-                if (newProductsPaginator) {
-                    currentPage = newProductsPaginator.current_page;
-                    nextPageUrl = newProductsPaginator.next_page_url;
-
-                    const newItems = newProductsPaginator.data || [];
-                    const existingIds = new Set(
-                        allProducts.map((p: any) => p.id),
-                    );
-                    const filteredNewItems = newItems.filter(
-                        (p: any) => !existingIds.has(p.id),
-                    );
-                    if (filteredNewItems.length > 0) {
-                        allProducts = [...allProducts, ...filteredNewItems];
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load more products:', error);
-        } finally {
-            isLoadingMore = false;
-        }
-    }
-
-    function setupObserver(node: HTMLElement) {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMore();
-                }
             },
-            { rootMargin: '200px' },
         );
-        observer.observe(node);
-        return {
-            destroy() {
-                observer.disconnect();
-            },
-        };
     }
+
+    const pageNumbers = $derived(() => {
+        const pages: (number | '...')[] = [];
+        if (lastPage <= 7) {
+            for (let i = 1; i <= lastPage; i++) pages.push(i);
+            return pages;
+        }
+        pages.push(1);
+        if (currentPage > 4) pages.push('...');
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(lastPage - 1, currentPage + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (currentPage < lastPage - 3) pages.push('...');
+        pages.push(lastPage);
+        return pages;
+    });
 
     function goBack() {
         if (
@@ -532,9 +542,7 @@
                 <!-- ═══════════════════════════════════════════════════
              FILTER SIDEBAR (Desktop)
             ═══════════════════════════════════════════════════ -->
-                <aside
-                    class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6"
-                >
+            <aside class="hidden md:block w-64 shrink-0 space-y-6 pt-1">
                     <div
                         class="flex items-center justify-between border-b border-slate-100 pb-3"
                     >
@@ -546,13 +554,14 @@
                                 style="color: {primary};"
                             ></i> Filter
                         </span>
-                        <button
-                            onclick={resetFilters}
-                            class="text-[10px] font-black uppercase tracking-wider hover:underline"
-                            style="color: {secondary};"
-                        >
-                            Reset
-                        </button>
+                    <button
+                        onclick={resetFilters}
+                        class="px-2.5 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                        title="Reset semua filter"
+                    >
+                        <i class="ti ti-rotate-2 text-xs"></i>
+                        <span>Reset</span>
+                    </button>
                     </div>
 
                     <!-- Kategori Filter -->
@@ -599,35 +608,118 @@
 
                     <hr class="border-slate-100" />
 
-                    <!-- Rentang Harga Filter -->
-                    <div class="space-y-3">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                            >Rentang Harga</span
-                        >
-                        <div class="space-y-3">
-                            <InputCurrency
-                                bind:value={minPrice}
-                                placeholder="0"
-                                prefix="Rp"
-                                label="Harga Minimum"
-                            />
-                            <InputCurrency
-                                bind:value={maxPrice}
-                                placeholder="Maks"
-                                prefix="Rp"
-                                label="Harga Maksimum"
-                            />
+                {#if brands && brands.length > 0}
+                    <!-- Brand / Merek Filter -->
+                    <div class="space-y-2.5">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Merek / Brand</span>
+                        <div class="space-y-1 max-h-48 overflow-y-auto pr-1">
+                            {#each brands as brand}
+                                <button
+                                    onclick={() => selectBrandDesktop(brand.slug || brand.id.toString())}
+                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                       {selectedBrands.includes(brand.slug || brand.id.toString())
+                                        ? 'bg-slate-50'
+                                        : 'text-slate-600 hover:text-slate-900'}"
+                                    style={selectedBrands.includes(brand.slug || brand.id.toString()) ? `color: ${primary};` : ''}
+                                >
+                                    <span class="truncate">{brand.name}</span>
+                                    {#if selectedBrands.includes(brand.slug || brand.id.toString())}
+                                        <i class="ti ti-check text-xs"></i>
+                                    {/if}
+                                </button>
+                            {/each}
                         </div>
-                        <button
-                            onclick={applyFilters}
-                            class="w-full py-2 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
-                            style="background-color: {primary};"
-                        >
-                            Terapkan Harga
-                        </button>
                     </div>
-                </aside>
+                    <hr class="border-slate-100" />
+                {/if}
+
+                <!-- Rentang Harga Filter -->
+                <div class="space-y-3">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
+                    <div class="space-y-2">
+                        <InputCurrency bind:value={minPrice} placeholder="0" prefix="Rp" label="Harga Minimum" />
+                        <InputCurrency bind:value={maxPrice} placeholder="Maks" prefix="Rp" label="Harga Maksimum" />
+                    </div>
+                    <button
+                        onclick={applyFilters}
+                        class="w-full py-2 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
+                        style="background-color: {primary};"
+                    >
+                        Terapkan Harga
+                    </button>
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Promo Toko Checkbox -->
+                <div
+                    role="button"
+                    tabindex="0"
+                    onkeydown={(e) => e.key === 'Enter' && setTimeout(applyFilters, 0)}
+                    onclick={() => setTimeout(applyFilters, 0)}
+                >
+                    <Toggle bind:checked={promoOnly} label="Hanya Promo Toko" description="Tampilkan diskon aktif" icon="ti-tag" />
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Jenis Produk Filter -->
+                <div class="space-y-2.5">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Jenis Produk</span>
+                    <select
+                        bind:value={selectedType}
+                        onchange={() => applyFilters(false)}
+                        class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300"
+                    >
+                        <option value="all">Semua Produk</option>
+                        <option value="physical">Produk Fisik</option>
+                        <option value="digital">Produk Digital</option>
+                    </select>
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Kondisi Produk Filter -->
+                <div class="space-y-2.5">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kondisi Produk</span>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'Baru' }, { id: 'used', label: 'Bekas' }] as cond}
+                            <button
+                                onclick={() => { selectedCondition = cond.id; applyFilters(false); }}
+                                class="py-1.5 text-xs font-bold rounded-lg border transition text-center
+                                       {selectedCondition === cond.id
+                                    ? 'bg-slate-800 text-white border-slate-800'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            >
+                                {cond.label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Rating Filter -->
+                <div class="space-y-2.5">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rating Minimum</span>
+                    <div class="space-y-1">
+                        {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
+                            <button
+                                onclick={() => { selectedRating = rate.value; applyFilters(false); }}
+                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                       {selectedRating === rate.value
+                                    ? 'bg-amber-50 text-amber-700 font-extrabold'
+                                    : 'text-slate-600 hover:text-slate-900'}"
+                            >
+                                <span>{rate.label}</span>
+                                {#if selectedRating === rate.value}
+                                    <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
+                                {/if}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+            </aside>
 
                 <!-- ═══════════════════════════════════════════════════
              PRODUCT GRID (Right Column)
@@ -649,7 +741,7 @@
                         </div>
                     {:else if allProducts.length === 0 && !isLoadingMore}
                         <div
-                            class="bg-white border border-slate-150 rounded-[28px] py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300"
+                            class="py-16 px-6 sm:px-12 text-center w-full transition-all duration-300 flex flex-col items-center justify-center"
                         >
                             <div
                                 class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300"
@@ -739,13 +831,21 @@
                                             class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
                                         >
                                             <div>
-                                                <p
-                                                    class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
-                                                    style="color: {primary};"
-                                                >
-                                                    {product.category?.name ||
-                                                        'PRODUK'}
-                                                </p>
+                                                 <div class="flex items-center justify-between gap-1 mb-1">
+                                                     <p
+                                                         class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate"
+                                                         style="color: {primary};"
+                                                     >
+                                                         {product.category?.name ||
+                                                             'PRODUK'}
+                                                     </p>
+                                                     {#if product.seller?.store_name || product.seller?.name}
+                                                         <span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 max-w-[50%] truncate">
+                                                             <i class="ti ti-building-store text-blue-600 text-[11px]"></i>
+                                                             <span class="truncate">{product.seller.store_name || product.seller.name}</span>
+                                                         </span>
+                                                     {/if}
+                                                 </div>
                                                 <div
                                                     class="h-[2.5rem] overflow-hidden mb-1"
                                                 >
@@ -834,40 +934,12 @@
                             {/each}
                         </div>
 
-                        <!-- Infinite scroll sentinel + loading indicator -->
-                        <div
-                            use:setupObserver
-                            class="py-8 flex flex-col items-center justify-center gap-3"
-                        >
-                            {#if isLoadingMore}
-                                <div
-                                    class="flex items-center gap-2 mt-4 text-slate-500 font-medium text-xs sm:text-sm animate-pulse"
-                                >
-                                    <svg
-                                        class="animate-spin h-5 w-5"
-                                        style="color: {primary};"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <circle
-                                            class="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            stroke-width="4"
-                                        ></circle>
-                                        <path
-                                            class="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                        ></path>
-                                    </svg>
-                                    Memuat lebih banyak...
-                                </div>
-                            {/if}
-                        </div>
+                    <!-- Pagination Component -->
+                    <Pagination
+                        data={products}
+                        itemLabel="Produk"
+                        class="mt-8 flex flex-col sm:flex-row gap-3.5 sm:items-center sm:justify-between py-4 w-full"
+                    />
                     {/if}
                 </div>
             </div>

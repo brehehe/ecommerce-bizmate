@@ -2,14 +2,18 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import InputCurrency from '@/components/ui/InputCurrency.svelte';
+    import Select from '@/components/ui/Select.svelte';
+    import Toggle from '@/components/ui/Toggle.svelte';
     import { showToast } from '@/utils/toast';
     import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
+    import Pagination from '@/components/ui/Pagination.svelte';
 
     let {
         category = { id: '', name: '', slug: '' },
         categories = undefined,
+        brands = undefined,
         products = undefined,
-        filters = { q: '', min_price: '', max_price: '', sort: 'latest' },
+        filters = { q: '', min_price: '', max_price: '', sort: 'latest', brand: '', promo: false, type: 'all' },
         storeName = '',
     } = $props();
 
@@ -58,6 +62,12 @@
         );
     }
 
+    function getBrandsFromFilter(val: any): string[] {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        return typeof val === 'string' ? val.split(',') : [val.toString()];
+    }
+
     // Filter states
     // svelte-ignore state_referenced_locally
     let searchQ = $state(filters.q || '');
@@ -69,6 +79,14 @@
     let selectedSort = $state(filters.sort || 'latest');
     // svelte-ignore state_referenced_locally
     let selectedType = $state(filters.type || 'all');
+    // svelte-ignore state_referenced_locally
+    let selectedBrands = $state(getBrandsFromFilter(filters.brand));
+    // svelte-ignore state_referenced_locally
+    let promoOnly = $state(filters.promo || false);
+    // svelte-ignore state_referenced_locally
+    let selectedCondition = $state(filters.condition || 'all');
+    // svelte-ignore state_referenced_locally
+    let selectedRating = $state(filters.rating || '');
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
@@ -83,6 +101,10 @@
         maxPrice = filters.max_price || '';
         selectedSort = filters.sort || 'latest';
         selectedType = filters.type || 'all';
+        selectedBrands = getBrandsFromFilter(filters.brand);
+        promoOnly = filters.promo || false;
+        selectedCondition = filters.condition || 'all';
+        selectedRating = filters.rating || '';
     });
 
     // Auto-scroll the active category tab into view whenever category changes
@@ -116,6 +138,21 @@
         );
     }
 
+    function selectBrand(brandSlug: string) {
+        if (selectedBrands.includes(brandSlug)) {
+            selectedBrands = selectedBrands.filter(
+                (slug) => slug !== brandSlug,
+            );
+        } else {
+            selectedBrands = [...selectedBrands, brandSlug];
+        }
+    }
+
+    function selectBrandDesktop(brandSlug: string) {
+        selectBrand(brandSlug);
+        applyFilters(false);
+    }
+
     function applyFilters(closeDrawer = true) {
         if (closeDrawer) showMobileFilters = false;
         router.get(
@@ -126,6 +163,10 @@
                 max_price: maxPrice,
                 sort: selectedSort,
                 type: selectedType,
+                brand: selectedBrands,
+                promo: promoOnly ? 1 : 0,
+                condition: selectedCondition,
+                rating: selectedRating,
             },
             {
                 preserveState: true,
@@ -140,6 +181,10 @@
         maxPrice = '';
         selectedSort = 'latest';
         selectedType = 'all';
+        selectedBrands = [];
+        promoOnly = false;
+        selectedCondition = 'all';
+        selectedRating = '';
 
         if (!keepMobileOpen) {
             showMobileFilters = false;
@@ -179,105 +224,66 @@
         return '/' + path;
     }
 
-    // ── Infinite Scroll ──────────────────────────────────────────────────────
+    // ── Pagination ────────────────────────────────────────────────────────────
     // svelte-ignore state_referenced_locally
     let allProducts = $state<any[]>(products?.data || []);
     let isLoadingMore = $state(false);
     // svelte-ignore state_referenced_locally
     let currentPage = $state(products?.current_page || 1);
     // svelte-ignore state_referenced_locally
-    let nextPageUrl = $state(products?.next_page_url || null);
+    let lastPage = $state(products?.last_page || 1);
+    // svelte-ignore state_referenced_locally
+    let total = $state(products?.total || 0);
 
     $effect(() => {
         if (!products) return;
-        if (products.current_page === 1) {
-            allProducts = products.data || [];
-        } else {
-            const existingIds = new Set(allProducts.map((p: any) => p.id));
-            const newItems = (products.data || []).filter(
-                (p: any) => !existingIds.has(p.id),
-            );
-            if (newItems.length > 0) {
-                allProducts = [...allProducts, ...newItems];
-            }
-        }
+        allProducts = products.data || [];
         currentPage = products.current_page || 1;
-        nextPageUrl = products.next_page_url || null;
+        lastPage = products.last_page || 1;
+        total = products.total || 0;
         isLoadingMore = false;
     });
 
-    async function loadMore() {
-        if (isLoadingMore || !nextPageUrl) return;
+    function goToPage(page: number) {
+        if (page < 1 || page > lastPage || page === currentPage) return;
         isLoadingMore = true;
-
-        let fetchUrl = nextPageUrl;
-        if (fetchUrl.startsWith('http://') || fetchUrl.startsWith('https://')) {
-            try {
-                const urlObj = new URL(fetchUrl);
-                fetchUrl = urlObj.pathname + urlObj.search;
-            } catch (e) {
-                console.error('URL parse error:', e);
-            }
-        }
-
-        try {
-            const response = await fetch(fetchUrl, {
-                headers: {
-                    'X-Inertia': 'true',
-                    'X-Inertia-Partial-Component': 'Storefront/Category',
-                    'X-Inertia-Partial-Data': 'products',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-Inertia-Version': page.version || '',
+        router.get(
+            `/category/${category.slug || category.id}`,
+            {
+                q: searchQ,
+                min_price: minPrice,
+                max_price: maxPrice,
+                sort: selectedSort,
+                type: selectedType,
+                page,
+            },
+            {
+                preserveState: true,
+                replace: true,
+                onFinish: () => {
+                    isLoadingMore = false;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 },
-            });
-
-            if (response.status === 409) {
-                window.location.reload();
-                return;
-            }
-
-            if (response.ok) {
-                const json = await response.json();
-                const newProductsPaginator = json.props?.products;
-                if (newProductsPaginator) {
-                    currentPage = newProductsPaginator.current_page;
-                    nextPageUrl = newProductsPaginator.next_page_url;
-
-                    const newItems = newProductsPaginator.data || [];
-                    const existingIds = new Set(
-                        allProducts.map((p: any) => p.id),
-                    );
-                    const filteredNewItems = newItems.filter(
-                        (p: any) => !existingIds.has(p.id),
-                    );
-                    if (filteredNewItems.length > 0) {
-                        allProducts = [...allProducts, ...filteredNewItems];
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load more products:', error);
-        } finally {
-            isLoadingMore = false;
-        }
-    }
-
-    function setupObserver(node: HTMLElement) {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMore();
-                }
             },
-            { rootMargin: '200px' },
         );
-        observer.observe(node);
-        return {
-            destroy() {
-                observer.disconnect();
-            },
-        };
     }
+
+    // Build visible page numbers: always show first, last, current ±2
+    const pageNumbers = $derived(() => {
+        const pages: (number | '...')[] = [];
+        if (lastPage <= 7) {
+            for (let i = 1; i <= lastPage; i++) pages.push(i);
+            return pages;
+        }
+        pages.push(1);
+        if (currentPage > 4) pages.push('...');
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(lastPage - 1, currentPage + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (currentPage < lastPage - 3) pages.push('...');
+        pages.push(lastPage);
+        return pages;
+    });
 
     function directClick(node: HTMLElement, callback: (e: MouseEvent) => void) {
         let currentCallback = callback;
@@ -346,7 +352,9 @@
                 }}
                 class="flex-grow"
             >
-                <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
+                <div
+                    class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs"
+                >
                     <input
                         type="text"
                         bind:value={searchQ}
@@ -536,40 +544,49 @@
     <div class="md:hidden h-[134px]"></div>
 
     <div
-        class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 min-h-[calc(100dvh-134px)] md:min-h-0"
+        class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full min-h-[calc(100dvh-134px)] md:min-h-0"
     >
-        <!-- Desktop Header -->
-        <div class="hidden md:block mb-6">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <h1
-                        class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2"
-                    >
-                        📂 {category.name}
-                    </h1>
-                </div>
+        <!-- Desktop Header: matching Search layout -->
+        <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+                <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
+                    <i class="ti {category.icon || 'ti-category'}" style="color: {primary};"></i>
+                    {category.name || 'Kategori'}
+                </h1>
             </div>
-            <!-- Desktop sort pills row -->
-            <div class="flex items-center gap-2 flex-wrap">
-                {#each [{ id: 'relevance', label: 'Terkait' }, { id: 'latest', label: 'Terbaru' }, { id: 'popular', label: 'Terlaris' }, { id: 'price_asc', label: 'Harga ↑' }, { id: 'price_desc', label: 'Harga ↓' }] as sortOpt}
-                    <button
-                        onclick={() => {
-                            selectedSort = sortOpt.id;
-                            applyFilters(false);
-                        }}
-                        class="px-4 py-1.5 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95"
-                        class:text-white={selectedSort === sortOpt.id}
-                        class:border-transparent={selectedSort === sortOpt.id}
-                        class:bg-white={selectedSort !== sortOpt.id}
-                        class:border-slate-200={selectedSort !== sortOpt.id}
-                        class:text-slate-600={selectedSort !== sortOpt.id}
-                        style={selectedSort === sortOpt.id
-                            ? `background-color: ${primary};`
-                            : ''}
-                    >
-                        {sortOpt.label}
-                    </button>
-                {/each}
+
+            <!-- Sorting right side -->
+            <div class="hidden md:flex items-center gap-3.5 self-end md:self-auto">
+                <div class="flex items-center gap-2 z-20">
+                    <span class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1">Urutkan:</span>
+
+                    {#each [{ id: 'relevance', label: 'Terkait' }, { id: 'latest', label: 'Terbaru' }, { id: 'popular', label: 'Terlaris' }] as sortOpt}
+                        <button
+                            onclick={() => { selectedSort = sortOpt.id; applyFilters(false); }}
+                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
+                               {selectedSort === sortOpt.id
+                                ? 'text-white'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            style={selectedSort === sortOpt.id
+                                ? `background-color: ${primary}; border-color: ${primary};`
+                                : ''}
+                        >
+                            {sortOpt.label}
+                        </button>
+                    {/each}
+
+                    <div class="w-40">
+                        <Select
+                            value={['price_asc', 'price_desc'].includes(selectedSort) ? selectedSort : ''}
+                            onchange={(val) => { selectedSort = val; applyFilters(false); }}
+                            placeholder="Harga"
+                            options={[
+                                { id: 'price_asc', name: 'Harga: Terendah' },
+                                { id: 'price_desc', name: 'Harga: Tertinggi' },
+                            ]}
+                        />
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -577,12 +594,8 @@
             <!-- ═══════════════════════════════════════════════════
              FILTER SIDEBAR (Desktop)
             ═══════════════════════════════════════════════════ -->
-            <aside
-                class="hidden md:block w-64 bg-white border border-slate-150 rounded-2xl p-5 shadow-soft shrink-0 space-y-6"
-            >
-                <div
-                    class="flex items-center justify-between border-b border-slate-100 pb-3"
-                >
+            <aside class="hidden md:block w-64 shrink-0 space-y-6 pt-1">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <span
                         class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
                     >
@@ -593,10 +606,11 @@
                     </span>
                     <button
                         onclick={resetFilters}
-                        class="text-[10px] font-black uppercase tracking-wider hover:underline"
-                        style="color: {secondary};"
+                        class="px-2.5 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                        title="Reset semua filter"
                     >
-                        Reset
+                        <i class="ti ti-rotate-2 text-xs"></i>
+                        <span>Reset</span>
                     </button>
                 </div>
 
@@ -631,6 +645,50 @@
                     </div>
                 </div>
 
+                {#if brands && brands.length > 0}
+                    <hr class="border-slate-100" />
+
+                    <!-- Brand / Merek Filter -->
+                    <div class="space-y-2.5">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                            >Merek / Brand</span
+                        >
+                        <div
+                            class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
+                        >
+                            {#each brands as brand}
+                                <button
+                                    onclick={() =>
+                                        selectBrandDesktop(
+                                            brand.slug || brand.id.toString(),
+                                        )}
+                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                       {selectedBrands.includes(
+                                        brand.slug || brand.id.toString(),
+                                    )
+                                        ? 'bg-slate-50'
+                                        : 'text-slate-600 hover:text-slate-900'}"
+                                    style={selectedBrands.includes(
+                                        brand.slug || brand.id.toString(),
+                                    )
+                                        ? `color: ${primary};`
+                                        : ''}
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <i class="ti ti-building-store text-sm"
+                                        ></i>
+                                        {brand.name}
+                                    </span>
+                                    {#if selectedBrands.includes(brand.slug || brand.id.toString())}
+                                        <i class="ti ti-check text-xs"></i>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+                {/if}
+
                 <hr class="border-slate-100" />
 
                 <!-- Rentang Harga Filter -->
@@ -664,6 +722,26 @@
 
                 <hr class="border-slate-100" />
 
+                <!-- Promo Toko Checkbox -->
+                <div
+                    role="button"
+                    tabindex="0"
+                    onkeydown={(e) =>
+                        e.key === 'Enter' && setTimeout(applyFilters, 0)}
+                    onclick={() => {
+                        setTimeout(applyFilters, 0);
+                    }}
+                >
+                    <Toggle
+                        bind:checked={promoOnly}
+                        label="Hanya Promo Toko"
+                        description="Tampilkan diskon aktif"
+                        icon="ti-tag"
+                    />
+                </div>
+
+                <hr class="border-slate-100" />
+
                 <!-- Jenis Produk Filter -->
                 <div class="space-y-2.5">
                     <span
@@ -681,6 +759,63 @@
                         <option value="digital">Produk Digital</option>
                     </select>
                 </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Kondisi Produk Filter -->
+                <div class="space-y-2.5">
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                    >
+                        Kondisi Produk
+                    </span>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'Baru' }, { id: 'used', label: 'Bekas' }] as cond}
+                            <button
+                                onclick={() => {
+                                    selectedCondition = cond.id;
+                                    applyFilters(false);
+                                }}
+                                class="py-1.5 text-xs font-bold rounded-lg border transition text-center
+                                       {selectedCondition === cond.id
+                                    ? 'bg-slate-800 text-white border-slate-800'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            >
+                                {cond.label}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
+
+                <hr class="border-slate-100" />
+
+                <!-- Rating Filter -->
+                <div class="space-y-2.5">
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                    >
+                        Rating Minimum
+                    </span>
+                    <div class="space-y-1">
+                        {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
+                            <button
+                                onclick={() => {
+                                    selectedRating = rate.value;
+                                    applyFilters(false);
+                                }}
+                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                       {selectedRating === rate.value
+                                    ? 'bg-amber-50 text-amber-700 font-extrabold'
+                                    : 'text-slate-600 hover:text-slate-900'}"
+                            >
+                                <span>{rate.label}</span>
+                                {#if selectedRating === rate.value}
+                                    <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
+                                {/if}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
             </aside>
 
             <!-- ═══════════════════════════════════════════════════
@@ -689,41 +824,41 @@
             <div class="flex-grow flex flex-col min-w-0">
                 {#if products === undefined}
                     <!-- Skeleton Grid -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div
+                        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                    >
                         {#each Array(8) as _}
-                            <div class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
+                            <div
+                                class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse"
+                            >
                                 <div class="aspect-square bg-slate-100"></div>
                                 <div class="p-3 space-y-2">
-                                    <div class="h-3 bg-slate-100 rounded w-3/4"></div>
-                                    <div class="h-3 bg-slate-100 rounded w-1/2"></div>
-                                    <div class="h-4 bg-slate-100 rounded w-2/3 mt-2"></div>
+                                    <div
+                                        class="h-3 bg-slate-100 rounded w-3/4"
+                                    ></div>
+                                    <div
+                                        class="h-3 bg-slate-100 rounded w-1/2"
+                                    ></div>
+                                    <div
+                                        class="h-4 bg-slate-100 rounded w-2/3 mt-2"
+                                    ></div>
                                 </div>
                             </div>
                         {/each}
                     </div>
                 {:else if allProducts.length === 0 && !isLoadingMore}
-                    <div
-                        class="bg-white border border-slate-150 rounded-[28px] py-16 px-6 sm:px-12 text-center max-w-4xl mx-auto w-full transition-all duration-300"
-                    >
-                        <div
-                            class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300"
-                        >
-                            <i class="ti ti-package-off text-3xl sm:text-4xl"
-                            ></i>
+                    <!-- Empty state: clean, plain, no border -->
+                    <div class="py-16 px-6 sm:px-12 text-center w-full transition-all duration-300 flex flex-col items-center justify-center">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                            <i class="ti ti-package-off text-3xl sm:text-4xl"></i>
                         </div>
 
-                        <h3
-                            class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight"
-                        >
+                        <h3 class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight">
                             Produk Tidak Ditemukan
                         </h3>
 
-                        <p
-                            class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8"
-                        >
-                            Kami tidak dapat menemukan produk yang cocok di
-                            kategori ini dengan filter Anda. Coba reset filter
-                            atau gunakan kata kunci lain.
+                        <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8">
+                            Kami tidak dapat menemukan produk yang cocok dengan pencarian atau filter Anda. Coba reset filter atau gunakan kata kunci lain.
                         </p>
 
                         <button
@@ -734,6 +869,8 @@
                             Reset Filter
                         </button>
                     </div>
+
+
                 {:else}
                     <!-- Product Grid -->
                     <div
@@ -792,13 +929,32 @@
                                         class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
                                     >
                                         <div>
-                                            <p
-                                                class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
-                                                style="color: {primary};"
+                                            <div
+                                                class="flex items-center justify-between gap-1 mb-1"
                                             >
-                                                {product.category?.name ||
-                                                    'PRODUK'}
-                                            </p>
+                                                <p
+                                                    class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate"
+                                                    style="color: {primary};"
+                                                >
+                                                    {product.category?.name ||
+                                                        'PRODUK'}
+                                                </p>
+                                                {#if product.seller?.store_name || product.seller?.name}
+                                                    <span
+                                                        class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 max-w-[50%] truncate"
+                                                    >
+                                                        <i
+                                                            class="ti ti-building-store text-blue-600 text-[11px]"
+                                                        ></i>
+                                                        <span class="truncate"
+                                                            >{product.seller
+                                                                .store_name ||
+                                                                product.seller
+                                                                    .name}</span
+                                                        >
+                                                    </span>
+                                                {/if}
+                                            </div>
                                             <div
                                                 class="h-[2.5rem] overflow-hidden mb-1"
                                             >
@@ -866,40 +1022,12 @@
                         {/each}
                     </div>
 
-                    <!-- Infinite scroll sentinel + loading indicator -->
-                    <div
-                        use:setupObserver
-                        class="py-8 flex flex-col items-center justify-center gap-3"
-                    >
-                        {#if isLoadingMore}
-                            <div
-                                class="flex items-center gap-2 mt-4 text-slate-500 font-medium text-xs sm:text-sm animate-pulse"
-                            >
-                                <svg
-                                    class="animate-spin h-5 w-5"
-                                    style="color: {primary};"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        class="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        stroke-width="4"
-                                    ></circle>
-                                    <path
-                                        class="opacity-75"
-                                        fill="currentColor"
-                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                </svg>
-                                Memuat lebih banyak...
-                            </div>
-                        {/if}
-                    </div>
+                    <!-- Pagination Component -->
+                    <Pagination
+                        data={products}
+                        itemLabel="Produk"
+                        class="mt-8 flex flex-col sm:flex-row gap-3.5 sm:items-center sm:justify-between py-4 w-full"
+                    />
                 {/if}
             </div>
         </div>
@@ -942,6 +1070,48 @@
                         </button>
                     </div>
 
+                    {#if brands && brands.length > 0}
+                        <!-- Brand / Merek Filter -->
+                        <div class="space-y-2.5 mb-6">
+                            <span
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                                >Merek / Brand</span
+                            >
+                            <div
+                                class="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin"
+                            >
+                                {#each brands as brand}
+                                    <button
+                                        onclick={() =>
+                                            selectBrand(
+                                                brand.slug || brand.id.toString(),
+                                            )}
+                                        class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                           {selectedBrands.includes(
+                                            brand.slug || brand.id.toString(),
+                                        )
+                                            ? 'bg-slate-50'
+                                            : 'text-slate-600 hover:text-slate-900'}"
+                                        style={selectedBrands.includes(
+                                            brand.slug || brand.id.toString(),
+                                        )
+                                            ? `color: ${primary};`
+                                            : ''}
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <i class="ti ti-building-store text-sm"
+                                            ></i>
+                                            {brand.name}
+                                        </span>
+                                        {#if selectedBrands.includes(brand.slug || brand.id.toString())}
+                                            <i class="ti ti-check text-xs"></i>
+                                        {/if}
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+                    {/if}
+
                     <!-- Rentang Harga Filter -->
                     <div class="space-y-3">
                         <span
@@ -964,6 +1134,16 @@
                         </div>
                     </div>
 
+                    <!-- Promo Toko Checkbox -->
+                    <div class="mt-6">
+                        <Toggle
+                            bind:checked={promoOnly}
+                            label="Hanya Promo Toko"
+                            description="Tampilkan diskon aktif"
+                            icon="ti-tag"
+                        />
+                    </div>
+
                     <!-- Jenis Produk Filter -->
                     <div class="space-y-3 mt-6">
                         <span
@@ -979,6 +1159,53 @@
                             <option value="physical">Produk Fisik</option>
                             <option value="digital">Produk Digital</option>
                         </select>
+                    </div>
+
+                    <!-- Kondisi Produk Filter -->
+                    <div class="space-y-3 mt-6">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                        >
+                            Kondisi Produk
+                        </span>
+                        <div class="grid grid-cols-3 gap-2">
+                            {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'Baru' }, { id: 'used', label: 'Bekas' }] as cond}
+                                <button
+                                    onclick={() => (selectedCondition = cond.id)}
+                                    class="py-2 text-xs font-bold rounded-lg border transition text-center
+                                           {selectedCondition === cond.id
+                                        ? 'bg-slate-800 text-white border-slate-800'
+                                        : 'bg-white border-slate-200 text-slate-600'}"
+                                >
+                                    {cond.label}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- Rating Filter -->
+                    <div class="space-y-3 mt-6">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                        >
+                            Rating Minimum
+                        </span>
+                        <div class="space-y-1">
+                            {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
+                                <button
+                                    onclick={() => (selectedRating = rate.value)}
+                                    class="w-full text-left flex items-center justify-between py-2 px-2.5 rounded-lg text-xs font-bold transition
+                                           {selectedRating === rate.value
+                                        ? 'bg-amber-50 text-amber-700'
+                                        : 'text-slate-600'}"
+                                >
+                                    <span>{rate.label}</span>
+                                    {#if selectedRating === rate.value}
+                                        <i class="ti ti-check text-xs text-amber-600"></i>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
                     </div>
                 </div>
 

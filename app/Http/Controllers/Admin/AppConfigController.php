@@ -12,11 +12,20 @@ use Inertia\Response;
 
 class AppConfigController extends Controller
 {
+    protected function authorizeAdminOnly(Request $request): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            abort(403, 'Akses ini khusus untuk Admin.');
+        }
+    }
+
     /**
      * Show the hidden app config page.
      */
-    public function show(): Response
+    public function show(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $currentAppName = config('app.name');
         $currentStoreName = Setting::where('key', 'store_name')->value('value') ?? $currentAppName;
         $currentStoreAppName = Setting::where('key', 'store_app_name')->value('value') ?? $currentStoreName;
@@ -33,6 +42,7 @@ class AppConfigController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
+        $this->authorizeAdminOnly($request);
         $request->validate([
             'app_name' => ['required', 'string', 'min:2', 'max:100'],
             'store_name' => ['required', 'string', 'min:2', 'max:100'],

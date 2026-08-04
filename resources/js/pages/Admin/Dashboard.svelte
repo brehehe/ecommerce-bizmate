@@ -12,6 +12,7 @@
     import Pagination from '@/components/ui/Pagination.svelte';
 
     let {
+        isSeller = false,
         stats,
         orderStats = { unpaidCount: 0, pendingCount: 0, newCount: 0, readyCount: 0, shippingCount: 0 },
         recentOrders = [],
@@ -991,71 +992,73 @@
         </div>
 
         <!-- Recent customers -->
-        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <Deferred data="recentCustomers">
-                {#snippet fallback()}
-                    <div class="p-6 h-[250px] animate-pulse space-y-4">
-                        <div class="h-4 bg-slate-200 rounded w-1/4"></div>
-                        <div class="space-y-2">
-                            <div class="h-10 bg-slate-100 rounded"></div>
-                            <div class="h-10 bg-slate-100 rounded"></div>
+        {#if !isSeller}
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <Deferred data="recentCustomers">
+                    {#snippet fallback()}
+                        <div class="p-6 h-[250px] animate-pulse space-y-4">
+                            <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                            <div class="space-y-2">
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                            </div>
                         </div>
-                    </div>
-                {/snippet}
+                    {/snippet}
 
-                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Pelanggan Terbaru</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Daftar pelanggan yang baru terdaftar</p>
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Pelanggan Terbaru</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Daftar pelanggan yang baru terdaftar</p>
+                        </div>
+                        <Link href="/admin/master-data/customers" class="text-xs font-medium transition-colors hover:text-slate-900" style="color: {primaryColor};">
+                            Semua →
+                        </Link>
                     </div>
-                    <Link href="/admin/master-data/customers" class="text-xs font-medium transition-colors hover:text-slate-900" style="color: {primaryColor};">
-                        Semua →
-                    </Link>
-                </div>
-                {#if recentCustomers && recentCustomers.length > 0}
-                    <div class="overflow-x-auto" use:dragScroll>
-                        <table class="w-full responsive-table text-sm">
-                            <thead>
-                                <tr class="border-b border-slate-100 bg-slate-50/50">
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nama</th>
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Email</th>
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Telepon</th>
-                                    <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Gabung</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {#each recentCustomers as customer}
-                                    <tr class="group transition-colors hover:bg-slate-50/50">
-                                        <td class="px-5 py-3" data-label="Nama">
-                                            <div class="flex items-center gap-2.5">
-                                                <div class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
-                                                    {customer.initials}
-                                                </div>
-                                                <p class="text-sm font-medium text-slate-800">{customer.name}</p>
-                                            </div>
-                                        </td>
-                                        <td class="px-5 py-3" data-label="Email">
-                                            <span class="text-xs text-slate-600">{customer.email}</span>
-                                        </td>
-                                        <td class="px-5 py-3" data-label="No. Telepon">
-                                            <span class="text-xs text-slate-600">{customer.phone}</span>
-                                        </td>
-                                        <td class="px-5 py-3" data-label="Tanggal Gabung">
-                                            <span class="text-xs text-slate-500">{customer.date}</span>
-                                        </td>
+                    {#if recentCustomers && recentCustomers.length > 0}
+                        <div class="overflow-x-auto" use:dragScroll>
+                            <table class="w-full responsive-table text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-100 bg-slate-50/50">
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nama</th>
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Email</th>
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">No. Telepon</th>
+                                        <th class="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-400">Tanggal Gabung</th>
                                     </tr>
-                                {/each}
-                            </tbody>
-                        </table>
-                    </div>
-                {:else}
-                    <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                        <i class="ti ti-users-off text-2xl text-slate-300 mb-2"></i>
-                        <p class="text-sm font-medium text-slate-500">Belum ada pelanggan</p>
-                    </div>
-                {/if}
-            </Deferred>
-        </div>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {#each recentCustomers as customer}
+                                        <tr class="group transition-colors hover:bg-slate-50/50">
+                                            <td class="px-5 py-3" data-label="Nama">
+                                                <div class="flex items-center gap-2.5">
+                                                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                                                        {customer.initials}
+                                                    </div>
+                                                    <p class="text-sm font-medium text-slate-800">{customer.name}</p>
+                                                </div>
+                                            </td>
+                                            <td class="px-5 py-3" data-label="Email">
+                                                <span class="text-xs text-slate-600">{customer.email}</span>
+                                            </td>
+                                            <td class="px-5 py-3" data-label="No. Telepon">
+                                                <span class="text-xs text-slate-600">{customer.phone}</span>
+                                            </td>
+                                            <td class="px-5 py-3" data-label="Tanggal Gabung">
+                                                <span class="text-xs text-slate-500">{customer.date}</span>
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {:else}
+                        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                            <i class="ti ti-users-off text-2xl text-slate-300 mb-2"></i>
+                            <p class="text-sm font-medium text-slate-500">Belum ada pelanggan</p>
+                        </div>
+                    {/if}
+                </Deferred>
+            </div>
+        {/if}
 
         <!-- Recent stock out -->
         <Deferred data="recentStockOut">

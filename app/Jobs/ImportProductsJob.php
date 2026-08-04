@@ -2,18 +2,14 @@
 
 namespace App\Jobs;
 
-use App\Helpers\ImageHelper;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
-use App\Services\ImageSearchService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ImportProductsJob implements ShouldQueue
@@ -32,7 +28,8 @@ class ImportProductsJob implements ShouldQueue
      */
     public function __construct(
         public array $products,
-        public bool $autoFetchImages = true
+        public bool $autoFetchImages = true,
+        public ?string $userId = null
     ) {}
 
     /**
@@ -46,28 +43,66 @@ class ImportProductsJob implements ShouldQueue
         try {
             DB::transaction(function () use ($globalTaxPercentage, &$importedProducts) {
                 foreach ($this->products as $pData) {
-                    $sku = trim($pData['sku']);
-                    $slug = Str::slug($pData['name']).'-'.Str::random(5);
+                    $rawSku = trim($pData['sku']);
+                    $existingProduct = Product::where('sku', $rawSku)->first();
 
-                    $product = Product::where('sku', $sku)->first();
-                    if ($product) {
-                        $product->update([
-                            'name' => $pData['name'],
-                            'summary' => $pData['summary'] ?? null,
-                            'description' => $pData['description'],
-                            'weight' => $pData['weight'] ?? 0,
-                            'length' => $pData['length'] ?? 0,
-                            'width' => $pData['width'] ?? 0,
-                            'height' => $pData['height'] ?? 0,
-                            'tax_enabled' => ! empty($pData['tax_enabled']),
-                            'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
-                            'is_digital' => ! empty($pData['is_digital']),
-                            'specifications' => $pData['specifications'] ?? null,
-                        ]);
+                    $rawCond = strtolower(trim($pData['condition'] ?? 'new'));
+                    $condition = in_array($rawCond, ['used', 'bekas', 'second'], true) ? 'used' : 'new';
+
+                    if ($existingProduct) {
+                        if (empty($this->userId) || $existingProduct->user_id === $this->userId || empty($existingProduct->user_id)) {
+                            $product = $existingProduct;
+                            $updateData = [
+                                'name' => $pData['name'],
+                                'summary' => $pData['summary'] ?? null,
+                                'description' => $pData['description'],
+                                'weight' => $pData['weight'] ?? 0,
+                                'length' => $pData['length'] ?? 0,
+                                'width' => $pData['width'] ?? 0,
+                                'height' => $pData['height'] ?? 0,
+                                'tax_enabled' => ! empty($pData['tax_enabled']),
+                                'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
+                                'is_digital' => ! empty($pData['is_digital']),
+                                'condition' => $condition,
+                                'specifications' => $pData['specifications'] ?? null,
+                            ];
+                            if ($this->userId && empty($product->user_id)) {
+                                $updateData['user_id'] = $this->userId;
+                            }
+                            $product->update($updateData);
+                        } else {
+                            $sku = $rawSku;
+                            $count = 1;
+                            while (Product::where('sku', $sku)->exists()) {
+                                $sku = $rawSku.'-'.$count;
+                                $count++;
+                            }
+                            $slug = Str::slug($pData['name']).'-'.Str::random(5);
+                            $product = Product::create([
+                                'user_id' => $this->userId,
+                                'name' => $pData['name'],
+                                'sku' => $sku,
+                                'slug' => $slug,
+                                'summary' => $pData['summary'] ?? null,
+                                'description' => $pData['description'],
+                                'weight' => $pData['weight'] ?? 0,
+                                'length' => $pData['length'] ?? 0,
+                                'width' => $pData['width'] ?? 0,
+                                'height' => $pData['height'] ?? 0,
+                                'tax_enabled' => ! empty($pData['tax_enabled']),
+                                'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
+                                'is_digital' => ! empty($pData['is_digital']),
+                                'condition' => $condition,
+                                'active' => true,
+                                'specifications' => $pData['specifications'] ?? null,
+                            ]);
+                        }
                     } else {
+                        $slug = Str::slug($pData['name']).'-'.Str::random(5);
                         $product = Product::create([
+                            'user_id' => $this->userId,
                             'name' => $pData['name'],
-                            'sku' => $sku,
+                            'sku' => $rawSku,
                             'slug' => $slug,
                             'summary' => $pData['summary'] ?? null,
                             'description' => $pData['description'],
@@ -78,6 +113,7 @@ class ImportProductsJob implements ShouldQueue
                             'tax_enabled' => ! empty($pData['tax_enabled']),
                             'tax_rate' => ! empty($pData['tax_enabled']) ? $globalTaxPercentage : 0,
                             'is_digital' => ! empty($pData['is_digital']),
+                            'condition' => $condition,
                             'active' => true,
                             'specifications' => $pData['specifications'] ?? null,
                         ]);

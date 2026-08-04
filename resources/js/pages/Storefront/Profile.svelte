@@ -7,6 +7,7 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const user = $derived(page.props.auth?.user);
     const membershipInfo = $derived((page.props as any).membershipInfo ?? null);
+    const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled) ?? false);
 
     function fmtCurrency(n: number): string {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n ?? 0);
@@ -28,6 +29,25 @@
         password: '',
         password_confirmation: '',
     });
+
+    let showSellerModal = $state(false);
+    const sellerForm = useForm({
+        store_name: (page.props.auth as any)?.user?.store_name || ((page.props.auth as any)?.user?.name ? (page.props.auth as any)?.user?.name + ' Store' : ''),
+        store_description: '',
+    });
+
+    function submitBecomeSeller() {
+        sellerForm.post('/profile/become-seller', {
+            onSuccess: () => {
+                showSellerModal = false;
+                showToast('Toko berhasil diaktifkan! Mengalihkan ke Dashboard...', 'success', 'top');
+            },
+            onError: (errs) => {
+                const msg = Object.values(errs)[0] || 'Gagal mengaktifkan toko';
+                showToast(String(msg), 'error', 'top');
+            }
+        });
+    }
 
     let localPreviewUrl = $state<string | null>(null);
     const previewUrl = $derived(
@@ -202,6 +222,50 @@
                         {user?.email}
                     </p>
                 </div>
+            </div>
+
+            <!-- Seller / Store Banner Card (Mobile) -->
+            <div class="px-4 pt-4">
+                {#if user?.is_seller && isSellerEnabled}
+                    <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-md flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                <i class="ti ti-building-store text-2xl text-white"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-sm leading-tight truncate">{user.store_name || 'Toko Saya'}</h3>
+                                <p class="text-[11px] text-white/80">Dashboard Penjual / Jual Barang</p>
+                            </div>
+                        </div>
+                        <a
+                            href="/admin/dashboard"
+                            class="px-3 py-2 bg-white text-blue-700 font-bold text-xs rounded-xl shadow-xs hover:bg-slate-100 transition shrink-0 flex items-center gap-1"
+                        >
+                            <span>Dashboard</span>
+                            <i class="ti ti-arrow-right text-xs"></i>
+                        </a>
+                    </div>
+                {:else if isSellerEnabled}
+                    <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-md flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                <i class="ti ti-tags text-2xl text-white"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-sm leading-tight">Jual Barang Sendiri?</h3>
+                                <p class="text-[11px] text-white/90">Buka toko gratis & pasang produkmu</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onclick={() => showSellerModal = true}
+                            class="px-3.5 py-2 bg-white text-orange-700 font-bold text-xs rounded-xl shadow-xs hover:bg-slate-100 transition shrink-0 flex items-center gap-1 cursor-pointer"
+                        >
+                            <span>Mulai Jual</span>
+                            <i class="ti ti-plus text-xs"></i>
+                        </button>
+                    </div>
+                {/if}
             </div>
 
             <div class="p-4 space-y-5 flex-grow">
@@ -541,6 +605,61 @@
                             <p class="text-sm text-slate-500 font-medium">
                                 {user?.email}
                             </p>
+                        </div>
+
+                        <!-- Seller / Store Banner (Desktop) -->
+                        <div class="w-full pt-2">
+                            {#if user?.is_seller && isSellerEnabled}
+                                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-md flex flex-col gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                            <i class="ti ti-building-store text-xl text-white"></i>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <h3 class="font-bold text-sm leading-tight truncate">{user.store_name || 'Toko Saya'}</h3>
+                                            {#if user.store_slug}
+                                                <p class="text-[11px] text-white/80 font-mono font-medium">/{user.store_slug}</p>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 pt-1 border-t border-white/20">
+                                        <a
+                                            href="/admin/dashboard"
+                                            class="flex-1 py-2 bg-white text-blue-700 font-bold text-xs rounded-xl text-center shadow-xs hover:bg-slate-100 transition"
+                                        >
+                                            Dashboard
+                                        </a>
+                                        {#if user.store_slug}
+                                            <a
+                                                href="/{user.store_slug}"
+                                                class="flex-1 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl text-center transition"
+                                            >
+                                                Lihat Toko
+                                            </a>
+                                        {/if}
+                                    </div>
+                                </div>
+                            {:else if isSellerEnabled}
+                                <div class="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-md flex flex-col gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                            <i class="ti ti-tags text-xl text-white"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <h3 class="font-bold text-sm leading-tight">Jual Barang Sendiri?</h3>
+                                            <p class="text-[11px] text-white/90">Buka toko gratis & pasang produkmu</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onclick={() => showSellerModal = true}
+                                        class="w-full py-2 bg-white text-orange-700 font-bold text-xs rounded-xl shadow-xs hover:bg-slate-100 transition flex items-center justify-center gap-1 cursor-pointer"
+                                    >
+                                        <span>Mulai Jual Barang</span>
+                                        <i class="ti ti-plus text-xs"></i>
+                                    </button>
+                                </div>
+                            {/if}
                         </div>
                     </div>
 
@@ -954,6 +1073,82 @@
                             <i class="ti ti-loader animate-spin text-lg"></i> Memproses...
                         {:else}
                             Lanjutkan
+                        {/if}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}
+
+<!-- Modal Buka Toko / Jual Barang -->
+{#if showSellerModal}
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-black">
+                        <i class="ti ti-building-store text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-slate-800">Buka Toko / Jual Barang</h3>
+                        <p class="text-xs text-slate-400">Mulai berjualan sebagai Penjual</p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onclick={() => showSellerModal = false}
+                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition"
+                >
+                    <i class="ti ti-x text-sm"></i>
+                </button>
+            </div>
+
+            <form onsubmit={(e) => { e.preventDefault(); submitBecomeSeller(); }} class="space-y-4">
+                <div>
+                    <label for="seller_store_name" class="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Toko / Nama Penjual
+                    </label>
+                    <input
+                        id="seller_store_name"
+                        type="text"
+                        bind:value={sellerForm.store_name}
+                        required
+                        placeholder="Contoh: Lapak Berkah / Ahmad Store"
+                        class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition"
+                    />
+                </div>
+
+                <div>
+                    <label for="seller_store_desc" class="block text-xs font-bold text-slate-700 mb-1">
+                        Deskripsi Singkat (Opsional)
+                    </label>
+                    <textarea
+                        id="seller_store_desc"
+                        bind:value={sellerForm.store_description}
+                        rows="3"
+                        placeholder="Jelaskan jenis produk atau lokasi toko Anda..."
+                        class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition resize-none"
+                    ></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2.5">
+                    <button
+                        type="button"
+                        onclick={() => showSellerModal = false}
+                        class="px-4 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={sellerForm.processing}
+                        class="px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 rounded-xl shadow-md transition disabled:opacity-50"
+                    >
+                        {#if sellerForm.processing}
+                            Memproses...
+                        {:else}
+                            Aktifkan Toko Sekarang
                         {/if}
                     </button>
                 </div>

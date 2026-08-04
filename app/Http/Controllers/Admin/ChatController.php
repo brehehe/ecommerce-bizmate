@@ -28,9 +28,20 @@ class ChatController extends Controller
      */
     public function index(Request $request): Response
     {
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
         $query = Chat::with(['user', 'lastMessage'])
             ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender_type', 'user')->where('is_read', false)])
             ->orderByDesc('last_message_at');
+
+        if ($isSeller) {
+            $sellerProductIds = Product::where('user_id', $user->id)->pluck('id');
+            $query->where(function ($q) use ($user, $sellerProductIds) {
+                $q->whereIn('product_id', $sellerProductIds)
+                    ->orWhereHas('messages', fn ($mq) => $mq->where('sender_id', $user->id));
+            });
+        }
 
         if ($search = $request->query('search')) {
             $query->whereHas('user', fn ($q) => $q->where('name', 'ilike', "%{$search}%")
@@ -57,7 +68,15 @@ class ChatController extends Controller
             ] : null,
         ]);
 
-        $totalUnread = Chat::whereHas('messages', fn ($q) => $q->where('sender_type', 'user')->where('is_read', false))->count();
+        $unreadQuery = Chat::whereHas('messages', fn ($q) => $q->where('sender_type', 'user')->where('is_read', false));
+        if ($isSeller) {
+            $sellerProductIds = Product::where('user_id', $user->id)->pluck('id');
+            $unreadQuery->where(function ($q) use ($user, $sellerProductIds) {
+                $q->whereIn('product_id', $sellerProductIds)
+                    ->orWhereHas('messages', fn ($mq) => $mq->where('sender_id', $user->id));
+            });
+        }
+        $totalUnread = $unreadQuery->count();
 
         return Inertia::render('Admin/Chat/Index', compact('chats', 'totalUnread'));
     }
@@ -67,6 +86,11 @@ class ChatController extends Controller
      */
     public function show(Request $request, Chat $chat): Response
     {
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
+        $this->authorizeSellerAccess($request, $chat);
+
         $chat->load('user');
 
         $product = null;
@@ -120,6 +144,14 @@ class ChatController extends Controller
             ->withCount(['messages as unread_count' => fn ($q) => $q->where('sender_type', 'user')->where('is_read', false)])
             ->orderByDesc('last_message_at');
 
+        if ($isSeller) {
+            $sellerProductIds = Product::where('user_id', $user->id)->pluck('id');
+            $chatsQuery->where(function ($q) use ($user, $sellerProductIds) {
+                $q->whereIn('product_id', $sellerProductIds)
+                    ->orWhereHas('messages', fn ($mq) => $mq->where('sender_id', $user->id));
+            });
+        }
+
         if ($search = $request->query('search')) {
             $chatsQuery->whereHas('user', fn ($q) => $q->where('name', 'ilike', "%{$search}%")
                 ->orWhere('email', 'ilike', "%{$search}%"));
@@ -145,7 +177,15 @@ class ChatController extends Controller
             ] : null,
         ]);
 
-        $totalUnread = Chat::whereHas('messages', fn ($q) => $q->where('sender_type', 'user')->where('is_read', false))->count();
+        $unreadQuery = Chat::whereHas('messages', fn ($q) => $q->where('sender_type', 'user')->where('is_read', false));
+        if ($isSeller) {
+            $sellerProductIds = Product::where('user_id', $user->id)->pluck('id');
+            $unreadQuery->where(function ($q) use ($user, $sellerProductIds) {
+                $q->whereIn('product_id', $sellerProductIds)
+                    ->orWhereHas('messages', fn ($mq) => $mq->where('sender_id', $user->id));
+            });
+        }
+        $totalUnread = $unreadQuery->count();
 
         return Inertia::render('Admin/Chat/Show', [
             'chat' => $chatData,
@@ -160,6 +200,8 @@ class ChatController extends Controller
      */
     public function pollMessages(Request $request, Chat $chat): JsonResponse
     {
+        $this->authorizeSellerAccess($request, $chat);
+
         $afterId = $request->query('after_id');
         $afterMessage = $afterId ? ChatMessage::find($afterId) : null;
 
@@ -201,10 +243,12 @@ class ChatController extends Controller
     }
 
     /**
-     * Admin sends a reply message.
+     * Admin/Seller sends a reply message.
      */
     public function reply(Request $request, Chat $chat): JsonResponse
     {
+        $this->authorizeSellerAccess($request, $chat);
+
         $validated = $request->validate([
             'body' => 'nullable|string|max:5000',
             'image' => 'nullable|file|image|max:2048',
@@ -248,6 +292,8 @@ class ChatController extends Controller
      */
     public function destroy(Request $request, Chat $chat): JsonResponse|RedirectResponse
     {
+        $this->authorizeSellerAccess($request, $chat);
+
         // Delete any image attachments from storage
         $chat->messages()->where('attachment_type', 'image')->get()->each(function (ChatMessage $message): void {
             if (is_array($message->attachment_data) && isset($message->attachment_data['path'])) {
@@ -269,6 +315,8 @@ class ChatController extends Controller
      */
     public function destroyMessage(Request $request, Chat $chat, ChatMessage $message): JsonResponse
     {
+        $this->authorizeSellerAccess($request, $chat);
+
         abort_if($message->chat_id !== $chat->id, 404);
 
         // Delete image attachment from storage if exists
@@ -279,6 +327,23 @@ class ChatController extends Controller
         $message->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Authorize that the current seller user has access to this chat thread.
+     */
+    private function authorizeSellerAccess(Request $request, Chat $chat): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $sellerProductIds = Product::where('user_id', $user->id)->pluck('id');
+            $hasAccess = ($chat->product_id && $sellerProductIds->contains($chat->product_id))
+                || $chat->messages()->where('sender_id', $user->id)->exists();
+
+            if (! $hasAccess) {
+                abort(403, 'Anda tidak memiliki akses ke percakapan ini.');
+            }
+        }
     }
 
     /** @return array<string, mixed> */

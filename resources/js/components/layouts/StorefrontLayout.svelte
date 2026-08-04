@@ -38,6 +38,7 @@
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
+    const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled) ?? false);
 
     const flash = $derived((page.props as any).flash);
 
@@ -159,6 +160,7 @@
     );
     let chatMessages = $state<any[]>([]);
     let chatInput = $state('');
+    let attachedProduct = $state<any>(null);
     let chatListLoading = $state(false);
     let chatMessagesLoading = $state(false);
 
@@ -812,15 +814,15 @@
 
     async function sendChatMessage() {
         const text = chatInput.trim();
-        if ((!text && !attachedImage) || !activeChatId) return;
+        if ((!text && !attachedImage && !attachedProduct) || !activeChatId) return;
 
         // Optimistic update
         const tempId = -Date.now();
         const optimisticMsg = {
             id: tempId,
             body: text || null,
-            attachment_type: attachedImage ? 'image' : null,
-            attachment_data: attachedImage ? { url: attachedImageUrl } : null,
+            attachment_type: attachedProduct ? 'product' : (attachedImage ? 'image' : null),
+            attachment_data: attachedProduct ? attachedProduct : (attachedImage ? { url: attachedImageUrl } : null),
             sender_type: 'user',
             sender_id: auth?.id,
             time: new Date().toLocaleTimeString('id-ID', {
@@ -832,7 +834,9 @@
         };
         chatMessages = [...chatMessages, optimisticMsg];
         chatInput = '';
+        const savedAttachedProduct = attachedProduct;
         const savedAttachedImage = attachedImage;
+        attachedProduct = null;
         attachedImage = null;
         attachedImageUrl = null;
         setTimeout(scrollMiniChatToBottom, 50);
@@ -840,7 +844,13 @@
         try {
             const formData = new FormData();
             if (text) formData.append('body', text);
-            if (
+            if (savedAttachedProduct) {
+                formData.append('attachment_type', 'product');
+                formData.append(
+                    'attachment_data',
+                    JSON.stringify(savedAttachedProduct),
+                );
+            } else if (
                 optimisticMsg.attachment_type === 'image' &&
                 savedAttachedImage
             ) {
@@ -1023,8 +1033,16 @@
         });
 
         const handleOpenDesktopChat = async (e: any) => {
-            const { productId, productName } = e.detail;
+            const { productId, productName, productImage, productPrice } = e.detail;
             desktopChatOpen = true;
+            if (productId && productName) {
+                attachedProduct = {
+                    id: productId,
+                    name: productName,
+                    image: productImage,
+                    price: productPrice,
+                };
+            }
             try {
                 const response = await fetch('/chats', {
                     method: 'POST',
@@ -1775,19 +1793,66 @@
                             {#if profileDropOpen}
                                 <div
                                     transition:fade={{ duration: 150 }}
-                                    class="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50"
+                                    class="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50"
                                 >
-                                    <div class="p-3 border-b border-slate-100">
+                                    <div class="p-3.5 border-b border-slate-100 bg-slate-50/50">
                                         <p
-                                            class="text-sm font-bold text-slate-800"
+                                            class="text-sm font-bold text-slate-800 truncate"
                                         >
                                             {auth.name}
                                         </p>
-                                        <p class="text-xs text-slate-400">
+                                        <p class="text-xs text-slate-400 font-medium truncate">
                                             {auth.email}
                                         </p>
+                                        {#if auth.is_seller && isSellerEnabled}
+                                            {@const storeName = auth.store_name || `Toko ${auth.name}`}
+                                            <a
+                                                href="/{auth.store_slug || ''}"
+                                                class="mt-2.5 flex flex-col gap-1.5 p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100/80 transition border border-blue-100/90 group"
+                                            >
+                                                <div class="flex items-center gap-1.5 min-w-0">
+                                                    <i class="ti ti-building-store text-blue-600 text-sm shrink-0"></i>
+                                                    <span class="text-xs font-bold text-blue-950 group-hover:text-blue-700 truncate transition">
+                                                        {storeName}
+                                                    </span>
+                                                </div>
+                                                {#if auth.store_slug}
+                                                    <div class="flex items-center">
+                                                        <span class="text-[10px] font-mono font-medium text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200/80 truncate shadow-2xs">
+                                                            /{auth.store_slug}
+                                                        </span>
+                                                    </div>
+                                                {/if}
+                                            </a>
+                                        {/if}
                                     </div>
                                     <div class="p-1">
+                                        {#if isSellerEnabled}
+                                            {#if auth.is_seller || auth.roles?.some((r: any) => r.name !== 'Customer')}
+                                                <a
+                                                    href="/admin/dashboard"
+                                                    class="flex items-center gap-2.5 px-3 py-2 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition mb-1"
+                                                >
+                                                    <i class="ti ti-dashboard text-base"></i> Dashboard Penjual
+                                                </a>
+                                                {#if auth.store_slug}
+                                                    <a
+                                                        href="/{auth.store_slug}"
+                                                        class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                                    >
+                                                        <i class="ti ti-building-store text-base text-blue-600"></i> Halaman Toko Saya
+                                                    </a>
+                                                {/if}
+                                            {:else}
+                                                <Link
+                                                    href="/profile"
+                                                    prefetch
+                                                    class="flex items-center gap-2.5 px-3 py-2 text-sm font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-xl transition"
+                                                >
+                                                    <i class="ti ti-tags text-base"></i> Mulai Jual Barang
+                                                </Link>
+                                            {/if}
+                                        {/if}
                                         <Link
                                             href="/profile"
                                             prefetch
@@ -1983,7 +2048,7 @@
                             class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition"
                             aria-label="Kembali ke Home"
                         >
-                            <i class="ti ti-home text-xl"></i>
+                            <i class="ti ti-arrow-left text-xl"></i>
                         </Link>
                     {/if}
                 {/if}
@@ -2135,14 +2200,57 @@
                         {getInitials(auth.name)}
                     {/if}
                 </div>
-                <div>
-                    <p class="text-sm font-bold text-slate-800">
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-slate-800 truncate">
                         {auth.name}
                     </p>
-                    <p class="text-xs text-slate-400">{auth.email}</p>
+                    <p class="text-xs text-slate-400 truncate">{auth.email}</p>
+                    {#if auth.is_seller && isSellerEnabled}
+                        {@const storeName = auth.store_name || `Toko ${auth.name}`}
+                        <a
+                            href="/{auth.store_slug || ''}"
+                            class="mt-1.5 flex flex-col gap-0.5 p-1.5 rounded-lg bg-blue-50/80 border border-blue-100/90 text-xs font-bold text-blue-900 hover:bg-blue-100 transition max-w-full"
+                        >
+                            <div class="flex items-center gap-1 min-w-0">
+                                <i class="ti ti-building-store text-xs text-blue-600 shrink-0"></i>
+                                <span class="truncate">{storeName}</span>
+                            </div>
+                            {#if auth.store_slug}
+                                <span class="font-mono text-[10px] text-blue-700 bg-white px-1.5 py-0.5 rounded border border-blue-200/80 self-start truncate">
+                                    /{auth.store_slug}
+                                </span>
+                            {/if}
+                        </a>
+                    {/if}
                 </div>
             </div>
             <div class="p-2">
+                {#if isSellerEnabled}
+                    {#if auth.is_seller || auth.roles?.some((r: any) => r.name !== 'Customer')}
+                        <a
+                            href="/admin/dashboard"
+                            class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition mb-1"
+                        >
+                            <i class="ti ti-dashboard text-lg"></i> Dashboard Penjual
+                        </a>
+                        {#if auth.store_slug}
+                            <a
+                                href="/{auth.store_slug}"
+                                class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition mb-1"
+                            >
+                                <i class="ti ti-building-store text-lg text-blue-600"></i> Halaman Toko Saya
+                            </a>
+                        {/if}
+                    {:else}
+                        <Link
+                            href="/profile"
+                            prefetch
+                            class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-xl transition"
+                        >
+                            <i class="ti ti-tags text-lg"></i> Mulai Jual Barang
+                        </Link>
+                    {/if}
+                {/if}
                 <Link
                     href="/profile"
                     prefetch
@@ -3340,6 +3448,39 @@
             <!-- Message Input Area -->
             {#if activeChatId}
                 <div class="bg-white border-t border-slate-100 shrink-0">
+                    <!-- Attached Product Preview -->
+                    {#if attachedProduct}
+                        <div
+                            class="px-3 py-2 border-b border-slate-100 bg-slate-50/70 flex items-center justify-between gap-2"
+                        >
+                            <div class="flex items-center gap-2 min-w-0">
+                                <img
+                                    src={formatMiniChatImagePath(attachedProduct.image)}
+                                    alt={attachedProduct.name}
+                                    class="w-9 h-9 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
+                                    onerror={(e: any) => {
+                                        e.target.src = '/noimage/image.png';
+                                    }}
+                                />
+                                <div class="min-w-0">
+                                    <p class="text-[11px] font-bold text-slate-800 truncate">
+                                        {attachedProduct.name}
+                                    </p>
+                                    <p class="text-[10px] font-black text-orange-500">
+                                        Rp{Number(attachedProduct.price ?? 0).toLocaleString('id-ID')}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onclick={() => (attachedProduct = null)}
+                                class="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 transition cursor-pointer"
+                                aria-label="Hapus lampiran produk"
+                            >
+                                <i class="ti ti-x text-xs"></i>
+                            </button>
+                        </div>
+                    {/if}
+
                     <!-- Attached Image Preview -->
                     {#if attachedImageUrl}
                         <div

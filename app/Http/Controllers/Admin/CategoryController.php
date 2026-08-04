@@ -21,6 +21,11 @@ class CategoryController extends Controller
         ]);
     }
 
+    public function show(Category $category)
+    {
+        return redirect()->route('categories.index');
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -74,6 +79,11 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat mengubah kategori.');
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'slug' => ['required', 'string', 'max:255', Rule::unique('categories', 'slug')->ignore($category->id)->whereNull('deleted_at')],
@@ -126,8 +136,13 @@ class CategoryController extends Controller
         return back()->with('success', 'Kategori berhasil diperbarui.');
     }
 
-    public function destroy(Category $category)
+    public function destroy(Request $request, Category $category)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat menghapus kategori global.');
+        }
+
         \DB::transaction(function () use ($category) {
             $category->children()->delete();
             $category->delete();
@@ -138,6 +153,11 @@ class CategoryController extends Controller
 
     public function bulkDelete(Request $request)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat menghapus kategori global.');
+        }
+
         $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'exists:categories,id',
@@ -160,6 +180,11 @@ class CategoryController extends Controller
 
     public function reorder(Request $request)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat mengubah urutan kategori.');
+        }
+
         $request->validate([
             'categories' => ['required', 'array'],
             'categories.*.id' => ['required', 'exists:categories,id'],

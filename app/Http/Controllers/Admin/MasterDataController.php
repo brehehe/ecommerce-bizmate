@@ -26,11 +26,20 @@ use Spatie\Permission\Models\Role;
 
 class MasterDataController extends Controller
 {
+    protected function authorizeAdminOnly(Request $request): void
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            abort(403, 'Akses ini khusus untuk Admin.');
+        }
+    }
+
     /**
      * Display a listing of admin users.
      */
     public function admins(Request $request)
     {
+        $this->authorizeAdminOnly($request);
         $query = User::with('roles')->whereHas('roles', function ($q) use ($request) {
             $q->where('name', '!=', 'Customer');
             if ($request->filled('role') && $request->role !== 'Semua') {
@@ -179,6 +188,7 @@ class MasterDataController extends Controller
      */
     public function customers(Request $request)
     {
+        $this->authorizeAdminOnly($request);
         // Customers are those who have the 'Customer' role
         $query = User::with('roles')
             ->withCount('transactions')
@@ -289,6 +299,7 @@ class MasterDataController extends Controller
      */
     public function roles(Request $request)
     {
+        $this->authorizeAdminOnly($request);
         $query = Role::withCount('users');
 
         if ($request->filled('search')) {
@@ -691,6 +702,11 @@ class MasterDataController extends Controller
      */
     public function updateBrand(Request $request, Brand $brand)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat mengubah brand.');
+        }
+
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -713,8 +729,13 @@ class MasterDataController extends Controller
     /**
      * Remove the specified brand.
      */
-    public function destroyBrand(Brand $brand)
+    public function destroyBrand(Request $request, Brand $brand)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat menghapus brand global.');
+        }
+
         $brand->delete();
 
         return back()->with('success', 'Brand berhasil dihapus.');
@@ -723,8 +744,13 @@ class MasterDataController extends Controller
     /**
      * Toggle active status of brand.
      */
-    public function toggleActiveBrand(Brand $brand)
+    public function toggleActiveBrand(Request $request, Brand $brand)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat mengubah status brand.');
+        }
+
         $brand->update(['is_active' => ! $brand->is_active]);
 
         return back()->with('success', 'Status brand berhasil diubah.');
@@ -735,6 +761,11 @@ class MasterDataController extends Controller
      */
     public function reorderBrands(Request $request)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat mengubah urutan brand.');
+        }
+
         $request->validate([
             'brands' => ['required', 'array'],
             'brands.*.id' => ['required', 'exists:brands,id'],
@@ -775,6 +806,7 @@ class MasterDataController extends Controller
      */
     public function socialMedia(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $query = SocialMedia::query();
 
         if ($request->filled('search')) {
@@ -1111,6 +1143,11 @@ class MasterDataController extends Controller
      */
     public function bulkDeleteBrands(Request $request)
     {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return back()->with('error', 'Hanya Super Admin / Admin yang dapat menghapus brand global.');
+        }
+
         $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'exists:brands,id',
@@ -1252,6 +1289,7 @@ class MasterDataController extends Controller
      */
     public function loyaltyPoints(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
         $query = CoinHistory::with(['user:id,name,email,avatar', 'transaction:id,order_number'])
             ->select(['id', 'user_id', 'transaction_id', 'amount', 'type', 'description', 'order', 'created_at']);
 

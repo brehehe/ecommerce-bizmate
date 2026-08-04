@@ -33,6 +33,32 @@ class CustomerAddressController extends Controller
     }
 
     /**
+     * Display a listing of the seller's addresses in the admin panel.
+     */
+    public function adminIndex(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user->is_seller) {
+            abort(403, 'Akses hanya untuk seller.');
+        }
+
+        $addresses = CustomerAddress::where('user_id', $user->id)
+            ->orderBy('is_primary', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $isBiteshipEnabled = BiteshipService::isEnabled();
+        $isRajaOngkirEnabled = ! empty(Setting::where('key', 'rajaongkir_shipping_cost')->value('value'));
+
+        return Inertia::render('Admin/SellerAddresses', [
+            'addresses' => $addresses,
+            'isBiteshipEnabled' => $isBiteshipEnabled,
+            'isRajaOngkirEnabled' => $isRajaOngkirEnabled,
+        ]);
+    }
+
+    /**
      * Store a newly created address in storage.
      */
     public function store(Request $request)
@@ -59,7 +85,19 @@ class CustomerAddressController extends Controller
             'is_primary' => 'boolean',
         ]);
 
-        $userId = $request->user()->id;
+        $user = $request->user();
+        $userId = $user->id;
+
+        // Seller single store address enforcement
+        if ($user->is_seller) {
+            $existingAddress = CustomerAddress::where('user_id', $userId)->first();
+            if ($existingAddress) {
+                $validated['is_primary'] = true;
+                $existingAddress->update($validated);
+
+                return redirect()->back()->with('success', 'Alamat toko berhasil diperbarui.');
+            }
+        }
 
         // If is_primary is requested, or if this is the first address, make it primary
         $isFirst = CustomerAddress::where('user_id', $userId)->count() === 0;
@@ -135,6 +173,14 @@ class CustomerAddressController extends Controller
         // Ensure user owns this address
         if ($address->user_id !== $request->user()->id) {
             abort(403);
+        }
+
+        // Sellers are restricted to keeping their 1 store address
+        if ($request->user()->is_seller) {
+            $addressCount = CustomerAddress::where('user_id', $request->user()->id)->count();
+            if ($addressCount <= 1) {
+                return redirect()->back()->with('error', 'Alamat Toko Penjual tidak dapat dihapus. Silakan lakukan edit jika ada perubahan.');
+            }
         }
 
         $wasPrimary = $address->is_primary;

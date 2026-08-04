@@ -971,6 +971,61 @@
     let attachedImageUrl = $state<string | null>(null);
     let chatPreviewUrl = $state<string | null>(null);
 
+    function openChat() {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+            return;
+        }
+        if (window.innerWidth >= 768) {
+            window.dispatchEvent(
+                new CustomEvent('open-desktop-chat', {
+                    detail: {
+                        productId: product.id,
+                        productName: product.name,
+                        productImage:
+                            product.image ||
+                            (product.images?.[0]?.url ?? product.images?.[0]?.path),
+                        productPrice:
+                            product.price ?? product.product_price?.price ?? 0,
+                    },
+                }),
+            );
+        } else {
+            chatOpen = true;
+            attachMenuOpen = false;
+        }
+    }
+
+    function openWhatsApp() {
+        const sellerObj = product.seller || product.user;
+        const settings = (page.props.settings as any) || {};
+
+        // Retrieve phone directly from database (seller phone_number, or DB settings store_whatsapp/store_phone)
+        const dbPhone =
+            sellerObj?.phone_number ||
+            sellerObj?.phone ||
+            settings.store_whatsapp ||
+            settings.store_phone;
+
+        if (!dbPhone) {
+            alert('Nomor telepon/WhatsApp belum diatur di database.');
+            return;
+        }
+
+        let cleanPhone = String(dbPhone).replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.slice(1);
+        } else if (!cleanPhone.startsWith('62') && cleanPhone.length > 5) {
+            cleanPhone = '62' + cleanPhone;
+        }
+
+        const productUrl = window.location.href;
+        const messageText = `Halo, saya ingin bertanya tentang produk *${product.name}*:\n${productUrl}`;
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`;
+
+        window.open(waUrl, '_blank');
+    }
+
     $effect(() => {
         if (chatOpen) {
             initializeChat();
@@ -2228,8 +2283,7 @@
                                             0.1,
                                         )}; color: {primary};"
                                     >
-                                        <i class="ti ti-star-filled text-[9px]"
-                                        ></i>
+                                        <i class="ti ti-star-filled text-[9px]"></i>
                                         {brand.name}
                                     </span>
                                 {/each}
@@ -2248,6 +2302,18 @@
                                 </span>
                             </div>
                         {/if}
+
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            {#if product.condition === 'used'}
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100/90 text-amber-800 border border-amber-200/60">
+                                    <i class="ti ti-refresh text-[10px]"></i> Kondisi: Bekas / Second
+                                </span>
+                            {:else}
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200/60">
+                                    <i class="ti ti-sparkles text-[10px]"></i> Kondisi: Baru
+                                </span>
+                            {/if}
+                        </div>
                         <h1
                             class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight"
                         >
@@ -2296,6 +2362,7 @@
                                 >
                             {/if}
                         </div>
+
                     </div>
 
                     <!-- Flash Sale Banner -->
@@ -3134,38 +3201,6 @@
                                 Beli Sekarang
                             </button>
                         {/if}
-                        <button
-                            onclick={() => {
-                                if (window.innerWidth < 768) {
-                                    chatOpen = true;
-                                    attachMenuOpen = false;
-                                } else {
-                                    if (user) {
-                                        window.dispatchEvent(
-                                            new CustomEvent(
-                                                'open-desktop-chat',
-                                                {
-                                                    detail: {
-                                                        productId: product.id,
-                                                        productName:
-                                                            product.name,
-                                                    },
-                                                },
-                                            ),
-                                        );
-                                    } else {
-                                        window.dispatchEvent(
-                                            new CustomEvent('open-login-modal'),
-                                        );
-                                    }
-                                }
-                            }}
-                            class="px-5 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm border-2 hover:shadow-md transition duration-200 cursor-pointer"
-                            style="border-color: {primary}; color: {primary};"
-                        >
-                            <i class="ti ti-message-dots text-base"></i>
-                            Chat
-                        </button>
                     </div>
 
                     <!-- Product meta footer -->
@@ -3210,6 +3245,122 @@
             <!-- /grid -->
         </div>
     </div>
+
+    <div class="bg-white">
+    <!-- ─────────────────────────────────────────────────────
+     SELLER INFO CARD
+ ───────────────────────────────────────────────────── -->
+    {#if product.seller || product.user}
+        {@const sellerObj = product.seller || product.user}
+        {@const sellerAddress = product.origin_address || sellerObj.customer_addresses?.[0] || sellerObj.customerAddresses?.[0]}
+        <div class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 w-full min-w-0">
+            <div class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-4 sm:p-5 flex flex-col gap-3">
+                <!-- Seller identity row -->
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 overflow-hidden text-sm border border-slate-200 shadow-sm">
+                            {#if sellerObj.avatar}
+                                <img src="/storage/{sellerObj.avatar}" alt={sellerObj.store_name || sellerObj.name} class="w-full h-full object-cover" />
+                            {:else}
+                                {(sellerObj.store_name || sellerObj.name).substring(0, 2).toUpperCase()}
+                            {/if}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                {#if sellerObj.store_slug}
+                                    <a href="/{sellerObj.store_slug}" class="font-bold text-sm text-slate-800 hover:text-blue-600 truncate transition">
+                                        {sellerObj.store_name || sellerObj.name}
+                                    </a>
+                                {:else}
+                                    <span class="font-bold text-sm text-slate-800 truncate">{sellerObj.store_name || sellerObj.name}</span>
+                                {/if}
+                                <span class="px-2 py-0.5 text-[9px] font-black bg-blue-100 text-blue-700 rounded-full shrink-0">Penjual</span>
+                            </div>
+                            {#if sellerObj.store_slug}
+                                <p class="text-[10px] text-blue-500 font-mono mt-0.5 truncate">/{sellerObj.store_slug}</p>
+                            {/if}
+                        </div>
+                    </div>
+                    <!-- Desktop buttons (hidden on mobile) -->
+                    <div class="hidden sm:flex items-center gap-2 shrink-0">
+                        {#if sellerObj.store_slug}
+                            <a
+                                href="/{sellerObj.store_slug}"
+                                class="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                            >
+                                <i class="ti ti-building-store text-sm text-blue-600"></i>
+                                <span>Toko</span>
+                            </a>
+                        {/if}
+                        <button
+                            type="button"
+                            onclick={openChat}
+                            class="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        >
+                            <i class="ti ti-message text-sm"></i>
+                            <span>Chat</span>
+                        </button>
+                        <button
+                            type="button"
+                            onclick={openWhatsApp}
+                            class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            title="Tanya via WhatsApp"
+                        >
+                            <i class="ti ti-brand-whatsapp text-sm text-emerald-600"></i>
+                            <span>WhatsApp</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile action buttons (visible only on mobile) -->
+                <div class="flex sm:hidden items-center gap-2">
+                    {#if sellerObj.store_slug}
+                        <a
+                            href="/{sellerObj.store_slug}"
+                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition shadow-sm"
+                        >
+                            <i class="ti ti-building-store text-sm text-blue-600"></i>
+                            Toko
+                        </a>
+                    {/if}
+                    <button
+                        type="button"
+                        onclick={openChat}
+                        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition cursor-pointer shadow-sm"
+                    >
+                        <i class="ti ti-message text-sm"></i>
+                        Chat
+                    </button>
+                    <button
+                        type="button"
+                        onclick={openWhatsApp}
+                        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
+                        title="Tanya via WhatsApp"
+                    >
+                        <i class="ti ti-brand-whatsapp text-sm text-emerald-600"></i>
+                        WhatsApp
+                    </button>
+                </div>
+
+                {#if sellerAddress}
+                    {@const fullAddressText = [
+                        sellerAddress.full_address,
+                        sellerAddress.district_name,
+                        sellerAddress.regency_name,
+                        sellerAddress.province_name,
+                        sellerAddress.postal_code
+                    ].filter(Boolean).join(', ')}
+                    <div class="flex items-start gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <i class="ti ti-map-pin text-rose-500 text-sm mt-0.5 shrink-0"></i>
+                        <div class="min-w-0 flex-1">
+                            <span class="font-bold text-slate-700 text-xs block">Alamat Pengiriman Toko:</span>
+                            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">{fullAddressText}</p>
+                        </div>
+                    </div>
+                {/if}
+            </div>
+        </div>
+    {/if}
 
     <!-- ─────────────────────────────────────────────────────
      DESKRIPSI / PENGIRIMAN / ULASAN (STACKED VERTICALLY)
@@ -4023,6 +4174,9 @@
         </div>
     {/if}
 
+    </div>
+    <!-- /bg-white content wrapper -->
+
     <!-- Sticky Bottom Bar (Mobile Only) -->
     <div
         class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 px-4 pt-2.5 pb-2.5 flex items-center gap-3 md:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
@@ -4030,14 +4184,21 @@
     >
         <!-- Chat Button -->
         <button
-            onclick={() => {
-                chatOpen = true;
-                attachMenuOpen = false;
-            }}
-            class="w-12 h-12 flex items-center justify-center rounded-xl border border-slate-200 text-slate-700 active:bg-slate-50 transition shrink-0"
+            onclick={openChat}
+            class="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 text-slate-700 active:bg-slate-50 transition shrink-0 cursor-pointer"
             aria-label="Chat Penjual"
+            title="Chat Penjual"
         >
             <i class="ti ti-message-dots text-xl"></i>
+        </button>
+        <!-- WhatsApp Button -->
+        <button
+            onclick={openWhatsApp}
+            class="w-11 h-11 flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 active:bg-emerald-100 transition shrink-0 cursor-pointer"
+            aria-label="Tanya via WhatsApp"
+            title="Tanya via WhatsApp"
+        >
+            <i class="ti ti-brand-whatsapp text-xl"></i>
         </button>
 
         <!-- Beli Langsung (Outline style) -->
@@ -4571,7 +4732,7 @@
                 </div>
 
                 <!-- Messages -->
-                {#each chatMessages as msg (msg.id)}
+                {#each chatMessages as msg, idx (msg.id ? `${msg.id}-${idx}` : idx)}
                     <div
                         class="flex flex-col {msg.sender_type === 'user'
                             ? 'items-end'
@@ -4909,7 +5070,7 @@
                         .filter((p: any) => !productSearchQuery || p.name
                                     ?.toLowerCase()
                                     .includes(productSearchQuery.toLowerCase()))
-                        .slice(0, 20) as p (p.id ?? p.name)}
+                        .slice(0, 20) as p, idx (p.id ? `${p.id}-${idx}` : idx)}
                         <button
                             onclick={() => {
                                 attachedProduct = {

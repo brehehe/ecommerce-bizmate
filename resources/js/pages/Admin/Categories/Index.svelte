@@ -19,6 +19,14 @@
         (page.props as any).theme?.primary_color ?? '#0c4cb4',
     );
 
+    const currentUser = $derived((page.props as any).auth?.user);
+    const isSeller = $derived(
+        currentUser?.is_seller &&
+            !currentUser?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ),
+    );
+
     let iconSearch = $state('');
     let showDropdown = $state(false);
 
@@ -373,10 +381,12 @@
             router.delete(
                 adminCategoriesDestroy.url({ category: deleteCategoryId }),
                 {
-                    onSuccess: () => {
+                    onSuccess: (page: any) => {
                         deleteModalOpen = false;
                         deleteCategoryId = null;
-                        showToast('Kategori berhasil dihapus!', 'success');
+                        if (!page.props?.flash?.error) {
+                            showToast('Kategori berhasil dihapus!', 'success');
+                        }
                     },
                 },
             );
@@ -445,7 +455,7 @@
 
                     <div class="p-5 space-y-4">
                         <!-- Bulk Actions Bar -->
-                        {#if categories.length > 0}
+                        {#if !isSeller && categories.length > 0}
                             <div class="flex items-center justify-between border border-slate-100 py-2.5 px-4 rounded-lg bg-slate-50/50">
                                 <label class="flex items-center gap-2 cursor-pointer select-none">
                                     <input
@@ -493,15 +503,17 @@
                                 >
                                     <div class="flex items-center justify-between min-w-0 gap-2">
                                         <div class="flex items-center gap-3 min-w-0">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCategories.includes(category.id)}
-                                                onchange={() => toggleSelect(category.id)}
-                                                class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
-                                            />
-                                            <span class="text-slate-400 cursor-move" title="Geser Urutan">
-                                                <i class="ti ti-grip-vertical text-lg"></i>
-                                            </span>
+                                            {#if !isSeller}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCategories.includes(category.id)}
+                                                    onchange={() => toggleSelect(category.id)}
+                                                    class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
+                                                />
+                                                <span class="text-slate-400 cursor-move" title="Geser Urutan">
+                                                    <i class="ti ti-grip-vertical text-lg"></i>
+                                                </span>
+                                            {/if}
                                             {#if category.image}
                                                 <img
                                                     src={category.image}
@@ -522,22 +534,24 @@
                                                 </p>
                                             </div>
                                         </div>
-                                        <div class="flex items-center gap-2 shrink-0">
-                                            <button
-                                                aria-label="Edit"
-                                                onclick={() => editCategory(category)}
-                                                class="p-1.5 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-                                            >
-                                                <i class="ti ti-edit text-base"></i>
-                                            </button>
-                                            <button
-                                                aria-label="Hapus"
-                                                onclick={() => confirmDelete(category.id)}
-                                                class="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                            >
-                                                <i class="ti ti-trash text-base"></i>
-                                            </button>
-                                        </div>
+                                        {#if !isSeller}
+                                            <div class="flex items-center gap-2 shrink-0">
+                                                <button
+                                                    aria-label="Edit"
+                                                    onclick={() => editCategory(category)}
+                                                    class="p-1.5 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                                                >
+                                                    <i class="ti ti-edit text-base"></i>
+                                                </button>
+                                                <button
+                                                    aria-label="Hapus"
+                                                    onclick={() => confirmDelete(category.id)}
+                                                    class="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                                >
+                                                    <i class="ti ti-trash text-base"></i>
+                                                </button>
+                                            </div>
+                                        {/if}
                                     </div>
 
                                     {#if category.children && category.children.length > 0}
@@ -555,15 +569,17 @@
                                                     data-id={sub.id}
                                                 >
                                                     <div class="flex items-center gap-3 min-w-0">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedCategories.includes(sub.id)}
-                                                            onchange={() => toggleSelect(sub.id)}
-                                                            class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
-                                                        />
-                                                        <span class="text-slate-300 cursor-move-sub hover:text-slate-500 transition" title="Geser Urutan">
-                                                            <i class="ti ti-grip-vertical text-lg"></i>
-                                                        </span>
+                                                        {#if !isSeller}
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedCategories.includes(sub.id)}
+                                                                onchange={() => toggleSelect(sub.id)}
+                                                                class="rounded border-slate-300 text-slate-900 focus:ring-0 focus:outline-none w-4 h-4 cursor-pointer accent-slate-900"
+                                                            />
+                                                            <span class="text-slate-300 cursor-move-sub hover:text-slate-500 transition" title="Geser Urutan">
+                                                                <i class="ti ti-grip-vertical text-lg"></i>
+                                                            </span>
+                                                        {/if}
                                                         {#if sub.image}
                                                             <img
                                                                 src={sub.image}
@@ -580,22 +596,24 @@
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div class="flex items-center gap-2 shrink-0">
-                                                        <button
-                                                            aria-label="Edit"
-                                                            onclick={() => editCategory(sub)}
-                                                            class="p-1 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
-                                                        >
-                                                            <i class="ti ti-edit"></i>
-                                                        </button>
-                                                        <button
-                                                            aria-label="Hapus Kategori"
-                                                            onclick={() => confirmDelete(sub.id)}
-                                                            class="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                                        >
-                                                            <i class="ti ti-trash"></i>
-                                                        </button>
-                                                    </div>
+                                                    {#if !isSeller}
+                                                        <div class="flex items-center gap-2 shrink-0">
+                                                            <button
+                                                                aria-label="Edit"
+                                                                onclick={() => editCategory(sub)}
+                                                                class="p-1 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+                                                            >
+                                                                <i class="ti ti-edit"></i>
+                                                            </button>
+                                                            <button
+                                                                aria-label="Hapus Kategori"
+                                                                onclick={() => confirmDelete(sub.id)}
+                                                                class="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                                            >
+                                                                <i class="ti ti-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    {/if}
                                                 </div>
                                             {/each}
                                         </div>

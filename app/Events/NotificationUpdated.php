@@ -4,6 +4,7 @@ namespace App\Events;
 
 use App\Models\CartItem;
 use App\Models\ChatMessage;
+use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\RefundRequest;
 use App\Models\ReturnRequest;
@@ -42,7 +43,17 @@ class NotificationUpdated implements ShouldBroadcastNow
         $isAdmin = ! $user->hasRole('Customer');
 
         if ($isAdmin) {
-            $adminChatUnreadCount = ChatMessage::where('sender_type', 'user')->where('is_read', false)->count();
+            if ($user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+                $sellerProductIds = Product::where('user_id', $user->id)->pluck('id');
+                $adminChatUnreadCount = ChatMessage::where('sender_type', 'user')
+                    ->where('is_read', false)
+                    ->whereHas('chat', function ($cq) use ($user, $sellerProductIds) {
+                        $cq->whereIn('product_id', $sellerProductIds)
+                            ->orWhereHas('messages', fn ($mq) => $mq->where('sender_id', $user->id));
+                    })->count();
+            } else {
+                $adminChatUnreadCount = ChatMessage::where('sender_type', 'user')->where('is_read', false)->count();
+            }
             $lowStockCount = ProductStock::where('is_unlimited', false)
                 ->where('stock', '>', 0)
                 ->whereColumn('stock', '<=', 'min_stock')

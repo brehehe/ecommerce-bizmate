@@ -158,6 +158,7 @@ return [
     'pickup_enabled' => (bool) env('PICKUP_ENABLED', true),
     'show_checkout_settings' => (bool) env('SHOW_CHECKOUT_SETTINGS', true),
     'enable_3d_models' => (bool) env('ENABLE_3D_MODELS', true),
+    'is_seller' => (bool) env('IS_SELLER', false),
 
     'rajaongkir' => [
         'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),

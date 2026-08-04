@@ -606,11 +606,18 @@
                                                     >
                                                         {promo.name}
                                                     </span>
-                                                    <span
-                                                        class="inline-flex items-center self-start px-2 py-0.5 border rounded-md text-[9px] font-extrabold uppercase tracking-wider {typeBadge.class}"
-                                                    >
-                                                        {typeBadge.label}
-                                                    </span>
+                                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                                        <span
+                                                            class="inline-flex items-center self-start px-2 py-0.5 border rounded-md text-[9px] font-extrabold uppercase tracking-wider {typeBadge.class}"
+                                                        >
+                                                            {typeBadge.label}
+                                                        </span>
+                                                        {#if promo.user}
+                                                            <span class="inline-flex items-center gap-1 text-[9px] font-bold text-blue-700 bg-blue-50/90 px-1.5 py-0.5 rounded border border-blue-200">
+                                                                <i class="ti ti-store text-[10px]"></i> {promo.user.store_name || promo.user.name}
+                                                            </span>
+                                                        {/if}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
