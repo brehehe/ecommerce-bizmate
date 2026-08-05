@@ -155,6 +155,7 @@
     let activeIdx = $state(0);
     let variantOverride = $state<string | null>(null); // image from selected variant
     let lightboxOpen = $state(false);
+    let isZoomed = $state(false);
     let mainImageHasError = $state(false);
 
     // Lightbox for review media
@@ -165,7 +166,7 @@
     } | null>(null);
 
     // Report review
-    let showReportModal = $state(false);
+    let showReportModal = $state(false);    
     let reportingReview = $state<any>(null);
     let reportReason = $state('');
     let submittingReport = $state(false);
@@ -1777,7 +1778,13 @@
                                                 class="w-full h-full block text-left cursor-zoom-in focus:outline-none"
                                                 onclick={() => {
                                                     if (slide.src) {
-                                                        if (slide.type === 'gallery') activeGalleryIdx = slide.galleryIdx;
+                                                        if (slide.type === 'gallery') {
+                                                            activeIdx = slide.galleryIdx;
+                                                            variantOverride = null;
+                                                        } else if (slide.type === 'variant') {
+                                                            variantOverride = slide.src;
+                                                        }
+                                                        isZoomed = false;
                                                         lightboxOpen = true;
                                                     }
                                                 }}
@@ -4211,7 +4218,7 @@
         {#if lightboxOpen && displayImage}
             <div
                 class="fixed inset-0 z-[200] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md p-4 sm:p-6"
-                onclick={() => (lightboxOpen = false)}
+                onclick={() => { lightboxOpen = false; isZoomed = false; }}
                 role="button"
                 tabindex="0"
                 onkeydown={(e) => e.key === 'Escape' && (lightboxOpen = false)}
@@ -4219,21 +4226,34 @@
                 <!-- Header -->
                 <div class="w-full flex items-center justify-between z-50">
                     <span class="text-xs font-bold text-slate-300 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                        {activeGalleryIdx + 1} / {gallery.length || 1}
+                        {activeIdx + 1} / {gallery.length || 1}
                     </span>
-                    <button
-                        type="button"
-                        aria-label="Tutup"
-                        onclick={() => (lightboxOpen = false)}
-                        class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20"
-                    >
-                        <i class="ti ti-x text-lg"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            aria-label="Zoom"
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                isZoomed = !isZoomed;
+                            }}
+                            class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20"
+                        >
+                            <i class="ti {isZoomed ? 'ti-zoom-out' : 'ti-zoom-in'} text-lg"></i>
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="Tutup"
+                            onclick={() => { lightboxOpen = false; isZoomed = false; }}
+                            class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20"
+                        >
+                            <i class="ti ti-x text-lg"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Main Image Preview -->
                 <div
-                    class="relative max-w-4xl max-h-[75vh] flex items-center justify-center my-auto w-full"
+                    class="relative max-w-4xl max-h-[75vh] flex items-center justify-center my-auto w-full overflow-hidden"
                     role="presentation"
                     onclick={(e) => e.stopPropagation()}
                 >
@@ -4243,6 +4263,7 @@
                             aria-label="Sebelumnya"
                             onclick={(e) => {
                                 e.stopPropagation();
+                                isZoomed = false;
                                 lightboxPrev();
                             }}
                             class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20"
@@ -4254,6 +4275,7 @@
                             aria-label="Selanjutnya"
                             onclick={(e) => {
                                 e.stopPropagation();
+                                isZoomed = false;
                                 lightboxNext();
                             }}
                             class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20"
@@ -4265,7 +4287,8 @@
                     <img
                         src={displayImage}
                         alt={product.name}
-                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition duration-300 select-none"
+                        onclick={() => (isZoomed = !isZoomed)}
+                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition-transform duration-300 select-none {isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'}"
                         onerror={(e) => {
                             (e.currentTarget as HTMLImageElement).src =
                                 '/noimage/image.png';
@@ -4283,8 +4306,12 @@
                         {#each gallery as imgUrl, i}
                             <button
                                 type="button"
-                                onclick={() => pickGallery(i)}
-                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 {activeGalleryIdx === i ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-100'}"
+                                onclick={() => {
+                                    activeIdx = i;
+                                    variantOverride = null;
+                                    isZoomed = false;
+                                }}
+                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 {activeIdx === i && !variantOverride ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-100'}"
                             >
                                 <img src={imgUrl} alt="Thumbnail {i + 1}" class="w-full h-full object-cover" />
                             </button>
