@@ -19,8 +19,8 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             // PaymentMethodSeeder::class,
             CourierSeeder::class,
-            DummyTransactionSeeder::class,
-            PromotionSeeder::class,
+            // DummyTransactionSeeder::class,
+            // PromotionSeeder::class,
             // DummyReportSeeder::class,
             // MembershipLevelSeeder::class,
         ]);

@@ -14,12 +14,29 @@
     let sidebarContainer = $state<HTMLElement | null>(null);
     const user = $derived(page.props.auth?.user);
     const isSeller = $derived(
-        user?.is_seller && !user?.roles?.some((r: any) => r.name === 'Super Admin' || r.name === 'Admin')
+        user?.is_seller &&
+            !user?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ),
     );
-    const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
-    const isLogisticEnabled = $derived(((page.props as any).app_config?.logistic_enabled ?? (page.props as any).settings?.logistic_enabled) ?? true);
-
-
+    const isSellerEnabled = $derived(
+        Boolean(
+            (page.props as any).app_config?.is_seller_enabled ??
+                (page.props as any).settings?.is_seller_enabled ??
+                (page.props as any).isSellerMode ??
+                false,
+        ),
+    );
+    const isMembershipEnabled = $derived(
+        (page.props as any).app_config?.membership_enabled ??
+            (page.props as any).settings?.membership_enabled ??
+            true,
+    );
+    const isLogisticEnabled = $derived(
+        (page.props as any).app_config?.logistic_enabled ??
+            (page.props as any).settings?.logistic_enabled ??
+            true,
+    );
 
     $effect(() => {
         if (user && (window as any).Echo) {
@@ -41,19 +58,28 @@
             const adminChannel = (window as any).Echo.private('admin')
                 .listen('.transaction.updated', (event: any) => {
                     const pathname = window.location.pathname;
-                    if (pathname.startsWith('/admin/transactions') || pathname === '/admin/dashboard') {
+                    if (
+                        pathname.startsWith('/admin/transactions') ||
+                        pathname === '/admin/dashboard'
+                    ) {
                         router.reload();
                     }
                 })
                 .listen('.refund.updated', (event: any) => {
                     const pathname = window.location.pathname;
-                    if (pathname.startsWith('/admin/refunds') || pathname === '/admin/dashboard') {
+                    if (
+                        pathname.startsWith('/admin/refunds') ||
+                        pathname === '/admin/dashboard'
+                    ) {
                         router.reload();
                     }
                 })
                 .listen('.return.updated', (event: any) => {
                     const pathname = window.location.pathname;
-                    if (pathname.startsWith('/admin/returns') || pathname === '/admin/dashboard') {
+                    if (
+                        pathname.startsWith('/admin/returns') ||
+                        pathname === '/admin/dashboard'
+                    ) {
                         router.reload();
                     }
                 });
@@ -119,7 +145,8 @@
         if (
             isActive('/admin/categories') ||
             isActive('/admin/products') ||
-            isActive('/admin/master-data/brands')
+            isActive('/admin/master-data/brands') ||
+            (isSellerEnabled && isActive('/admin/listing-payments'))
         ) {
             isCatalogOpen = true;
         }
@@ -288,7 +315,8 @@
                     {isCatalogOpen ||
                 isActive('/admin/categories') ||
                 isActive('/admin/products') ||
-                isActive('/admin/master-data/brands')
+                isActive('/admin/master-data/brands') ||
+                (isSellerEnabled && isActive('/admin/listing-payments'))
                     ? 'font-semibold text-slate-900'
                     : 'font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'}"
             >
@@ -297,13 +325,15 @@
                     {isCatalogOpen ||
                     isActive('/admin/categories') ||
                     isActive('/admin/products') ||
-                    isActive('/admin/master-data/brands')
+                    isActive('/admin/master-data/brands') ||
+                    (isSellerEnabled && isActive('/admin/listing-payments'))
                         ? ''
                         : 'text-slate-400'}"
                     style={isCatalogOpen ||
                     isActive('/admin/categories') ||
                     isActive('/admin/products') ||
-                    isActive('/admin/master-data/brands')
+                    isActive('/admin/master-data/brands') ||
+                    (isSellerEnabled && isActive('/admin/listing-payments'))
                         ? `color: ${primaryColor}`
                         : ''}
                 ></i>
@@ -322,6 +352,12 @@
                     {@render SubNavItem('/admin/categories', 'Kategori')}
                     {@render SubNavItem('/admin/master-data/brands', 'Brand')}
                     {@render SubNavItem('/admin/products', 'Produk')}
+                    {#if isSellerEnabled}
+                        {@render SubNavItem(
+                            '/admin/listing-payments',
+                            'Riwayat Listing',
+                        )}
+                    {/if}
                 </div>
             {/if}
         </div>
@@ -386,8 +422,14 @@
                     {@render SubNavItem('/admin/reports/stocks', 'Stok')}
                     {@render SubNavItem('/admin/reports/reviews', 'Ulasan')}
                     {@render SubNavItem('/admin/reports/pareto', 'Pareto')}
-                    {@render SubNavItem('/admin/reports/abandoned-carts', 'Keranjang Terbengkalai')}
-                    {@render SubNavItem('/admin/reports/vouchers', 'Voucher & Diskon')}
+                    {@render SubNavItem(
+                        '/admin/reports/abandoned-carts',
+                        'Keranjang Terbengkalai',
+                    )}
+                    {@render SubNavItem(
+                        '/admin/reports/vouchers',
+                        'Voucher & Diskon',
+                    )}
                 </div>
             {/if}
         </div>
@@ -403,11 +445,14 @@
             </p>
 
             {@render NavItem('/admin/profile', 'ti-user-circle', 'Profil Saya')}
-            {@render NavItem('/admin/seller/profile', 'ti-building-store', 'Info Toko & Alamat')}
+            {@render NavItem(
+                '/admin/seller/profile',
+                'ti-building-store',
+                'Info Toko & Alamat',
+            )}
 
             <div class="my-3 h-px bg-slate-100"></div>
         {/if}
-
 
         <p
             class="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
@@ -447,7 +492,10 @@
                     transition:slide={{ duration: 150 }}
                 >
                     {#if !isSeller}
-                        {@render SubNavItem('/admin/master-data/admins', 'Admin')}
+                        {@render SubNavItem(
+                            '/admin/master-data/admins',
+                            'Admin',
+                        )}
                         {@render SubNavItem(
                             '/admin/master-data/roles',
                             'Roles & Akses',
@@ -457,6 +505,7 @@
                             'Pelanggan',
                         )}
                     {/if}
+                    {#if !isSeller}
                     {@render SubNavItem('/admin/master-data/couriers', 'Kurir')}
                     {#if isLogisticEnabled}
                         {@render SubNavItem(
@@ -468,6 +517,7 @@
                         '/admin/master-data/payment-methods',
                         'Metode Bayar',
                     )}
+                    {/if}
                     {#if !isSeller}
                         {@render SubNavItem(
                             '/admin/master-data/social-media',
@@ -484,10 +534,15 @@
                             'Loyalty Poin',
                         )}
                     {/if}
-                    {@render SubNavItem(
-                        '/admin/master-data/cost',
-                        'Biaya',
-                    )}
+                    {#if !isSeller}
+                    {@render SubNavItem('/admin/master-data/cost', 'Biaya')}
+                    {/if}
+                    {#if isSellerEnabled && !isSeller}
+                        {@render SubNavItem(
+                            '/admin/master-data/price-upload',
+                            'Biaya Upload Produk',
+                        )}
+                    {/if}
                 </div>
             {/if}
         </div>
@@ -547,7 +602,11 @@
 
         <!-- Membership (Admin Only) -->
         {#if isMembershipEnabled && !isSeller}
-            {@render NavItem('/admin/membership/dashboard', 'ti-award', 'Membership')}
+            {@render NavItem(
+                '/admin/membership/dashboard',
+                'ti-award',
+                'Membership',
+            )}
         {/if}
 
         <div class="my-3 h-px bg-slate-100"></div>

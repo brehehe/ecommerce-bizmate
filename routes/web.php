@@ -38,6 +38,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [StorefrontController::class, 'index'])->name('home');
 Route::get('/search', [StorefrontController::class, 'search'])->name('search');
+Route::get('/search/suggest', [StorefrontController::class, 'suggest'])->name('search.suggest');
 Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');
 Route::get('/produk-terlaris', [StorefrontController::class, 'produkTerlaris'])->name('produk-terlaris');
 Route::get('/category/{category}', [StorefrontController::class, 'category'])->name('category');
@@ -225,6 +226,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/products/import', [ProductController::class, 'importProducts'])->name('products.import');
     Route::post('/products/bulk-delete', [ProductController::class, 'bulkDelete'])->name('products.bulk-delete');
     Route::post('/products/{product}/toggle-active', [ProductController::class, 'toggleActive'])->name('products.toggle-active');
+    Route::post('/products/{product}/get-qris-listing', [ProductController::class, 'getQrisListing'])->name('products.get-qris-listing');
+    Route::post('/products/{product}/renew-listing', [ProductController::class, 'renewListing'])->name('products.renew-listing');
+    Route::post('/products/{product}/confirm-qris-listing', [ProductController::class, 'confirmQrisListing'])->name('products.confirm-qris-listing');
+    Route::get('/products/listing-payments-history', [ProductController::class, 'listingPaymentsHistory'])->name('products.listing-payments-history');
+    Route::get('/listing-payments', [ProductController::class, 'listingPaymentsIndex'])->name('listing-payments.index');
+    Route::get('/listing-payment-status/{orderId}', [ProductController::class, 'listingPaymentStatus'])->name('listing-payment-status');
+    Route::post('/listing-payments/{orderId}/cancel', [ProductController::class, 'cancelQrisListing'])->name('listing-payments.cancel');
+    Route::post('/products/{product}/admin-adjust-listing', [ProductController::class, 'adminAdjustListing'])->name('products.admin-adjust-listing');
     Route::post('/products/reorder', [ProductController::class, 'reorder'])->name('products.reorder');
     Route::resource('products', ProductController::class);
 
@@ -298,6 +307,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::get('/master-data/stickers', [MasterDataController::class, 'stickers'])->name('master-data.stickers');
     Route::post('/master-data/stickers', [MasterDataController::class, 'storeSticker'])->name('master-data.stickers.store');
     Route::post('/master-data/stickers/bulk-delete', [MasterDataController::class, 'bulkDeleteStickers'])->name('master-data.stickers.bulk-delete');
+
+    // Price Upload Setting
+    Route::get('/master-data/price-upload', [MasterDataController::class, 'priceUpload'])->name('master-data.price-upload');
+    Route::post('/master-data/price-upload', [MasterDataController::class, 'updatePriceUpload'])->name('master-data.price-upload.update');
     Route::put('/master-data/stickers/{chatSticker}', [MasterDataController::class, 'updateSticker'])->name('master-data.stickers.update');
     Route::delete('/master-data/stickers/{chatSticker}', [MasterDataController::class, 'destroySticker'])->name('master-data.stickers.destroy');
     Route::post('/master-data/stickers/{chatSticker}/toggle-active', [MasterDataController::class, 'toggleActiveSticker'])->name('master-data.stickers.toggle-active');

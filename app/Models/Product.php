@@ -41,10 +41,98 @@ class Product extends Model
         'early_access_until',
         'early_access_min_level_order',
         'model_3d_path',
-        'model_3d_usdz_path',
         'order',
         'condition',
+        'listing_expires_at',
+        'listing_fee',
+        'listing_days',
     ];
+
+    public static function isSellerModeEnabled(): bool
+    {
+        return (bool) config('app.is_seller', false);
+    }
+
+    public function scopeNotExpired($query)
+    {
+        // Rule: If IS_SELLER is false in .env / settings, listing_expires_at does NOT apply to ANY product (all are unlimited)!
+        if (! self::isSellerModeEnabled()) {
+            return $query;
+        }
+
+        $feeEnabled = filter_var(
+            Setting::where('key', 'product_listing_fee_enabled')->value('value') ?? true,
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (! $feeEnabled) {
+            return $query;
+        }
+
+        return $query->where(function ($q) {
+            // Admin products (user_id is null OR owner user has is_seller = false)
+            $q->where(function ($adminQ) {
+                $adminQ->whereNull('user_id')
+                    ->orWhereHas('user', function ($u) {
+                        $u->where('is_seller', false);
+                    });
+            })
+            // Seller products (user_id is not null AND owner user has is_seller = true) -> MUST be paid (listing_expires_at > now())
+                ->orWhere(function ($sellerQ) {
+                    $sellerQ->whereNotNull('user_id')
+                        ->whereHas('user', function ($u) {
+                            $u->where('is_seller', true);
+                        })
+                        ->whereNotNull('listing_expires_at')
+                        ->where('listing_expires_at', '>', now());
+                });
+        });
+    }
+
+    public function scopeActiveAndNotExpired($query)
+    {
+        return $query->where('active', true)->notExpired();
+    }
+
+    public function isListingExpired(): bool
+    {
+        // Rule: If IS_SELLER is false, listing_expires_at does NOT apply!
+        if (! self::isSellerModeEnabled()) {
+            return false;
+        }
+
+        $feeEnabled = filter_var(
+            Setting::where('key', 'product_listing_fee_enabled')->value('value') ?? true,
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (! $feeEnabled) {
+            return false;
+        }
+
+        if ($this->user_id && $this->user && $this->user->is_seller) {
+            if (! $this->listing_expires_at) {
+                return true;
+            }
+
+            return $this->listing_expires_at->isPast();
+        }
+
+        return false;
+    }
+
+    public function remainingListingDays(): int
+    {
+        if (! $this->listing_expires_at) {
+            return 999999;
+        }
+
+        if ($this->isListingExpired()) {
+            return 0;
+        }
+
+        return (int) now()->diffInDays($this->listing_expires_at, false);
+    }
 
     public function user(): BelongsTo
     {
@@ -118,6 +206,9 @@ class Product extends Model
         'specifications' => 'array',
         'size_chart' => 'array',
         'order' => 'integer',
+        'listing_expires_at' => 'datetime',
+        'listing_fee' => 'decimal:2',
+        'listing_days' => 'integer',
     ];
 
     protected static function booted(): void

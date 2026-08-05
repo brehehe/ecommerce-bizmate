@@ -48,7 +48,14 @@
     });
 
     const page = usePage();
-    const enable3dModels = $derived((page.props as any).settings?.enable_3d_models ?? true);
+    const isSellerEnabled = $derived(
+        (page.props as any).app_config?.is_seller_enabled ??
+            (page.props as any).settings?.is_seller_enabled ??
+            false,
+    );
+    const enable3dModels = $derived(
+        (page.props as any).settings?.enable_3d_models ?? true,
+    );
 
     const primary = $derived(
         (page.props as any).theme?.primary_color ?? '#0c4cb4',
@@ -57,6 +64,20 @@
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
     const cartCount = $derived((page.props as any).cartCount || 0);
+
+    function formatDate(dateStr: string | null | undefined): string {
+        if (!dateStr) return '-';
+        try {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+            });
+        } catch {
+            return '-';
+        }
+    }
 
     function withOpacity(hex: string, opacity: number): string {
         if (!hex) return '';
@@ -649,7 +670,9 @@
     );
 
     const isPromoRuleSatisfied = $derived(
-        activePromoRule ? qty >= activePromoRule.min_qty && !isPromoStockExhausted : false,
+        activePromoRule
+            ? qty >= activePromoRule.min_qty && !isPromoStockExhausted
+            : false,
     );
 
     const derivedPromoPrice = $derived.by(() => {
@@ -927,9 +950,7 @@
     );
 
     // True when the product cannot be purchased (no physical stock)
-    const isEffectivelyOutOfStock = $derived(
-        !isInStock,
-    );
+    const isEffectivelyOutOfStock = $derived(!isInStock);
 
     // When promo stock is partially exhausted but product has regular stock,
     // show how many units can still get promo price
@@ -984,7 +1005,8 @@
                         productName: product.name,
                         productImage:
                             product.image ||
-                            (product.images?.[0]?.url ?? product.images?.[0]?.path),
+                            (product.images?.[0]?.url ??
+                                product.images?.[0]?.path),
                         productPrice:
                             product.price ?? product.product_price?.price ?? 0,
                     },
@@ -1607,18 +1629,20 @@
                     <i class="ti ti-share text-sm text-slate-400"></i>
                     Bagikan Produk
                 </button>
-                <button
-                    onclick={() => {
-                        mobileMenuOpen = false;
-                        openWhatsapp();
-                    }}
-                    class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition text-left border-t border-slate-100"
-                >
-                    <i
-                        class="ti ti-brand-whatsapp text-sm text-green-500 animate-pulse"
-                    ></i>
-                    Tanya Penjual
-                </button>
+                {#if !isSellerEnabled}
+                    <button
+                        onclick={() => {
+                            mobileMenuOpen = false;
+                            openWhatsapp();
+                        }}
+                        class="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition text-left border-t border-slate-100"
+                    >
+                        <i
+                            class="ti ti-brand-whatsapp text-sm text-green-500 animate-pulse"
+                        ></i>
+                        Tanya Penjual
+                    </button>
+                {/if}
             </div>
         </div>
     {/if}
@@ -1748,21 +1772,32 @@
                                             </div>
                                         {:else}
                                             <!-- Slide image -->
-                                            <img
-                                                src={slide.src}
-                                                alt="{product.name} {i + 1}"
-                                                class="w-full h-full object-cover transition-opacity duration-300 {slide.type ===
-                                                    'variant' &&
-                                                !slide.available
-                                                    ? 'opacity-40'
-                                                    : ''}"
-                                                onerror={(e) => {
-                                                    (
-                                                        e.currentTarget as HTMLImageElement
-                                                    ).src =
-                                                        '/noimage/image.png';
+                                            <button
+                                                type="button"
+                                                class="w-full h-full block text-left cursor-zoom-in focus:outline-none"
+                                                onclick={() => {
+                                                    if (slide.src) {
+                                                        if (slide.type === 'gallery') activeGalleryIdx = slide.galleryIdx;
+                                                        lightboxOpen = true;
+                                                    }
                                                 }}
-                                            />
+                                            >
+                                                <img
+                                                    src={slide.src}
+                                                    alt="{product.name} {i + 1}"
+                                                    class="w-full h-full object-cover transition-opacity duration-300 {slide.type ===
+                                                        'variant' &&
+                                                    !slide.available
+                                                        ? 'opacity-40'
+                                                        : ''}"
+                                                    onerror={(e) => {
+                                                        (
+                                                            e.currentTarget as HTMLImageElement
+                                                        ).src =
+                                                            '/noimage/image.png';
+                                                    }}
+                                                />
+                                            </button>
 
                                             <!-- Out-of-stock overlay for variant slides -->
                                             {#if slide.type === 'variant' && !slide.available}
@@ -2271,49 +2306,8 @@
 
                 <!-- ══ RIGHT: PRODUCT INFO ════════════════════════ -->
                 <div class="flex flex-col gap-0 divide-y divide-slate-100">
-                    <!-- Header: brand + name + rating/terjual -->
+                    <!-- Header: name + rating/terjual -->
                     <div class="pb-4 flex flex-col">
-                        {#if product.brands && product.brands.length > 0}
-                            <div class="mb-1 flex flex-wrap gap-1">
-                                {#each product.brands as brand}
-                                    <span
-                                        class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded"
-                                        style="background: {withOpacity(
-                                            primary,
-                                            0.1,
-                                        )}; color: {primary};"
-                                    >
-                                        <i class="ti ti-star-filled text-[9px]"></i>
-                                        {brand.name}
-                                    </span>
-                                {/each}
-                            </div>
-                        {:else if product.brand}
-                            <div class="mb-1">
-                                <span
-                                    class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded"
-                                    style="background: {withOpacity(
-                                        primary,
-                                        0.1,
-                                    )}; color: {primary};"
-                                >
-                                    <i class="ti ti-star-filled text-[9px]"></i>
-                                    {product.brand}
-                                </span>
-                            </div>
-                        {/if}
-
-                        <div class="flex items-center gap-2 flex-wrap mb-1">
-                            {#if product.condition === 'used'}
-                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100/90 text-amber-800 border border-amber-200/60">
-                                    <i class="ti ti-refresh text-[10px]"></i> Kondisi: Bekas / Second
-                                </span>
-                            {:else}
-                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-200/60">
-                                    <i class="ti ti-sparkles text-[10px]"></i> Kondisi: Baru
-                                </span>
-                            {/if}
-                        </div>
                         <h1
                             class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight"
                         >
@@ -2344,6 +2338,7 @@
                                     >
                                 </span>
                             {/if}
+                            {#if !isSellerEnabled}
                             <span class="border-r border-slate-200 pr-3"
                                 >{product.sold_count != null &&
                                 product.sold_count > 0
@@ -2355,14 +2350,21 @@
                                     : '0 Terjual'}</span
                             >
                             {#if product.sku}
-                                <span
-                                    >SKU: <b class="text-slate-600"
+                            <span
+                                    >SKU: <b class="border-r text-slate-600"
                                         >{product.sku}</b
+                                    ></span
+                                >
+                                {/if}
+                                {/if}
+                            {#if isSellerEnabled && product.created_at}
+                                <span
+                                    >Tanggal Upload: <b class="text-slate-600"
+                                        >{formatDate(product.created_at)}</b
                                     ></span
                                 >
                             {/if}
                         </div>
-
                     </div>
 
                     <!-- Flash Sale Banner -->
@@ -2647,12 +2649,20 @@
 
                     <!-- Promo Bundling & Gift Section (Interactive & Shopee-style) -->
                     {#if bundlingPromos === undefined}
-                        <div class="my-4 p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-3.5 shadow-sm animate-pulse">
+                        <div
+                            class="my-4 p-4 rounded-3xl bg-slate-50 border border-slate-100 space-y-3.5 shadow-sm animate-pulse"
+                        >
                             <div class="flex items-center gap-2">
-                                <div class="w-6 h-6 rounded-full bg-slate-200 shrink-0"></div>
+                                <div
+                                    class="w-6 h-6 rounded-full bg-slate-200 shrink-0"
+                                ></div>
                                 <div class="space-y-1.5 flex-grow">
-                                    <div class="h-3 bg-slate-200 rounded w-16"></div>
-                                    <div class="h-4 bg-slate-200 rounded w-32"></div>
+                                    <div
+                                        class="h-3 bg-slate-200 rounded w-16"
+                                    ></div>
+                                    <div
+                                        class="h-4 bg-slate-200 rounded w-32"
+                                    ></div>
                                 </div>
                             </div>
                             <div class="h-3 bg-slate-200 rounded w-2/3"></div>
@@ -2900,7 +2910,7 @@
                     <div class="py-2.5 flex items-start gap-4">
                         <span
                             class="text-xs text-slate-400 w-20 sm:w-24 shrink-0 font-bold uppercase tracking-wider pt-0.5"
-                            >Dikirim dari</span
+                            >Lokasi</span
                         >
                         <div
                             class="flex items-start gap-1.5 text-xs text-slate-700"
@@ -2913,30 +2923,6 @@
                                     {shippingInfo.store_city || 'Lokasi toko'}
                                 </span>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Jaminan -->
-                    <div class="py-2.5 flex items-start gap-4">
-                        <span
-                            class="text-xs text-slate-400 w-20 sm:w-24 shrink-0 font-bold uppercase tracking-wider pt-0.5"
-                            >Jaminan</span
-                        >
-                        <div
-                            class="flex flex-wrap gap-x-3.5 gap-y-1.5 text-xs text-slate-650"
-                        >
-                            <span class="flex items-center gap-1">
-                                <i
-                                    class="ti ti-rosette-discount-check text-blue-500 text-xs"
-                                ></i> Produk Original
-                            </span>
-                            {#if shippingInfo.enable_cod}
-                                <span class="flex items-center gap-1">
-                                    <i
-                                        class="ti ti-cash text-orange-400 text-xs"
-                                    ></i> COD Tersedia
-                                </span>
-                            {/if}
                         </div>
                     </div>
 
@@ -3157,56 +3143,63 @@
                     {/if}
 
                     <!-- ── CTA BUTTONS ─────────────────────────── -->
-                    <div class="pt-5 hidden md:flex flex-col sm:flex-row gap-3">
-                        {#if isEffectivelyOutOfStock}
-                            <!-- Out-of-stock state -->
-                            <div
-                                class="flex-grow py-3.5 rounded-xl font-bold text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
-                            >
-                                {isPromoStockExhausted
-                                    ? 'Stok Promo Habis'
-                                    : 'Stok Habis'}
-                            </div>
-                        {:else}
-                            <button
-                                onclick={() => {
-                                    if (hasVariations && !fullySelected) {
-                                        showToast(
-                                            'Pilih variasi terlebih dahulu',
-                                            'error',
-                                            'top',
-                                        );
-                                        return;
-                                    }
-                                    addToCart();
-                                }}
-                                class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
-                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                    primary,
-                                    0.8,
-                                )});"
-                            >
-                                <i class="ti ti-shopping-cart text-base"></i>
-                                + Keranjang
-                            </button>
-                            <button
-                                onclick={() => buyNow()}
-                                class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
-                                style="background: linear-gradient(135deg, {secondary}, {withOpacity(
-                                    secondary,
-                                    0.8,
-                                )});"
-                            >
-                                <i class="ti ti-credit-card text-base"></i>
-                                Beli Sekarang
-                            </button>
-                        {/if}
-                    </div>
+                    {#if !isSellerEnabled}
+                        <div
+                            class="pt-5 hidden md:flex flex-col sm:flex-row gap-3"
+                        >
+                            {#if isEffectivelyOutOfStock}
+                                <!-- Out-of-stock state -->
+                                <div
+                                    class="flex-grow py-3.5 rounded-xl font-bold text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
+                                >
+                                    {isPromoStockExhausted
+                                        ? 'Stok Promo Habis'
+                                        : 'Stok Habis'}
+                                </div>
+                            {:else}
+                                <button
+                                    onclick={() => {
+                                        if (hasVariations && !fullySelected) {
+                                            showToast(
+                                                'Pilih variasi terlebih dahulu',
+                                                'error',
+                                                'top',
+                                            );
+                                            return;
+                                        }
+                                        addToCart();
+                                    }}
+                                    class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
+                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                        primary,
+                                        0.8,
+                                    )});"
+                                >
+                                    <i class="ti ti-shopping-cart text-base"
+                                    ></i>
+                                    + Keranjang
+                                </button>
+                                <button
+                                    onclick={() => buyNow()}
+                                    class="flex-grow flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-sm text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition duration-200 cursor-pointer"
+                                    style="background: linear-gradient(135deg, {secondary}, {withOpacity(
+                                        secondary,
+                                        0.8,
+                                    )});"
+                                >
+                                    <i class="ti ti-credit-card text-base"></i>
+                                    Beli Sekarang
+                                </button>
+                            {/if}
+                        </div>
+                    {/if}
 
                     <!-- Product meta footer -->
-                    {#if product.weight || product.brand || (product.brands && product.brands.length > 0) || product.category}
+                    {#if product.weight || product.brand || (product.brands && product.brands.length > 0) || product.category || product.condition || (isSellerEnabled && product.created_at)}
                         <div
-                            class="pt-4 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-slate-400"
+                            class="{isSellerEnabled
+                                ? 'pt-2.5'
+                                : 'pt-4'} flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-slate-400"
                         >
                             {#if product.category}
                                 <span
@@ -3230,6 +3223,15 @@
                                     ></span
                                 >
                             {/if}
+                            <span
+                                >Kondisi: <b class="text-slate-600"
+                                    >{product.condition === 'rent'
+                                        ? 'Rent'
+                                        : product.condition === 'used' || product.condition === 'second'
+                                          ? 'Second'
+                                          : 'New'}</b
+                                ></span
+                            >
                             {#if product.weight}
                                 <span
                                     >Berat: <b class="text-slate-600"
@@ -3247,933 +3249,1050 @@
     </div>
 
     <div class="bg-white">
-    <!-- ─────────────────────────────────────────────────────
+        <!-- ─────────────────────────────────────────────────────
      SELLER INFO CARD
  ───────────────────────────────────────────────────── -->
-    {#if product.seller || product.user}
-        {@const sellerObj = product.seller || product.user}
-        {@const sellerAddress = product.origin_address || sellerObj.customer_addresses?.[0] || sellerObj.customerAddresses?.[0]}
-        <div class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 w-full min-w-0">
-            <div class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-4 sm:p-5 flex flex-col gap-3">
-                <!-- Seller identity row -->
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 overflow-hidden text-sm border border-slate-200 shadow-sm">
-                            {#if sellerObj.avatar}
-                                <img src="/storage/{sellerObj.avatar}" alt={sellerObj.store_name || sellerObj.name} class="w-full h-full object-cover" />
-                            {:else}
-                                {(sellerObj.store_name || sellerObj.name).substring(0, 2).toUpperCase()}
-                            {/if}
-                        </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                {#if sellerObj.store_slug}
-                                    <a href="/{sellerObj.store_slug}" class="font-bold text-sm text-slate-800 hover:text-blue-600 truncate transition">
-                                        {sellerObj.store_name || sellerObj.name}
-                                    </a>
+        {#if product.seller || product.user}
+            {@const sellerObj = product.seller || product.user}
+            {@const sellerAddress =
+                product.origin_address ||
+                sellerObj.customer_addresses?.[0] ||
+                sellerObj.customerAddresses?.[0]}
+            <div class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 w-full min-w-0">
+                <div
+                    class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-4 sm:p-5 flex flex-col gap-3"
+                >
+                    <!-- Seller identity row -->
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div
+                                class="w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center shrink-0 overflow-hidden text-sm border border-slate-200 shadow-sm"
+                            >
+                                {#if sellerObj.avatar}
+                                    <img
+                                        src="/storage/{sellerObj.avatar}"
+                                        alt={sellerObj.store_name ||
+                                            sellerObj.name}
+                                        class="w-full h-full object-cover"
+                                    />
                                 {:else}
-                                    <span class="font-bold text-sm text-slate-800 truncate">{sellerObj.store_name || sellerObj.name}</span>
+                                    {(sellerObj.store_name || sellerObj.name)
+                                        .substring(0, 2)
+                                        .toUpperCase()}
                                 {/if}
-                                <span class="px-2 py-0.5 text-[9px] font-black bg-blue-100 text-blue-700 rounded-full shrink-0">Penjual</span>
                             </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    {#if sellerObj.store_slug}
+                                        <a
+                                            href="/{sellerObj.store_slug}"
+                                            class="font-bold text-sm text-slate-800 hover:text-blue-600 truncate transition"
+                                        >
+                                            {sellerObj.store_name ||
+                                                sellerObj.name}
+                                        </a>
+                                    {:else}
+                                        <span
+                                            class="font-bold text-sm text-slate-800 truncate"
+                                            >{sellerObj.store_name ||
+                                                sellerObj.name}</span
+                                        >
+                                    {/if}
+                                    <span
+                                        class="px-2 py-0.5 text-[9px] font-black bg-blue-100 text-blue-700 rounded-full shrink-0"
+                                        >Penjual</span
+                                    >
+                                </div>
+                                {#if sellerObj.store_slug}
+                                    <p
+                                        class="text-[10px] text-blue-500 font-mono mt-0.5 truncate"
+                                    >
+                                        /{sellerObj.store_slug}
+                                    </p>
+                                {/if}
+                            </div>
+                        </div>
+                        <!-- Desktop buttons (hidden on mobile) -->
+                        <div class="hidden sm:flex items-center gap-2 shrink-0">
                             {#if sellerObj.store_slug}
-                                <p class="text-[10px] text-blue-500 font-mono mt-0.5 truncate">/{sellerObj.store_slug}</p>
+                                <a
+                                    href="/{sellerObj.store_slug}"
+                                    class="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                                >
+                                    <i
+                                        class="ti ti-building-store text-sm text-blue-600"
+                                    ></i>
+                                    <span>Toko</span>
+                                </a>
                             {/if}
+                            <button
+                                type="button"
+                                onclick={openChat}
+                                class="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            >
+                                <i class="ti ti-message text-sm"></i>
+                                <span>Chat</span>
+                            </button>
+                            <button
+                                type="button"
+                                onclick={openWhatsApp}
+                                class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                title="Tanya via WhatsApp"
+                            >
+                                <i
+                                    class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                                ></i>
+                                <span>WhatsApp</span>
+                            </button>
                         </div>
                     </div>
-                    <!-- Desktop buttons (hidden on mobile) -->
-                    <div class="hidden sm:flex items-center gap-2 shrink-0">
+
+                    <!-- Mobile action buttons (visible only on mobile) -->
+                    <div class="flex sm:hidden items-center gap-2">
                         {#if sellerObj.store_slug}
                             <a
                                 href="/{sellerObj.store_slug}"
-                                class="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                                class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition shadow-sm"
                             >
-                                <i class="ti ti-building-store text-sm text-blue-600"></i>
-                                <span>Toko</span>
+                                <i
+                                    class="ti ti-building-store text-sm text-blue-600"
+                                ></i>
+                                Toko
                             </a>
                         {/if}
                         <button
                             type="button"
                             onclick={openChat}
-                            class="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition cursor-pointer shadow-sm"
                         >
                             <i class="ti ti-message text-sm"></i>
-                            <span>Chat</span>
+                            Chat
                         </button>
                         <button
                             type="button"
                             onclick={openWhatsApp}
-                            class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
                             title="Tanya via WhatsApp"
                         >
-                            <i class="ti ti-brand-whatsapp text-sm text-emerald-600"></i>
-                            <span>WhatsApp</span>
+                            <i
+                                class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                            ></i>
+                            WhatsApp
                         </button>
                     </div>
-                </div>
 
-                <!-- Mobile action buttons (visible only on mobile) -->
-                <div class="flex sm:hidden items-center gap-2">
-                    {#if sellerObj.store_slug}
-                        <a
-                            href="/{sellerObj.store_slug}"
-                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-xl transition shadow-sm"
+                    {#if sellerAddress}
+                        {@const fullAddressText = [
+                            sellerAddress.full_address,
+                            sellerAddress.district_name,
+                            sellerAddress.regency_name,
+                            sellerAddress.province_name,
+                            sellerAddress.postal_code,
+                        ]
+                            .filter(Boolean)
+                            .join(', ')}
+                        <div
+                            class="flex items-start gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100"
                         >
-                            <i class="ti ti-building-store text-sm text-blue-600"></i>
-                            Toko
-                        </a>
-                    {/if}
-                    <button
-                        type="button"
-                        onclick={openChat}
-                        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition cursor-pointer shadow-sm"
-                    >
-                        <i class="ti ti-message text-sm"></i>
-                        Chat
-                    </button>
-                    <button
-                        type="button"
-                        onclick={openWhatsApp}
-                        class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
-                        title="Tanya via WhatsApp"
-                    >
-                        <i class="ti ti-brand-whatsapp text-sm text-emerald-600"></i>
-                        WhatsApp
-                    </button>
-                </div>
-
-                {#if sellerAddress}
-                    {@const fullAddressText = [
-                        sellerAddress.full_address,
-                        sellerAddress.district_name,
-                        sellerAddress.regency_name,
-                        sellerAddress.province_name,
-                        sellerAddress.postal_code
-                    ].filter(Boolean).join(', ')}
-                    <div class="flex items-start gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <i class="ti ti-map-pin text-rose-500 text-sm mt-0.5 shrink-0"></i>
-                        <div class="min-w-0 flex-1">
-                            <span class="font-bold text-slate-700 text-xs block">Alamat Pengiriman Toko:</span>
-                            <p class="text-xs text-slate-500 mt-0.5 leading-relaxed">{fullAddressText}</p>
+                            <i
+                                class="ti ti-map-pin text-rose-500 text-sm mt-0.5 shrink-0"
+                            ></i>
+                            <div class="min-w-0 flex-1">
+                                <span
+                                    class="font-bold text-slate-700 text-xs block"
+                                    >Alamat Pengiriman Toko:</span
+                                >
+                                <p
+                                    class="text-xs text-slate-500 mt-0.5 leading-relaxed"
+                                >
+                                    {fullAddressText}
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                {/if}
+                    {/if}
+                </div>
             </div>
-        </div>
-    {/if}
+        {/if}
 
-    <!-- ─────────────────────────────────────────────────────
+        <!-- ─────────────────────────────────────────────────────
      DESKRIPSI / PENGIRIMAN / ULASAN (STACKED VERTICALLY)
  ───────────────────────────────────────────────────── -->
-    <div
-        class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 py-6 flex flex-col gap-4 md:gap-6 w-full min-w-0 overflow-hidden"
-    >
-        <!-- Combined Spesifikasi & Deskripsi Section -->
         <div
-            class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7 w-full min-w-0 overflow-hidden"
+            class="max-w-6xl mx-auto px-0 sm:px-6 lg:px-8 {isSellerEnabled
+                ? 'pt-2 pb-6 flex flex-col gap-3 md:gap-4'
+                : 'py-6 flex flex-col gap-4 md:gap-6'} w-full min-w-0 overflow-hidden"
         >
-            <!-- Spesifikasi Row Trigger (Merged inside Deskripsi) -->
-            {#if parsedSpecifications.length > 0}
-                <button
-                    onclick={() => (showSpecsModal = true)}
-                    class="w-full flex items-center justify-between pb-5 mb-5 border-b border-slate-100/70 hover:bg-slate-50/50 transition cursor-pointer text-left focus:outline-none select-none"
-                >
-                    <div class="flex items-center gap-3">
-                        <div
-                            class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all"
-                            style="background: {withOpacity(
-                                primary,
-                                0.08,
-                            )}; color: {primary};"
-                        >
-                            <i class="ti ti-list text-lg"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-slate-800">
-                                Spesifikasi Produk
-                            </p>
-                            <p class="text-[11px] text-slate-400 mt-0.5">
-                                {#if product.brand || (product.brands && product.brands.length > 0)}
-                                    Merk: {product.brand ||
-                                        product.brands[0].name} •
-                                {/if}
-                                Lihat detail spesifikasi lengkap
-                            </p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1.5 text-slate-400">
-                        <span
-                            class="text-xs font-semibold text-slate-500 hidden sm:inline"
-                            >Lihat</span
-                        >
-                        <i class="ti ti-chevron-right text-lg"></i>
-                    </div>
-                </button>
-            {/if}
-
-            <!-- Deskripsi Section -->
-            <div class="w-full min-w-0 overflow-x-auto">
-                <h3
-                    class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
-                >
-                    <i class="ti ti-file-text text-lg" style="color: {primary};"
-                    ></i>
-                    Deskripsi Produk
-                </h3>
-                {#if product.description}
-                    <div
-                        class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700 min-w-0"
+            <!-- Combined Spesifikasi & Deskripsi Section -->
+            <div
+                class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7 w-full min-w-0 overflow-hidden"
+            >
+                <!-- Spesifikasi Row Trigger (Merged inside Deskripsi) -->
+                {#if parsedSpecifications.length > 0}
+                    <button
+                        onclick={() => (showSpecsModal = true)}
+                        class="w-full flex items-center justify-between pb-5 mb-5 border-b border-slate-100/70 hover:bg-slate-50/50 transition cursor-pointer text-left focus:outline-none select-none"
                     >
-                        {@html product.description}
-                    </div>
-                {:else if product.summary}
-                    <p class="text-sm text-slate-600 leading-relaxed">
-                        {product.summary}
-                    </p>
-                {:else}
-                    <div class="text-center py-10 text-slate-400">
-                        <i class="ti ti-file-text text-5xl block mb-2"></i>
-                        <p class="text-sm">Deskripsi belum tersedia</p>
-                    </div>
-                {/if}
-            </div>
-
-            <!-- ── Panduan Ukuran & Kalkulator Rekomendasi ── -->
-            {#if product.size_chart && product.size_chart.enabled}
-                <div class="mt-6 border-t border-slate-100 pt-6">
-                    <h3
-                        class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
-                    >
-                        <i class="ti ti-shirt text-lg" style="color: {primary};"
-                        ></i>
-                        Kalkulator & Panduan Ukuran
-                    </h3>
-
-                    <!-- Calculator Card -->
-                    <div
-                        class="bg-slate-50/70 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-5 shadow-sm/5"
-                    >
-                        <h4
-                            class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"
-                        >
-                            <i class="ti ti-calculator text-base text-slate-400"
-                            ></i> Cari Ukuran Rekomendasi Anda
-                        </h4>
-                        <div
-                            class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mb-4"
-                        >
-                            <div>
-                                <label
-                                    for="height-input"
-                                    class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
-                                >
-                                    Tinggi Badan (cm)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="height-input"
-                                    bind:value={userHeight}
-                                    placeholder="Cth: 170"
-                                    class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-brand-blueRoyal focus:outline-none text-slate-750 font-bold"
-                                />
-                            </div>
-                            <div>
-                                <label
-                                    for="weight-input"
-                                    class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
-                                >
-                                    Berat Badan (kg)
-                                </label>
-                                <input
-                                    type="number"
-                                    id="weight-input"
-                                    bind:value={userWeight}
-                                    placeholder="Cth: 65"
-                                    class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-brand-blueRoyal focus:outline-none text-slate-750 font-bold"
-                                />
-                            </div>
-                        </div>
-
-                        <!-- Calculator Results Alert -->
-                        {#if recommendedSize}
+                        <div class="flex items-center gap-3">
                             <div
-                                class="p-4 rounded-xl flex items-center gap-3.5 transition-all duration-300 shadow-sm"
+                                class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all"
                                 style="background: {withOpacity(
                                     primary,
                                     0.08,
-                                )}; border: 1px solid {withOpacity(
-                                    primary,
-                                    0.15,
-                                )};"
+                                )}; color: {primary};"
                             >
-                                <div
-                                    class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                                    style="background: linear-gradient(135deg, {primary}, {secondary}); color: #fff;"
-                                >
-                                    <i class="ti ti-sparkles text-base"></i>
+                                <i class="ti ti-list text-lg"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">
+                                    Spesifikasi Produk
+                                </p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">
+                                    {#if product.brand || (product.brands && product.brands.length > 0)}
+                                        Merk: {product.brand ||
+                                            product.brands[0].name} •
+                                    {/if}
+                                    Lihat detail spesifikasi lengkap
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-slate-400">
+                            <span
+                                class="text-xs font-semibold text-slate-500 hidden sm:inline"
+                                >Lihat</span
+                            >
+                            <i class="ti ti-chevron-right text-lg"></i>
+                        </div>
+                    </button>
+                {/if}
+
+                <!-- Deskripsi Section -->
+                <div class="w-full min-w-0 overflow-x-auto">
+                    <h3
+                        class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
+                    >
+                        <i
+                            class="ti ti-file-text text-lg"
+                            style="color: {primary};"
+                        ></i>
+                        Deskripsi Produk
+                    </h3>
+                    {#if product.description}
+                        <div
+                            class="prose prose-slate max-w-none text-sm leading-relaxed text-slate-700 min-w-0"
+                        >
+                            {@html product.description}
+                        </div>
+                    {:else if product.summary}
+                        <p class="text-sm text-slate-600 leading-relaxed">
+                            {product.summary}
+                        </p>
+                    {:else}
+                        <div class="text-center py-10 text-slate-400">
+                            <i class="ti ti-file-text text-5xl block mb-2"></i>
+                            <p class="text-sm">Deskripsi belum tersedia</p>
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- ── Panduan Ukuran & Kalkulator Rekomendasi ── -->
+                {#if product.size_chart && product.size_chart.enabled}
+                    <div class="mt-6 border-t border-slate-100 pt-6">
+                        <h3
+                            class="text-base font-bold text-slate-800 flex items-center gap-2 mb-4"
+                        >
+                            <i
+                                class="ti ti-shirt text-lg"
+                                style="color: {primary};"
+                            ></i>
+                            Kalkulator & Panduan Ukuran
+                        </h3>
+
+                        <!-- Calculator Card -->
+                        <div
+                            class="bg-slate-50/70 rounded-2xl border border-slate-100 p-4 sm:p-5 mb-5 shadow-sm/5"
+                        >
+                            <h4
+                                class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5"
+                            >
+                                <i
+                                    class="ti ti-calculator text-base text-slate-400"
+                                ></i> Cari Ukuran Rekomendasi Anda
+                            </h4>
+                            <div
+                                class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end mb-4"
+                            >
+                                <div>
+                                    <label
+                                        for="height-input"
+                                        class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
+                                    >
+                                        Tinggi Badan (cm)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="height-input"
+                                        bind:value={userHeight}
+                                        placeholder="Cth: 170"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-brand-blueRoyal focus:outline-none text-slate-750 font-bold"
+                                    />
                                 </div>
                                 <div>
-                                    <p
-                                        class="text-[10px] text-slate-500 font-bold uppercase tracking-wider"
+                                    <label
+                                        for="weight-input"
+                                        class="block text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider"
                                     >
-                                        Ukuran Rekomendasi
-                                    </p>
-                                    <p
-                                        class="text-sm font-black mt-0.5"
-                                        style="color: {primary};"
-                                    >
-                                        Ukuran yang paling pas untuk Anda adalah <span
-                                            class="bg-white px-2 py-0.5 rounded-md border border-slate-100 shadow-sm ml-1"
-                                            style="color: {secondary};"
-                                            >{recommendedSize}</span
-                                        >
-                                    </p>
+                                        Berat Badan (kg)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="weight-input"
+                                        bind:value={userWeight}
+                                        placeholder="Cth: 65"
+                                        class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:border-brand-blueRoyal focus:outline-none text-slate-750 font-bold"
+                                    />
                                 </div>
                             </div>
-                        {:else if userHeight || userWeight}
-                            <div
-                                class="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-600 font-medium"
-                            >
-                                <i class="ti ti-info-circle text-base"></i>
-                                Belum ada ukuran yang pas untuk tinggi/berat tersebut.
-                                Silakan hubungi admin via chat.
-                            </div>
-                        {/if}
-                    </div>
 
-                    <!-- Size Guide Table -->
-                    <div
-                        class="w-full max-w-full overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5"
-                    >
-                        <table
-                            class="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-0"
-                        >
-                            <thead>
-                                <tr
-                                    class="bg-slate-50 border-b border-slate-100"
+                            <!-- Calculator Results Alert -->
+                            {#if recommendedSize}
+                                <div
+                                    class="p-4 rounded-xl flex items-center gap-3.5 transition-all duration-300 shadow-sm"
+                                    style="background: {withOpacity(
+                                        primary,
+                                        0.08,
+                                    )}; border: 1px solid {withOpacity(
+                                        primary,
+                                        0.15,
+                                    )};"
                                 >
-                                    <th
-                                        class="p-2 sm:p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
-                                        >{product.size_chart.headers[0]}</th
+                                    <div
+                                        class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                                        style="background: linear-gradient(135deg, {primary}, {secondary}); color: #fff;"
                                     >
-                                    {#each product.size_chart.headers.slice(1) as header}
+                                        <i class="ti ti-sparkles text-base"></i>
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-[10px] text-slate-500 font-bold uppercase tracking-wider"
+                                        >
+                                            Ukuran Rekomendasi
+                                        </p>
+                                        <p
+                                            class="text-sm font-black mt-0.5"
+                                            style="color: {primary};"
+                                        >
+                                            Ukuran yang paling pas untuk Anda
+                                            adalah <span
+                                                class="bg-white px-2 py-0.5 rounded-md border border-slate-100 shadow-sm ml-1"
+                                                style="color: {secondary};"
+                                                >{recommendedSize}</span
+                                            >
+                                        </p>
+                                    </div>
+                                </div>
+                            {:else if userHeight || userWeight}
+                                <div
+                                    class="p-3 bg-amber-50/50 border border-amber-100 rounded-xl flex items-center gap-2 text-xs text-amber-600 font-medium"
+                                >
+                                    <i class="ti ti-info-circle text-base"></i>
+                                    Belum ada ukuran yang pas untuk tinggi/berat tersebut.
+                                    Silakan hubungi admin via chat.
+                                </div>
+                            {/if}
+                        </div>
+
+                        <!-- Size Guide Table -->
+                        <div
+                            class="w-full max-w-full overflow-x-auto border border-slate-100 rounded-2xl bg-white shadow-sm/5"
+                        >
+                            <table
+                                class="w-full text-left text-xs border-collapse min-w-[500px] sm:min-w-0"
+                            >
+                                <thead>
+                                    <tr
+                                        class="bg-slate-50 border-b border-slate-100"
+                                    >
                                         <th
                                             class="p-2 sm:p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
-                                            >{header}</th
+                                            >{product.size_chart.headers[0]}</th
                                         >
-                                    {/each}
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                {#each product.size_chart.rows as row}
-                                    <tr
-                                        class="hover:bg-slate-50/40 transition {recommendedSize ===
-                                        row.size
-                                            ? 'bg-slate-50/75 font-bold'
-                                            : ''}"
-                                    >
-                                        <td
-                                            class="p-2 sm:p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20"
-                                            >{row.size}</td
-                                        >
-                                        {#each row.values as val}
-                                            <td
-                                                class="p-2 sm:p-3.5 text-center text-slate-600 font-semibold"
-                                                >{val}</td
+                                        {#each product.size_chart.headers.slice(1) as header}
+                                            <th
+                                                class="p-2 sm:p-3.5 font-bold text-slate-500 uppercase tracking-wider text-center"
+                                                >{header}</th
                                             >
                                         {/each}
                                     </tr>
-                                {/each}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {#each product.size_chart.rows as row}
+                                        <tr
+                                            class="hover:bg-slate-50/40 transition {recommendedSize ===
+                                            row.size
+                                                ? 'bg-slate-50/75 font-bold'
+                                                : ''}"
+                                        >
+                                            <td
+                                                class="p-2 sm:p-3.5 text-center font-bold text-slate-800 bg-slate-50/20 w-20"
+                                                >{row.size}</td
+                                            >
+                                            {#each row.values as val}
+                                                <td
+                                                    class="p-2 sm:p-3.5 text-center text-slate-600 font-semibold"
+                                                    >{val}</td
+                                                >
+                                            {/each}
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
 
-                    <!-- Scroll Hint for Mobile -->
-                    <div
-                        class="flex items-center justify-end gap-1 text-[10px] text-slate-400 mt-2 sm:hidden"
-                    >
-                        <i class="ti ti-arrows-horizontal text-xs"></i>
-                        <span>Geser tabel ke samping untuk melihat detail</span>
+                        <!-- Scroll Hint for Mobile -->
+                        <div
+                            class="flex items-center justify-end gap-1 text-[10px] text-slate-400 mt-2 sm:hidden"
+                        >
+                            <i class="ti ti-arrows-horizontal text-xs"></i>
+                            <span
+                                >Geser tabel ke samping untuk melihat detail</span
+                            >
+                        </div>
                     </div>
+                {/if}
+            </div>
+
+            <!-- Ulasan Section -->
+            {#if reviews && reviews.length > 0}
+                <div
+                    class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
+                >
+                    <h3
+                        class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
+                    >
+                        <i class="ti ti-star text-lg" style="color: {primary};"
+                        ></i>
+                        Ulasan Pembeli
+                        {#if reviews.length > 0}
+                            <span
+                                class="ml-auto text-xs font-semibold text-slate-500"
+                                >{reviews.length} ulasan</span
+                            >
+                        {/if}
+                    </h3>
+
+                    {#if reviews.length > 0}
+                        {@const avgRating =
+                            reviews.reduce(
+                                (s: number, r: any) => s + Number(r.rating),
+                                0,
+                            ) / reviews.length}
+                        <!-- Rating Summary -->
+                        <div
+                            class="flex items-center gap-5 p-4 rounded-xl mb-5"
+                            style="background:{withOpacity(
+                                primary,
+                                0.04,
+                            )}; border: 1px solid {withOpacity(primary, 0.1)};"
+                        >
+                            <div class="text-center shrink-0">
+                                <p
+                                    class="text-4xl font-black"
+                                    style="color:{primary}"
+                                >
+                                    {avgRating.toFixed(1)}
+                                </p>
+                                <div
+                                    class="flex items-center gap-0.5 mt-1 justify-center"
+                                >
+                                    {#each [1, 2, 3, 4, 5] as s}
+                                        <i
+                                            class="ti ti-star-filled text-sm"
+                                            style="color:{s <=
+                                            Math.round(avgRating)
+                                                ? '#f59e0b'
+                                                : '#e2e8f0'};"
+                                        ></i>
+                                    {/each}
+                                </div>
+                                <p class="text-[10px] text-slate-500 mt-0.5">
+                                    {reviews.length} ulasan
+                                </p>
+                            </div>
+                            <div class="flex-grow space-y-1">
+                                {#each [5, 4, 3, 2, 1] as star}
+                                    {@const count = reviews.filter(
+                                        (r: any) => Number(r.rating) === star,
+                                    ).length}
+                                    {@const pct =
+                                        reviews.length > 0
+                                            ? (count / reviews.length) * 100
+                                            : 0}
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="text-[10px] font-semibold text-slate-500 w-3 text-right"
+                                            >{star}</span
+                                        >
+                                        <i
+                                            class="ti ti-star-filled text-[10px] text-amber-400"
+                                        ></i>
+                                        <div
+                                            class="flex-grow h-1.5 bg-slate-200 rounded-full overflow-hidden"
+                                        >
+                                            <div
+                                                class="h-full rounded-full transition-all"
+                                                style="width:{pct}%; background:{primary};"
+                                            ></div>
+                                        </div>
+                                        <span
+                                            class="text-[10px] text-slate-400 w-4"
+                                            >{count}</span
+                                        >
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <!-- Review list -->
+                        <div class="space-y-4">
+                            {#each reviews as review}
+                                <div
+                                    class="border-b border-slate-100 pb-4 last:border-0 last:pb-0"
+                                >
+                                    <div class="flex items-start gap-3">
+                                        <!-- Avatar -->
+                                        <div
+                                            class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-white text-sm"
+                                            style="background: linear-gradient(135deg, {primary}, {secondary});"
+                                        >
+                                            {(review.user?.name ?? 'A')
+                                                .charAt(0)
+                                                .toUpperCase()}
+                                        </div>
+                                        <div class="flex-grow min-w-0">
+                                            <div
+                                                class="flex items-center gap-2 flex-wrap"
+                                            >
+                                                <span
+                                                    class="text-sm font-bold text-slate-800"
+                                                    >{review.is_anonymous
+                                                        ? 'Pengguna Anonim'
+                                                        : (review.user?.name ??
+                                                          'Pembeli')}</span
+                                                >
+                                                {#if review.product_variant?.options?.length > 0}
+                                                    <span
+                                                        class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full"
+                                                    >
+                                                        {review.product_variant.options
+                                                            .map(
+                                                                (o: any) =>
+                                                                    o.value,
+                                                            )
+                                                            .join(', ')}
+                                                    </span>
+                                                {/if}
+                                                <span
+                                                    class="text-[10px] text-slate-400 ml-auto"
+                                                >
+                                                    {new Date(
+                                                        review.created_at,
+                                                    ).toLocaleDateString(
+                                                        'id-ID',
+                                                        {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                        },
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <!-- Stars -->
+                                            <div
+                                                class="flex items-center gap-0.5 mt-1"
+                                            >
+                                                {#each [1, 2, 3, 4, 5] as s}
+                                                    <i
+                                                        class="ti ti-star-filled text-xs"
+                                                        style="color:{s <=
+                                                        review.rating
+                                                            ? '#f59e0b'
+                                                            : '#e2e8f0'};"
+                                                    ></i>
+                                                {/each}
+                                            </div>
+                                            {#if review.comment}
+                                                <p
+                                                    class="text-sm text-slate-700 mt-2 leading-relaxed"
+                                                >
+                                                    {review.comment}
+                                                </p>
+                                            {/if}
+                                            <!-- Media -->
+                                            {#if review.media && review.media.length > 0}
+                                                <div
+                                                    class="flex gap-2 mt-2 flex-wrap"
+                                                >
+                                                    {#each review.media as mediaUrl}
+                                                        {@const isVideo =
+                                                            /\.(mp4|mov|avi|webm)$/i.test(
+                                                                mediaUrl,
+                                                            )}
+                                                        {#if isVideo}
+                                                            <video
+                                                                src={mediaUrl}
+                                                                class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer"
+                                                                muted
+                                                                playsinline
+                                                                onclick={(
+                                                                    e: any,
+                                                                ) => {
+                                                                    e.preventDefault();
+                                                                    reviewLightboxMedia =
+                                                                        {
+                                                                            type: 'video',
+                                                                            url: mediaUrl,
+                                                                        };
+                                                                    reviewLightboxOpen = true;
+                                                                }}
+                                                            ></video>
+                                                        {:else}
+                                                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                                            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                                                            <img
+                                                                src={mediaUrl}
+                                                                alt="Foto ulasan"
+                                                                class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition"
+                                                                onclick={() => {
+                                                                    reviewLightboxMedia =
+                                                                        {
+                                                                            type: 'image',
+                                                                            url: mediaUrl,
+                                                                        };
+                                                                    reviewLightboxOpen = true;
+                                                                }}
+                                                                onerror={(
+                                                                    e: any,
+                                                                ) => {
+                                                                    e.target.style.display =
+                                                                        'none';
+                                                                }}
+                                                            />
+                                                        {/if}
+                                                    {/each}
+                                                </div>
+                                            {/if}
+                                            <!-- Report button -->
+                                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                                            <div class="flex justify-end mt-2">
+                                                {#if review.is_reported}
+                                                    <span
+                                                        class="text-[10px] text-orange-400 flex items-center gap-1"
+                                                        ><i
+                                                            class="ti ti-flag-filled"
+                                                        ></i> Dilaporkan</span
+                                                    >
+                                                {:else}
+                                                    <button
+                                                        aria-label="Laporkan ulasan"
+                                                        onclick={() =>
+                                                            openReportModal(
+                                                                review,
+                                                            )}
+                                                        class="text-[10px] text-slate-400 hover:text-red-400 flex items-center gap-1 transition"
+                                                    >
+                                                        <i class="ti ti-flag"
+                                                        ></i> Laporkan
+                                                    </button>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
+                    {:else}
+                        <div class="text-center py-10">
+                            <div
+                                class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                                style="background:{withOpacity(
+                                    primary,
+                                    0.06,
+                                )}; color:{primary};"
+                            >
+                                <i class="ti ti-star text-2xl"></i>
+                            </div>
+                            <p class="font-bold text-slate-700 mb-1">
+                                Belum ada ulasan
+                            </p>
+                            <p class="text-sm text-slate-400">
+                                Jadilah yang pertama memberikan ulasan
+                            </p>
+                        </div>
+                    {/if}
                 </div>
             {/if}
         </div>
 
-        <!-- Ulasan Section -->
-        {#if reviews && reviews.length > 0}
-            <div
-                class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-100 shadow-sm p-5 sm:p-7"
-            >
-            <h3
-                class="text-base font-bold text-slate-800 flex items-center gap-2 mb-5"
-            >
-                <i class="ti ti-star text-lg" style="color: {primary};"></i>
-                Ulasan Pembeli
-                {#if reviews.length > 0}
-                    <span class="ml-auto text-xs font-semibold text-slate-500"
-                        >{reviews.length} ulasan</span
-                    >
-                {/if}
-            </h3>
-
-            {#if reviews.length > 0}
-                {@const avgRating =
-                    reviews.reduce(
-                        (s: number, r: any) => s + Number(r.rating),
-                        0,
-                    ) / reviews.length}
-                <!-- Rating Summary -->
+        <!-- ─────────────────────────────────────────────────────
+     RELATED PRODUCTS
+───────────────────────────────────────────────────── -->
+        {#if relatedProducts === undefined}
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
                 <div
-                    class="flex items-center gap-5 p-4 rounded-xl mb-5"
-                    style="background:{withOpacity(
-                        primary,
-                        0.04,
-                    )}; border: 1px solid {withOpacity(primary, 0.1)};"
+                    class="flex items-center justify-between mb-4 animate-pulse"
                 >
-                    <div class="text-center shrink-0">
-                        <p class="text-4xl font-black" style="color:{primary}">
-                            {avgRating.toFixed(1)}
-                        </p>
-                        <div
-                            class="flex items-center gap-0.5 mt-1 justify-center"
-                        >
-                            {#each [1, 2, 3, 4, 5] as s}
-                                <i
-                                    class="ti ti-star-filled text-sm"
-                                    style="color:{s <= Math.round(avgRating)
-                                        ? '#f59e0b'
-                                        : '#e2e8f0'};"
-                                ></i>
-                            {/each}
-                        </div>
-                        <p class="text-[10px] text-slate-500 mt-0.5">
-                            {reviews.length} ulasan
-                        </p>
-                    </div>
-                    <div class="flex-grow space-y-1">
-                        {#each [5, 4, 3, 2, 1] as star}
-                            {@const count = reviews.filter(
-                                (r: any) => Number(r.rating) === star,
-                            ).length}
-                            {@const pct =
-                                reviews.length > 0
-                                    ? (count / reviews.length) * 100
-                                    : 0}
-                            <div class="flex items-center gap-2">
-                                <span
-                                    class="text-[10px] font-semibold text-slate-500 w-3 text-right"
-                                    >{star}</span
-                                >
-                                <i
-                                    class="ti ti-star-filled text-[10px] text-amber-400"
-                                ></i>
-                                <div
-                                    class="flex-grow h-1.5 bg-slate-200 rounded-full overflow-hidden"
-                                >
-                                    <div
-                                        class="h-full rounded-full transition-all"
-                                        style="width:{pct}%; background:{primary};"
-                                    ></div>
-                                </div>
-                                <span class="text-[10px] text-slate-400 w-4"
-                                    >{count}</span
-                                >
-                            </div>
-                        {/each}
-                    </div>
+                    <div class="h-6 w-32 bg-slate-200 rounded-lg"></div>
+                    <div class="h-4 w-16 bg-slate-200 rounded-lg"></div>
                 </div>
-
-                <!-- Review list -->
-                <div class="space-y-4">
-                    {#each reviews as review}
+                <div
+                    class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+                >
+                    {#each Array(4) as _}
                         <div
-                            class="border-b border-slate-100 pb-4 last:border-0 last:pb-0"
+                            class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse"
                         >
-                            <div class="flex items-start gap-3">
-                                <!-- Avatar -->
+                            <div class="aspect-square bg-slate-100"></div>
+                            <div class="p-3 space-y-2">
                                 <div
-                                    class="w-9 h-9 rounded-full flex items-center justify-center shrink-0 font-bold text-white text-sm"
-                                    style="background: linear-gradient(135deg, {primary}, {secondary});"
-                                >
-                                    {(review.user?.name ?? 'A')
-                                        .charAt(0)
-                                        .toUpperCase()}
-                                </div>
-                                <div class="flex-grow min-w-0">
-                                    <div
-                                        class="flex items-center gap-2 flex-wrap"
-                                    >
-                                        <span
-                                            class="text-sm font-bold text-slate-800"
-                                            >{review.is_anonymous
-                                                ? 'Pengguna Anonim'
-                                                : (review.user?.name ??
-                                                  'Pembeli')}</span
-                                        >
-                                        {#if review.product_variant?.options?.length > 0}
-                                            <span
-                                                class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full"
-                                            >
-                                                {review.product_variant.options
-                                                    .map((o: any) => o.value)
-                                                    .join(', ')}
-                                            </span>
-                                        {/if}
-                                        <span
-                                            class="text-[10px] text-slate-400 ml-auto"
-                                        >
-                                            {new Date(
-                                                review.created_at,
-                                            ).toLocaleDateString('id-ID', {
-                                                day: 'numeric',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })}
-                                        </span>
-                                    </div>
-                                    <!-- Stars -->
-                                    <div class="flex items-center gap-0.5 mt-1">
-                                        {#each [1, 2, 3, 4, 5] as s}
-                                            <i
-                                                class="ti ti-star-filled text-xs"
-                                                style="color:{s <= review.rating
-                                                    ? '#f59e0b'
-                                                    : '#e2e8f0'};"
-                                            ></i>
-                                        {/each}
-                                    </div>
-                                    {#if review.comment}
-                                        <p
-                                            class="text-sm text-slate-700 mt-2 leading-relaxed"
-                                        >
-                                            {review.comment}
-                                        </p>
-                                    {/if}
-                                    <!-- Media -->
-                                    {#if review.media && review.media.length > 0}
-                                        <div class="flex gap-2 mt-2 flex-wrap">
-                                            {#each review.media as mediaUrl}
-                                                {@const isVideo =
-                                                    /\.(mp4|mov|avi|webm)$/i.test(
-                                                        mediaUrl,
-                                                    )}
-                                                {#if isVideo}
-                                                    <video
-                                                        src={mediaUrl}
-                                                        class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer"
-                                                        muted
-                                                        playsinline
-                                                        onclick={(e: any) => {
-                                                            e.preventDefault();
-                                                            reviewLightboxMedia =
-                                                                {
-                                                                    type: 'video',
-                                                                    url: mediaUrl,
-                                                                };
-                                                            reviewLightboxOpen = true;
-                                                        }}
-                                                    ></video>
-                                                {:else}
-                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                                    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                                                    <img
-                                                        src={mediaUrl}
-                                                        alt="Foto ulasan"
-                                                        class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition"
-                                                        onclick={() => {
-                                                            reviewLightboxMedia =
-                                                                {
-                                                                    type: 'image',
-                                                                    url: mediaUrl,
-                                                                };
-                                                            reviewLightboxOpen = true;
-                                                        }}
-                                                        onerror={(e: any) => {
-                                                            e.target.style.display =
-                                                                'none';
-                                                        }}
-                                                    />
-                                                {/if}
-                                            {/each}
-                                        </div>
-                                    {/if}
-                                    <!-- Report button -->
-                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                    <div class="flex justify-end mt-2">
-                                        {#if review.is_reported}
-                                            <span
-                                                class="text-[10px] text-orange-400 flex items-center gap-1"
-                                                ><i class="ti ti-flag-filled"
-                                                ></i> Dilaporkan</span
-                                            >
-                                        {:else}
-                                            <button
-                                                aria-label="Laporkan ulasan"
-                                                onclick={() =>
-                                                    openReportModal(review)}
-                                                class="text-[10px] text-slate-400 hover:text-red-400 flex items-center gap-1 transition"
-                                            >
-                                                <i class="ti ti-flag"></i> Laporkan
-                                            </button>
-                                        {/if}
-                                    </div>
-                                </div>
+                                    class="h-3 bg-slate-100 rounded w-3/4"
+                                ></div>
+                                <div
+                                    class="h-3 bg-slate-100 rounded w-1/2"
+                                ></div>
+                                <div
+                                    class="h-4 bg-slate-100 rounded w-2/3 mt-2"
+                                ></div>
                             </div>
                         </div>
                     {/each}
                 </div>
-            {:else}
-                <div class="text-center py-10">
-                    <div
-                        class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
-                        style="background:{withOpacity(
-                            primary,
-                            0.06,
-                        )}; color:{primary};"
+            </div>
+        {:else if relatedProducts && relatedProducts.length > 0}
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+                <div class="flex items-center justify-between mb-4">
+                    <h2
+                        class="font-outfit font-black text-base sm:text-lg text-slate-800 flex items-center gap-2"
                     >
-                        <i class="ti ti-star text-2xl"></i>
-                    </div>
-                    <p class="font-bold text-slate-700 mb-1">
-                        Belum ada ulasan
-                    </p>
-                    <p class="text-sm text-slate-400">
-                        Jadilah yang pertama memberikan ulasan
-                    </p>
+                        <div
+                            class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs"
+                            style="background: linear-gradient(135deg, {primary}, {secondary});"
+                        >
+                            <i class="ti ti-sparkles"></i>
+                        </div>
+                        Produk Serupa
+                    </h2>
+                    {#if product.category}
+                        <Link
+                            href="/category/{product.category.slug ||
+                                product.category.id}"
+                            prefetch
+                            class="text-xs font-bold flex items-center gap-1 hover:underline"
+                            style="color:{primary};"
+                        >
+                            Lihat Semua <i class="ti ti-arrow-right text-xs"
+                            ></i>
+                        </Link>
+                    {/if}
                 </div>
-            {/if}
-        </div>
-        {/if}
-    </div>
 
-    <!-- ─────────────────────────────────────────────────────
-     RELATED PRODUCTS
-───────────────────────────────────────────────────── -->
-    {#if relatedProducts === undefined}
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-            <div class="flex items-center justify-between mb-4 animate-pulse">
-                <div class="h-6 w-32 bg-slate-200 rounded-lg"></div>
-                <div class="h-4 w-16 bg-slate-200 rounded-lg"></div>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {#each Array(4) as _}
-                    <div class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
-                        <div class="aspect-square bg-slate-100"></div>
-                        <div class="p-3 space-y-2">
-                            <div class="h-3 bg-slate-100 rounded w-3/4"></div>
-                            <div class="h-3 bg-slate-100 rounded w-1/2"></div>
-                            <div class="h-4 bg-slate-100 rounded w-2/3 mt-2"></div>
-                        </div>
-                    </div>
-                {/each}
-            </div>
-        </div>
-    {:else if relatedProducts && relatedProducts.length > 0}
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-            <div class="flex items-center justify-between mb-4">
-                <h2
-                    class="font-outfit font-black text-base sm:text-lg text-slate-800 flex items-center gap-2"
+                <div
+                    class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
                 >
-                    <div
-                        class="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs"
-                        style="background: linear-gradient(135deg, {primary}, {secondary});"
-                    >
-                        <i class="ti ti-sparkles"></i>
-                    </div>
-                    Produk Serupa
-                </h2>
-                {#if product.category}
-                    <Link
-                        href="/category/{product.category.slug ||
-                            product.category.id}"
-                        prefetch
-                        class="text-xs font-bold flex items-center gap-1 hover:underline"
-                        style="color:{primary};"
-                    >
-                        Lihat Semua <i class="ti ti-arrow-right text-xs"></i>
-                    </Link>
-                {/if}
-            </div>
-
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {#each relatedProducts as rp}
-                    {@const ri = relImg(rp)}
-                    {@const isPromo = rp.is_promo}
-                    {@const price = isPromo
-                        ? rp.promo_price
-                        : (rp.product_price?.price ?? 0)}
-                    {@const originalPrice = isPromo ? rp.original_price : 0}
-                    {@const discountPercentage = isPromo
-                        ? rp.discount_percentage
-                        : 0}
-                    {@const rating = (4.5 + ((rp.id || 0) % 6) * 0.1).toFixed(
-                        1,
-                    )}
-                    <a
-                        href="/products/{rp.id}"
-                        class="group bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-md overflow-hidden transition cursor-pointer flex flex-col h-full"
-                    >
-                        <div class="relative aspect-square overflow-hidden">
-                            {#if ri}
-                                <img
-                                    src={ri}
-                                    alt={rp.name}
-                                    class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                    onerror={(e) => {
-                                        e.currentTarget.src =
-                                            '/noimage/image.png';
-                                    }}
-                                />
-                            {:else}
-                                <img
-                                    src="/noimage/image.png"
-                                    alt="Produk tanpa gambar"
-                                    class="w-full h-full object-cover"
-                                />
-                            {/if}
-                            {#if isPromo && discountPercentage > 0}
-                                <span
-                                    class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                    style="background-color: {secondary};"
-                                >
-                                    -{discountPercentage}%
-                                </span>
-                            {/if}
-                            {#if cartButtonStyle === 'icon'}
-                                <button
-                                    onclick={(e) =>
-                                        handleDirectAddToCart(rp, e)}
-                                    class="absolute w-8 h-8 rounded-full bg-white/95 hover:bg-white text-slate-800 flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
-                                    style="top: 0.375rem; right: 0.375rem; border-color: {primary}; color: {primary};"
-                                    title="Tambah ke Keranjang"
-                                >
-                                    <i class="ti ti-plus text-base font-black"
-                                    ></i>
-                                </button>
-                            {/if}
-                        </div>
-                        <div class="p-3 flex-1 flex flex-col">
-                            <div>
-                                <p
-                                    class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
-                                    style="color: {primary};"
-                                >
-                                    {rp.category?.name || 'PRODUK'}
-                                </p>
-                                <div class="h-[2.5rem] overflow-hidden mb-1">
-                                    <p
-                                        class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                        style="color: #1e293b;"
-                                    >
-                                        {rp.name}
-                                    </p>
-                                </div>
-                                <hr class="border-slate-100 my-2" />
-                                <div class="mb-3">
-                                    {#if price > 0}
-                                        <p
-                                            class="text-sm sm:text-base font-black leading-tight"
-                                            style="color: {secondary};"
+                    {#each relatedProducts as rp}
+                        {@const ri = relImg(rp)}
+                        {@const isPromo = rp.is_promo}
+                        {@const price = isPromo
+                            ? rp.promo_price
+                            : (rp.product_price?.price ?? 0)}
+                        {@const originalPrice = isPromo ? rp.original_price : 0}
+                        {@const discountPercentage = isPromo
+                            ? rp.discount_percentage
+                            : 0}
+                        {@const rating = (
+                            4.5 +
+                            ((rp.id || 0) % 6) * 0.1
+                        ).toFixed(1)}
+                        <a
+                            href="/products/{rp.id}"
+                            class="group bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-md overflow-hidden transition cursor-pointer flex flex-col h-full"
+                        >
+                            <div class="relative aspect-square overflow-hidden">
+                                {#if ri}
+                                    <img
+                                        src={ri}
+                                        alt={rp.name}
+                                        class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                        onerror={(e) => {
+                                            e.currentTarget.src =
+                                                '/noimage/image.png';
+                                        }}
+                                    />
+                                {:else}
+                                    <img
+                                        src="/noimage/image.png"
+                                        alt="Produk tanpa gambar"
+                                        class="w-full h-full object-cover"
+                                    />
+                                {/if}
+                                <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                    {#if isSellerEnabled}
+                                        <span
+                                            class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {rp.condition === 'used' ? 'bg-amber-600' : 'bg-emerald-600'}"
                                         >
-                                            {fmt(price)}
-                                        </p>
-                                        {#if isPromo && originalPrice > price}
-                                            <p
-                                                class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
-                                            >
-                                                {fmt(originalPrice)}
-                                            </p>
-                                        {/if}
-                                    {:else}
-                                        <p
-                                            class="text-xs text-slate-400 font-semibold"
+                                            {rp.condition === 'used' ? 'Bekas' : 'Baru'}
+                                        </span>
+                                    {/if}
+                                    {#if isPromo && discountPercentage > 0}
+                                        <span
+                                            class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                            style="background-color: {secondary};"
                                         >
-                                            Hubungi Kami
-                                        </p>
+                                            -{discountPercentage}%
+                                        </span>
                                     {/if}
                                 </div>
-                            </div>
-                            {#if cartButtonStyle === 'button'}
-                                <div class="mt-auto pt-3">
+                                {#if cartButtonStyle === 'icon'}
                                     <button
-                                        type="button"
-                                        onclick={(e) => {
-                                            e.preventDefault();
-                                            handleDirectAddToCart(rp, e);
-                                        }}
-                                        class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] border-0"
-                                        style="background-color: {primary};"
+                                        onclick={(e) =>
+                                            handleDirectAddToCart(rp, e)}
+                                        class="absolute w-8 h-8 rounded-full bg-white/95 hover:bg-white text-slate-800 flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
+                                        style="top: 0.375rem; right: 0.375rem; border-color: {primary}; color: {primary};"
+                                        title="Tambah ke Keranjang"
                                     >
                                         <i
-                                            class="ti ti-shopping-cart text-xs sm:text-sm"
+                                            class="ti ti-plus text-base font-black"
                                         ></i>
-                                        + KERANJANG
                                     </button>
+                                {/if}
+                            </div>
+                            <div class="p-3 flex-1 flex flex-col">
+                                <div>
+                                    <!-- <p
+                                        class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1"
+                                        style="color: {primary};"
+                                    >
+                                        {rp.category?.name || 'PRODUK'}
+                                    </p> -->
+                                    <div
+                                        class="h-[2.5rem] overflow-hidden mb-1"
+                                    >
+                                        <p
+                                            class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
+                                            style="color: #1e293b;"
+                                        >
+                                            {rp.name}
+                                        </p>
+                                    </div>
+                                    <hr class="border-slate-100 my-2" />
+                                    <div class="mb-3">
+                                        {#if price > 0}
+                                            <p
+                                                class="text-sm sm:text-base font-black leading-tight"
+                                                style="color: {secondary};"
+                                            >
+                                                {fmt(price)}
+                                            </p>
+                                            {#if isPromo && originalPrice > price}
+                                                <p
+                                                    class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
+                                                >
+                                                    {fmt(originalPrice)}
+                                                </p>
+                                            {/if}
+                                        {:else}
+                                            <p
+                                                class="text-xs text-slate-400 font-semibold"
+                                            >
+                                                Hubungi Kami
+                                            </p>
+                                        {/if}
+                                    </div>
                                 </div>
-                            {/if}
-                        </div>
-                    </a>
-                {/each}
+                                {#if cartButtonStyle === 'button'}
+                                    <div class="mt-auto pt-3">
+                                        <button
+                                            type="button"
+                                            onclick={(e) => {
+                                                e.preventDefault();
+                                                handleDirectAddToCart(rp, e);
+                                            }}
+                                            class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] border-0"
+                                            style="background-color: {primary};"
+                                        >
+                                            <i
+                                                class="ti ti-shopping-cart text-xs sm:text-sm"
+                                            ></i>
+                                            + KERANJANG
+                                        </button>
+                                    </div>
+                                {/if}
+                            </div>
+                        </a>
+                    {/each}
+                </div>
             </div>
-        </div>
-    {/if}
+        {/if}
 
-    <!-- ─────────────────────────────────────────────────────
+        <!-- ─────────────────────────────────────────────────────
      CAMERA AR MODAL — fullscreen popup with live camera feed + 3D overlay
 ───────────────────────────────────────────────────── -->
-    {#if isCameraModalOpen && arModelPath}
-        <div
-            class="fixed inset-0 z-[210] flex flex-col bg-black"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Kamera AR"
-            onkeydown={(e) => e.key === 'Escape' && closeCameraModal()}
-            tabindex="-1"
-        >
-            <!-- Live camera feed -->
-            <video
-                bind:this={cameraVideoEl}
-                autoplay
-                playsinline
-                muted
-                class="absolute inset-0 w-full h-full object-cover"
-            >
-                <track kind="captions" />
-            </video>
-
-            <!-- 3D model overlaid transparently on camera feed -->
-            <model-viewer
-                src={formatImagePath(arModelPath)}
-                camera-controls
-                auto-rotate
-                interaction-prompt="auto"
-                class="absolute inset-0 w-full h-full"
-                style="--poster-color: transparent; background-color: transparent; touch-action: none;"
-            >
-            </model-viewer>
-
-            <!-- Top bar: title + close -->
+        {#if isCameraModalOpen && arModelPath}
             <div
-                class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 z-30 bg-gradient-to-b from-black/70 to-transparent"
+                class="fixed inset-0 z-[210] flex flex-col bg-black"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Kamera AR"
+                onkeydown={(e) => e.key === 'Escape' && closeCameraModal()}
+                tabindex="-1"
             >
-                <div class="flex items-center gap-2 text-white">
-                    <i class="ti ti-camera text-lg"></i>
-                    <span class="font-bold text-sm">Kamera AR Aktif</span>
+                <!-- Live camera feed -->
+                <video
+                    bind:this={cameraVideoEl}
+                    autoplay
+                    playsinline
+                    muted
+                    class="absolute inset-0 w-full h-full object-cover"
+                >
+                    <track kind="captions" />
+                </video>
+
+                <!-- 3D model overlaid transparently on camera feed -->
+                <model-viewer
+                    src={formatImagePath(arModelPath)}
+                    camera-controls
+                    auto-rotate
+                    interaction-prompt="auto"
+                    class="absolute inset-0 w-full h-full"
+                    style="--poster-color: transparent; background-color: transparent; touch-action: none;"
+                >
+                </model-viewer>
+
+                <!-- Top bar: title + close -->
+                <div
+                    class="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-4 z-30 bg-gradient-to-b from-black/70 to-transparent"
+                >
+                    <div class="flex items-center gap-2 text-white">
+                        <i class="ti ti-camera text-lg"></i>
+                        <span class="font-bold text-sm">Kamera AR Aktif</span>
+                    </div>
+                    <button
+                        type="button"
+                        onclick={closeCameraModal}
+                        class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-sm text-white flex items-center justify-center transition shadow-lg"
+                        aria-label="Tutup kamera"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
                 </div>
-                <button
-                    type="button"
-                    onclick={closeCameraModal}
-                    class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-sm text-white flex items-center justify-center transition shadow-lg"
-                    aria-label="Tutup kamera"
-                >
-                    <i class="ti ti-x text-lg"></i>
-                </button>
-            </div>
 
-            <!-- Bottom hint -->
-            <div
-                class="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16 z-30 bg-gradient-to-t from-black/70 to-transparent flex flex-col items-center gap-3"
-            >
-                <p class="text-white/80 text-xs text-center">
-                    Arahkan kamera ke permukaan datar · Gunakan gesture untuk
-                    memutar model 3D
-                </p>
-                <button
-                    type="button"
-                    onclick={closeCameraModal}
-                    class="bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-sm text-white px-5 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 border border-white/20"
+                <!-- Bottom hint -->
+                <div
+                    class="absolute bottom-0 left-0 right-0 px-4 pb-8 pt-16 z-30 bg-gradient-to-t from-black/70 to-transparent flex flex-col items-center gap-3"
                 >
-                    <i class="ti ti-camera-off text-base"></i>
-                    Matikan Kamera
-                </button>
+                    <p class="text-white/80 text-xs text-center">
+                        Arahkan kamera ke permukaan datar · Gunakan gesture
+                        untuk memutar model 3D
+                    </p>
+                    <button
+                        type="button"
+                        onclick={closeCameraModal}
+                        class="bg-white/20 hover:bg-white/30 active:scale-95 backdrop-blur-sm text-white px-5 py-2 rounded-full font-semibold text-sm transition flex items-center gap-2 border border-white/20"
+                    >
+                        <i class="ti ti-camera-off text-base"></i>
+                        Matikan Kamera
+                    </button>
+                </div>
             </div>
-        </div>
-    {/if}
+        {/if}
 
-    <!-- ─────────────────────────────────────────────────────
+        <!-- ─────────────────────────────────────────────────────
      LIGHTBOX
 ───────────────────────────────────────────────────── -->
-    {#if lightboxOpen && displayImage}
-        <div
-            class="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md"
-            onclick={() => (lightboxOpen = false)}
-            role="button"
-            tabindex="0"
-            onkeydown={(e) => e.key === 'Escape' && (lightboxOpen = false)}
-        >
-            <!-- Close -->
-            <button
-                type="button"
-                aria-label="Tutup"
-                onclick={() => (lightboxOpen = false)}
-                class="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20 z-50"
-            >
-                <i class="ti ti-x text-lg"></i>
-            </button>
-
-            <!-- Prev/Next (only if gallery has multiple) -->
-            {#if gallery.length > 1}
-                <button
-                    type="button"
-                    aria-label="Sebelumnya"
-                    onclick={(e) => {
-                        e.stopPropagation();
-                        lightboxPrev();
-                    }}
-                    class="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition z-50"
-                >
-                    <i class="ti ti-chevron-left text-xl"></i>
-                </button>
-                <button
-                    type="button"
-                    aria-label="Selanjutnya"
-                    onclick={(e) => {
-                        e.stopPropagation();
-                        lightboxNext();
-                    }}
-                    class="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition z-50"
-                >
-                    <i class="ti ti-chevron-right text-xl"></i>
-                </button>
-            {/if}
-
-            <!-- Image -->
+        {#if lightboxOpen && displayImage}
             <div
-                class="relative w-[92vw] max-w-3xl px-10 sm:px-16"
-                role="presentation"
-                onclick={(e) => e.stopPropagation()}
+                class="fixed inset-0 z-[200] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md p-4 sm:p-6"
+                onclick={() => (lightboxOpen = false)}
+                role="button"
+                tabindex="0"
+                onkeydown={(e) => e.key === 'Escape' && (lightboxOpen = false)}
             >
-                <img
-                    src={displayImage}
-                    alt={product.name}
-                    class="w-full max-h-[80vh] object-contain rounded-xl shadow-2xl animate-pop"
-                    onerror={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                            '/noimage/image.png';
-                    }}
-                />
-                <!-- Dot indicators -->
+                <!-- Header -->
+                <div class="w-full flex items-center justify-between z-50">
+                    <span class="text-xs font-bold text-slate-300 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                        {activeGalleryIdx + 1} / {gallery.length || 1}
+                    </span>
+                    <button
+                        type="button"
+                        aria-label="Tutup"
+                        onclick={() => (lightboxOpen = false)}
+                        class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Main Image Preview -->
+                <div
+                    class="relative max-w-4xl max-h-[75vh] flex items-center justify-center my-auto w-full"
+                    role="presentation"
+                    onclick={(e) => e.stopPropagation()}
+                >
+                    {#if gallery.length > 1}
+                        <button
+                            type="button"
+                            aria-label="Sebelumnya"
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                lightboxPrev();
+                            }}
+                            class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20"
+                        >
+                            <i class="ti ti-chevron-left text-xl"></i>
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="Selanjutnya"
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                lightboxNext();
+                            }}
+                            class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20"
+                        >
+                            <i class="ti ti-chevron-right text-xl"></i>
+                        </button>
+                    {/if}
+
+                    <img
+                        src={displayImage}
+                        alt={product.name}
+                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition duration-300 select-none"
+                        onerror={(e) => {
+                            (e.currentTarget as HTMLImageElement).src =
+                                '/noimage/image.png';
+                        }}
+                    />
+                </div>
+
+                <!-- Thumbnail Strip Preview -->
                 {#if gallery.length > 1}
-                    <div class="flex justify-center gap-2 mt-4">
-                        {#each gallery as _, i}
+                    <div
+                        class="flex items-center gap-2 overflow-x-auto max-w-full py-2 px-3 bg-black/40 rounded-2xl border border-white/10 z-50 scrollbar-none"
+                        role="presentation"
+                        onclick={(e) => e.stopPropagation()}
+                    >
+                        {#each gallery as imgUrl, i}
                             <button
                                 type="button"
-                                aria-label="Gambar {i + 1}"
-                                onclick={(e) => {
-                                    e.stopPropagation();
-                                    pickGallery(i);
-                                }}
-                                class="w-2 h-2 rounded-full transition {activeIdx ===
-                                i
-                                    ? 'bg-white'
-                                    : 'bg-white/30'}"
-                            ></button>
+                                onclick={() => pickGallery(i)}
+                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 {activeGalleryIdx === i ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-100'}"
+                            >
+                                <img src={imgUrl} alt="Thumbnail {i + 1}" class="w-full h-full object-cover" />
+                            </button>
                         {/each}
                     </div>
                 {/if}
             </div>
-        </div>
-    {/if}
-
+        {/if}
     </div>
     <!-- /bg-white content wrapper -->
 
@@ -4182,59 +4301,65 @@
         class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 px-4 pt-2.5 pb-2.5 flex items-center gap-3 md:hidden shadow-[0_-4px_16px_rgba(0,0,0,0.06)]"
         style="padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));"
     >
-        <!-- Chat Button -->
-        <button
-            onclick={openChat}
-            class="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 text-slate-700 active:bg-slate-50 transition shrink-0 cursor-pointer"
-            aria-label="Chat Penjual"
-            title="Chat Penjual"
-        >
-            <i class="ti ti-message-dots text-xl"></i>
-        </button>
+        <!-- Chat Button (hidden when IS_SELLER=true) -->
+        {#if !isSellerEnabled}
+            <button
+                onclick={openChat}
+                class="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 text-slate-700 active:bg-slate-50 transition shrink-0 cursor-pointer"
+                aria-label="Chat Penjual"
+                title="Chat Penjual"
+            >
+                <i class="ti ti-message-dots text-xl"></i>
+            </button>
+        {/if}
         <!-- WhatsApp Button -->
-        <button
-            onclick={openWhatsApp}
-            class="w-11 h-11 flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 active:bg-emerald-100 transition shrink-0 cursor-pointer"
-            aria-label="Tanya via WhatsApp"
-            title="Tanya via WhatsApp"
-        >
-            <i class="ti ti-brand-whatsapp text-xl"></i>
-        </button>
-
-        <!-- Beli Langsung (Outline style) -->
-        {#if isEffectivelyOutOfStock}
-            <div
-                class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
-            >
-                {isPromoStockExhausted ? 'Stok Promo Habis' : 'Stok Habis'}
-            </div>
-        {:else}
+        {#if !isSellerEnabled}
             <button
-                onclick={() => {
-                    drawerAction = 'buy';
-                    drawerOpen = true;
-                }}
-                class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition active:scale-[0.98] text-center"
-                style="border-color: {primary}; color: {primary};"
+                onclick={openWhatsApp}
+                class="w-11 h-11 flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 active:bg-emerald-100 transition shrink-0 cursor-pointer"
+                aria-label="Tanya via WhatsApp"
+                title="Tanya via WhatsApp"
             >
-                Beli Langsung
+                <i class="ti ti-brand-whatsapp text-xl"></i>
             </button>
+        {/if}
 
-            <!-- + Keranjang (Solid style) -->
-            <button
-                onclick={() => {
-                    if (hasVariations) {
-                        drawerAction = 'cart';
+        <!-- Beli Langsung & Keranjang (hidden when IS_SELLER=true) -->
+        {#if !isSellerEnabled}
+            {#if isEffectivelyOutOfStock}
+                <div
+                    class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-center bg-slate-100 text-slate-400 border border-slate-200"
+                >
+                    {isPromoStockExhausted ? 'Stok Promo Habis' : 'Stok Habis'}
+                </div>
+            {:else}
+                <button
+                    onclick={() => {
+                        drawerAction = 'buy';
                         drawerOpen = true;
-                    } else {
-                        addToCart();
-                    }
-                }}
-                class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-[0.98] text-center shadow-md"
-                style="background-color: {primary};"
-            >
-                + Keranjang
-            </button>
+                    }}
+                    class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm border-2 transition active:scale-[0.98] text-center"
+                    style="border-color: {primary}; color: {primary};"
+                >
+                    Beli Langsung
+                </button>
+
+                <!-- + Keranjang (Solid style) -->
+                <button
+                    onclick={() => {
+                        if (hasVariations) {
+                            drawerAction = 'cart';
+                            drawerOpen = true;
+                        } else {
+                            addToCart();
+                        }
+                    }}
+                    class="flex-1 py-3 px-1 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-[0.98] text-center shadow-md"
+                    style="background-color: {primary};"
+                >
+                    + Keranjang
+                </button>
+            {/if}
         {/if}
     </div>
 
@@ -5454,15 +5579,15 @@
     }
 
     /* Fix inline styles (background and text color) in dark mode inside product description */
-    :global(.dark .prose [style*="background-color"]),
-    :global(.sf-dark .prose [style*="background-color"]) {
+    :global(.dark .prose [style*='background-color']),
+    :global(.sf-dark .prose [style*='background-color']) {
         background-color: transparent !important;
     }
-    :global(.dark .prose [style*="color"]),
-    :global(.sf-dark .prose [style*="color"]) {
+    :global(.dark .prose [style*='color']),
+    :global(.sf-dark .prose [style*='color']) {
         color: inherit !important;
     }
-    
+
     /* Ensure text colors inside prose are visible in dark mode */
     :global(.dark .prose),
     :global(.sf-dark .prose) {

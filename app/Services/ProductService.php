@@ -50,18 +50,22 @@ class ProductService
     public function buildQuery(Request $request): Builder
     {
         $query = Product::with(self::defaultEagerLoads())
-            ->where('active', true);
+            ->activeAndNotExpired();
 
         $like = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
 
-        // Filter by keyword search (name, description, category, SKU, variant options)
+        // Filter by keyword search (name, brand, summary, description, category, brand relations, SKU, variant options)
         if ($searchTerm = trim($request->input('q', ''))) {
             $terms = array_filter(explode(' ', $searchTerm));
             $query->where(function (Builder $q) use ($terms, $like) {
                 foreach ($terms as $term) {
                     $q->where(function (Builder $subQ) use ($term, $like) {
                         $subQ->where('name', $like, "%{$term}%")
+                            ->orWhere('brand', $like, "%{$term}%")
+                            ->orWhere('summary', $like, "%{$term}%")
                             ->orWhere('description', $like, "%{$term}%")
+                            ->orWhereHas('brandRelation', fn ($qb) => $qb->where('name', $like, "%{$term}%"))
+                            ->orWhereHas('brands', fn ($qb) => $qb->where('name', $like, "%{$term}%"))
                             ->orWhereHas('category', fn ($qc) => $qc->where('name', $like, "%{$term}%"))
                             ->orWhereHas('categories', fn ($qc) => $qc->where('name', $like, "%{$term}%"))
                             ->orWhereHas('variants', function ($qv) use ($term, $like) {
@@ -139,9 +143,11 @@ class ProductService
             }
         }
 
-        // Filter by product condition (new / used)
+        // Filter by product condition (new / second / used / rent)
         if ($condition = $request->input('condition')) {
-            if (in_array($condition, ['new', 'used'], true)) {
+            if ($condition === 'second' || $condition === 'used') {
+                $query->whereIn('condition', ['used', 'second']);
+            } elseif (in_array($condition, ['new', 'rent'], true)) {
                 $query->where('condition', $condition);
             }
         }
@@ -166,7 +172,7 @@ class ProductService
     public function getFilteredProducts(Request $request, int $perPage = 36): LengthAwarePaginator
     {
         $query = $this->buildQuery($request);
-        $sort = $request->input('sort', 'relevance');
+        $sort = $request->input('sort', 'latest');
         $minPrice = $request->input('min_price');
         $maxPrice = $request->input('max_price');
         $promoOnly = $request->boolean('promo');
@@ -194,6 +200,8 @@ class ProductService
                 $join->on('products.id', '=', 'product_prices.product_id')
                     ->whereNull('product_prices.product_variant_id');
             })->orderBy('product_prices.price', 'desc')->select('products.*');
+        } elseif ($sort === 'oldest') {
+            $query->orderBy('products.created_at', 'asc');
         } else {
             $query->orderBy('products.created_at', 'desc');
         }

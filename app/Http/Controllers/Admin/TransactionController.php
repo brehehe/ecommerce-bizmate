@@ -41,7 +41,10 @@ class TransactionController extends Controller
         // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
         KomerceService::syncPaymentMethods();
 
-        $products = Product::with([
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
+        $productQuery = Product::with([
             'productPrice',
             'productStock',
             'images',
@@ -49,14 +52,26 @@ class TransactionController extends Controller
             'variants.productStock',
             'variants.options',
             'category',
+            'user:id,name,store_name',
         ])
-            ->where('active', true)
+            ->where('active', true);
+
+        if ($isSeller) {
+            $productQuery->where('user_id', $user->id);
+        }
+
+        $products = $productQuery
             ->orderBy('name', 'asc')
             ->get();
 
         $categories = Category::orderBy('name', 'asc')->get();
 
         $customers = User::select('id', 'name', 'email', 'phone_number')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        $sellers = User::where('is_seller', true)
+            ->select('id', 'name', 'store_name', 'email')
             ->orderBy('name', 'asc')
             ->get();
 
@@ -79,6 +94,8 @@ class TransactionController extends Controller
             'products' => $products,
             'categories' => $categories,
             'customers' => $customers,
+            'sellers' => $sellers,
+            'isSeller' => $isSeller,
             'paymentMethods' => $paymentMethods,
             'midtransEnabledMethods' => $midtransEnabledMethods,
             'midtransAdminFee' => $midtransAdminFee,

@@ -33,6 +33,11 @@
     const cartButtonStyle = $derived(
         (page.props.settings as any)?.storefront_cart_button_style || 'button',
     );
+    const isSellerEnabled = $derived(
+        (page.props as any).app_config?.is_seller_enabled ??
+            (page.props as any).settings?.is_seller_enabled ??
+            false,
+    );
 
     let selectedVariantProduct = $state<any>(null);
     let showVariantModal = $state(false);
@@ -1021,6 +1026,30 @@
                                                         '/noimage/image.png';
                                                 }}
                                             />
+                                        <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                         {#if isReal && isSellerEnabled}
+                                             <span
+                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'used' ? 'bg-amber-600' : 'bg-emerald-600'}"
+                                             >
+                                                 {product.condition === 'used' ? 'Bekas' : 'Baru'}
+                                             </span>
+                                         {/if}
+                                         {#if isReal && isPromo && discountPercentage > 0}
+                                             <span
+                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                 style="background-color: {secondary};"
+                                             >
+                                                 -{discountPercentage}%
+                                             </span>
+                                         {/if}
+                                     </div>
+                                     {#if isReal && isSellerEnabled}
+                                         <span
+                                             class="absolute top-1.5 right-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs z-10 {product.condition === 'used' ? 'bg-amber-600' : 'bg-emerald-600'}"
+                                         >
+                                             {product.condition === 'used' ? 'Bekas' : 'Baru'}
+                                         </span>
+                                     {/if}
                                         {:else}
                                             <img
                                                 src="/noimage/image.png"
@@ -1028,20 +1057,29 @@
                                                 class="w-full h-full object-cover"
                                             />
                                         {/if}
-                                        {#if product.remaining_promo_stock !== null && product.remaining_promo_stock !== undefined && product.remaining_promo_stock <= 0}
-                                            <span
-                                                class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm bg-slate-500"
-                                            >
-                                                HABIS
-                                            </span>
-                                        {:else}
-                                            <span
-                                                class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                                style="background-color: {secondary};"
-                                            >
-                                                -{disc}%
-                                            </span>
-                                        {/if}
+                                        <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                            {#if isSellerEnabled}
+                                                <span
+                                                    class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                                >
+                                                    {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                                </span>
+                                            {/if}
+                                            {#if product.remaining_promo_stock !== null && product.remaining_promo_stock !== undefined && product.remaining_promo_stock <= 0}
+                                                <span
+                                                    class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm bg-slate-500"
+                                                >
+                                                    HABIS
+                                                </span>
+                                            {:else if disc > 0}
+                                                <span
+                                                    class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                    style="background-color: {secondary};"
+                                                >
+                                                    -{disc}%
+                                                </span>
+                                            {/if}
+                                        </div>
                                     </div>
                                     <div class="p-2.5">
                                         <p
@@ -1340,7 +1378,7 @@
      SECTION 7: BANNER WIDE (full width promo)
 ═══════════════════════════════════════════════════ -->
     {#if middleWide && middleWide.image}
-        <section class="px-3 sm:px-5 lg:px-8 mt-4 mb-4">
+        <section class="px-3 sm:px-5 lg:px-8 mt-2.5 mb-1">
             <div
                 class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
             >
@@ -1371,10 +1409,10 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)
 ═══════════════════════════════════════════════════ -->
-    <section id="recommendations-section" class="mt-2 px-3 sm:px-5 lg:px-8">
+    <section id="recommendations-section" class="px-3 sm:px-5 lg:px-8">
         <div class="max-w-6xl mx-auto bg-transparent shadow-none">
             <!-- Masonry-style grid -->
-            <div class="py-3 px-0">
+            <div class="pt-1 pb-3 px-0">
                 <div
                     class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                 >
@@ -1447,13 +1485,13 @@
                                 >
                                     {#if isReal}
                                         <div>
-                                            <p
+                                            <!-- <p
                                                 class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
                                                 style="color: {primary};"
                                             >
                                                 {product.category?.name ||
                                                     'PRODUK'}
-                                            </p>
+                                            </p> -->
                                             <div
                                                 class="h-[2.5rem] overflow-hidden mb-1"
                                             >
@@ -1463,25 +1501,6 @@
                                                 >
                                                     {product.name}
                                                 </p>
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-1 mt-1 h-4"
-                                            >
-                                                {#if avgRating !== null && reviewCount > 0}
-                                                    <i
-                                                        class="ti ti-star-filled text-amber-500 text-[10px]"
-                                                    ></i>
-                                                    <span
-                                                        class="text-[10px] text-slate-500 font-bold"
-                                                        >{avgRating.toFixed(
-                                                            1,
-                                                        )}</span
-                                                    >
-                                                    <span
-                                                        class="text-[10px] text-slate-400"
-                                                        >({reviewCount})</span
-                                                    >
-                                                {/if}
                                             </div>
                                             <hr class="border-slate-100 my-2" />
                                             <div class="mb-1">

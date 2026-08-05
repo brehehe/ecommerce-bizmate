@@ -411,4 +411,48 @@ class MidtransService
             array_column(array_values(self::$paymentTypes), 'setting_key')
         );
     }
+
+    /**
+     * Fetch status of a transaction directly from Midtrans Core API.
+     *
+     * @return array{success: bool, status?: string, transaction_id?: string, gross_amount?: float, payment_type?: string, raw?: array, error?: string}
+     */
+    public static function status(string $orderId): array
+    {
+        $serverKey = self::getServerKey();
+        if (empty($serverKey)) {
+            return ['success' => false, 'error' => 'Server Key Midtrans belum dikonfigurasi.'];
+        }
+
+        $endpoint = rtrim(self::getCoreApiBaseUrl(), '/').'/v2/'.$orderId.'/status';
+
+        try {
+            $response = Http::withBasicAuth($serverKey, '')
+                ->timeout(10)
+                ->get($endpoint);
+
+            $raw = $response->json() ?? [];
+            $statusCode = (string) ($raw['status_code'] ?? '');
+
+            if ($statusCode === '200' || $statusCode === '201' || ! empty($raw['transaction_status'])) {
+                return [
+                    'success' => true,
+                    'status' => $raw['transaction_status'] ?? 'pending',
+                    'transaction_id' => $raw['transaction_id'] ?? null,
+                    'gross_amount' => isset($raw['gross_amount']) ? (float) $raw['gross_amount'] : null,
+                    'payment_type' => $raw['payment_type'] ?? null,
+                    'raw' => $raw,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'status' => 'not_found',
+                'error' => $raw['status_message'] ?? 'Transaksi tidak ditemukan di Midtrans.',
+                'raw' => $raw,
+            ];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }

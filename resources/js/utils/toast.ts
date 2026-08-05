@@ -2,7 +2,7 @@ const recentToasts = new Map<string, number>();
 
 export function showToast(
     message: string,
-    type: 'success' | 'error' = 'success',
+    type: 'success' | 'error' | 'warning' | 'info' = 'success',
     position: 'top' | 'bottom' = 'bottom',
 ) {
     const normalized = message.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -43,6 +43,10 @@ export function showToast(
     const icon =
         type === 'success'
             ? 'ti-circle-check-filled text-emerald-500'
+            : type === 'warning'
+            ? 'ti-alert-triangle-filled text-amber-500'
+            : type === 'info'
+            ? 'ti-info-circle-filled text-blue-500'
             : 'ti-circle-x-filled text-rose-500';
 
     const initTransform =

@@ -50,10 +50,7 @@ class ProfileController extends Controller
      */
     public function becomeSeller(Request $request): RedirectResponse
     {
-        $isSellerEnabled = filter_var(
-            Setting::where('key', 'is_seller')->value('value') ?? config('app.is_seller', false),
-            FILTER_VALIDATE_BOOLEAN
-        );
+        $isSellerEnabled = (bool) config('app.is_seller', false);
 
         if (! $isSellerEnabled) {
             return back()->with('error', 'Fitur penjual / toko sedang tidak aktif.');
