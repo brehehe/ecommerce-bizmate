@@ -19,7 +19,20 @@
     import ProductAiImageModal from '@/components/ProductAiImageModal.svelte';
     import ProductCatalogBuilderModal from '@/components/ProductCatalogBuilderModal.svelte';
 
-    let { categories = [], brands = [], ai_enabled = false } = $props();
+    let {
+        categories = [],
+        brands = [],
+        ai_enabled = false,
+        isSellerMode = false,
+        listingPricing = {
+            daily_rate: 1000,
+            price_15_days: 15000,
+            price_30_days: 30000,
+            max_custom_days: 15,
+            custom_daily_rate: 1000,
+            fee_enabled: true,
+        },
+    } = $props();
 
     let enable3dModels = $derived(page.props.settings?.enable_3d_models ?? true);
     let membershipEnabled = $derived(page.props.settings?.membership_enabled ?? true);
@@ -152,9 +165,21 @@
         model_3d_file: null,
         model_3d_usdz_url: '',
         model_3d_usdz_file: null,
+
+        // Seller Listing Duration
+        listing_duration_type: '15_days',
+        custom_days: 1,
     });
 
     let uploadedPhotos = $state([]);
+
+    function fmt(val) {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(val || 0);
+    }
 
     // Quick Add Category/Brand Modals
     let showQuickAddCategoryModal = $state(false);
@@ -3921,7 +3946,7 @@
                     <!-- Kondisi Produk -->
                     <div class="mb-6 space-y-2">
                         <label class="block text-xs font-semibold text-slate-700">Kondisi Produk</label>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <button
                                 type="button"
                                 onclick={() => (form.condition = 'new')}
@@ -3933,24 +3958,40 @@
                                     <i class="ti ti-sparkles text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">Baru</p>
+                                    <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">New</p>
                                     <p class="text-[10px] text-slate-500 leading-tight">100% Baru & Tersegel</p>
                                 </div>
                             </button>
 
                             <button
                                 type="button"
-                                onclick={() => (form.condition = 'used')}
-                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'used'
+                                onclick={() => (form.condition = 'second')}
+                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'second' || form.condition === 'used'
                                     ? 'bg-amber-50/80 border-amber-500 text-amber-900 ring-2 ring-amber-500/20 shadow-2xs'
                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
                             >
-                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'second' || form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
                                     <i class="ti ti-refresh text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-bold {form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Bekas / Second</p>
+                                    <p class="text-xs font-bold {form.condition === 'second' || form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Second</p>
                                     <p class="text-[10px] text-slate-500 leading-tight">Pernah Digunakan</p>
+                                </div>
+                            </button>
+
+                            <button
+                                type="button"
+                                onclick={() => (form.condition = 'rent')}
+                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'rent'
+                                    ? 'bg-purple-50/80 border-purple-500 text-purple-900 ring-2 ring-purple-500/20 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                            >
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'rent' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                    <i class="ti ti-repeat text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold {form.condition === 'rent' ? 'text-purple-950' : 'text-slate-800'}">Rent</p>
+                                    <p class="text-[10px] text-slate-500 leading-tight">Barang Sewa / Rental</p>
                                 </div>
                             </button>
                         </div>
@@ -4150,6 +4191,87 @@
                     </div>
 
                 </div>
+
+                <!-- Card: Durasi Listing & Biaya (Seller Mode) -->
+                {#if isSellerMode}
+                    <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-900 flex items-center gap-2">
+                                    <i class="ti ti-clock-hour-4 text-blue-600"></i>
+                                    Durasi Masa Aktif & Biaya Listing (Seller)
+                                </h3>
+                                <p class="text-xs text-slate-500">Pilih jangka waktu produk tampil di storefront marketplace.</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                Mode Seller
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {#each (listingPricing.packages || []) as pkg}
+                                {@const pkgKey = pkg.id || pkg.days}
+                                <button
+                                    type="button"
+                                    onclick={() => form.listing_duration_type = pkgKey}
+                                    class="p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer
+                                           {form.listing_duration_type === pkgKey ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
+                                >
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-black text-slate-800">{pkg.name} ({pkg.days} Hari)</span>
+                                        {#if form.listing_duration_type === pkgKey}
+                                            <i class="ti ti-circle-check-filled text-blue-600 text-base"></i>
+                                        {/if}
+                                    </div>
+                                    <div class="mt-3">
+                                        <p class="text-sm font-black text-blue-700">{fmt(pkg.price)}</p>
+                                        <p class="text-[10px] text-slate-500">Paket {pkg.days} Hari Masa Aktif</p>
+                                    </div>
+                                </button>
+                            {/each}
+
+                            <!-- Custom Days Option -->
+                            <button
+                                type="button"
+                                onclick={() => form.listing_duration_type = 'custom'}
+                                class="p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer
+                                       {form.listing_duration_type === 'custom' ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-black text-slate-800">Custom (Max {listingPricing.max_custom_days} Hari)</span>
+                                    {#if form.listing_duration_type === 'custom'}
+                                        <i class="ti ti-circle-check-filled text-blue-600 text-base"></i>
+                                    {/if}
+                                </div>
+                                <div class="mt-3">
+                                    <p class="text-sm font-black text-blue-700">
+                                        {fmt(form.custom_days * listingPricing.custom_daily_rate)}
+                                    </p>
+                                    <p class="text-[10px] text-slate-500">({form.custom_days} hari x {fmt(listingPricing.custom_daily_rate)}/hari)</p>
+                                </div>
+                            </button>
+                        </div>
+
+                        {#if form.listing_duration_type === 'custom'}
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-700 block">Jumlah Hari Custom:</label>
+                                    <p class="text-[10px] text-slate-500">Maksimal {listingPricing.max_custom_days} hari</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={listingPricing.max_custom_days}
+                                        bind:value={form.custom_days}
+                                        class="w-20 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                    <span class="text-xs font-bold text-slate-600">Hari</span>
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
 
                 <!-- Card: Master Harga & Stok -->
                 <div

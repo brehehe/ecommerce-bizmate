@@ -1,7 +1,7 @@
 <script>
     import { inertia } from '@inertiajs/svelte';
 
-    let { paginator, data, links: rawLinksProp, itemLabel = 'Produk', class: className = '' } = $props();
+    let { paginator = null, data = null, links: rawLinksProp = null, itemLabel = 'Produk', class: className = '' } = $props();
 
     const activePaginator = $derived(paginator || data || {});
     const rawLinks = $derived(activePaginator.links || rawLinksProp || []);
@@ -87,13 +87,13 @@
                 <a
                     href={prevLink.url || '#'}
                     use:inertia={{ preserveScroll: true }}
-                    class="h-9 px-3 rounded-xl flex items-center justify-center gap-1 text-xs font-semibold transition flex-shrink-0 border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300 shadow-2xs {!prevLink.url
+                    class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-semibold transition flex-shrink-0 border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300 shadow-2xs {!prevLink.url
                         ? 'opacity-40 cursor-not-allowed pointer-events-none'
                         : ''}"
                     title="Halaman Sebelumnya"
+                    aria-label="Halaman Sebelumnya"
                 >
-                    <i class="ti ti-chevron-left text-sm"></i>
-                    <span class="hidden md:inline">Sebelumnya</span>
+                    <i class="ti ti-chevron-left text-sm font-bold"></i>
                 </a>
             {/if}
 
@@ -125,13 +125,13 @@
                 <a
                     href={nextLink.url || '#'}
                     use:inertia={{ preserveScroll: true }}
-                    class="h-9 px-3 rounded-xl flex items-center justify-center gap-1 text-xs font-semibold transition flex-shrink-0 border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300 shadow-2xs {!nextLink.url
+                    class="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-semibold transition flex-shrink-0 border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300 shadow-2xs {!nextLink.url
                         ? 'opacity-40 cursor-not-allowed pointer-events-none'
                         : ''}"
                     title="Halaman Selanjutnya"
+                    aria-label="Halaman Selanjutnya"
                 >
-                    <span class="hidden md:inline">Selanjutnya</span>
-                    <i class="ti ti-chevron-right text-sm"></i>
+                    <i class="ti ti-chevron-right text-sm font-bold"></i>
                 </a>
             {/if}
         </nav>

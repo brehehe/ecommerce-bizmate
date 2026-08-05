@@ -82,13 +82,25 @@
         return typeof val === 'string' ? val.split(',') : [val.toString()];
     }
 
+    const isSellerEnabled = $derived(
+        ((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false
+    );
+
+    const sortOptions = $derived([
+        { id: 'latest', label: 'Terbaru' },
+        { id: 'oldest', label: 'Terlama' },
+        ...(!isSellerEnabled ? [{ id: 'popular', label: 'Terlaris' }] : []),
+        { id: 'price_asc', label: 'Harga ↑' },
+        { id: 'price_desc', label: 'Harga ↓' },
+    ]);
+
     // Filter states
     function initSearchState(f: any) {
         return {
             searchQ: f.q || '',
             selectedCategories: getCategoriesFromFilter(f.category),
             selectedBrands: getBrandsFromFilter(f.brand),
-            selectedSort: f.sort || 'relevance',
+            selectedSort: (!f.sort || f.sort === 'relevance') ? 'latest' : f.sort,
             minPrice: f.min_price || '',
             maxPrice: f.max_price || '',
             promoOnly: f.promo || false,
@@ -106,8 +118,8 @@
     let maxPrice = $state(initState.maxPrice);
     let promoOnly = $state(initState.promoOnly);
 
-    let selectedCondition = $state(filters.condition || 'all');
-    let selectedRating = $state(filters.rating || '');
+    let selectedCondition = $state('all');
+    let selectedRating = $state('');
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
@@ -119,7 +131,7 @@
         searchQ = filters.q || '';
         selectedCategories = getCategoriesFromFilter(filters.category);
         selectedBrands = getBrandsFromFilter(filters.brand);
-        selectedSort = filters.sort || 'relevance';
+        selectedSort = (!filters.sort || filters.sort === 'relevance') ? 'latest' : filters.sort;
         minPrice = filters.min_price || '';
         maxPrice = filters.max_price || '';
         promoOnly = filters.promo || false;
@@ -244,11 +256,11 @@
     }
 
     // ── Pagination ────────────────────────────────────────────────────────────
-    let allProducts = $state<any[]>(products?.data || []);
+    let allProducts = $state<any[]>([]);
     let isLoadingMore = $state(false);
-    let currentPage = $state(products?.current_page || 1);
-    let lastPage = $state(products?.last_page || 1);
-    let total = $state(products?.total || 0);
+    let currentPage = $state(1);
+    let lastPage = $state(1);
+    let total = $state(0);
 
     $effect(() => {
         if (!products) return;
@@ -492,7 +504,7 @@
         <div
             class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-            {#each [{ id: 'relevance', label: 'Terkait' }, { id: 'latest', label: 'Terbaru' }, { id: 'popular', label: 'Terlaris' }, { id: 'price_asc', label: 'Harga ↑' }, { id: 'price_desc', label: 'Harga ↓' }] as sortOpt}
+            {#each sortOptions as sortOpt}
                 <button
                     onclick={() => {
                         selectedSort = sortOpt.id;
@@ -576,53 +588,23 @@
                             >Urutkan:</span
                         >
 
-                        <button
-                            onclick={() => {
-                                selectedSort = 'relevance';
-                                applyFilters();
-                            }}
-                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'relevance'
-                                ? 'text-white'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            style={selectedSort === 'relevance'
-                                ? `background-color: ${primary}; border-color: ${primary};`
-                                : ''}
-                        >
-                            Terkait
-                        </button>
-
-                        <button
-                            onclick={() => {
-                                selectedSort = 'latest';
-                                applyFilters();
-                            }}
-                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'latest'
-                                ? 'text-white'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            style={selectedSort === 'latest'
-                                ? `background-color: ${primary}; border-color: ${primary};`
-                                : ''}
-                        >
-                            Terbaru
-                        </button>
-
-                        <button
-                            onclick={() => {
-                                selectedSort = 'popular';
-                                applyFilters();
-                            }}
-                            class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === 'popular'
-                                ? 'text-white'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            style={selectedSort === 'popular'
-                                ? `background-color: ${primary}; border-color: ${primary};`
-                                : ''}
-                        >
-                            Terlaris
-                        </button>
+                        {#each sortOptions.filter(o => !o.id.startsWith('price_')) as sortOpt}
+                            <button
+                                onclick={() => {
+                                    selectedSort = sortOpt.id;
+                                    applyFilters();
+                                }}
+                                class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
+                                   {selectedSort === sortOpt.id
+                                    ? 'text-white'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                                style={selectedSort === sortOpt.id
+                                    ? `background-color: ${primary}; border-color: ${primary};`
+                                    : ''}
+                            >
+                                {sortOpt.label}
+                            </button>
+                        {/each}
 
                         <div class="w-40">
                             <Select
@@ -793,25 +775,27 @@
                         </button>
                     </div>
 
-                    <hr class="border-slate-100" />
+                    {#if !isSellerEnabled}
+                        <hr class="border-slate-100" />
 
-                    <!-- Promo Toko Checkbox -->
-                    <div
-                        role="button"
-                        tabindex="0"
-                        onkeydown={(e) =>
-                            e.key === 'Enter' && setTimeout(applyFilters, 0)}
-                        onclick={() => {
-                            setTimeout(applyFilters, 0);
-                        }}
-                    >
-                        <Toggle
-                            bind:checked={promoOnly}
-                            label="Hanya Promo Toko"
-                            description="Tampilkan diskon aktif"
-                            icon="ti-tag"
-                        />
-                    </div>
+                        <!-- Promo Toko Checkbox -->
+                        <div
+                            role="button"
+                            tabindex="0"
+                            onkeydown={(e) =>
+                                e.key === 'Enter' && setTimeout(applyFilters, 0)}
+                            onclick={() => {
+                                setTimeout(applyFilters, 0);
+                            }}
+                        >
+                            <Toggle
+                                bind:checked={promoOnly}
+                                label="Hanya Promo Toko"
+                                description="Tampilkan diskon aktif"
+                                icon="ti-tag"
+                            />
+                        </div>
+                    {/if}
 
                     <hr class="border-slate-100" />
 
@@ -822,14 +806,14 @@
                         >
                             Kondisi Produk
                         </span>
-                        <div class="grid grid-cols-3 gap-1.5">
-                            {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'Baru' }, { id: 'used', label: 'Bekas' }] as cond}
+                        <div class="grid grid-cols-4 gap-1">
+                            {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
                                 <button
                                     onclick={() => {
                                         selectedCondition = cond.id;
                                         applyFilters(false);
                                     }}
-                                    class="py-1.5 text-xs font-bold rounded-lg border transition text-center
+                                    class="py-1.5 text-[11px] font-bold rounded-lg border transition text-center
                                            {selectedCondition === cond.id
                                         ? 'bg-slate-800 text-white border-slate-800'
                                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
@@ -840,35 +824,37 @@
                         </div>
                     </div>
 
-                    <hr class="border-slate-100" />
+                    {#if !isSellerEnabled}
+                        <hr class="border-slate-100" />
 
-                    <!-- Rating Filter -->
-                    <div class="space-y-2.5">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >
-                            Rating Minimum
-                        </span>
-                        <div class="space-y-1">
-                            {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
-                                <button
-                                    onclick={() => {
-                                        selectedRating = rate.value;
-                                        applyFilters(false);
-                                    }}
-                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                           {selectedRating === rate.value
-                                        ? 'bg-amber-50 text-amber-700 font-extrabold'
-                                        : 'text-slate-600 hover:text-slate-900'}"
-                                >
-                                    <span>{rate.label}</span>
-                                    {#if selectedRating === rate.value}
-                                        <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
-                                    {/if}
-                                </button>
-                            {/each}
+                        <!-- Rating Filter -->
+                        <div class="space-y-2.5">
+                            <span
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                            >
+                                Rating Minimum
+                            </span>
+                            <div class="space-y-1">
+                                {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
+                                    <button
+                                        onclick={() => {
+                                            selectedRating = rate.value;
+                                            applyFilters(false);
+                                        }}
+                                        class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                               {selectedRating === rate.value
+                                            ? 'bg-amber-50 text-amber-700 font-extrabold'
+                                            : 'text-slate-600 hover:text-slate-900'}"
+                                    >
+                                        <span>{rate.label}</span>
+                                        {#if selectedRating === rate.value}
+                                            <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
+                                        {/if}
+                                    </button>
+                                {/each}
+                            </div>
                         </div>
-                    </div>
+                    {/if}
                 </aside>
 
                 <!-- ═══════════════════════════════════════════════════
@@ -972,27 +958,29 @@
                                                     class="w-full h-full object-cover"
                                                 />
                                             {/if}
-                                            {#if isPromo && discountPercentage > 0}
-                                                <span
-                                                    class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                                    style="background-color: {secondary};"
-                                                >
-                                                    -{discountPercentage}%
-                                                </span>
-                                            {/if}
+                                            <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                                {#if isSellerEnabled}
+                                                    <span
+                                                        class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                                    >
+                                                        {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                                    </span>
+                                                {/if}
+                                                {#if isPromo && discountPercentage > 0}
+                                                    <span
+                                                        class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                        style="background-color: {secondary};"
+                                                    >
+                                                        -{discountPercentage}%
+                                                    </span>
+                                                {/if}
+                                            </div>
                                         </div>
                                         <div
                                             class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
                                         >
                                             <div>
                                                 <div class="flex items-center justify-between gap-1 mb-1">
-                                                    <p
-                                                        class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate"
-                                                        style="color: {primary};"
-                                                    >
-                                                        {product.category?.name ||
-                                                            'PRODUK'}
-                                                    </p>
                                                     {#if product.seller?.store_name}
                                                         <span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 max-w-[50%] truncate">
                                                             <i class="ti ti-building-store text-blue-600 text-[11px]"></i>
@@ -1229,17 +1217,19 @@
                             </div>
                         </div>
 
-                        <hr class="border-slate-100 my-5" />
+                        {#if !isSellerEnabled}
+                            <hr class="border-slate-100 my-5" />
 
-                        <!-- Promo Toko Checkbox -->
-                        <div>
-                            <Toggle
-                                bind:checked={promoOnly}
-                                label="Hanya Promo Toko"
-                                description="Tampilkan diskon aktif"
-                                icon="ti-tag"
-                            />
-                        </div>
+                            <!-- Promo Toko Checkbox -->
+                            <div>
+                                <Toggle
+                                    bind:checked={promoOnly}
+                                    label="Hanya Promo Toko"
+                                    description="Tampilkan diskon aktif"
+                                    icon="ti-tag"
+                                />
+                            </div>
+                        {/if}
 
                         <hr class="border-slate-100 my-5" />
 
@@ -1250,11 +1240,11 @@
                             >
                                 Kondisi Produk
                             </span>
-                            <div class="grid grid-cols-3 gap-2">
-                                {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'Baru' }, { id: 'used', label: 'Bekas' }] as cond}
+                            <div class="grid grid-cols-4 gap-1.5">
+                                {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
                                     <button
                                         onclick={() => (selectedCondition = cond.id)}
-                                        class="py-2 text-xs font-bold rounded-lg border transition text-center
+                                        class="py-2 text-[11px] font-bold rounded-lg border transition text-center
                                                {selectedCondition === cond.id
                                             ? 'bg-slate-800 text-white border-slate-800'
                                             : 'bg-white border-slate-200 text-slate-600'}"
@@ -1265,32 +1255,34 @@
                             </div>
                         </div>
 
-                        <hr class="border-slate-100 my-5" />
+                        {#if !isSellerEnabled}
+                            <hr class="border-slate-100 my-5" />
 
-                        <!-- Rating Filter -->
-                        <div class="space-y-3">
-                            <span
-                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                            >
-                                Rating Minimum
-                            </span>
-                            <div class="space-y-1">
-                                {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
-                                    <button
-                                        onclick={() => (selectedRating = rate.value)}
-                                        class="w-full text-left flex items-center justify-between py-2 px-2.5 rounded-lg text-xs font-bold transition
-                                               {selectedRating === rate.value
-                                            ? 'bg-amber-50 text-amber-700'
-                                            : 'text-slate-600'}"
-                                    >
-                                        <span>{rate.label}</span>
-                                        {#if selectedRating === rate.value}
-                                            <i class="ti ti-check text-xs text-amber-600"></i>
-                                        {/if}
-                                    </button>
-                                {/each}
+                            <!-- Rating Filter -->
+                            <div class="space-y-3">
+                                <span
+                                    class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                                >
+                                    Rating Minimum
+                                </span>
+                                <div class="space-y-1">
+                                    {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
+                                        <button
+                                            onclick={() => (selectedRating = rate.value)}
+                                            class="w-full text-left flex items-center justify-between py-2 px-2.5 rounded-lg text-xs font-bold transition
+                                                   {selectedRating === rate.value
+                                                ? 'bg-amber-50 text-amber-700'
+                                                : 'text-slate-600'}"
+                                        >
+                                            <span>{rate.label}</span>
+                                            {#if selectedRating === rate.value}
+                                                <i class="ti ti-check text-xs text-amber-600"></i>
+                                            {/if}
+                                        </button>
+                                    {/each}
+                                </div>
                             </div>
-                        </div>
+                        {/if}
                     </div>
 
                     <div

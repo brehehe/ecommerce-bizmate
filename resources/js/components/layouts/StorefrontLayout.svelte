@@ -30,6 +30,8 @@
         children,
         hideMobileHeader = false,
         hideMobileFooter = false,
+        storeName: propStoreName = undefined,
+        storeLogo: propStoreLogo = undefined,
     } = $props();
 
     const page = usePage();
@@ -86,7 +88,8 @@
             false,
     );
     const storeName = $derived(
-        (page.props as any).storeName ||
+        propStoreName ||
+            (page.props as any).storeName ||
             (page.props as any).settings?.store_name ||
             page.props.name ||
             'Toko Kami',
@@ -95,7 +98,8 @@
         (page.props as any).settings?.store_app_name || storeName,
     );
     const storeLogo = $derived(
-        (page.props as any).storeLogo ||
+        propStoreLogo ||
+            (page.props as any).storeLogo ||
             (page.props as any).settings?.store_logo,
     );
     const storeIcon = $derived((page.props as any).settings?.store_icon);
@@ -109,6 +113,105 @@
 
     // Search
     let searchQuery = $state('');
+
+    // Search autocomplete suggestions
+    let searchSuggestions = $state<{ brands: any[]; categories: any[]; products: any[] }>({ brands: [], categories: [], products: [] });
+    let showSuggestions = $state(false);
+    let suggestionsLoading = $state(false);
+    let suggestDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function formatPrice(amount: number): string {
+        return 'Rp ' + Number(amount).toLocaleString('id-ID');
+    }
+
+    async function fetchSuggestions(q: string) {
+        if (q.length < 2) {
+            searchSuggestions = { brands: [], categories: [], products: [] };
+            showSuggestions = false;
+            suggestionsLoading = false;
+            return;
+        }
+        suggestionsLoading = true;
+        showSuggestions = true;
+        try {
+            const res = await fetch(`/search/suggest?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            searchSuggestions = data;
+        } catch {
+            searchSuggestions = { brands: [], categories: [], products: [] };
+        } finally {
+            suggestionsLoading = false;
+        }
+    }
+
+    function handleSearchInput() {
+        if (suggestDebounceTimer) {
+            clearTimeout(suggestDebounceTimer);
+        }
+        if (searchQuery.length < 2) {
+            showSuggestions = false;
+            suggestionsLoading = false;
+            return;
+        }
+        suggestionsLoading = true;
+        showSuggestions = true;
+        suggestDebounceTimer = setTimeout(() => {
+            fetchSuggestions(searchQuery);
+        }, 300);
+    }
+
+    function closeSuggestions() {
+        showSuggestions = false;
+    }
+
+    function handleSuggestionKeydown(e: KeyboardEvent) {
+        if (e.key === 'Escape') {
+            closeSuggestions();
+        }
+    }
+
+    function goToBrand(slug: string) {
+        closeSuggestions();
+        router.get('/search', { brand: slug });
+    }
+
+    function goToCategory(slug: string) {
+        closeSuggestions();
+        router.get('/category/' + slug);
+    }
+
+    function goToProduct(slug: string) {
+        closeSuggestions();
+        router.get('/products/' + slug);
+    }
+
+    function goToSearchAll() {
+        closeSuggestions();
+        if (searchQuery.trim()) {
+            router.get('/search', { q: searchQuery });
+        } else {
+            router.get('/search');
+        }
+    }
+
+    const hasSuggestions = $derived(
+        searchSuggestions.brands.length > 0 ||
+        searchSuggestions.categories.length > 0 ||
+        searchSuggestions.products.length > 0
+    );
+
+    // Close suggestions dropdown when clicking outside
+    $effect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            const target = e.target as Element;
+            if (!target.closest('[data-search-container]')) {
+                closeSuggestions();
+            }
+        }
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    });
+
 
     // Mobile menu
     let mobileMenuOpen = $state(false);
@@ -1278,6 +1381,7 @@
 
     function handleSearch(e: Event) {
         e.preventDefault();
+        closeSuggestions();
         if (searchQuery.trim()) {
             router.get('/search', { q: searchQuery });
         } else {
@@ -1519,26 +1623,132 @@
 
 
                 <!-- Search bar (desktop) -->
-                <form
-                    onsubmit={handleSearch}
-                    class="flex-grow max-w-3xl lg:max-w-4xl mx-6"
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                    class="flex-grow max-w-3xl lg:max-w-4xl mx-6 relative"
+                    onkeydown={handleSuggestionKeydown}
+                    data-search-container="true"
                 >
-                    <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
-                        <input
-                            type="text"
-                            bind:value={searchQuery}
-                            placeholder="Cari produk..."
-                            class="w-full pl-4 pr-10 py-2 text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
-                        />
-                        <button
-                            type="submit"
-                            aria-label="Search"
-                            class="absolute right-3 text-white/90 hover:text-white transition flex items-center justify-center p-1"
+                    <form onsubmit={handleSearch}>
+                        <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
+                            <input
+                                type="text"
+                                bind:value={searchQuery}
+                                placeholder="Cari produk, brand, kategori..."
+                                oninput={handleSearchInput}
+                                onfocus={() => { if (searchQuery.length >= 2) showSuggestions = true; }}
+                                class="w-full pl-4 pr-10 py-2 text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
+                                autocomplete="off"
+                            />
+                            <button
+                                type="submit"
+                                aria-label="Search"
+                                class="absolute right-3 text-white/90 hover:text-white transition flex items-center justify-center p-1"
+                            >
+                                <i class="ti ti-search text-xl"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Suggestion Dropdown (desktop) -->
+                    {#if showSuggestions && searchQuery.length >= 2}
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <div
+                            class="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200/90 z-[200] overflow-hidden text-slate-800"
+                            onmousedown={(e) => e.preventDefault()}
                         >
-                            <i class="ti ti-search text-xl"></i>
-                        </button>
-                    </div>
-                </form>
+                            {#if suggestionsLoading}
+                                <div class="p-3 space-y-2">
+                                    {#each Array(3) as _}
+                                        <div class="flex items-center gap-3 animate-pulse">
+                                            <div class="w-9 h-9 bg-slate-100 rounded shrink-0"></div>
+                                            <div class="flex-1 space-y-1">
+                                                <div class="h-3.5 bg-slate-100 rounded w-2/3"></div>
+                                                <div class="h-2.5 bg-slate-100 rounded w-1/3"></div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {:else if !hasSuggestions}
+                                <div class="px-4 py-5 text-center text-xs text-slate-500">
+                                    Tidak ada hasil untuk "<span class="font-semibold text-slate-700">{searchQuery}</span>"
+                                </div>
+                            {:else}
+                                <div class="max-h-[400px] overflow-y-auto divide-y divide-slate-100">
+                                    <!-- Brand suggestions -->
+                                    {#if searchSuggestions.brands.length > 0}
+                                        <div class="py-1">
+                                            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400">Brand</div>
+                                            {#each searchSuggestions.brands as brand}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => goToBrand(brand.slug)}
+                                                    class="w-full flex items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition"
+                                                >
+                                                    <span class="font-medium text-slate-800">{brand.name}</span>
+                                                    <span class="text-[11px] text-slate-400">Brand</span>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+
+                                    <!-- Category suggestions -->
+                                    {#if searchSuggestions.categories.length > 0}
+                                        <div class="py-1">
+                                            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400">Kategori</div>
+                                            {#each searchSuggestions.categories as cat}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => goToCategory(cat.slug)}
+                                                    class="w-full flex items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition"
+                                                >
+                                                    <span class="font-medium text-slate-800">{cat.name}</span>
+                                                    <span class="text-[11px] text-slate-400">Kategori</span>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+
+                                    <!-- Product suggestions -->
+                                    {#if searchSuggestions.products.length > 0}
+                                        <div class="py-1">
+                                            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400">Produk</div>
+                                            {#each searchSuggestions.products as product}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => goToProduct(product.slug)}
+                                                    class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-slate-50 transition group"
+                                                >
+                                                    <img
+                                                        src={product.image}
+                                                        alt={product.name}
+                                                        class="w-9 h-9 rounded border border-slate-200/80 object-cover shrink-0"
+                                                        onerror={(e) => { (e.currentTarget as HTMLImageElement).src = '/noimage/image.png'; }}
+                                                    />
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-sm text-slate-800 font-medium truncate group-hover:text-blue-600 transition">{product.name}</p>
+                                                        <p class="text-xs font-semibold text-rose-600 mt-0.5">{formatPrice(product.price)}</p>
+                                                    </div>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <!-- Footer -->
+                                <button
+                                    type="button"
+                                    onclick={goToSearchAll}
+                                    class="w-full flex items-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 border-t border-slate-100 transition text-left"
+                                >
+                                    <i class="ti ti-search text-slate-400 text-sm"></i>
+                                    <span>Cari "<strong class="text-slate-900">{searchQuery}</strong>"</span>
+                                </button>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
+
 
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
@@ -1871,49 +2081,51 @@
                                                 Saya
                                             </Link>
                                         {/if}
-                                        <Link
-                                            href="/profile/addresses"
-                                            prefetch
-                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                        >
-                                            <i class="ti ti-map-pin text-base"
-                                            ></i> Alamat Pengiriman
-                                        </Link>
-                                        <Link
-                                            href="/transactions"
-                                            prefetch
-                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                        >
-                                            <i class="ti ti-package text-base"
-                                            ></i> Pesanan
-                                        </Link>
-                                        <Link
-                                            href="/profile/bank-accounts"
-                                            prefetch
-                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                        >
-                                            <i
-                                                class="ti ti-building-bank text-base"
-                                            ></i> Rekening Saya
-                                        </Link>
-                                        <Link
-                                            href="/returns"
-                                            prefetch
-                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                        >
-                                            <i
-                                                class="ti ti-arrow-back-up text-base"
-                                            ></i> Retur Saya
-                                        </Link>
-                                        <Link
-                                            href="/refunds"
-                                            prefetch
-                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                        >
-                                            <i
-                                                class="ti ti-receipt-refund text-base"
-                                            ></i> Refund Saya
-                                        </Link>
+                                        {#if !isSellerEnabled}
+                                            <Link
+                                                href="/profile/addresses"
+                                                prefetch
+                                                class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            >
+                                                <i class="ti ti-map-pin text-base"
+                                                ></i> Alamat Pengiriman
+                                            </Link>
+                                            <Link
+                                                href="/transactions"
+                                                prefetch
+                                                class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            >
+                                                <i class="ti ti-package text-base"
+                                                ></i> Pesanan
+                                            </Link>
+                                            <Link
+                                                href="/profile/bank-accounts"
+                                                prefetch
+                                                class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            >
+                                                <i
+                                                    class="ti ti-building-bank text-base"
+                                                ></i> Rekening Saya
+                                            </Link>
+                                            <Link
+                                                href="/returns"
+                                                prefetch
+                                                class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            >
+                                                <i
+                                                    class="ti ti-arrow-back-up text-base"
+                                                ></i> Retur Saya
+                                            </Link>
+                                            <Link
+                                                href="/refunds"
+                                                prefetch
+                                                class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            >
+                                                <i
+                                                    class="ti ti-receipt-refund text-base"
+                                                ></i> Refund Saya
+                                            </Link>
+                                        {/if}
                                         <button
                                             onclick={() => {
                                                 profileDropOpen = false;
@@ -2054,23 +2266,126 @@
                 {/if}
                 
                 <!-- Mobile search bar -->
-                <form onsubmit={handleSearch} class="flex-grow">
-                    <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
-                        <input
-                            type="text"
-                            bind:value={searchQuery}
-                            placeholder="Cari produk..."
-                            class="w-full pl-3.5 pr-9 py-1.5 text-xs sm:text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
-                        />
-                        <button
-                            type="submit"
-                            aria-label="Search"
-                            class="absolute right-2.5 text-white/90 hover:text-white transition flex items-center justify-center p-1"
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                    class="flex-grow relative"
+                    onkeydown={handleSuggestionKeydown}
+                    data-search-container="true"
+                >
+                    <form onsubmit={handleSearch}>
+                        <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
+                            <input
+                                type="text"
+                                bind:value={searchQuery}
+                                placeholder="Cari produk, brand..."
+                                oninput={handleSearchInput}
+                                onfocus={() => { if (searchQuery.length >= 2) showSuggestions = true; }}
+                                class="w-full pl-3.5 pr-9 py-1.5 text-xs sm:text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
+                                autocomplete="off"
+                            />
+                            <button
+                                type="submit"
+                                aria-label="Search"
+                                class="absolute right-2.5 text-white/90 hover:text-white transition flex items-center justify-center p-1"
+                            >
+                                <i class="ti ti-search text-xl"></i>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Suggestion Dropdown (mobile) -->
+                    {#if showSuggestions && searchQuery.length >= 2}
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <div
+                            class="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-slate-200/90 z-[200] overflow-hidden text-slate-800"
+                            onmousedown={(e) => e.preventDefault()}
                         >
-                            <i class="ti ti-search text-xl"></i>
-                        </button>
-                    </div>
-                </form>
+                            {#if suggestionsLoading}
+                                <div class="p-3 space-y-2">
+                                    {#each Array(3) as _}
+                                        <div class="flex items-center gap-3 animate-pulse">
+                                            <div class="w-8 h-8 bg-slate-100 rounded shrink-0"></div>
+                                            <div class="flex-1 space-y-1">
+                                                <div class="h-3 bg-slate-100 rounded w-2/3"></div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {:else if !hasSuggestions}
+                                <div class="px-4 py-4 text-center text-xs text-slate-500">
+                                    Tidak ada hasil untuk "<span class="font-semibold text-slate-700">{searchQuery}</span>"
+                                </div>
+                            {:else}
+                                <div class="max-h-[60dvh] overflow-y-auto divide-y divide-slate-100">
+                                    {#if searchSuggestions.brands.length > 0}
+                                        <div class="py-1">
+                                            <div class="px-3 py-1 text-[10px] font-semibold text-slate-400">Brand</div>
+                                            {#each searchSuggestions.brands as brand}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => goToBrand(brand.slug)}
+                                                    class="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 transition"
+                                                >
+                                                    <span class="font-medium text-slate-800 truncate">{brand.name}</span>
+                                                    <span class="text-[10px] text-slate-400 shrink-0">Brand</span>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+
+                                    {#if searchSuggestions.categories.length > 0}
+                                        <div class="py-1">
+                                            <div class="px-3 py-1 text-[10px] font-semibold text-slate-400">Kategori</div>
+                                            {#each searchSuggestions.categories as cat}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => goToCategory(cat.slug)}
+                                                    class="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 transition"
+                                                >
+                                                    <span class="font-medium text-slate-800 truncate">{cat.name}</span>
+                                                    <span class="text-[10px] text-slate-400 shrink-0">Kategori</span>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+
+                                    {#if searchSuggestions.products.length > 0}
+                                        <div class="py-1">
+                                            <div class="px-3 py-1 text-[10px] font-semibold text-slate-400">Produk</div>
+                                            {#each searchSuggestions.products as product}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => goToProduct(product.slug)}
+                                                    class="w-full flex items-center gap-2.5 px-3 py-1.5 text-left hover:bg-slate-50 transition group"
+                                                >
+                                                    <img
+                                                        src={product.image}
+                                                        alt={product.name}
+                                                        class="w-8 h-8 rounded border border-slate-200/80 object-cover shrink-0"
+                                                        onerror={(e) => { (e.currentTarget as HTMLImageElement).src = '/noimage/image.png'; }}
+                                                    />
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="text-xs text-slate-800 font-medium truncate group-hover:text-blue-600 transition">{product.name}</p>
+                                                        <p class="text-[11px] font-semibold text-rose-600">{formatPrice(product.price)}</p>
+                                                    </div>
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    {/if}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onclick={goToSearchAll}
+                                    class="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 border-t border-slate-100 transition text-left"
+                                >
+                                    <i class="ti ti-search text-slate-400 text-xs"></i>
+                                    <span>Cari "<strong class="text-slate-900">{searchQuery}</strong>"</span>
+                                </button>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
 
                 <!-- Mobile right icons -->
                 <div class="flex items-center gap-1.5 shrink-0">
@@ -2267,41 +2582,43 @@
                         <i class="ti ti-id text-lg"></i> Membership Saya
                     </Link>
                 {/if}
-                <Link
-                    href="/profile/addresses"
-                    prefetch
-                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                >
-                    <i class="ti ti-map-pin text-lg"></i> Alamat Pengiriman
-                </Link>
-                <Link
-                    href="/transactions"
-                    prefetch
-                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                >
-                    <i class="ti ti-package text-lg"></i> Pesanan Saya
-                </Link>
-                <Link
-                    href="/profile/bank-accounts"
-                    prefetch
-                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                >
-                    <i class="ti ti-building-bank text-lg"></i> Rekening Saya
-                </Link>
-                <Link
-                    href="/returns"
-                    prefetch
-                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                >
-                    <i class="ti ti-arrow-back-up text-lg"></i> Retur Saya
-                </Link>
-                <Link
-                    href="/refunds"
-                    prefetch
-                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                >
-                    <i class="ti ti-receipt-refund text-lg"></i> Refund Saya
-                </Link>
+                {#if !isSellerEnabled}
+                    <Link
+                        href="/profile/addresses"
+                        prefetch
+                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    >
+                        <i class="ti ti-map-pin text-lg"></i> Alamat Pengiriman
+                    </Link>
+                    <Link
+                        href="/transactions"
+                        prefetch
+                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    >
+                        <i class="ti ti-package text-lg"></i> Pesanan Saya
+                    </Link>
+                    <Link
+                        href="/profile/bank-accounts"
+                        prefetch
+                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    >
+                        <i class="ti ti-building-bank text-lg"></i> Rekening Saya
+                    </Link>
+                    <Link
+                        href="/returns"
+                        prefetch
+                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    >
+                        <i class="ti ti-arrow-back-up text-lg"></i> Retur Saya
+                    </Link>
+                    <Link
+                        href="/refunds"
+                        prefetch
+                        class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    >
+                        <i class="ti ti-receipt-refund text-lg"></i> Refund Saya
+                    </Link>
+                {/if}
 
                 <button
                     onclick={() => {

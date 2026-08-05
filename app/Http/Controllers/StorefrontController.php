@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 class StorefrontController extends Controller
 {
@@ -55,6 +56,101 @@ class StorefrontController extends Controller
         /** @var User|null $user */
         $user = auth()->user();
         $this->memberDiscountPct = $this->membershipService->getMembershipDiscountForUser($user);
+    }
+
+    /**
+     * Search suggestions endpoint — returns brands, categories, and products matching a query.
+     *
+     * Supports multi-keyword search: "Raket Adidas Baru" will find products where
+     * each word matches in any of: name, brand column, brand relation, category name,
+     * summary, or description.
+     */
+    public function suggest(Request $request): JsonResponse
+    {
+        $raw = trim((string) $request->input('q', ''));
+
+        if (mb_strlen($raw) < 2) {
+            return response()->json(['brands' => [], 'categories' => [], 'products' => []]);
+        }
+
+        // Split query into individual keywords (max 5 keywords to avoid abuse)
+        $keywords = array_slice(
+            array_filter(preg_split('/\s+/', $raw)),
+            0,
+            5
+        );
+
+        // --- Brands ---
+        $brands = Brand::select('id', 'name', 'slug')
+            ->where('is_active', true)
+            ->where(function ($q) use ($keywords) {
+                foreach ($keywords as $kw) {
+                    $q->where('name', 'ilike', '%'.$kw.'%');
+                }
+            })
+            ->orderBy('name')
+            ->limit(4)
+            ->get();
+
+        // --- Categories ---
+        $categories = Category::select('id', 'name', 'slug', 'icon', 'image')
+            ->where(function ($q) use ($keywords) {
+                foreach ($keywords as $kw) {
+                    $q->where('name', 'ilike', '%'.$kw.'%');
+                }
+            })
+            ->orderBy('order')
+            ->limit(4)
+            ->get();
+
+        // --- Products: every keyword must match in at least one column/relation ---
+        $products = Product::select('id', 'name', 'slug', 'brand', 'category_id', 'brand_id')
+            ->with([
+                'productPrice:id,product_id,price',
+                'images:id,product_id,path,is_main,sort_order',
+                'brandRelation:id,name',
+                'category:id,name',
+            ])
+            ->activeAndNotExpired()
+            ->where(function ($query) use ($keywords) {
+                foreach ($keywords as $kw) {
+                    $query->where(function ($q) use ($kw) {
+                        $q->where('name', 'ilike', '%'.$kw.'%')
+                            ->orWhere('brand', 'ilike', '%'.$kw.'%')
+                            ->orWhere('summary', 'ilike', '%'.$kw.'%')
+                            ->orWhere('description', 'ilike', '%'.$kw.'%')
+                            ->orWhereHas('brandRelation', fn ($b) => $b->where('name', 'ilike', '%'.$kw.'%'))
+                            ->orWhereHas('category', fn ($c) => $c->where('name', 'ilike', '%'.$kw.'%'));
+                    });
+                }
+            })
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(function (Product $product): array {
+                $image = $product->images->first();
+                $imagePath = $image?->path;
+
+                if ($imagePath && ! str_starts_with($imagePath, 'http') && ! str_starts_with($imagePath, '/')) {
+                    $imagePath = '/'.$imagePath;
+                }
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'price' => $product->productPrice?->price ?? 0,
+                    'image' => $imagePath ?? '/noimage/image.png',
+                    'brand' => $product->brandRelation?->name ?? $product->brand,
+                    'category' => $product->category?->name,
+                ];
+            });
+
+        return response()->json([
+            'brands' => $brands,
+            'categories' => $categories,
+            'products' => $products,
+        ]);
     }
 
     /**
@@ -96,7 +192,7 @@ class StorefrontController extends Controller
                 ])
                     ->withAvg('reviews as avg_rating', 'rating')
                     ->withCount('reviews as review_count')
-                    ->where('active', true)
+                    ->activeAndNotExpired()
                     ->latest()
                     ->take(12)
                     ->get();
@@ -127,7 +223,7 @@ class StorefrontController extends Controller
                 ])
                     ->withAvg('reviews as avg_rating', 'rating')
                     ->withCount('reviews as review_count')
-                    ->where('active', true)
+                    ->activeAndNotExpired()
                     ->latest()
                     ->get();
 
@@ -167,7 +263,7 @@ class StorefrontController extends Controller
                 ])
                     ->withAvg('reviews as avg_rating', 'rating')
                     ->withCount('reviews as review_count')
-                    ->where('active', true)
+                    ->activeAndNotExpired()
                     ->whereIn('id', $bestSellerIds)
                     ->get()
                     ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
@@ -228,12 +324,12 @@ class StorefrontController extends Controller
     {
         $this->initMembership();
         if (! Str::isUuid($product)) {
-            $product = Product::where('slug', $product)->first();
+            $product = Product::activeAndNotExpired()->where('slug', $product)->first();
             if (! $product) {
                 abort(404);
             }
         } else {
-            $product = Product::where('id', $product)->firstOrFail();
+            $product = Product::activeAndNotExpired()->where('id', $product)->firstOrFail();
         }
 
         $product->load([
@@ -252,6 +348,10 @@ class StorefrontController extends Controller
             'tierPrices',
             'variants.tierPrices',
         ]);
+
+        if ($product->isListingExpired()) {
+            abort(404, 'Produk tidak ditemukan atau telah habis masa aktifnya.');
+        }
 
         // Calculate actual sold count from completed transactions
         $soldCount = DB::table('transaction_items')
@@ -273,6 +373,10 @@ class StorefrontController extends Controller
             'variations.options',
         ])
             ->where('active', true)
+            ->where(function ($q) {
+                $q->whereNull('listing_expires_at')
+                    ->orWhere('listing_expires_at', '>', now());
+            })
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->take(8)
@@ -869,7 +973,7 @@ class StorefrontController extends Controller
                 'q' => $request->input('q'),
                 'category' => $request->input('category'),
                 'brand' => $request->input('brand'),
-                'sort' => $request->input('sort', 'relevance'),
+                'sort' => $request->input('sort', 'latest'),
                 'min_price' => $request->input('min_price'),
                 'max_price' => $request->input('max_price'),
                 'promo' => $request->boolean('promo'),
@@ -891,7 +995,7 @@ class StorefrontController extends Controller
         $categoryId = $request->input('category');
         $minPrice = $request->input('min_price');
         $maxPrice = $request->input('max_price');
-        $sort = $request->input('sort', 'relevance');
+        $sort = $request->input('sort', 'latest');
 
         $categories = Category::select('id', 'name', 'slug', 'image', 'icon')
             ->orderBy('order')
@@ -1086,6 +1190,8 @@ class StorefrontController extends Controller
             $productsCollection = $productsCollection->sortByDesc(function ($p) {
                 return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
             });
+        } elseif ($sort === 'oldest') {
+            $productsCollection = $productsCollection->sortBy('created_at');
         } elseif ($sort === 'latest') {
             $productsCollection = $productsCollection->sortByDesc('created_at');
         } elseif ($sort === 'popular') {
@@ -1204,6 +1310,8 @@ class StorefrontController extends Controller
                     $productsCollection = $productsCollection->sortByDesc(function ($p) {
                         return $p->is_promo ? $p->promo_price : ($p->productPrice?->price ?? 0);
                     });
+                } elseif ($sort === 'oldest') {
+                    $productsCollection = $productsCollection->sortBy('created_at');
                 } elseif ($sort === 'latest') {
                     $productsCollection = $productsCollection->sortByDesc('created_at');
                 } elseif ($sort === 'popular') {
@@ -2095,10 +2203,7 @@ class StorefrontController extends Controller
      */
     public function sellerStore(Request $request, string $slug): Response
     {
-        $isSellerEnabled = filter_var(
-            Setting::where('key', 'is_seller')->value('value') ?? config('app.is_seller', false),
-            FILTER_VALIDATE_BOOLEAN
-        );
+        $isSellerEnabled = (bool) config('app.is_seller', false);
 
         if (! $isSellerEnabled) {
             abort(404);
@@ -2125,7 +2230,7 @@ class StorefrontController extends Controller
             ->withAvg('reviews as avg_rating', 'rating')
             ->withCount('reviews as review_count')
             ->where('user_id', $seller->id)
-            ->where('active', true);
+            ->activeAndNotExpired();
 
         if ($search) {
             $productsQuery->where('name', 'ilike', "%{$search}%");

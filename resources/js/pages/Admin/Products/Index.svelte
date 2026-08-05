@@ -447,7 +447,313 @@
         filters = { search: '', category: [], brand: [], status: 'all' },
         import_auto_fetch_images = true,
         ai_enabled = false,
+        isSellerMode = false,
+        listingPricing = {
+            daily_rate: 1000,
+            price_15_days: 15000,
+            price_30_days: 30000,
+            max_custom_days: 15,
+            custom_daily_rate: 1000,
+            fee_enabled: true,
+        },
     } = $props();
+
+    let isSuperAdmin = $derived(
+        Boolean(
+            page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin' || r.name === 'Admin') ||
+            !page.props.auth?.user?.is_seller
+        )
+    );
+
+    // Renew & History Modal State
+    let isRenewModalOpen = $state(false);
+    let productToRenew = $state(null);
+    let renewDurationType = $state('15_days');
+    let renewCustomDays = $state(1);
+    let submittingRenew = $state(false);
+    let qrisModalData = $state(null);
+
+    // History Modal State
+    let isHistoryModalOpen = $state(false);
+    let loadingHistory = $state(false);
+    let paymentHistory = $state([]);
+    let isHistorySuperAdmin = $state(false);
+
+    function openRenewModal(prod) {
+        productToRenew = prod;
+        renewDurationType = '15_days';
+        renewCustomDays = 1;
+        isRenewModalOpen = true;
+    }
+
+    // QRIS payment polling & Reverb WebSockets
+    let qrisPollingStatus = $state('pending'); // 'pending' | 'paid' | 'failed'
+    let qrisPollingInterval = null;
+    let activeListeningOrderId = null;
+
+    function stopQrisPolling() {
+        if (qrisPollingInterval !== null) {
+            clearInterval(qrisPollingInterval);
+            qrisPollingInterval = null;
+        }
+    }
+
+    function handleListingPaymentConfirmed(eventData) {
+        console.log(
+            '%c[Reverb WebSocket] ⚡ EVENT BROADCAST DITERIMA!',
+            'color: #10b981; font-weight: bold; font-size: 13px; background: #ecfdf5; padding: 4px 8px; rounded: 4px;',
+            eventData
+        );
+        const payload = eventData?.data || eventData || {};
+        const status = payload.status || eventData?.status;
+        const orderId = payload.order_id || eventData?.order_id;
+        const productId = payload.product_id || eventData?.product_id;
+
+        console.log('[Reverb WebSocket] Parsed payload status:', status, 'orderId:', orderId);
+
+        if (qrisModalData && (
+            !orderId ||
+            orderId === qrisModalData.order_id ||
+            String(productId) === String(qrisModalData.product_id)
+        )) {
+            if (status === 'paid' || status === 'settlement' || status === 'success') {
+                qrisPollingStatus = 'paid';
+                stopQrisPolling();
+                stopReverbListener();
+                showToast('Pembayaran QRIS Berhasil Dikonfirmasi!', 'success');
+                setTimeout(() => {
+                    closeQrisModal();
+                    router.reload({ only: ['products'] });
+                }, 1500);
+            }
+        }
+    }
+
+    function startReverbListener(orderId) {
+        if (typeof window !== 'undefined' && window.Echo) {
+            stopReverbListener();
+            activeListeningOrderId = orderId;
+
+            const connectionState = window.Echo?.connector?.pusher?.connection?.state || 'unknown';
+            console.log(
+                `%c[Reverb WebSocket] 🟢 Subscribing ke Order ID: ${orderId} (Status Server WebSocket: ${connectionState})`,
+                'color: #2563eb; font-weight: bold; background: #eff6ff; padding: 4px 8px; rounded: 4px;'
+            );
+
+            // Direct public channel specifically for this order ID (instant, no auth overhead)
+            window.Echo.channel(`listing-payment.${orderId}`)
+                .listen('.listing.payment.confirmed', (e) => {
+                    console.log('[Reverb WebSocket] Channel listing-payment.' + orderId + ' event:', e);
+                    handleListingPaymentConfirmed(e);
+                });
+
+            // User & Admin private channels
+            const currentUser = page.props?.auth?.user;
+            if (currentUser?.id) {
+                window.Echo.private(`user.${currentUser.id}`)
+                    .listen('.listing.payment.confirmed', (e) => {
+                        console.log('[Reverb WebSocket] Channel user.' + currentUser.id + ' event:', e);
+                        handleListingPaymentConfirmed(e);
+                    });
+            }
+            window.Echo.private('admin')
+                .listen('.listing.payment.confirmed', (e) => {
+                    console.log('[Reverb WebSocket] Channel admin event:', e);
+                    handleListingPaymentConfirmed(e);
+                });
+        } else {
+            console.warn('[Reverb WebSocket] ⚠️ window.Echo belum terinisialisasi.');
+        }
+    }
+
+    function stopReverbListener() {
+        if (typeof window !== 'undefined' && window.Echo) {
+            if (activeListeningOrderId) {
+                window.Echo.leave(`listing-payment.${activeListeningOrderId}`);
+                activeListeningOrderId = null;
+            }
+            const currentUser = page.props?.auth?.user;
+            if (currentUser?.id) {
+                window.Echo.leave(`user.${currentUser.id}`);
+            }
+            window.Echo.leave('admin');
+        }
+    }
+
+    let checkingQrisStatusManual = $state(false);
+
+    $effect(() => {
+        if (qrisModalData?.order_id && qrisPollingInterval === null && qrisPollingStatus === 'pending') {
+            startQrisPolling(qrisModalData.order_id);
+        }
+    });
+
+    async function checkQrisStatusManual() {
+        if (!qrisModalData?.order_id || checkingQrisStatusManual) return;
+        checkingQrisStatusManual = true;
+
+        try {
+            // Strictly check status directly from Midtrans Core API via backend
+            const res = await fetch(`/admin/listing-payment-status/${encodeURIComponent(qrisModalData.order_id)}`, {
+                headers: { Accept: 'application/json' },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'paid' || data.status === 'settlement') {
+                    qrisPollingStatus = 'paid';
+                    stopQrisPolling();
+                    stopReverbListener();
+                    showToast('Pembayaran QRIS Berhasil Dikonfirmasi Lunas di Midtrans!', 'success');
+                    setTimeout(() => {
+                        closeQrisModal();
+                        router.reload({ only: ['products'] });
+                    }, 1500);
+                    return;
+                } else if (data.status === 'failed' || data.status === 'expire' || data.status === 'cancel') {
+                    qrisPollingStatus = 'failed';
+                    stopQrisPolling();
+                    stopReverbListener();
+                    showToast('Pembayaran Gagal atau Kedaluwarsa di Midtrans.', 'warning');
+                    return;
+                } else {
+                    showToast('Pembayaran belum terdeteksi di Midtrans. Silakan selesaikan pembayaran.', 'info');
+                    return;
+                }
+            }
+            showToast('Gagal mengecek status ke Midtrans Server.', 'error');
+        } catch {
+            showToast('Gagal terhubung ke server', 'error');
+        } finally {
+            checkingQrisStatusManual = false;
+        }
+    }
+
+
+    function startQrisPolling(orderId) {
+        stopQrisPolling();
+        qrisPollingStatus = 'pending';
+        startReverbListener(orderId);
+
+        qrisPollingInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/admin/listing-payment-status/${encodeURIComponent(orderId)}`, {
+                    headers: { Accept: 'application/json' },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.status === 'paid' || data.status === 'settlement') {
+                    qrisPollingStatus = 'paid';
+                    stopQrisPolling();
+                    stopReverbListener();
+                    showToast('Pembayaran QRIS Berhasil Dikonfirmasi!', 'success');
+                    setTimeout(() => {
+                        closeQrisModal();
+                        router.reload({ only: ['products'] });
+                    }, 1500);
+                } else if (data.status === 'failed') {
+                    qrisPollingStatus = 'failed';
+                    stopQrisPolling();
+                    stopReverbListener();
+                }
+            } catch { /* ignore network errors */ }
+        }, 2000);
+    }
+
+    function closeQrisModal() {
+        stopQrisPolling();
+        stopReverbListener();
+        qrisModalData = null;
+        qrisPollingStatus = 'pending';
+        checkingQrisStatusManual = false;
+    }
+
+    async function submitRenewListing() {
+        if (!productToRenew) return;
+        submittingRenew = true;
+
+        try {
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
+            const res = await fetch(`/admin/products/${productToRenew.id}/get-qris-listing`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    listing_duration_type: renewDurationType,
+                    custom_days: renewCustomDays,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success && data.qris_payment) {
+                qrisModalData = data.qris_payment;
+                isRenewModalOpen = false;
+                // Start polling for payment confirmation
+                startQrisPolling(data.qris_payment.order_id);
+            } else {
+                showToast('Gagal memuat pembayaran QRIS', 'error');
+            }
+        } catch (err) {
+            showToast('Terjadi kesalahan koneksi', 'error');
+        } finally {
+            submittingRenew = false;
+        }
+    }
+
+    async function openHistoryModal() {
+        isHistoryModalOpen = true;
+        loadingHistory = true;
+        try {
+            const res = await fetch('/admin/products/listing-payments-history', {
+                headers: { 'Accept': 'application/json' },
+            });
+            const data = await res.json();
+            if (data.success) {
+                paymentHistory = data.payments?.data || [];
+                isHistorySuperAdmin = Boolean(data.is_super_admin);
+            }
+        } catch (err) {
+            showToast('Gagal memuat riwayat pembayaran.', 'error');
+        } finally {
+            loadingHistory = false;
+        }
+    }
+
+    function isSellerProduct(prod) {
+        if (!prod || !prod.user_id) return false;
+        if (prod.user) {
+            return Boolean(prod.user.is_seller);
+        }
+        return false;
+    }
+
+    function getExpirationStatus(prod) {
+        if (!isSellerProduct(prod)) {
+            return null;
+        }
+        if (!prod.listing_expires_at) {
+            return { text: 'Perlu Diposting', color: 'bg-amber-50 text-amber-700 border-amber-200', isExpired: true };
+        }
+        const exp = new Date(prod.listing_expires_at);
+        const now = new Date();
+        if (exp <= now) {
+            return { text: 'Kadaluarsa', color: 'bg-rose-50 text-rose-700 border-rose-200', isExpired: true };
+        }
+        const diffTime = exp.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+        return { text: `Aktif (${diffDays} Hari)`, color: 'bg-blue-50 text-blue-700 border-blue-200', isExpired: false, daysLeft: diffDays };
+    }
+
+    function fmt(val) {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+        }).format(val || 0);
+    }
 
     // svelte-ignore state_referenced_locally
     let autoFetchImages = $state(import_auto_fetch_images);
@@ -479,6 +785,58 @@
         selectedProducts.length === products.data.length &&
             products.data.length > 0,
     );
+
+    let isAdminAdjustModalOpen = $state(false);
+    let productToAdjust = $state(null);
+    let adminAdjustAction = $state('add_days');
+    let adminAdjustDays = $state(30);
+    let adminAdjustDate = $state('');
+    let submittingAdminAdjust = $state(false);
+
+    function openAdminAdjustModal(product) {
+        productToAdjust = product;
+        adminAdjustAction = 'add_days';
+        adminAdjustDays = 30;
+        adminAdjustDate = product.listing_expires_at ? new Date(product.listing_expires_at).toISOString().slice(0, 16) : '';
+        isAdminAdjustModalOpen = true;
+    }
+
+    async function submitAdminAdjustListing() {
+        if (!productToAdjust) return;
+        submittingAdminAdjust = true;
+
+        try {
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
+            const res = await fetch(`/admin/products/${productToAdjust.id}/admin-adjust-listing`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken || '',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: adminAdjustAction,
+                    days: adminAdjustDays,
+                    expires_at: adminAdjustDate,
+                }),
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.message || 'Masa aktif berhasil diperbarui!', 'success');
+                isAdminAdjustModalOpen = false;
+                productToAdjust = null;
+                router.reload({ only: ['products'] });
+            } else {
+                showToast(data.message || 'Gagal mengubah masa aktif.', 'error');
+            }
+        } catch {
+            showToast('Terjadi kesalahan sistem.', 'error');
+        } finally {
+            submittingAdminAdjust = false;
+        }
+    }
 
     function toggleSelectAll() {
         if (selectAll) {
@@ -728,6 +1086,14 @@
                 >
                     <i class="ti ti-file-export"></i> Export
                 </a>
+                {#if isSellerMode}
+                    <Link
+                        href="/admin/listing-payments"
+                        class="h-9 rounded-lg border border-blue-200 bg-blue-50/80 px-4 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 flex items-center gap-2 cursor-pointer"
+                    >
+                        <i class="ti ti-history text-base"></i> Riwayat Pembayaran
+                    </Link>
+                {/if}
                 <Link
                     href={adminProductsCreate.url()}
                     class="h-9 rounded-lg px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 flex items-center gap-2 cursor-pointer"
@@ -965,6 +1331,7 @@
                                     {@const hasVariants =
                                         product.variants &&
                                         product.variants.length > 0}
+                                    {@const expStatus = getExpirationStatus(product)}
                                     <tr
                                         class="product-row table-row-hover transition {!product.active
                                             ? 'bg-slate-50/30'
@@ -1041,17 +1408,27 @@
                                                         title={product.name}
                                                         >{product.name}</Link
                                                     >
-                                                    <div class="flex items-center gap-1.5 mt-0.5">
-                                                        <p class="text-[11px] text-slate-500 font-mono">
+                                                    <div class="flex items-center flex-wrap gap-1.5 mt-0.5">
+                                                        <p class="text-[11px] text-slate-500 font-mono shrink-0">
                                                             SKU Induk: {product.sku}
                                                         </p>
-                                                        {#if product.condition === 'used'}
-                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200">
-                                                                <i class="ti ti-refresh text-[10px]"></i> Bekas
+                                                        {#if product.condition === 'rent'}
+                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-100/90 text-purple-800 border border-purple-200 shrink-0 whitespace-nowrap">
+                                                                <i class="ti ti-repeat text-[10px]"></i> Rent
+                                                            </span>
+                                                        {:else if product.condition === 'used' || product.condition === 'second'}
+                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200 shrink-0 whitespace-nowrap">
+                                                                <i class="ti ti-refresh text-[10px]"></i> Second
                                                             </span>
                                                         {:else}
-                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200">
-                                                                <i class="ti ti-sparkles text-[10px]"></i> Baru
+                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap">
+                                                                <i class="ti ti-sparkles text-[10px]"></i> New
+                                                            </span>
+                                                        {/if}
+                                                        {#if isSellerMode && isSellerProduct(product) && expStatus}
+                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border shrink-0 whitespace-nowrap {expStatus.color}">
+                                                                <i class="ti {expStatus.isExpired ? 'ti-alert-triangle' : 'ti-clock'} text-[10px]"></i>
+                                                                {expStatus.text}
                                                             </span>
                                                         {/if}
                                                     </div>
@@ -1287,6 +1664,28 @@
                                         <td
                                             class="px-3 xl:px-4 py-4 text-right whitespace-nowrap" data-label="Aksi"
                                         >
+                                            {#if isSellerMode}
+                                                {#if isSellerProduct(product)}
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => openRenewModal(product)}
+                                                        class="p-2 text-blue-600 hover:text-blue-800 rounded-lg transition inline-block cursor-pointer"
+                                                        title="Perpanjang Masa Aktif via QRIS"
+                                                    >
+                                                        <i class="ti ti-history text-base"></i>
+                                                    </button>
+                                                {/if}
+                                                {#if isSuperAdmin}
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => openAdminAdjustModal(product)}
+                                                        class="p-2 text-purple-600 hover:text-purple-800 rounded-lg transition inline-block cursor-pointer"
+                                                        title="Kelola, Atur, & Reset Masa Aktif (Super Admin)"
+                                                    >
+                                                        <i class="ti ti-adjustments-alt text-base"></i>
+                                                    </button>
+                                                {/if}
+                                            {/if}
                                             <Link
                                                 href={adminProductsEdit.url({
                                                     product: product.id,
@@ -3356,6 +3755,527 @@
                         {submittingBulkDelete
                             ? 'Memproses...'
                             : 'Ya, Hapus Semua'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- RENEW LISTING MODAL -->
+    {#if isRenewModalOpen && productToRenew}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                            <i class="ti ti-history text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-900">Perpanjang Masa Aktif</h3>
+                            <p class="text-xs text-slate-400 truncate max-w-[200px]">{productToRenew.name}</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onclick={() => { isRenewModalOpen = false; productToRenew = null; }}
+                        class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer"
+                    >
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <p class="text-xs text-slate-600">Pilih paket perpanjangan masa aktif untuk produk ini:</p>
+
+                    <div class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                        {#each (listingPricing.packages || []) as pkg}
+                            {@const pkgKey = pkg.id || pkg.days}
+                            <button
+                                type="button"
+                                onclick={() => renewDurationType = pkgKey}
+                                class="w-full p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer
+                                       {renewDurationType === pkgKey ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
+                            >
+                                <div>
+                                    <span class="text-xs font-bold text-slate-800 block">{pkg.name}</span>
+                                    <span class="text-[10px] text-slate-500">Aktif {pkg.days} Hari</span>
+                                </div>
+                                <span class="text-xs font-black text-blue-700">{fmt(pkg.price)}</span>
+                            </button>
+                        {/each}
+
+                        <button
+                            type="button"
+                            onclick={() => renewDurationType = 'custom'}
+                            class="w-full p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer
+                                   {renewDurationType === 'custom' ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
+                        >
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Custom (Max {listingPricing.max_custom_days} Hari)</span>
+                                <span class="text-[10px] text-slate-500">{renewCustomDays} hari x {fmt(listingPricing.custom_daily_rate)}</span>
+                            </div>
+                            <span class="text-xs font-black text-blue-700">{fmt(renewCustomDays * listingPricing.custom_daily_rate)}</span>
+                        </button>
+                    </div>
+
+                    {#if renewDurationType === 'custom'}
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-700">Jumlah Hari:</span>
+                                <span class="text-[10px] text-slate-400">Batas maksimal: {listingPricing.max_custom_days} hari</span>
+                            </div>
+                            <input
+                                type="number"
+                                min="1"
+                                max={listingPricing.max_custom_days}
+                                bind:value={renewCustomDays}
+                                oninput={() => {
+                                    const maxVal = listingPricing.max_custom_days || 365;
+                                    if (renewCustomDays > maxVal) renewCustomDays = maxVal;
+                                    if (renewCustomDays < 1) renewCustomDays = 1;
+                                }}
+                                class="w-24 px-3 py-1 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none"
+                            />
+                        </div>
+                    {/if}
+
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onclick={() => { isRenewModalOpen = false; productToRenew = null; }}
+                        class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        onclick={submitRenewListing}
+                        disabled={submittingRenew}
+                        class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md shadow-blue-600/20"
+                    >
+                        {#if submittingRenew}
+                            <i class="ti ti-loader animate-spin text-sm"></i>
+                            <span>Memproses...</span>
+                        {:else}
+                            <i class="ti ti-qrcode text-sm"></i>
+                            <span>Bayar via QRIS</span>
+                        {/if}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- SUPER ADMIN LISTING ADJUSTMENT MODAL -->
+    {#if isAdminAdjustModalOpen && productToAdjust}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left border border-slate-100 animate-scale-up">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold text-xs border border-purple-200 flex items-center gap-1.5">
+                            <i class="ti ti-shield-check text-sm"></i> Super Admin Control
+                        </span>
+                        <h3 class="font-bold text-sm text-slate-900 line-clamp-1">{productToAdjust.name}</h3>
+                    </div>
+                    <button
+                        type="button"
+                        onclick={() => { isAdminAdjustModalOpen = false; productToAdjust = null; }}
+                        class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <p class="text-xs text-slate-500">Atur, tambah, kurangi, atau reset masa aktif listing produk secara langsung tanpa pembayaran:</p>
+
+                    <!-- Option Selection -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onclick={() => adminAdjustAction = 'add_days'}
+                            class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
+                                   {adminAdjustAction === 'add_days' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                        >
+                            <i class="ti ti-calendar-plus text-sm"></i> Tambah Hari (+Hari)
+                        </button>
+
+                        <button
+                            type="button"
+                            onclick={() => adminAdjustAction = 'set_days'}
+                            class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
+                                   {adminAdjustAction === 'set_days' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                        >
+                            <i class="ti ti-adjustments text-sm"></i> Set Jumlah Hari
+                        </button>
+
+                        <button
+                            type="button"
+                            onclick={() => adminAdjustAction = 'set_date'}
+                            class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
+                                   {adminAdjustAction === 'set_date' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                        >
+                            <i class="ti ti-calendar text-sm"></i> Tanggal Spesifik
+                        </button>
+
+                        <button
+                            type="button"
+                            onclick={() => adminAdjustAction = 'set_unlimited'}
+                            class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
+                                   {adminAdjustAction === 'set_unlimited' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                        >
+                            <i class="ti ti-infinity text-sm"></i> Unlimited
+                        </button>
+                    </div>
+
+                    <!-- Dynamic Input Fields based on action -->
+                    {#if adminAdjustAction === 'add_days'}
+                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5">
+                            <label class="text-xs font-bold text-slate-700 block">Tambah Jumlah Hari:</label>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    bind:value={adminAdjustDays}
+                                    class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:outline-none"
+                                    placeholder="Contoh: 30"
+                                />
+                                <span class="text-xs font-bold text-slate-600 whitespace-nowrap">Hari</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500">Masa aktif produk akan ditambah +{adminAdjustDays} hari dari tanggal aktif terakhir.</p>
+                        </div>
+                    {:else if adminAdjustAction === 'set_days'}
+                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5">
+                            <label class="text-xs font-bold text-slate-700 block">Set Masa Aktif (Dari Sekarang):</label>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    bind:value={adminAdjustDays}
+                                    class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:outline-none"
+                                    placeholder="Contoh: 15"
+                                />
+                                <span class="text-xs font-bold text-slate-600 whitespace-nowrap">Hari</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500">Masa aktif produk akan diatur persis {adminAdjustDays} hari dari hari ini.</p>
+                        </div>
+                    {:else if adminAdjustAction === 'set_date'}
+                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5">
+                            <label class="text-xs font-bold text-slate-700 block">Pilih Tanggal Kedaluwarsa:</label>
+                            <input
+                                type="datetime-local"
+                                bind:value={adminAdjustDate}
+                                class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:outline-none cursor-pointer"
+                            />
+                        </div>
+                    {:else if adminAdjustAction === 'set_unlimited'}
+                        <div class="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center space-y-1">
+                            <i class="ti ti-infinity text-2xl text-blue-600"></i>
+                            <p class="text-xs font-bold text-blue-900">Ubah Menjadi Produk Unlimited</p>
+                            <p class="text-[10px] text-blue-700">Produk ini tidak akan pernah kedaluwarsa.</p>
+                        </div>
+                    {/if}
+
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <button
+                            type="button"
+                            onclick={() => { adminAdjustAction = 'reset_expired'; submitAdminAdjustListing(); }}
+                            disabled={submittingAdminAdjust}
+                            class="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] transition cursor-pointer flex items-center gap-1"
+                            title="Reset / Nonaktifkan Masa Aktif Produk"
+                        >
+                            <i class="ti ti-rotate-clockwise text-xs"></i>
+                            Reset (Kedaluwarsa)
+                        </button>
+
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onclick={() => { isAdminAdjustModalOpen = false; productToAdjust = null; }}
+                                class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onclick={submitAdminAdjustListing}
+                                disabled={submittingAdminAdjust}
+                                class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20 disabled:opacity-50"
+                            >
+                                {#if submittingAdminAdjust}
+                                    <i class="ti ti-loader animate-spin text-sm"></i>
+                                    <span>Menyimpan...</span>
+                                {:else}
+                                    <i class="ti ti-check text-sm"></i>
+                                    <span>Simpan Perubahan</span>
+                                {/if}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- MIDTRANS QRIS PAYMENT MODAL -->
+    {#if qrisModalData}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center max-h-[90vh] overflow-y-auto">
+                <!-- Header -->
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200/80 flex items-center gap-1.5">
+                            <i class="ti ti-qrcode text-sm"></i> Midtrans QRIS
+                        </span>
+                        {#if qrisModalData.is_sandbox}
+                            <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold text-[10px] border border-amber-200">
+                                <i class="ti ti-flask text-[9px]"></i> SANDBOX
+                            </span>
+                        {/if}
+                    </div>
+                    <button
+                        type="button"
+                        onclick={closeQrisModal}
+                        class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer shrink-0"
+                    >
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-600">Scan QR Code di bawah dengan E-Wallet / Mobile Banking:</p>
+                        <p class="text-[11px] font-medium text-slate-400 mt-0.5">GoPay, ShopeePay, OVO, Dana, LinkAja, BCA, Mandiri, dll.</p>
+                    </div>
+
+                    {#if qrisModalData.qr_image}
+                        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 inline-block shadow-sm">
+                            <img src={qrisModalData.qr_image} alt="QRIS Code" class="w-52 h-52 object-contain mx-auto rounded-lg" />
+                        </div>
+                    {:else if qrisModalData.qr_string}
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block shadow-inner">
+                            <p class="text-xs font-mono break-all text-slate-700">{qrisModalData.qr_string}</p>
+                        </div>
+                    {/if}
+
+                    <div class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100/80 space-y-1">
+                        <span class="text-[11px] text-slate-500 font-medium">Total Biaya Perpanjangan:</span>
+                        <p class="text-xl font-black text-blue-700">{fmt(qrisModalData.fee)}</p>
+                        <p class="text-[11px] font-bold text-slate-600">Durasi: {qrisModalData.days} Hari Masa Aktif</p>
+                    </div>
+
+                    <!-- Staging Debug: Show Order ID & QR Image URL Link -->
+                    {#if qrisModalData.order_id}
+                        <div class="bg-amber-50/90 rounded-2xl border border-amber-200/80 p-3 text-left space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold text-amber-800 flex items-center gap-1">
+                                    <i class="ti ti-ticket text-[11px]"></i> Order ID (Untuk Midtrans Simulator):
+                                </span>
+                                <button
+                                    type="button"
+                                    onclick={() => {
+                                        if (qrisModalData.order_id) {
+                                            navigator.clipboard?.writeText(qrisModalData.order_id);
+                                            showToast('Order ID berhasil disalin!', 'info');
+                                        }
+                                    }}
+                                    class="text-[10px] font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 cursor-pointer underline"
+                                >
+                                    <i class="ti ti-copy text-[11px]"></i> Salin Order ID
+                                </button>
+                            </div>
+                            <p class="text-xs font-mono font-bold text-slate-800 bg-white/90 p-1.5 rounded-lg border border-amber-200 text-center tracking-wider">
+                                {qrisModalData.order_id}
+                            </p>
+
+                            {#if qrisModalData.qr_image_url || qrisModalData.qr_image}
+                                <div class="pt-1 border-t border-amber-200/60 flex items-center justify-between gap-1">
+                                    <span class="text-[10px] text-amber-700 font-medium">QR Image URL:</span>
+                                    <a
+                                        href={qrisModalData.qr_image_url || qrisModalData.qr_image}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="text-[10px] font-mono text-blue-600 hover:underline truncate max-w-[180px]"
+                                    >
+                                        {qrisModalData.qr_image_url || qrisModalData.qr_image}
+                                    </a>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- Reverb Realtime Status Footer -->
+                <div class="pt-2 flex flex-col gap-2">
+                    {#if qrisPollingStatus === 'paid'}
+                        <!-- SUCCESS SCREEN -->
+                        <div class="flex flex-col items-center gap-2.5 py-6 px-4 bg-emerald-50/90 rounded-2xl border border-emerald-200 shadow-xs text-center animate-fade-in">
+                            <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce shadow-inner">
+                                <i class="ti ti-circle-check-filled text-4xl text-emerald-600"></i>
+                            </div>
+                            <div class="space-y-1">
+                                <h4 class="font-extrabold text-base text-emerald-900">Terima Kasih!</h4>
+                                <p class="font-bold text-xs text-emerald-700">Pembayaran Berhasil Diterima</p>
+                            </div>
+                            <p class="text-[11px] text-emerald-600/90 font-medium leading-relaxed">
+                                Masa aktif listing produk Anda telah resmi diperpanjang. Halaman akan otomatis diperbarui dalam sekejap...
+                            </p>
+                        </div>
+                    {:else if qrisPollingStatus === 'failed'}
+                        <!-- FAILED -->
+                        <div class="flex flex-col items-center gap-2 py-3 bg-rose-50 rounded-2xl border border-rose-200">
+                            <div class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
+                                <i class="ti ti-circle-x-filled text-2xl text-rose-600"></i>
+                            </div>
+                            <p class="font-bold text-xs text-rose-700">Pembayaran dibatalkan atau kedaluwarsa</p>
+                        </div>
+                        <button
+                            type="button"
+                            onclick={closeQrisModal}
+                            class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                    {:else}
+                        <!-- WAITING / REVERB REALTIME LISTENER -->
+                        <div class="flex flex-col items-center gap-2 py-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                            <div class="flex items-center gap-2">
+                                <span class="relative flex h-3 w-3">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </span>
+                                <span class="text-xs font-bold text-slate-700">Menunggu Pembayaran</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500 font-medium px-2">
+                                Pembayaran terhubung dengan <span class="font-bold text-emerald-600">Reverb Realtime WebSocket</span>. Produk akan otomatis aktif seketika Anda selesai membayar.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={checkingQrisStatusManual}
+                            onclick={checkQrisStatusManual}
+                            class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                            {#if checkingQrisStatusManual}
+                                <i class="ti ti-loader-2 animate-spin text-sm"></i> Mengecek Status Pembayaran...
+                            {:else}
+                                <i class="ti ti-refresh text-sm"></i> Cek Status Pembayaran Sekarang
+                            {/if}
+                        </button>
+                        <button
+                            type="button"
+                            onclick={closeQrisModal}
+                            class="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 font-semibold text-xs transition cursor-pointer"
+                        >
+                            Tutup / Batal
+                        </button>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    {/if}
+
+
+
+    <!-- PAYMENT HISTORY MODAL -->
+    {#if isHistoryModalOpen}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div class="bg-white rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">
+                            <i class="ti ti-receipt text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                                <span>Riwayat Pembayaran Listing</span>
+                                {#if isHistorySuperAdmin}
+                                    <span class="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 text-[10px] font-bold">Semua Seller (Admin Mode)</span>
+                                {/if}
+                            </h3>
+                            <p class="text-xs text-slate-400">Daftar transaksi perpanjangan & listing biaya produk.</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onclick={() => isHistoryModalOpen = false}
+                        class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer"
+                    >
+                        <i class="ti ti-x"></i>
+                    </button>
+                </div>
+
+                <div class="overflow-y-auto flex-1 custom-scrollbar pr-1">
+                    {#if loadingHistory}
+                        <div class="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
+                            <i class="ti ti-loader animate-spin text-2xl"></i>
+                            <span class="text-xs font-semibold">Memuat riwayat pembayaran...</span>
+                        </div>
+                    {:else if paymentHistory.length === 0}
+                        <div class="py-12 text-center text-slate-400 space-y-2">
+                            <i class="ti ti-receipt-off text-3xl"></i>
+                            <p class="text-xs font-semibold">Belum ada riwayat pembayaran listing.</p>
+                        </div>
+                    {:else}
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                                        <th class="p-3">Waktu</th>
+                                        <th class="p-3">Order ID</th>
+                                        {#if isHistorySuperAdmin}
+                                            <th class="p-3">Toko / Seller</th>
+                                        {/if}
+                                        <th class="p-3">Produk</th>
+                                        <th class="p-3 text-center">Durasi</th>
+                                        <th class="p-3 text-right">Nominal</th>
+                                        <th class="p-3 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {#each paymentHistory as item}
+                                        <tr class="hover:bg-slate-50/60 transition">
+                                            <td class="p-3 whitespace-nowrap text-slate-500 text-[11px]">
+                                                {item.paid_at ? new Date(item.paid_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                                            </td>
+                                            <td class="p-3 font-mono font-bold text-slate-700 text-[11px] whitespace-nowrap">
+                                                {item.order_id}
+                                            </td>
+                                            {#if isHistorySuperAdmin}
+                                                <td class="p-3 whitespace-nowrap font-bold text-slate-800">
+                                                    {item.user?.store_name || item.user?.name || '-'}
+                                                </td>
+                                            {/if}
+                                            <td class="p-3 font-bold text-slate-800 max-w-[180px] truncate">
+                                                {item.product?.name || 'Produk'}
+                                            </td>
+                                            <td class="p-3 text-center font-bold text-blue-600 whitespace-nowrap">
+                                                {item.days} Hari
+                                            </td>
+                                            <td class="p-3 text-right font-black text-slate-900 whitespace-nowrap">
+                                                {fmt(item.amount)}
+                                            </td>
+                                            <td class="p-3 text-center whitespace-nowrap">
+                                                <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold inline-flex items-center gap-1">
+                                                    <i class="ti ti-circle-check text-xs"></i> Lunas
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        </div>
+                    {/if}
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-end shrink-0">
+                    <button
+                        type="button"
+                        onclick={() => isHistoryModalOpen = false}
+                        class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
+                    >
+                        Tutup
                     </button>
                 </div>
             </div>

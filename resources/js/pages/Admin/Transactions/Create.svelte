@@ -12,6 +12,8 @@
         products = [],
         categories = [],
         customers = [],
+        sellers = [],
+        isSeller = false,
         paymentMethods = [],
         midtransEnabledMethods = [],
         midtransAdminFee = 0,
@@ -100,6 +102,7 @@
     // Filter states for catalog
     let searchQuery = $state('');
     let selectedCat = $state('all');
+    let selectedSeller = $state('all');
 
     // Filtered products list
     const filteredProducts = $derived(
@@ -109,8 +112,12 @@
                 p.category_id?.toString() === selectedCat ||
                 p.category?.slug === selectedCat;
 
+            const matchesSeller =
+                selectedSeller === 'all' ||
+                p.user_id?.toString() === selectedSeller;
+
             const query = searchQuery.trim().toLowerCase();
-            if (!query) return matchesCat;
+            if (!query) return matchesCat && matchesSeller;
 
             const nameMatch = p.name?.toLowerCase().includes(query);
             const skuMatch = p.sku?.toLowerCase().includes(query);
@@ -118,7 +125,7 @@
                 v.sku?.toLowerCase().includes(query),
             );
 
-            return matchesCat && (nameMatch || skuMatch || variantSkuMatch);
+            return matchesCat && matchesSeller && (nameMatch || skuMatch || variantSkuMatch);
         }),
     );
 
@@ -184,9 +191,19 @@
         return paymentMethods;
     });
 
-    let selectedPaymentMethodId = $state<string>(
-        cashPaymentMethodsList[0]?.id ? cashPaymentMethodsList[0].id.toString() : (paymentMethods[0]?.id ? paymentMethods[0].id.toString() : ''),
-    );
+    let selectedPaymentMethodId = $state<string>('');
+
+    $effect(() => {
+        const firstCash = cashPaymentMethodsList[0];
+        const firstPayment = paymentMethods[0];
+        if (!selectedPaymentMethodId) {
+            selectedPaymentMethodId = firstCash?.id
+                ? firstCash.id.toString()
+                : firstPayment?.id
+                  ? firstPayment.id.toString()
+                  : '';
+        }
+    });
 
     const paymentMethodOptions = $derived(
         cashPaymentMethodsList.map((pm: any) => ({
@@ -516,13 +533,28 @@
         <!-- LEFT: Catalog -->
         <div class="lg:col-span-7 flex flex-col min-h-0 gap-2.5">
 
-            <!-- Search + Category -->
+            <!-- Search + Category + Seller Filter -->
             <div class="bg-white rounded-2xl px-3 pt-3 pb-2.5 border border-slate-200 shadow-2xs shrink-0 space-y-2">
-                <Input
-                    bind:value={searchQuery}
-                    placeholder="Cari produk, SKU, atau varian..."
-                    icon="ti-search"
-                />
+                <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                        <Input
+                            bind:value={searchQuery}
+                            placeholder="Cari produk, SKU, atau varian..."
+                            icon="ti-search"
+                        />
+                    </div>
+                    {#if sellers.length > 0 && !isSeller}
+                        <select
+                            bind:value={selectedSeller}
+                            class="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:border-blue-500 shadow-2xs"
+                        >
+                            <option value="all">Semua Penjual</option>
+                            {#each sellers as seller}
+                                <option value={seller.id.toString()}>{seller.store_name || seller.name}</option>
+                            {/each}
+                        </select>
+                    {/if}
+                </div>
                 <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
                     <button
                         onclick={() => selectedCat = 'all'}

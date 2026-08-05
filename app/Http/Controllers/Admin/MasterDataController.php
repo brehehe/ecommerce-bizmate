@@ -1423,4 +1423,86 @@ class MasterDataController extends Controller
 
         return back()->with('success', 'Pengaturan biaya berhasil disimpan.');
     }
+
+    /**
+     * Display Product Upload Listing Price settings.
+     */
+    public function priceUpload(Request $request): Response
+    {
+        $this->authorizeAdminOnly($request);
+
+        $keys = [
+            'product_listing_daily_rate',
+            'product_listing_15_days_price',
+            'product_listing_30_days_price',
+            'product_listing_max_custom_days',
+            'product_listing_custom_daily_rate',
+            'product_listing_fee_enabled',
+            'product_listing_packages',
+        ];
+
+        $settings = Setting::whereIn('key', $keys)->pluck('value', 'key');
+
+        $rawPackages = $settings['product_listing_packages'] ?? null;
+        $packages = [];
+        if ($rawPackages) {
+            $packages = json_decode($rawPackages, true) ?? [];
+        }
+        if (empty($packages)) {
+            $packages = [
+                ['id' => 'pkg_15', 'name' => 'Paket 15 Hari', 'days' => 15, 'price' => 15000, 'is_popular' => false],
+                ['id' => 'pkg_30', 'name' => 'Paket 30 Hari', 'days' => 30, 'price' => 30000, 'is_popular' => true],
+            ];
+        }
+
+        return Inertia::render('Admin/MasterData/PriceUpload', [
+            'settings' => [
+                'product_listing_daily_rate' => (float) ($settings['product_listing_daily_rate'] ?? 1000),
+                'product_listing_15_days_price' => (float) ($settings['product_listing_15_days_price'] ?? 15000),
+                'product_listing_30_days_price' => (float) ($settings['product_listing_30_days_price'] ?? 30000),
+                'product_listing_max_custom_days' => (int) ($settings['product_listing_max_custom_days'] ?? 15),
+                'product_listing_custom_daily_rate' => (float) ($settings['product_listing_custom_daily_rate'] ?? 1000),
+                'product_listing_fee_enabled' => (bool) (isset($settings['product_listing_fee_enabled']) ? (bool) $settings['product_listing_fee_enabled'] : true),
+                'product_listing_packages' => $packages,
+            ],
+            'isSellerMode' => (bool) config('app.is_seller', false),
+        ]);
+    }
+
+    /**
+     * Update Product Upload Listing Price settings.
+     */
+    public function updatePriceUpload(Request $request): RedirectResponse
+    {
+        $this->authorizeAdminOnly($request);
+
+        $validated = $request->validate([
+            'product_listing_daily_rate' => 'required|numeric|min:0',
+            'product_listing_max_custom_days' => 'required|integer|min:1|max:365',
+            'product_listing_custom_daily_rate' => 'required|numeric|min:0',
+            'product_listing_fee_enabled' => 'required|boolean',
+            'product_listing_packages' => 'nullable|array',
+            'product_listing_packages.*.id' => 'nullable|string',
+            'product_listing_packages.*.name' => 'required|string',
+            'product_listing_packages.*.days' => 'required|integer|min:1',
+            'product_listing_packages.*.price' => 'required|numeric|min:0',
+            'product_listing_packages.*.is_popular' => 'nullable|boolean',
+        ]);
+
+        foreach ($validated as $key => $value) {
+            if ($key === 'product_listing_packages') {
+                Setting::updateOrCreate(
+                    ['key' => 'product_listing_packages'],
+                    ['value' => json_encode($value)]
+                );
+            } else {
+                Setting::updateOrCreate(
+                    ['key' => $key],
+                    ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value]
+                );
+            }
+        }
+
+        return back()->with('success', 'Pengaturan biaya upload produk berhasil disimpan.');
+    }
 }

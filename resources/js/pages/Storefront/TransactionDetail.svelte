@@ -782,6 +782,9 @@
                 qr_image?: string;
                 deeplink?: string;
                 expiry_time?: string;
+                payment_code?: string;
+                store?: string;
+                snap_token?: string;
             };
         } catch (e) {
             return null;
@@ -1204,7 +1207,7 @@
         }
     });
 
-    let trackingHistory = $state([]);
+    let trackingHistory = $state<any[]>([]);
     let loadingTracking = $state(false);
     let trackingError = $state('');
 
@@ -2620,7 +2623,7 @@
                                                     </div>
                                                     <button
                                                         type="button"
-                                                        onclick={() => payWithCardSnap(instr.snap_token)}
+                                                        onclick={() => payWithCardSnap(instr.snap_token ?? '')}
                                                         class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 bg-rose-600 hover:bg-rose-700 cursor-pointer"
                                                     >
                                                         <i class="ti ti-credit-card"></i>

@@ -47,7 +47,13 @@ class ImportProductsJob implements ShouldQueue
                     $existingProduct = Product::where('sku', $rawSku)->first();
 
                     $rawCond = strtolower(trim($pData['condition'] ?? 'new'));
-                    $condition = in_array($rawCond, ['used', 'bekas', 'second'], true) ? 'used' : 'new';
+                    if (in_array($rawCond, ['rent', 'sewa'], true)) {
+                        $condition = 'rent';
+                    } elseif (in_array($rawCond, ['used', 'bekas', 'second'], true)) {
+                        $condition = 'second';
+                    } else {
+                        $condition = 'new';
+                    }
 
                     if ($existingProduct) {
                         if (empty($this->userId) || $existingProduct->user_id === $this->userId || empty($existingProduct->user_id)) {

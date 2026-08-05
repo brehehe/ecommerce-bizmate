@@ -71,11 +71,23 @@
         );
     }
 
+    const isSellerEnabled = $derived(
+        ((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false
+    );
+
+    const sortOptions = $derived([
+        { id: 'latest', label: 'Terbaru' },
+        { id: 'oldest', label: 'Terlama' },
+        ...(!isSellerEnabled ? [{ id: 'popular', label: 'Terlaris' }] : []),
+        { id: 'price_asc', label: 'Harga ↑' },
+        { id: 'price_desc', label: 'Harga ↓' },
+    ]);
+
     // Filter states
     // svelte-ignore state_referenced_locally
     let searchQ = $state(filters.q || '');
     // svelte-ignore state_referenced_locally
-    let selectedSort = $state(filters.sort || 'popular');
+    let selectedSort = $state((!filters.sort || filters.sort === 'relevance') ? 'latest' : filters.sort);
 
     function getCategoriesFromFilter(catFilter: any) {
         if (!catFilter) return [];
@@ -116,7 +128,7 @@
         selectedBrands = getBrandsFromFilter(filters.brand);
         minPrice = filters.min_price || '';
         maxPrice = filters.max_price || '';
-        selectedSort = filters.sort || 'popular';
+        selectedSort = (!filters.sort || filters.sort === 'relevance') ? 'latest' : filters.sort;
         selectedType = filters.type || 'all';
         promoOnly = filters.promo || false;
         selectedCondition = filters.condition || 'all';
@@ -235,11 +247,11 @@
     }
 
     // ── Pagination ────────────────────────────────────────────────────────────
-    let allProducts = $state<any[]>(products?.data || []);
+    let allProducts = $state<any[]>([]);
     let isLoadingMore = $state(false);
-    let currentPage = $state(products?.current_page || 1);
-    let lastPage = $state(products?.last_page || 1);
-    let total = $state(products?.total || 0);
+    let currentPage = $state(1);
+    let lastPage = $state(1);
+    let total = $state(0);
 
     $effect(() => {
         if (!products) return;
@@ -479,7 +491,7 @@
         <div
             class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-slate-100"
         >
-            {#each [{ id: 'relevance', label: 'Terkait' }, { id: 'latest', label: 'Terbaru' }, { id: 'popular', label: 'Terlaris' }, { id: 'price_asc', label: 'Harga ↑' }, { id: 'price_desc', label: 'Harga ↓' }] as sortOpt}
+            {#each sortOptions as sortOpt}
                 <button
                     onclick={() => {
                         selectedSort = sortOpt.id;
@@ -649,17 +661,19 @@
                     </button>
                 </div>
 
-                <hr class="border-slate-100" />
+                {#if !isSellerEnabled}
+                    <hr class="border-slate-100" />
 
-                <!-- Promo Toko Checkbox -->
-                <div
-                    role="button"
-                    tabindex="0"
-                    onkeydown={(e) => e.key === 'Enter' && setTimeout(applyFilters, 0)}
-                    onclick={() => setTimeout(applyFilters, 0)}
-                >
-                    <Toggle bind:checked={promoOnly} label="Hanya Promo Toko" description="Tampilkan diskon aktif" icon="ti-tag" />
-                </div>
+                    <!-- Promo Toko Checkbox -->
+                    <div
+                        role="button"
+                        tabindex="0"
+                        onkeydown={(e) => e.key === 'Enter' && setTimeout(applyFilters, 0)}
+                        onclick={() => setTimeout(applyFilters, 0)}
+                    >
+                        <Toggle bind:checked={promoOnly} label="Hanya Promo Toko" description="Tampilkan diskon aktif" icon="ti-tag" />
+                    </div>
+                {/if}
 
                 <hr class="border-slate-100" />
 
@@ -682,11 +696,11 @@
                 <!-- Kondisi Produk Filter -->
                 <div class="space-y-2.5">
                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kondisi Produk</span>
-                    <div class="grid grid-cols-3 gap-1.5">
-                        {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'Baru' }, { id: 'used', label: 'Bekas' }] as cond}
+                    <div class="grid grid-cols-4 gap-1">
+                        {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
                             <button
                                 onclick={() => { selectedCondition = cond.id; applyFilters(false); }}
-                                class="py-1.5 text-xs font-bold rounded-lg border transition text-center
+                                class="py-1.5 text-[11px] font-bold rounded-lg border transition text-center
                                        {selectedCondition === cond.id
                                     ? 'bg-slate-800 text-white border-slate-800'
                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
@@ -697,28 +711,30 @@
                     </div>
                 </div>
 
-                <hr class="border-slate-100" />
+                {#if !isSellerEnabled}
+                    <hr class="border-slate-100" />
 
-                <!-- Rating Filter -->
-                <div class="space-y-2.5">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rating Minimum</span>
-                    <div class="space-y-1">
-                        {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
-                            <button
-                                onclick={() => { selectedRating = rate.value; applyFilters(false); }}
-                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                       {selectedRating === rate.value
-                                    ? 'bg-amber-50 text-amber-700 font-extrabold'
-                                    : 'text-slate-600 hover:text-slate-900'}"
-                            >
-                                <span>{rate.label}</span>
-                                {#if selectedRating === rate.value}
-                                    <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
-                                {/if}
-                            </button>
-                        {/each}
+                    <!-- Rating Filter -->
+                    <div class="space-y-2.5">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rating Minimum</span>
+                        <div class="space-y-1">
+                            {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
+                                <button
+                                    onclick={() => { selectedRating = rate.value; applyFilters(false); }}
+                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                           {selectedRating === rate.value
+                                        ? 'bg-amber-50 text-amber-700 font-extrabold'
+                                        : 'text-slate-600 hover:text-slate-900'}"
+                                >
+                                    <span>{rate.label}</span>
+                                    {#if selectedRating === rate.value}
+                                        <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
                     </div>
-                </div>
+                {/if}
             </aside>
 
                 <!-- ═══════════════════════════════════════════════════
@@ -818,14 +834,23 @@
                                                     class="w-full h-full object-cover"
                                                 />
                                             {/if}
-                                            {#if isPromo && discountPercentage > 0}
-                                                <span
-                                                    class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                                    style="background-color: {secondary};"
-                                                >
-                                                    -{discountPercentage}%
-                                                </span>
-                                            {/if}
+                                            <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                                {#if isSellerEnabled}
+                                                    <span
+                                                        class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                                    >
+                                                        {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                                    </span>
+                                                {/if}
+                                                {#if isPromo && discountPercentage > 0}
+                                                    <span
+                                                        class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                        style="background-color: {secondary};"
+                                                    >
+                                                        -{discountPercentage}%
+                                                    </span>
+                                                {/if}
+                                            </div>
                                         </div>
                                         <div
                                             class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"

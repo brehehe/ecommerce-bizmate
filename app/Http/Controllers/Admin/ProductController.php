@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\ListingPaymentConfirmed;
 use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
 use App\Jobs\ImportProductsJob;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductListingPayment;
 use App\Models\ProductVariant;
 use App\Models\ProductVariationOption;
+use App\Models\Setting;
+use App\Services\MidtransService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -129,6 +134,7 @@ class ProductController extends Controller
 
         if (! $products->getCollection()->isEmpty()) {
             $products->getCollection()->load([
+                'user',
                 'category',
                 'categories',
                 'brandRelation',
@@ -221,12 +227,17 @@ class ProductController extends Controller
         $brandFilter = is_array($brandFilter) ? $brandFilter : explode(',', $brandFilter);
         $brandFilter = array_filter(array_map('trim', $brandFilter));
 
+        $isSellerMode = (bool) config('app.is_seller', false);
+        $listingPricing = $this->getListingPricingConfig();
+
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
             'categories' => $categories,
             'brands' => $brands,
             'import_auto_fetch_images' => (bool) config('services.products.import_auto_fetch_images', true),
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
+            'isSellerMode' => $isSellerMode,
+            'listingPricing' => $listingPricing,
             'filters' => [
                 'search' => $request->get('search', ''),
                 'category' => array_values($categoryFilter),
@@ -243,10 +254,15 @@ class ProductController extends Controller
         $categories = Category::select('id', 'name')->get();
         $brands = Brand::where('is_active', true)->orderBy('name')->get();
 
+        $isSellerMode = (bool) config('app.is_seller', false);
+        $listingPricing = $this->getListingPricingConfig();
+
         return Inertia::render('Admin/Products/Create', [
             'categories' => $categories,
             'brands' => $brands,
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
+            'isSellerMode' => $isSellerMode,
+            'listingPricing' => $listingPricing,
         ]);
     }
 
@@ -282,7 +298,7 @@ class ProductController extends Controller
             'early_access_until' => 'nullable|date',
             'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
-            'condition' => 'nullable|string|in:new,used',
+            'condition' => 'nullable|string|in:new,used,second,rent',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
@@ -377,6 +393,20 @@ class ProductController extends Controller
         ]);
 
         $productData['user_id'] = $request->user()?->id;
+
+        $isSellerMode = (bool) config('app.is_seller', false);
+        if ($isSellerMode && $request->user()?->is_seller) {
+            $config = $this->getListingPricingConfig();
+            $calc = $this->calculateListingFeeAndDays($request, $config);
+
+            $productData['listing_expires_at'] = now()->addDays($calc['days']);
+            $productData['listing_fee'] = $calc['fee'];
+            $productData['listing_days'] = $calc['days'];
+        } else {
+            $productData['listing_expires_at'] = null;
+            $productData['listing_fee'] = 0;
+            $productData['listing_days'] = 0;
+        }
 
         $product = Product::create($productData);
 
@@ -555,11 +585,16 @@ class ProductController extends Controller
             'brands',
         ]);
 
+        $isSellerMode = (bool) config('app.is_seller', false);
+        $listingPricing = $this->getListingPricingConfig();
+
         return Inertia::render('Admin/Products/Edit', [
             'product' => $product,
             'categories' => $categories,
             'brands' => $brands,
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
+            'isSellerMode' => $isSellerMode,
+            'listingPricing' => $listingPricing,
         ]);
     }
 
@@ -597,7 +632,7 @@ class ProductController extends Controller
             'early_access_until' => 'nullable|date',
             'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
-            'condition' => 'nullable|string|in:new,used',
+            'condition' => 'nullable|string|in:new,used,second,rent',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
@@ -1803,5 +1838,621 @@ class ProductController extends Controller
                 abort(403, 'Anda tidak memiliki akses untuk mengelola produk ini.');
             }
         }
+    }
+
+    /**
+     * Renew product listing duration.
+     */
+    public function renewListing(Request $request, Product $product)
+    {
+        $this->authorizeSellerProduct($request, $product);
+
+        $isSellerMode = (bool) config('app.is_seller', false);
+        if (! $isSellerMode) {
+            $product->update([
+                'listing_expires_at' => null,
+                'listing_fee' => 0,
+                'listing_days' => 0,
+                'active' => true,
+            ]);
+
+            return back()->with('success', 'Produk tidak terbatas (unlimited).');
+        }
+
+        $config = $this->getListingPricingConfig();
+        $calc = $this->calculateListingFeeAndDays($request, $config);
+
+        $days = $calc['days'];
+        $fee = (int) round($calc['fee']);
+        $user = $request->user();
+
+        $serverKey = Setting::where('key', 'midtrans_server_key')->value('value');
+        $orderId = 'LISTING-'.substr(md5(uniqid((string) mt_rand(), true)), 0, 8);
+
+        $qrImage = null;
+        $qrString = null;
+
+        if (! empty($serverKey) && $fee > 0) {
+            try {
+                $chargeResult = MidtransService::charge(
+                    $orderId,
+                    $fee,
+                    'qris',
+                    [
+                        'name' => $user->name ?? 'Seller',
+                        'email' => $user->email ?? 'seller@example.com',
+                        'phone' => $user->phone ?? '',
+                    ]
+                );
+
+                if ($chargeResult['success'] && ! empty($chargeResult['data'])) {
+                    $qrImage = $chargeResult['data']['qr_image'] ?? null;
+                    $qrString = $chargeResult['data']['qr_string'] ?? null;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Midtrans charge failed: '.$e->getMessage());
+            }
+        }
+
+        if (! $qrImage && ! $qrString) {
+            $dummyPayload = '00020101021226680016ID.CO.QRIS.WWW01189360091400000000000215'.str_pad((string) $fee, 12, '0', STR_PAD_LEFT).'5802ID5910BIZMATE006007JAKARTA6304ABCD';
+            $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='.urlencode($dummyPayload);
+            $qrString = $dummyPayload;
+        }
+
+        return back()->with('qris_payment', [
+            'order_id' => $orderId,
+            'product_id' => $product->id,
+            'fee' => $fee,
+            'days' => $days,
+            'qr_image' => $qrImage,
+            'qr_string' => $qrString,
+            'expiry_time' => now()->addMinutes(30)->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Get QRIS payment payload directly for modal.
+     * Saves a pending record so the Midtrans webhook can auto-confirm it.
+     */
+    public function getQrisListing(Request $request, Product $product)
+    {
+        $this->authorizeSellerProduct($request, $product);
+
+        $isSellerMode = (bool) config('app.is_seller', false);
+        if (! $isSellerMode) {
+            return response()->json(['success' => false, 'message' => 'Mode Penjual tidak aktif. Seluruh produk berstatus Unlimited.'], 400);
+        }
+
+        $config = $this->getListingPricingConfig();
+        $calc = $this->calculateListingFeeAndDays($request, $config);
+
+        $days = $calc['days'];
+        $fee = (int) round($calc['fee']);
+        $user = $request->user();
+
+        $serverKey = Setting::where('key', 'midtrans_server_key')->value('value');
+        $orderId = 'LISTING-'.strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 12));
+
+        $qrImage = null;
+        $qrString = null;
+        $isSandbox = false;
+
+        if (! empty($serverKey) && $fee > 0) {
+            try {
+                $chargeResult = MidtransService::charge(
+                    $orderId,
+                    $fee,
+                    'qris',
+                    [
+                        'name' => $user->name ?? 'Seller',
+                        'email' => $user->email ?? 'seller@example.com',
+                        'phone' => $user->phone ?? '',
+                    ]
+                );
+
+                if ($chargeResult['success'] && ! empty($chargeResult['data'])) {
+                    $qrImage = $chargeResult['data']['qr_image'] ?? null;
+                    $qrString = $chargeResult['data']['qr_string'] ?? null;
+                    $isSandbox = str_contains(MidtransService::getCoreApiBaseUrl(), 'sandbox');
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Midtrans charge failed: '.$e->getMessage());
+            }
+        }
+
+        if (! $qrImage && ! $qrString) {
+            $dummyPayload = '00020101021226680016ID.CO.QRIS.WWW01189360091400000000000215'.str_pad((string) $fee, 12, '0', STR_PAD_LEFT).'5802ID5910BIZMATE006007JAKARTA6304ABCD';
+            $qrImage = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data='.urlencode($dummyPayload);
+            $qrString = $dummyPayload;
+            $isSandbox = true;
+        }
+
+        // Save a pending record immediately so the Midtrans webhook can auto-confirm it.
+        ProductListingPayment::updateOrCreate(
+            ['order_id' => $orderId],
+            [
+                'product_id' => $product->id,
+                'user_id' => $product->user_id ?: $user->id,
+                'amount' => $fee,
+                'days' => $days,
+                'payment_method' => 'qris',
+                'status' => 'pending',
+                'paid_at' => null,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'qris_payment' => [
+                'order_id' => $orderId,
+                'product_id' => $product->id,
+                'fee' => $fee,
+                'days' => $days,
+                'qr_image' => $qrImage,
+                'qr_string' => $qrString,
+                'qr_image_url' => $qrImage,
+                'is_sandbox' => $isSandbox,
+                'expiry_time' => now()->addMinutes(30)->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
+     * Confirm QRIS payment manually (fallback if webhook didn't fire).
+     * Idempotent: if webhook already confirmed payment, extend product only.
+     */
+    public function confirmQrisListing(Request $request, Product $product)
+    {
+        $this->authorizeSellerProduct($request, $product);
+
+        $days = (int) $request->input('days', 15);
+        $fee = (float) $request->input('fee', 0);
+        $orderId = $request->input('order_id') ?: ('LISTING-'.strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 12)));
+        $user = $request->user();
+
+        // Check if webhook already paid this order
+        $existingPayment = ProductListingPayment::where('order_id', $orderId)->first();
+
+        if ($existingPayment && $existingPayment->status === 'paid') {
+            // Webhook already handled it; just make sure product is active
+            if (! ($product->listing_expires_at && $product->listing_expires_at->isFuture())) {
+                $product->update(['active' => true]);
+            }
+
+            return back()->with('success', "Pembayaran sudah dikonfirmasi otomatis! Masa aktif produk aktif {$existingPayment->days} hari.");
+        }
+
+        $baseDate = ($product->listing_expires_at && $product->listing_expires_at->isFuture())
+            ? $product->listing_expires_at
+            : now();
+
+        $newExpiresAt = (clone $baseDate)->addDays($days);
+
+        $product->update([
+            'listing_expires_at' => $newExpiresAt,
+            'listing_fee' => (float) $product->listing_fee + $fee,
+            'listing_days' => (int) $product->listing_days + $days,
+            'active' => true,
+        ]);
+
+        if ($existingPayment) {
+            // Update the pending record to paid
+            $existingPayment->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
+            $paymentToBroadcast = $existingPayment;
+        } else {
+            $paymentToBroadcast = ProductListingPayment::create([
+                'order_id' => $orderId,
+                'product_id' => $product->id,
+                'user_id' => $product->user_id ?: $user->id,
+                'amount' => $fee,
+                'days' => $days,
+                'payment_method' => 'qris',
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
+        }
+
+        event(new ListingPaymentConfirmed($paymentToBroadcast));
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Pembayaran QRIS berhasil! Masa aktif produk diperpanjang {$days} hari.",
+                'status' => 'paid',
+                'payment' => $paymentToBroadcast,
+            ]);
+        }
+
+        return back()->with('success', "Pembayaran QRIS berhasil! Masa aktif produk diperpanjang {$days} hari.");
+    }
+
+    /**
+     * Check the status of a listing payment by order_id (for frontend polling & Reverb).
+     * If pending, proactively checks Midtrans Core API status for instant confirmation.
+     */
+    public function listingPaymentStatus(Request $request, string $orderId)
+    {
+        $user = $request->user();
+        $isSuperAdmin = $user->roles()->where('name', 'Super Admin')->exists();
+
+        $payment = ProductListingPayment::where('order_id', $orderId)->first();
+
+        if (! $payment) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        if (! $isSuperAdmin && $payment->user_id !== $user->id) {
+            return response()->json(['status' => 'forbidden'], 403);
+        }
+
+        // If pending, proactively verify status directly with Midtrans API
+        if ($payment->status === 'pending') {
+            try {
+                $serverKey = Setting::where('key', 'midtrans_server_key')->value('value')
+                    ?: config('app.midtrans.server_key', '');
+
+                if ($serverKey) {
+                    $isProduction = (Setting::where('key', 'midtrans_is_production')->value('value') === 'true');
+                    $baseUrl = $isProduction
+                        ? 'https://api.midtrans.com/v2/'
+                        : 'https://api.sandbox.midtrans.com/v2/';
+
+                    $response = Http::withHeaders([
+                        'Authorization' => 'Basic '.base64_encode($serverKey.':'),
+                        'Accept' => 'application/json',
+                    ])->timeout(4)->get($baseUrl.$payment->order_id.'/status');
+
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $trxStatus = $data['transaction_status'] ?? null;
+                        $fraudStatus = $data['fraud_status'] ?? null;
+
+                        $isSuccess = ($trxStatus === 'settlement') ||
+                                     ($trxStatus === 'capture' && $fraudStatus === 'accept');
+
+                        if ($isSuccess) {
+                            DB::transaction(function () use ($payment, $data) {
+                                $product = Product::find($payment->product_id);
+                                if ($product) {
+                                    $baseDate = ($product->listing_expires_at && $product->listing_expires_at->isFuture())
+                                        ? $product->listing_expires_at
+                                        : now();
+
+                                    $product->update([
+                                        'listing_expires_at' => (clone $baseDate)->addDays($payment->days),
+                                        'listing_fee' => (float) $product->listing_fee + (float) $payment->amount,
+                                        'listing_days' => (int) $product->listing_days + $payment->days,
+                                        'active' => true,
+                                    ]);
+                                }
+
+                                $payment->update([
+                                    'status' => 'paid',
+                                    'paid_at' => now(),
+                                    'gateway_transaction_id' => $data['transaction_id'] ?? null,
+                                    'gateway_response' => $data,
+                                ]);
+                            });
+
+                            // Broadcast Reverb Event immediately
+                            event(new ListingPaymentConfirmed($payment->fresh()));
+                        } elseif (in_array($trxStatus, ['cancel', 'deny', 'expire'])) {
+                            $payment->update([
+                                'status' => 'failed',
+                                'gateway_response' => $data,
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Midtrans Proactive Status Check Warning: '.$e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'status' => $payment->status,
+            'paid_at' => $payment->paid_at?->toIso8601String(),
+            'days' => $payment->days,
+            'amount' => (float) $payment->amount,
+        ]);
+    }
+
+    /**
+     * Cancel a pending listing payment.
+     */
+    public function cancelQrisListing(Request $request, string $orderId)
+    {
+        $user = $request->user();
+        $isSuperAdmin = $user->roles()->where('name', 'Super Admin')->exists();
+
+        $payment = ProductListingPayment::where('order_id', $orderId)->first();
+
+        if (! $payment) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Tagihan tidak ditemukan.'], 404);
+            }
+
+            return back()->with('error', 'Tagihan tidak ditemukan.');
+        }
+
+        if (! $isSuperAdmin && $payment->user_id !== $user->id) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+            }
+
+            return back()->with('error', 'Akses ditolak.');
+        }
+
+        if ($payment->status === 'paid') {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Tagihan sudah lunas dan tidak dapat dibatalkan.'], 422);
+            }
+
+            return back()->with('error', 'Tagihan sudah lunas dan tidak dapat dibatalkan.');
+        }
+
+        $payment->update([
+            'status' => 'failed',
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Tagihan {$orderId} berhasil dibatalkan.",
+                'status' => 'failed',
+            ]);
+        }
+
+        return back()->with('success', "Tagihan {$orderId} berhasil dibatalkan.");
+    }
+
+    /**
+     * Admin/Super Admin override to adjust, reset, or set product listing expiration directly.
+     */
+    public function adminAdjustListing(Request $request, Product $product)
+    {
+        $user = $request->user();
+        $isSuperAdmin = $user->hasRole('Super Admin') || $user->hasRole('Admin') || ! $user->is_seller;
+
+        if (! $isSuperAdmin) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Hanya Super Admin/Admin yang berhak mengelola masa aktif.'], 403);
+            }
+
+            abort(403, 'Hanya Super Admin/Admin yang berhak mengubah masa aktif listing produk secara langsung.');
+        }
+
+        $request->validate([
+            'action' => 'required|in:add_days,set_days,set_date,set_unlimited,reset_expired',
+            'days' => 'nullable|integer',
+            'expires_at' => 'nullable|date',
+        ]);
+
+        $action = $request->input('action');
+
+        switch ($action) {
+            case 'add_days':
+                $days = (int) $request->input('days', 0);
+                $baseDate = ($product->listing_expires_at && $product->listing_expires_at->isFuture())
+                    ? $product->listing_expires_at
+                    : now();
+                $newExpiresAt = (clone $baseDate)->addDays($days);
+                $product->update([
+                    'listing_expires_at' => $newExpiresAt,
+                    'listing_days' => max(0, (int) $product->listing_days + $days),
+                    'active' => true,
+                ]);
+                $msg = "Berhasil menambah masa aktif produk {$product->name} sebanyak +{$days} hari.";
+                break;
+
+            case 'set_days':
+                $days = max(0, (int) $request->input('days', 0));
+                $newExpiresAt = $days > 0 ? now()->addDays($days) : now()->subMinute();
+                $product->update([
+                    'listing_expires_at' => $newExpiresAt,
+                    'listing_days' => $days,
+                    'active' => $days > 0,
+                ]);
+                $msg = "Berhasil mengatur masa aktif produk {$product->name} menjadi {$days} hari dari sekarang.";
+                break;
+
+            case 'set_date':
+                $dateStr = $request->input('expires_at');
+                if (! $dateStr) {
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => 'Tanggal kedaluwarsa harus diisi.'], 422);
+                    }
+
+                    return back()->with('error', 'Tanggal kedaluwarsa harus diisi.');
+                }
+                $newExpiresAt = Carbon::parse($dateStr);
+                $isActive = $newExpiresAt->isFuture();
+                $product->update([
+                    'listing_expires_at' => $newExpiresAt,
+                    'active' => $isActive,
+                ]);
+                $msg = "Berhasil mengatur tanggal kedaluwarsa produk {$product->name} ke ".$newExpiresAt->format('d M Y H:i');
+                break;
+
+            case 'set_unlimited':
+                $product->update([
+                    'listing_expires_at' => null,
+                    'active' => true,
+                ]);
+                $msg = "Masa aktif produk {$product->name} berhasil diubah menjadi Tanpa Batas (Unlimited).";
+                break;
+
+            case 'reset_expired':
+                $product->update([
+                    'listing_expires_at' => now()->subMinute(),
+                    'active' => false,
+                ]);
+                $msg = "Masa aktif produk {$product->name} berhasil di-reset (Kedaluwarsa / Nonaktif).";
+                break;
+
+            default:
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Aksi tidak valid.'], 422);
+                }
+
+                return back()->with('error', 'Aksi tidak valid.');
+        }
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'product' => $product->fresh(),
+            ]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
+     * Get listing payments history list.
+     * Seller only sees their own payments; Super Admin sees all payments.
+     */
+    public function listingPaymentsHistory(Request $request)
+    {
+        $user = $request->user();
+        $isSuperAdmin = $user->roles()->where('name', 'Super Admin')->exists();
+
+        $query = ProductListingPayment::with(['product:id,name,sku,image', 'user:id,name,email,store_name'])
+            ->latest();
+
+        if (! $isSuperAdmin) {
+            $query->where('user_id', $user->id);
+        }
+
+        $payments = $query->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'payments' => $payments,
+            'is_super_admin' => $isSuperAdmin,
+        ]);
+    }
+
+    /**
+     * Render the dedicated Listing Payments History page.
+     */
+    public function listingPaymentsIndex(Request $request)
+    {
+        if (! config('app.is_seller', false)) {
+            return redirect()->route('admin.products.index');
+        }
+
+        $user = $request->user();
+        $isSuperAdmin = $user->roles()->where('name', 'Super Admin')->exists();
+
+        $query = ProductListingPayment::with(['product:id,name,sku,image', 'user:id,name,email,store_name'])
+            ->latest('id');
+
+        if (! $isSuperAdmin) {
+            $query->where('user_id', $user->id);
+        }
+
+        $status = $request->input('status', 'all');
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        $search = trim($request->input('q', ''));
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('order_id', 'like', "%{$search}%")
+                    ->orWhereHas('product', fn ($qp) => $qp->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn ($qu) => $qu->where('name', 'like', "%{$search}%")->orWhere('store_name', 'like', "%{$search}%"));
+            });
+        }
+
+        $dateFrom = $request->input('date_from', '');
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        $dateTo = $request->input('date_to', '');
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $payments = $query->paginate(15)->withQueryString();
+
+        return Inertia::render('Admin/Products/ListingPayments', [
+            'payments' => $payments,
+            'isSuperAdmin' => $isSuperAdmin,
+            'filters' => [
+                'q' => $search,
+                'status' => $status,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ],
+        ]);
+    }
+
+    /**
+     * Get complete listing pricing configuration including dynamic packages.
+     */
+    private function getListingPricingConfig(): array
+    {
+        $rawPackages = Setting::where('key', 'product_listing_packages')->value('value');
+        $packages = $rawPackages ? (json_decode($rawPackages, true) ?? []) : [];
+        if (empty($packages)) {
+            $packages = [
+                ['id' => 'pkg_15', 'name' => 'Paket 15 Hari', 'days' => 15, 'price' => 15000, 'is_popular' => false],
+                ['id' => 'pkg_30', 'name' => 'Paket 30 Hari', 'days' => 30, 'price' => 30000, 'is_popular' => true],
+            ];
+        }
+
+        return [
+            'daily_rate' => (float) (Setting::where('key', 'product_listing_daily_rate')->value('value') ?? 1000),
+            'max_custom_days' => (int) (Setting::where('key', 'product_listing_max_custom_days')->value('value') ?? 365),
+            'custom_daily_rate' => (float) (Setting::where('key', 'product_listing_custom_daily_rate')->value('value') ?? 1000),
+            'fee_enabled' => (bool) (Setting::where('key', 'product_listing_fee_enabled')->value('value') ?? true),
+            'packages' => $packages,
+        ];
+    }
+
+    /**
+     * Calculate days and fee based on request selection and config.
+     */
+    private function calculateListingFeeAndDays(Request $request, array $config): array
+    {
+        $type = $request->input('listing_duration_type');
+        $packages = $config['packages'] ?? [];
+
+        $matched = null;
+        if ($type) {
+            foreach ($packages as $pkg) {
+                if (($pkg['id'] ?? null) === $type || (string) ($pkg['days'] ?? '') === (string) $type) {
+                    $matched = $pkg;
+                    break;
+                }
+            }
+        }
+
+        if (! $matched && ! empty($packages) && $type !== 'custom') {
+            $matched = $packages[0];
+        }
+
+        if ($matched) {
+            return [
+                'days' => (int) $matched['days'],
+                'fee' => (float) $matched['price'],
+            ];
+        }
+
+        $days = min(max(1, (int) $request->input('custom_days', 1)), $config['max_custom_days']);
+        $fee = $days * $config['custom_daily_rate'];
+
+        return [
+            'days' => $days,
+            'fee' => $fee,
+        ];
     }
 }

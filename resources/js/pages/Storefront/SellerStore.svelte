@@ -18,9 +18,19 @@
     const cartButtonStyle = $derived(
         (page.props.settings as any)?.storefront_cart_button_style || 'button',
     );
+    const isSellerEnabled = $derived(
+        (page.props as any).app_config?.is_seller_enabled ??
+            (page.props as any).settings?.is_seller_enabled ??
+            false,
+    );
 
-    let searchQ = $state(filters.q || '');
-    let selectedSort = $state(filters.sort || 'latest');
+    let searchQ = $state('');
+    let selectedSort = $state('latest');
+
+    $effect(() => {
+        searchQ = filters?.q || '';
+        selectedSort = filters?.sort || 'latest';
+    });
 
     let selectedVariantProduct = $state<any>(null);
     let showVariantModal = $state(false);
@@ -32,7 +42,7 @@
     }
 
     function getProductImage(product: any) {
-        let path = null;
+        let path: string | null = null;
         if (product?.images?.length > 0) {
             path = product.images[0].url || product.images[0].path;
         } else if (product?.image) {
@@ -263,14 +273,23 @@
                                     />
                                 {/if}
 
-                                {#if isPromo && discountPct > 0}
-                                    <span
-                                        class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                        style="background-color: {secondary};"
-                                    >
-                                        -{discountPct}%
-                                    </span>
-                                {/if}
+                                <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                    {#if isSellerEnabled}
+                                        <span
+                                            class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                        >
+                                            {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                        </span>
+                                    {/if}
+                                    {#if isPromo && discountPct > 0}
+                                        <span
+                                            class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                            style="background-color: {secondary};"
+                                        >
+                                            -{discountPct}%
+                                        </span>
+                                    {/if}
+                                </div>
                             </div>
 
                             <!-- Product Info -->

@@ -23,8 +23,8 @@
     // ── Store Info Form ───────────────────────────────────────
     const storeForm = useForm({
         _method: 'put',
-        store_name: user?.store_name || '',
-        store_description: user?.store_description || '',
+        store_name: () => user?.store_name || '',
+        store_description: () => user?.store_description || '',
         store_logo: null as File | null,
     });
 
@@ -68,8 +68,8 @@
 
     const addressForm = useForm({
         label: 'Toko',
-        receiver_name: user?.name || '',
-        phone_number: user?.phone_number || '',
+        receiver_name: () => user?.name || '',
+        phone_number: () => user?.phone_number || '',
         full_address: '',
         province_name: '',
         regency_name: '',
@@ -77,7 +77,7 @@
         village_name: '',
         postal_code: '',
         note: '',
-        is_primary: addresses.length === 0,
+        is_primary: () => addresses.length === 0,
     });
 
     function openNewAddress() {

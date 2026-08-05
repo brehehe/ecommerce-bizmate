@@ -4156,7 +4156,7 @@
                     <!-- Kondisi Produk -->
                     <div class="mb-6 space-y-2">
                         <label class="block text-xs font-semibold text-slate-700">Kondisi Produk</label>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <button
                                 type="button"
                                 onclick={() => (form.condition = 'new')}
@@ -4168,24 +4168,40 @@
                                     <i class="ti ti-sparkles text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">Baru</p>
+                                    <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">New</p>
                                     <p class="text-[10px] text-slate-500 leading-tight">100% Baru & Tersegel</p>
                                 </div>
                             </button>
 
                             <button
                                 type="button"
-                                onclick={() => (form.condition = 'used')}
-                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'used'
+                                onclick={() => (form.condition = 'second')}
+                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'second' || form.condition === 'used'
                                     ? 'bg-amber-50/80 border-amber-500 text-amber-900 ring-2 ring-amber-500/20 shadow-2xs'
                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
                             >
-                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'second' || form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
                                     <i class="ti ti-refresh text-sm"></i>
                                 </div>
                                 <div>
-                                    <p class="text-xs font-bold {form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Bekas / Second</p>
+                                    <p class="text-xs font-bold {form.condition === 'second' || form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Second</p>
                                     <p class="text-[10px] text-slate-500 leading-tight">Pernah Digunakan</p>
+                                </div>
+                            </button>
+
+                            <button
+                                type="button"
+                                onclick={() => (form.condition = 'rent')}
+                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'rent'
+                                    ? 'bg-purple-50/80 border-purple-500 text-purple-900 ring-2 ring-purple-500/20 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                            >
+                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'rent' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                    <i class="ti ti-repeat text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold {form.condition === 'rent' ? 'text-purple-950' : 'text-slate-800'}">Rent</p>
+                                    <p class="text-[10px] text-slate-500 leading-tight">Barang Sewa / Rental</p>
                                 </div>
                             </button>
                         </div>
