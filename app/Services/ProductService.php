@@ -6,6 +6,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Promotion;
+use App\Models\Setting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -157,6 +158,36 @@ class ProductService
             $minRating = (float) $rating;
             if ($minRating > 0 && $minRating <= 5) {
                 $query->whereRaw('(SELECT COALESCE(AVG(rating), 0) FROM product_reviews WHERE product_reviews.product_id = products.id) >= ?', [$minRating]);
+            }
+        }
+
+        // Filter by location (seller address, origin address, or default store city/province)
+        if ($locationInput = trim($request->input('location', ''))) {
+            $locations = array_filter(array_map('trim', explode(',', $locationInput)));
+            if (! empty($locations)) {
+                $storeCity = Setting::where('key', 'regency_name')->value('value') ?? '';
+                $storeProvince = Setting::where('key', 'province_name')->value('value') ?? '';
+
+                $query->where(function (Builder $q) use ($locations, $like, $storeCity, $storeProvince) {
+                    foreach ($locations as $loc) {
+                        $q->orWhereHas('seller.customerAddresses', function ($sub) use ($loc, $like) {
+                            $sub->where('regency_name', $like, "%{$loc}%")
+                                ->orWhere('province_name', $like, "%{$loc}%")
+                                ->orWhere('district_name', $like, "%{$loc}%")
+                                ->orWhere('full_address', $like, "%{$loc}%");
+                        })->orWhereHas('originAddress', function ($sub) use ($loc, $like) {
+                            $sub->where('regency_name', $like, "%{$loc}%")
+                                ->orWhere('province_name', $like, "%{$loc}%")
+                                ->orWhere('district_name', $like, "%{$loc}%")
+                                ->orWhere('full_address', $like, "%{$loc}%");
+                        });
+
+                        if (($storeCity && str_contains(strtolower($storeCity), strtolower($loc))) ||
+                            ($storeProvince && str_contains(strtolower($storeProvince), strtolower($loc)))) {
+                            $q->orWhereDoesntHave('seller.customerAddresses');
+                        }
+                    }
+                });
             }
         }
 

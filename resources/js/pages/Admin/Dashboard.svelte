@@ -7,6 +7,14 @@
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
     );
+    const isSellerEnabled = $derived(
+        Boolean(
+            (page.props as any).app_config?.is_seller_enabled ??
+                (page.props as any).settings?.is_seller_enabled ??
+                (page.props as any).isSellerMode ??
+                false,
+        ),
+    );
     import Chart from 'chart.js/auto';
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
@@ -91,7 +99,7 @@
                 });
             }
 
-            if (chartMetric === 'all' || chartMetric === 'refund') {
+            if (!isSeller && !isSellerEnabled && (chartMetric === 'all' || chartMetric === 'refund')) {
                 datasets.push({
                     label: 'Refund (Rp Juta)',
                     data: [...(chartData.refunds || [])],
@@ -109,7 +117,7 @@
                 });
             }
 
-            if (chartMetric === 'all' || chartMetric === 'return') {
+            if (!isSeller && !isSellerEnabled && (chartMetric === 'all' || chartMetric === 'return')) {
                 datasets.push({
                     label: 'Retur (Rp Juta)',
                     data: [...(chartData.returns || [])],
@@ -327,20 +335,22 @@
                     <i class="ti ti-receipt text-sm"></i>
                     <span class="hidden sm:inline">Transaksi</span>
                 </Link>
-                <Link
-                    href="/admin/refunds"
-                    class="inline-flex items-center gap-1.5 h-9 rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-medium text-amber-700 shadow-xs transition-colors hover:bg-amber-100"
-                >
-                    <i class="ti ti-rotate-2 text-sm"></i>
-                    <span class="hidden sm:inline">Refund</span>
-                </Link>
-                <Link
-                    href="/admin/returns"
-                    class="inline-flex items-center gap-1.5 h-9 rounded-lg border border-violet-200 bg-violet-50 px-3 text-sm font-medium text-violet-700 shadow-xs transition-colors hover:bg-violet-100"
-                >
-                    <i class="ti ti-replace text-sm"></i>
-                    <span class="hidden sm:inline">Retur</span>
-                </Link>
+                {#if !isSeller && !isSellerEnabled}
+                    <Link
+                        href="/admin/refunds"
+                        class="inline-flex items-center gap-1.5 h-9 rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-medium text-amber-700 shadow-xs transition-colors hover:bg-amber-100"
+                    >
+                        <i class="ti ti-rotate-2 text-sm"></i>
+                        <span class="hidden sm:inline">Refund</span>
+                    </Link>
+                    <Link
+                        href="/admin/returns"
+                        class="inline-flex items-center gap-1.5 h-9 rounded-lg border border-violet-200 bg-violet-50 px-3 text-sm font-medium text-violet-700 shadow-xs transition-colors hover:bg-violet-100"
+                    >
+                        <i class="ti ti-replace text-sm"></i>
+                        <span class="hidden sm:inline">Retur</span>
+                    </Link>
+                {/if}
             </div>
         </div>
 
@@ -381,25 +391,27 @@
                     change: stats.ordersChange,
                 })}
 
-                <!-- Refund -->
-                {@render StatCard({
-                    icon: 'ti-rotate-2',
-                    iconBg: '#fffbeb',
-                    iconColor: '#d97706',
-                    label: `Refund (${refundStats.count})`,
-                    value: refundStats.formattedAmount,
-                    change: refundStats.amountChange,
-                })}
+                {#if !isSeller && !isSellerEnabled}
+                    <!-- Refund -->
+                    {@render StatCard({
+                        icon: 'ti-rotate-2',
+                        iconBg: '#fffbeb',
+                        iconColor: '#d97706',
+                        label: `Refund (${refundStats.count})`,
+                        value: refundStats.formattedAmount,
+                        change: refundStats.amountChange,
+                    })}
 
-                <!-- Retur -->
-                {@render StatCard({
-                    icon: 'ti-replace',
-                    iconBg: '#f5f3ff',
-                    iconColor: '#7c3aed',
-                    label: `Retur (${returnStats.count})`,
-                    value: returnStats.formattedAmount,
-                    change: returnStats.countChange,
-                })}
+                    <!-- Retur -->
+                    {@render StatCard({
+                        icon: 'ti-replace',
+                        iconBg: '#f5f3ff',
+                        iconColor: '#7c3aed',
+                        label: `Retur (${returnStats.count})`,
+                        value: returnStats.formattedAmount,
+                        change: returnStats.countChange,
+                    })}
+                {/if}
 
                 <!-- Products -->
                 {@render StatCard({
@@ -446,20 +458,22 @@
                         >
                             <i class="ti ti-receipt text-xs mr-1"></i> Transaksi
                         </button>
-                        <button
-                            type="button"
-                            onclick={() => (activePipelineTab = 'refunds')}
-                            class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'refunds' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            <i class="ti ti-rotate-2 text-xs mr-1"></i> Refund ({refundPipeline.pending + refundPipeline.approved})
-                        </button>
-                        <button
-                            type="button"
-                            onclick={() => (activePipelineTab = 'returns')}
-                            class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'returns' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            <i class="ti ti-replace text-xs mr-1"></i> Retur ({returnPipeline.pending + returnPipeline.approved + returnPipeline.inTransit + returnPipeline.received + returnPipeline.refunding})
-                        </button>
+                        {#if !isSeller && !isSellerEnabled}
+                            <button
+                                type="button"
+                                onclick={() => (activePipelineTab = 'refunds')}
+                                class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'refunds' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                <i class="ti ti-rotate-2 text-xs mr-1"></i> Refund ({refundPipeline.pending + refundPipeline.approved})
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => (activePipelineTab = 'returns')}
+                                class="rounded-md px-3 py-1.5 transition-colors {activePipelineTab === 'returns' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                <i class="ti ti-replace text-xs mr-1"></i> Retur ({returnPipeline.pending + returnPipeline.approved + returnPipeline.inTransit + returnPipeline.received + returnPipeline.refunding})
+                            </button>
+                        {/if}
                     </div>
                 </div>
 
@@ -612,8 +626,12 @@
 
                     <div class="flex flex-col gap-2 border-b border-slate-100 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                         <div>
-                            <p class="text-sm font-semibold text-slate-800">Tren Finansial & Pengembalian</p>
-                            <p class="text-xs text-slate-400 mt-0.5">Perbandingan Penjualan vs Refund & Retur (6 Bulan)</p>
+                            <p class="text-sm font-semibold text-slate-800">
+                                {isSeller || isSellerEnabled ? 'Tren Penjualan' : 'Tren Finansial & Pengembalian'}
+                            </p>
+                            <p class="text-xs text-slate-400 mt-0.5">
+                                {isSeller || isSellerEnabled ? 'Tren Penjualan (6 Bulan)' : 'Perbandingan Penjualan vs Refund & Retur (6 Bulan)'}
+                            </p>
                         </div>
                         <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-1 text-xs font-medium">
                             <button
@@ -630,20 +648,22 @@
                             >
                                 Revenue
                             </button>
-                            <button
-                                type="button"
-                                onclick={() => (chartMetric = 'refund')}
-                                class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'refund' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                            >
-                                Refund
-                            </button>
-                            <button
-                                type="button"
-                                onclick={() => (chartMetric = 'return')}
-                                class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'return' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
-                            >
-                                Retur
-                            </button>
+                            {#if !isSeller && !isSellerEnabled}
+                                <button
+                                    type="button"
+                                    onclick={() => (chartMetric = 'refund')}
+                                    class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'refund' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                                >
+                                    Refund
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={() => (chartMetric = 'return')}
+                                    class="rounded-md px-2.5 py-1 transition-colors {chartMetric === 'return' ? 'bg-white font-semibold text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}"
+                                >
+                                    Retur
+                                </button>
+                            {/if}
                         </div>
                     </div>
                     <div class="p-5">
@@ -704,148 +724,150 @@
         </div>
 
         <!-- Grid Table 1: Recent Refunds + Recent Returs -->
-        <Deferred data={['recentRefunds', 'recentReturns']}>
-            {#snippet fallback()}
+        {#if !isSeller && !isSellerEnabled}
+            <Deferred data={['recentRefunds', 'recentReturns']}>
+                {#snippet fallback()}
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div class="p-6 border border-slate-200 rounded-xl bg-white h-[250px] animate-pulse space-y-4">
+                            <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                            <div class="space-y-2">
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                            </div>
+                        </div>
+                        <div class="p-6 border border-slate-200 rounded-xl bg-white h-[250px] animate-pulse space-y-4">
+                            <div class="h-4 bg-slate-200 rounded w-1/3"></div>
+                            <div class="space-y-2">
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                                <div class="h-10 bg-slate-100 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                {/snippet}
+
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div class="p-6 border border-slate-200 rounded-xl bg-white h-[250px] animate-pulse space-y-4">
-                        <div class="h-4 bg-slate-200 rounded w-1/3"></div>
-                        <div class="space-y-2">
-                            <div class="h-10 bg-slate-100 rounded"></div>
-                            <div class="h-10 bg-slate-100 rounded"></div>
-                        </div>
-                    </div>
-                    <div class="p-6 border border-slate-200 rounded-xl bg-white h-[250px] animate-pulse space-y-4">
-                        <div class="h-4 bg-slate-200 rounded w-1/3"></div>
-                        <div class="space-y-2">
-                            <div class="h-10 bg-slate-100 rounded"></div>
-                            <div class="h-10 bg-slate-100 rounded"></div>
-                        </div>
-                    </div>
-                </div>
-            {/snippet}
 
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-
-                <!-- Recent Refunds Table -->
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                        <div>
-                            <p class="text-sm font-semibold text-slate-800">Pengajuan Refund Terbaru</p>
-                            <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian dana terkini</p>
+                    <!-- Recent Refunds Table -->
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-800">Pengajuan Refund Terbaru</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian dana terkini</p>
+                            </div>
+                            <Link href="/admin/refunds" class="text-xs font-medium" style="color: {primaryColor};">
+                                Semua Refund →
+                            </Link>
                         </div>
-                        <Link href="/admin/refunds" class="text-xs font-medium" style="color: {primaryColor};">
-                            Semua Refund →
-                        </Link>
-                    </div>
 
-                    {#if recentRefunds && recentRefunds.length > 0}
-                        <div class="overflow-x-auto" use:dragScroll>
-                            <table class="w-full responsive-table text-xs">
-                                <thead>
-                                    <tr class="border-b border-slate-100 bg-slate-50/50">
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Refund</th>
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Nominal</th>
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    {#each recentRefunds as refund}
-                                        <tr class="transition-colors hover:bg-slate-50/50">
-                                            <td class="px-4 py-3" data-label="No. Refund">
-                                                <Link
-                                                    href="/admin/refunds/{refund.id}"
-                                                    class="font-mono text-xs font-semibold text-amber-600 hover:underline"
-                                                >
-                                                    {refund.refund_number}
-                                                </Link>
-                                                <p class="text-[10px] text-slate-400">Trx: {refund.transaction_number}</p>
-                                            </td>
-                                            <td class="px-4 py-3" data-label="Pelanggan">
-                                                <p class="font-medium text-slate-800">{refund.customer}</p>
-                                                <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{refund.email}</p>
-                                            </td>
-                                            <td class="px-4 py-3 font-semibold text-slate-800" data-label="Nominal">
-                                                {refund.amount_formatted}
-                                            </td>
-                                            <td class="px-4 py-3" data-label="Status">
-                                                {@render RefundBadge(refund.status, refund.status_label)}
-                                            </td>
+                        {#if recentRefunds && recentRefunds.length > 0}
+                            <div class="overflow-x-auto" use:dragScroll>
+                                <table class="w-full responsive-table text-xs">
+                                    <thead>
+                                        <tr class="border-b border-slate-100 bg-slate-50/50">
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Refund</th>
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Nominal</th>
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
                                         </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
-                        </div>
-                    {:else}
-                        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                            <i class="ti ti-rotate-2 text-2xl text-slate-300 mb-2"></i>
-                            <p class="text-sm font-medium text-slate-500">Belum ada pengajuan refund</p>
-                        </div>
-                    {/if}
-                </div>
-
-                <!-- Recent Returs Table -->
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                        <div>
-                            <p class="text-sm font-semibold text-slate-800">Pengajuan Retur Terbaru</p>
-                            <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian & tukar barang</p>
-                        </div>
-                        <Link href="/admin/returns" class="text-xs font-medium" style="color: {primaryColor};">
-                            Semua Retur →
-                        </Link>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        {#each recentRefunds as refund}
+                                            <tr class="transition-colors hover:bg-slate-50/50">
+                                                <td class="px-4 py-3" data-label="No. Refund">
+                                                    <Link
+                                                        href="/admin/refunds/{refund.id}"
+                                                        class="font-mono text-xs font-semibold text-amber-600 hover:underline"
+                                                    >
+                                                        {refund.refund_number}
+                                                    </Link>
+                                                    <p class="text-[10px] text-slate-400">Trx: {refund.transaction_number}</p>
+                                                </td>
+                                                <td class="px-4 py-3" data-label="Pelanggan">
+                                                    <p class="font-medium text-slate-800">{refund.customer}</p>
+                                                    <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{refund.email}</p>
+                                                </td>
+                                                <td class="px-4 py-3 font-semibold text-slate-800" data-label="Nominal">
+                                                    {refund.amount_formatted}
+                                                </td>
+                                                <td class="px-4 py-3" data-label="Status">
+                                                    {@render RefundBadge(refund.status, refund.status_label)}
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {:else}
+                            <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                                <i class="ti ti-rotate-2 text-2xl text-slate-300 mb-2"></i>
+                                <p class="text-sm font-medium text-slate-500">Belum ada pengajuan refund</p>
+                            </div>
+                        {/if}
                     </div>
 
-                    {#if recentReturns && recentReturns.length > 0}
-                        <div class="overflow-x-auto" use:dragScroll>
-                            <table class="w-full responsive-table text-xs">
-                                <thead>
-                                    <tr class="border-b border-slate-100 bg-slate-50/50">
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Retur</th>
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Tipe</th>
-                                        <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    {#each recentReturns as ret}
-                                        <tr class="transition-colors hover:bg-slate-50/50">
-                                            <td class="px-4 py-3" data-label="No. Retur">
-                                                <Link
-                                                    href="/admin/returns/{ret.id}"
-                                                    class="font-mono text-xs font-semibold text-violet-600 hover:underline"
-                                                >
-                                                    {ret.return_number}
-                                                </Link>
-                                                <p class="text-[10px] text-slate-400">Trx: {ret.transaction_number}</p>
-                                            </td>
-                                            <td class="px-4 py-3" data-label="Pelanggan">
-                                                <p class="font-medium text-slate-800">{ret.customer}</p>
-                                                <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{ret.email}</p>
-                                            </td>
-                                            <td class="px-4 py-3" data-label="Tipe">
-                                                <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {ret.type === 'Tukar Barang' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}">
-                                                    {ret.type}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-3" data-label="Status">
-                                                {@render ReturnBadge(ret.status, ret.status_label)}
-                                            </td>
-                                        </tr>
-                                    {/each}
-                                </tbody>
-                            </table>
+                    <!-- Recent Returs Table -->
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                            <div>
+                                <p class="text-sm font-semibold text-slate-800">Pengajuan Retur Terbaru</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Klaim pengembalian & tukar barang</p>
+                            </div>
+                            <Link href="/admin/returns" class="text-xs font-medium" style="color: {primaryColor};">
+                                Semua Retur →
+                            </Link>
                         </div>
-                    {:else}
-                        <div class="flex flex-col items-center justify-center py-12 text-center px-4">
-                            <i class="ti ti-replace text-2xl text-slate-300 mb-2"></i>
-                            <p class="text-sm font-medium text-slate-500">Belum ada pengajuan retur</p>
-                        </div>
-                    {/if}
-                </div>
 
-            </div>
-        </Deferred>
+                        {#if recentReturns && recentReturns.length > 0}
+                            <div class="overflow-x-auto" use:dragScroll>
+                                <table class="w-full responsive-table text-xs">
+                                    <thead>
+                                        <tr class="border-b border-slate-100 bg-slate-50/50">
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">No. Retur</th>
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Pelanggan</th>
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Tipe</th>
+                                            <th class="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-400 text-[10px]">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        {#each recentReturns as ret}
+                                            <tr class="transition-colors hover:bg-slate-50/50">
+                                                <td class="px-4 py-3" data-label="No. Retur">
+                                                    <Link
+                                                        href="/admin/returns/{ret.id}"
+                                                        class="font-mono text-xs font-semibold text-violet-600 hover:underline"
+                                                    >
+                                                        {ret.return_number}
+                                                    </Link>
+                                                    <p class="text-[10px] text-slate-400">Trx: {ret.transaction_number}</p>
+                                                </td>
+                                                <td class="px-4 py-3" data-label="Pelanggan">
+                                                    <p class="font-medium text-slate-800">{ret.customer}</p>
+                                                    <p class="text-[10px] text-slate-400 truncate max-w-[120px]">{ret.email}</p>
+                                                </td>
+                                                <td class="px-4 py-3" data-label="Tipe">
+                                                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold {ret.type === 'Tukar Barang' ? 'bg-indigo-50 text-indigo-700' : 'bg-amber-50 text-amber-700'}">
+                                                        {ret.type}
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3" data-label="Status">
+                                                    {@render ReturnBadge(ret.status, ret.status_label)}
+                                                </td>
+                                            </tr>
+                                        {/each}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {:else}
+                            <div class="flex flex-col items-center justify-center py-12 text-center px-4">
+                                <i class="ti ti-replace text-2xl text-slate-300 mb-2"></i>
+                                <p class="text-sm font-medium text-slate-500">Belum ada pengajuan retur</p>
+                            </div>
+                        {/if}
+                    </div>
+
+                </div>
+            </Deferred>
+        {/if}
 
         <!-- Recent transactions + Stock info -->
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">

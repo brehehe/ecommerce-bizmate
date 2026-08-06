@@ -34,9 +34,13 @@
         (page.props.settings as any)?.storefront_cart_button_style || 'button',
     );
     const isSellerEnabled = $derived(
-        (page.props as any).app_config?.is_seller_enabled ??
-            (page.props as any).settings?.is_seller_enabled ??
-            false,
+        Boolean(
+            (page.props as any).app_config?.is_seller_enabled ??
+                (page.props as any).settings?.is_seller_enabled ??
+                (page.props as any).is_seller_enabled ??
+                (page.props as any).isSellerMode ??
+                false,
+        ),
     );
 
     let selectedVariantProduct = $state<any>(null);
@@ -1026,30 +1030,6 @@
                                                         '/noimage/image.png';
                                                 }}
                                             />
-                                        <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
-                                         {#if isReal && isSellerEnabled}
-                                             <span
-                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'used' ? 'bg-amber-600' : 'bg-emerald-600'}"
-                                             >
-                                                 {product.condition === 'used' ? 'Bekas' : 'Baru'}
-                                             </span>
-                                         {/if}
-                                         {#if isReal && isPromo && discountPercentage > 0}
-                                             <span
-                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                                 style="background-color: {secondary};"
-                                             >
-                                                 -{discountPercentage}%
-                                             </span>
-                                         {/if}
-                                     </div>
-                                     {#if isReal && isSellerEnabled}
-                                         <span
-                                             class="absolute top-1.5 right-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs z-10 {product.condition === 'used' ? 'bg-amber-600' : 'bg-emerald-600'}"
-                                         >
-                                             {product.condition === 'used' ? 'Bekas' : 'Baru'}
-                                         </span>
-                                     {/if}
                                         {:else}
                                             <img
                                                 src="/noimage/image.png"
@@ -1302,14 +1282,23 @@
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
-                                    {#if isPromo && discountPercentage > 0}
-                                        <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md"
-                                            style="background-color: {secondary};"
-                                        >
-                                            -{discountPercentage}%
-                                        </span>
-                                    {/if}
+                                    <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                        {#if isSellerEnabled}
+                                            <span
+                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                            >
+                                                {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                            </span>
+                                        {/if}
+                                        {#if isPromo && discountPercentage > 0}
+                                            <span
+                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                style="background-color: {secondary};"
+                                            >
+                                                -{discountPercentage}%
+                                            </span>
+                                        {/if}
+                                    </div>
                                 </div>
                                 <div class="p-3 flex-1 flex flex-col">
                                     <div>
@@ -1471,14 +1460,23 @@
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
-                                    {#if isReal && isPromo && discountPercentage > 0}
-                                        <span
-                                            class="absolute top-1.5 left-1.5 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
-                                            style="background-color: {secondary};"
-                                        >
-                                            -{discountPercentage}%
-                                        </span>
-                                    {/if}
+                                    <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                        {#if isReal && isSellerEnabled}
+                                            <span
+                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                            >
+                                                {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                            </span>
+                                        {/if}
+                                        {#if isReal && isPromo && discountPercentage > 0}
+                                            <span
+                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-sm"
+                                                style="background-color: {secondary};"
+                                            >
+                                                -{discountPercentage}%
+                                            </span>
+                                        {/if}
+                                    </div>
                                 </div>
                                 <div
                                     class="p-3 flex-1 flex flex-col justify-between"
@@ -1577,11 +1575,11 @@
 
                 <!-- Infinite scroll sentinel -->
                 {#if hasMore || loadingMore}
-                    <div bind:this={sentinelEl} class="mt-8 w-full flex justify-center py-4">
+                    <div bind:this={sentinelEl} class="mt-3 w-full flex justify-center py-1">
                         {#if loadingMore}
-                            <div class="flex items-center gap-2.5 px-6 py-3 bg-white border border-slate-200 rounded-2xl shadow-xs text-slate-600 font-bold text-xs">
+                            <div class="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 rounded-xl shadow-xs text-slate-600 font-bold text-[11px]">
                                 <svg
-                                    class="animate-spin h-5 w-5"
+                                    class="animate-spin h-4 w-4"
                                     style="color: {primary};"
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"

@@ -92,6 +92,24 @@ class ReportController extends Controller
     }
 
     /**
+     * Get seller info if logged-in user is a seller (and not Super Admin / Admin).
+     */
+    protected function getSellerInfo(Request $request): ?array
+    {
+        $user = $request->user();
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $productIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+
+            return [
+                'user' => $user,
+                'product_ids' => $productIds,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Laporan Penjualan (Sales Report)
      */
     public function sales(Request $request): Response
@@ -103,6 +121,7 @@ class ReportController extends Controller
 
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
         $paidStatuses = Transaction::PAID_STATUSES;
+        $sellerInfo = $this->getSellerInfo($request);
 
         // Get active payment methods for dropdown
         $paymentMethods = PaymentMethod::where('is_active', true)
@@ -111,6 +130,15 @@ class ReportController extends Controller
 
         // Build base query without status constraint
         $baseQueryNoStatus = Transaction::whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
+
+        if ($sellerInfo) {
+            $sellerProductIds = $sellerInfo['product_ids'];
+            $baseQueryNoStatus->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')
+                    ->from('transaction_items')
+                    ->whereIn('product_id', $sellerProductIds);
+            });
+        }
 
         // Apply payment method filter
         if ($request->filled('payment_method_id') && $request->payment_method_id !== 'all') {
@@ -154,7 +182,7 @@ class ReportController extends Controller
             ->first();
 
         // Jumlah item terjual
-        $itemsSold = DB::table('transaction_items')
+        $itemsSoldQuery = DB::table('transaction_items')
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
             ->whereIn('transactions.status', $paidStatuses)
             ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
@@ -163,8 +191,13 @@ class ReportController extends Controller
             })
             ->when($request->filled('status') && $request->status !== 'all', function ($q) use ($request) {
                 $q->where('transactions.status', $request->status);
-            })
-            ->sum('transaction_items.quantity');
+            });
+
+        if ($sellerInfo) {
+            $itemsSoldQuery->whereIn('transaction_items.product_id', $sellerInfo['product_ids']);
+        }
+
+        $itemsSold = $itemsSoldQuery->sum('transaction_items.quantity');
 
         // Tren Penjualan Harian
         $salesTrend = (clone $baseQuery)
@@ -261,6 +294,7 @@ class ReportController extends Controller
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
         $paidStatuses = Transaction::PAID_STATUSES;
+        $sellerInfo = $this->getSellerInfo($request);
 
         $query = DB::table('transaction_items')
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
@@ -268,6 +302,10 @@ class ReportController extends Controller
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->whereIn('transactions.status', $paidStatuses)
             ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
+
+        if ($sellerInfo) {
+            $query->whereIn('products.id', $sellerInfo['product_ids']);
+        }
 
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -352,27 +390,33 @@ class ReportController extends Controller
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
         $paidStatuses = Transaction::PAID_STATUSES;
+        $sellerInfo = $this->getSellerInfo($request);
 
-        // Hitung Pendapatan
-        // Pendapatan Produk: sum of items subtotal
-        $productRevenue = DB::table('transaction_items')
+        $itemsQuery = DB::table('transaction_items')
             ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
             ->whereIn('transactions.status', $paidStatuses)
-            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
-            ->sum('transaction_items.subtotal');
+            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
 
-        // Pendapatan Admin Fee
-        $adminFeeRevenue = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->sum('admin_fee');
+        $transactionsQuery = Transaction::whereIn('status', $paidStatuses)
+            ->whereBetween('created_at', [$dateFrom, $dateTo]);
 
+        if ($sellerInfo) {
+            $sellerProductIds = $sellerInfo['product_ids'];
+            $itemsQuery->whereIn('transaction_items.product_id', $sellerProductIds);
+            $transactionsQuery->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')
+                    ->from('transaction_items')
+                    ->whereIn('product_id', $sellerProductIds);
+            });
+        }
+
+        // Hitung Pendapatan
+        $productRevenue = (clone $itemsQuery)->sum('transaction_items.subtotal');
+        $adminFeeRevenue = (clone $transactionsQuery)->sum('admin_fee');
         $totalRevenue = $productRevenue + $adminFeeRevenue;
 
         // Hitung HPP (COGS)
-        $totalCogs = DB::table('transaction_items')
-            ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-            ->whereIn('transactions.status', $paidStatuses)
-            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+        $totalCogs = (clone $itemsQuery)
             ->selectRaw('SUM(hpp * quantity) as total_cogs')
             ->first()
             ->total_cogs ?? 0;
@@ -380,13 +424,8 @@ class ReportController extends Controller
         $grossProfit = $totalRevenue - $totalCogs;
 
         // Hitung Pengeluaran/Subsidi
-        $voucherDiscounts = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->sum('discount_amount');
-
-        $shippingDiscounts = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->sum('shipping_discount');
+        $voucherDiscounts = (clone $transactionsQuery)->sum('discount_amount');
+        $shippingDiscounts = (clone $transactionsQuery)->sum('shipping_discount');
 
         $totalExpenses = $voucherDiscounts + $shippingDiscounts;
         $netProfit = $grossProfit - $totalExpenses;
@@ -399,8 +438,7 @@ class ReportController extends Controller
         };
 
         // Tren Bulanan Laba Rugi
-        $monthlyTrend = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
+        $monthlyTrend = (clone $transactionsQuery)
             ->selectRaw("
                 {$monthFormat} as month,
                 SUM(transactions.admin_fee) as admin_revenue,
@@ -412,10 +450,7 @@ class ReportController extends Controller
             ->get();
 
         // Dapatkan HPP dan Pendapatan Produk bulanan
-        $monthlyProductData = DB::table('transaction_items')
-            ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-            ->whereIn('transactions.status', $paidStatuses)
-            ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
+        $monthlyProductData = (clone $itemsQuery)
             ->selectRaw("
                 {$monthFormat} as month,
                 SUM(transaction_items.subtotal) as product_revenue,
@@ -474,27 +509,40 @@ class ReportController extends Controller
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
         $paidStatuses = Transaction::PAID_STATUSES;
+        $sellerInfo = $this->getSellerInfo($request);
 
-        // Total Pelanggan Baru
-        $newCustomersCount = User::whereHas('roles', function ($q) {
+        $newCustomersQuery = User::whereHas('roles', function ($q) {
             $q->where('name', 'Customer');
-        })->whereBetween('created_at', [$dateFrom, $dateTo])->count();
+        })->whereBetween('created_at', [$dateFrom, $dateTo]);
 
-        // Total Pelanggan Aktif (pernah belanja sukses)
-        $activeCustomersCount = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->distinct('user_id')
-            ->count('user_id');
+        $activeCustomersQuery = Transaction::whereIn('status', $paidStatuses)
+            ->whereBetween('created_at', [$dateFrom, $dateTo]);
 
-        // Total Pelanggan di Database
-        $totalCustomers = User::whereHas('roles', function ($q) {
+        $totalCustomersQuery = User::whereHas('roles', function ($q) {
             $q->where('name', 'Customer');
-        })->count();
+        });
 
         // Kueri Daftar Customer Top Spenders
         $query = User::whereHas('roles', function ($q) {
             $q->where('name', 'Customer');
         });
+
+        if ($sellerInfo) {
+            $sellerProductIds = $sellerInfo['product_ids'];
+            $activeCustomersQuery->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')->from('transaction_items')->whereIn('product_id', $sellerProductIds);
+            });
+            $query->whereIn('users.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transactions.user_id')
+                    ->from('transactions')
+                    ->join('transaction_items', 'transactions.id', '=', 'transaction_items.transaction_id')
+                    ->whereIn('transaction_items.product_id', $sellerProductIds);
+            });
+        }
+
+        $newCustomersCount = $newCustomersQuery->count();
+        $activeCustomersCount = $activeCustomersQuery->distinct('user_id')->count('user_id');
+        $totalCustomers = $totalCustomersQuery->count();
 
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -566,10 +614,19 @@ class ReportController extends Controller
      */
     public function customerTransactions(Request $request, User $user): JsonResponse
     {
-        $transactions = Transaction::where('user_id', $user->id)
+        $sellerInfo = $this->getSellerInfo($request);
+        $query = Transaction::where('user_id', $user->id)
             ->with(['paymentMethod'])
-            ->withCount('items')
-            ->orderBy('created_at', 'desc')
+            ->withCount('items');
+
+        if ($sellerInfo) {
+            $sellerProductIds = $sellerInfo['product_ids'];
+            $query->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')->from('transaction_items')->whereIn('product_id', $sellerProductIds);
+            });
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
 
@@ -581,6 +638,8 @@ class ReportController extends Controller
      */
     public function stocks(Request $request): Response
     {
+        $sellerInfo = $this->getSellerInfo($request);
+
         // 1. Dapatkan stok produk tanpa varian
         $simpleProductsQuery = DB::table('products')
             ->join('product_stocks', function ($join) {
@@ -591,19 +650,7 @@ class ReportController extends Controller
                 $join->on('products.id', '=', 'product_prices.product_id')
                     ->whereNull('product_prices.product_variant_id');
             })
-            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
-            ->selectRaw('
-                products.id as product_id,
-                products.name as name,
-                products.sku as sku,
-                COALESCE(categories.name, \'Tanpa Kategori\') as category_name,
-                product_stocks.stock as stock,
-                product_stocks.min_stock as min_stock,
-                product_stocks.is_unlimited as is_unlimited,
-                product_prices.cost as cost,
-                product_prices.price as price,
-                NULL as variant_id
-            ');
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id');
 
         // 2. Dapatkan stok produk dengan varian
         $driver = DB::connection()->getDriverName();
@@ -625,19 +672,38 @@ class ReportController extends Controller
             ->join('product_variants', 'products.id', '=', 'product_variants.product_id')
             ->join('product_stocks', 'product_variants.id', '=', 'product_stocks.product_variant_id')
             ->join('product_prices', 'product_variants.id', '=', 'product_prices.product_variant_id')
-            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
-            ->selectRaw("
-                products.id as product_id,
-                {$variantNameExpr} as name,
-                product_variants.sku as sku,
-                COALESCE(categories.name, 'Tanpa Kategori') as category_name,
-                product_stocks.stock as stock,
-                product_stocks.min_stock as min_stock,
-                product_stocks.is_unlimited as is_unlimited,
-                product_prices.cost as cost,
-                product_prices.price as price,
-                product_variants.id as variant_id
-            ");
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id');
+
+        if ($sellerInfo) {
+            $simpleProductsQuery->where('products.user_id', $sellerInfo['user']->id);
+            $variantProductsQuery->where('products.user_id', $sellerInfo['user']->id);
+        }
+
+        $simpleProductsQuery->selectRaw('
+            products.id as product_id,
+            products.name as name,
+            products.sku as sku,
+            COALESCE(categories.name, \'Tanpa Kategori\') as category_name,
+            product_stocks.stock as stock,
+            product_stocks.min_stock as min_stock,
+            product_stocks.is_unlimited as is_unlimited,
+            product_prices.cost as cost,
+            product_prices.price as price,
+            NULL as variant_id
+        ');
+
+        $variantProductsQuery->selectRaw("
+            products.id as product_id,
+            {$variantNameExpr} as name,
+            product_variants.sku as sku,
+            COALESCE(categories.name, 'Tanpa Kategori') as category_name,
+            product_stocks.stock as stock,
+            product_stocks.min_stock as min_stock,
+            product_stocks.is_unlimited as is_unlimited,
+            product_prices.cost as cost,
+            product_prices.price as price,
+            product_variants.id as variant_id
+        ");
 
         // Union keduanya
         $unionQuery = DB::query()->fromSub($simpleProductsQuery->unionAll($variantProductsQuery), 'all_stocks');
@@ -708,18 +774,25 @@ class ReportController extends Controller
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
         $paidStatuses = Transaction::PAID_STATUSES;
         $type = $request->input('type', 'product_revenue'); // default
+        $sellerInfo = $this->getSellerInfo($request);
+        $sellerProductIds = $sellerInfo ? $sellerInfo['product_ids'] : null;
 
         $rawItems = collect();
 
         if ($type === 'product_revenue') {
             // Pareto: Produk berdasarkan Omset
-            $rawItems = DB::table('transaction_items')
+            $rawQuery = DB::table('transaction_items')
                 ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
                 ->leftJoin('products', 'transaction_items.product_id', '=', 'products.id')
                 ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
                 ->whereIn('transactions.status', $paidStatuses)
-                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
-                ->selectRaw('
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
+
+            if ($sellerInfo) {
+                $rawQuery->whereIn('transaction_items.product_id', $sellerProductIds);
+            }
+
+            $rawItems = $rawQuery->selectRaw('
                     transaction_items.product_name as label,
                     COALESCE(categories.name, \'Tanpa Kategori\') as category_name,
                     SUM(transaction_items.quantity) as qty_sold,
@@ -730,13 +803,18 @@ class ReportController extends Controller
                 ->get();
         } elseif ($type === 'product_qty') {
             // Pareto: Produk berdasarkan Kuantitas Terjual
-            $rawItems = DB::table('transaction_items')
+            $rawQuery = DB::table('transaction_items')
                 ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
                 ->leftJoin('products', 'transaction_items.product_id', '=', 'products.id')
                 ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
                 ->whereIn('transactions.status', $paidStatuses)
-                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
-                ->selectRaw('
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
+
+            if ($sellerInfo) {
+                $rawQuery->whereIn('transaction_items.product_id', $sellerProductIds);
+            }
+
+            $rawItems = $rawQuery->selectRaw('
                     transaction_items.product_name as label,
                     COALESCE(categories.name, \'Tanpa Kategori\') as category_name,
                     SUM(transaction_items.quantity) as qty_sold,
@@ -748,11 +826,18 @@ class ReportController extends Controller
                 ->get();
         } elseif ($type === 'customer_spending') {
             // Pareto: Pelanggan berdasarkan Total Belanja
-            $rawItems = DB::table('transactions')
+            $rawQuery = DB::table('transactions')
                 ->join('users', 'transactions.user_id', '=', 'users.id')
                 ->whereIn('transactions.status', $paidStatuses)
-                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
-                ->selectRaw('
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
+
+            if ($sellerInfo) {
+                $rawQuery->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                    $sub->select('transaction_id')->from('transaction_items')->whereIn('product_id', $sellerProductIds);
+                });
+            }
+
+            $rawItems = $rawQuery->selectRaw('
                     users.name as label,
                     users.email as category_name,
                     COUNT(transactions.id) as qty_sold,
@@ -763,13 +848,18 @@ class ReportController extends Controller
                 ->get();
         } elseif ($type === 'category_revenue') {
             // Pareto: Kategori berdasarkan Omset
-            $rawItems = DB::table('transaction_items')
+            $rawQuery = DB::table('transaction_items')
                 ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
                 ->leftJoin('products', 'transaction_items.product_id', '=', 'products.id')
                 ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
                 ->whereIn('transactions.status', $paidStatuses)
-                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo])
-                ->selectRaw('
+                ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
+
+            if ($sellerInfo) {
+                $rawQuery->whereIn('transaction_items.product_id', $sellerProductIds);
+            }
+
+            $rawItems = $rawQuery->selectRaw('
                     COALESCE(categories.name, \'Tanpa Kategori\') as label,
                     NULL as category_name,
                     SUM(transaction_items.quantity) as qty_sold,
@@ -898,9 +988,18 @@ class ReportController extends Controller
     public function couriers(Request $request): Response
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
+        $sellerInfo = $this->getSellerInfo($request);
+        $sellerProductIds = $sellerInfo ? $sellerInfo['product_ids'] : null;
+
+        $baseTxQuery = Transaction::whereBetween('created_at', [$dateFrom, $dateTo]);
+        if ($sellerInfo) {
+            $baseTxQuery->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')->from('transaction_items')->whereIn('product_id', $sellerProductIds);
+            });
+        }
 
         // 1. Shipping Summary: Aggregates total orders, completed/cancelled count, total sales, shipping fees collected, and average fee
-        $shippingSummaryRaw = Transaction::whereBetween('created_at', [$dateFrom, $dateTo])
+        $shippingSummaryRaw = (clone $baseTxQuery)
             ->selectRaw("
                 CASE 
                     WHEN shipping_courier = 'store_courier' THEN 'store_courier'
@@ -941,7 +1040,7 @@ class ReportController extends Controller
         }
 
         // 2. RajaOngkir Breakdown: Details for 3PL couriers
-        $rajaongkirBreakdownRaw = Transaction::whereBetween('created_at', [$dateFrom, $dateTo])
+        $rajaongkirBreakdownRaw = (clone $baseTxQuery)
             ->whereNotIn('shipping_courier', ['store_courier', 'self_pickup'])
             ->whereNotNull('shipping_courier')
             ->where('shipping_courier', '!=', '')
@@ -983,8 +1082,8 @@ class ReportController extends Controller
 
         $performanceData = collect();
         if (! empty($driverIds)) {
-            $performanceData = Transaction::whereIn('courier_user_id', $driverIds)
-                ->whereBetween('created_at', [$dateFrom, $dateTo])
+            $performanceQuery = (clone $baseTxQuery)->whereIn('courier_user_id', $driverIds);
+            $performanceData = $performanceQuery
                 ->selectRaw("
                     courier_user_id,
                     COUNT(id) as total_assigned,
@@ -1019,9 +1118,9 @@ class ReportController extends Controller
         }
 
         // 4. Recent Deliveries: latest 20 shipments
-        $recentDeliveries = Transaction::with(['user:id,name', 'courierUser:id,name', 'customerAddress'])
+        $recentDeliveries = (clone $baseTxQuery)
+            ->with(['user:id,name', 'courierUser:id,name', 'customerAddress'])
             ->whereNotNull('shipping_courier')
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->latest()
             ->limit(20)
             ->get()
@@ -1077,6 +1176,7 @@ class ReportController extends Controller
     public function reviews(Request $request): Response
     {
         [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
+        $sellerInfo = $this->getSellerInfo($request);
 
         $search = $request->input('search');
         $ratingFilter = $request->input('rating');
@@ -1086,6 +1186,10 @@ class ReportController extends Controller
         $query = ProductReview::with(['user', 'product', 'productVariant.options'])
             ->withTrashed()
             ->whereBetween('product_reviews.created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()]);
+
+        if ($sellerInfo) {
+            $query->whereHas('product', fn ($p) => $p->where('user_id', $sellerInfo['user']->id));
+        }
 
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -1112,17 +1216,22 @@ class ReportController extends Controller
 
         $reviews = $query->latest('product_reviews.created_at')->paginate(20)->withQueryString();
 
+        $baseReviewQuery = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()]);
+        if ($sellerInfo) {
+            $baseReviewQuery->whereHas('product', fn ($p) => $p->where('user_id', $sellerInfo['user']->id));
+        }
+
         /** @var array<int,int> $ratingDistribution */
-        $ratingDistribution = ProductReview::selectRaw('rating, count(*) as total')
-            ->whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])
+        $ratingDistribution = (clone $baseReviewQuery)
+            ->selectRaw('rating, count(*) as total')
             ->groupBy('rating')
             ->pluck('total', 'rating')
             ->toArray();
 
-        $totalReviews = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->count();
-        $reportedCount = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->where('is_reported', true)->count();
-        $anonymousCount = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->where('is_anonymous', true)->count();
-        $avgRating = ProductReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()])->avg('rating');
+        $totalReviews = (clone $baseReviewQuery)->count();
+        $reportedCount = (clone $baseReviewQuery)->where('is_reported', true)->count();
+        $anonymousCount = (clone $baseReviewQuery)->where('is_anonymous', true)->count();
+        $avgRating = (clone $baseReviewQuery)->avg('rating');
 
         return Inertia::render('Admin/Reports/Reviews', [
             'reviews' => $reviews,
@@ -1156,14 +1265,21 @@ class ReportController extends Controller
             $perPage = 10;
         }
 
-        // Carts last updated older than 2 hours
+        $sellerInfo = $this->getSellerInfo($request);
         $threshold = Carbon::now()->subHours(2);
 
-        $query = User::whereHas('cartItems', function ($q) use ($threshold) {
+        $query = User::whereHas('cartItems', function ($q) use ($threshold, $sellerInfo) {
             $q->where('updated_at', '<', $threshold);
+            if ($sellerInfo) {
+                $q->whereIn('product_id', $sellerInfo['product_ids']);
+            }
         })
-            ->with(['cartItems' => function ($q) use ($threshold) {
-                $q->where('updated_at', '<', $threshold)->with([
+            ->with(['cartItems' => function ($q) use ($threshold, $sellerInfo) {
+                $q->where('updated_at', '<', $threshold);
+                if ($sellerInfo) {
+                    $q->whereIn('product_id', $sellerInfo['product_ids']);
+                }
+                $q->with([
                     'product:id,name,sku',
                     'product.productPrice:id,product_id,price',
                     'productVariant:id,sku',
@@ -1213,7 +1329,12 @@ class ReportController extends Controller
             ];
         });
 
-        $allAbandonedItems = CartItem::where('updated_at', '<', $threshold)
+        $allAbandonedQuery = CartItem::where('updated_at', '<', $threshold);
+        if ($sellerInfo) {
+            $allAbandonedQuery->whereIn('product_id', $sellerInfo['product_ids']);
+        }
+
+        $allAbandonedItems = (clone $allAbandonedQuery)
             ->select(['id', 'product_id', 'product_variant_id', 'quantity', 'updated_at'])
             ->with([
                 'product:id',
@@ -1231,7 +1352,7 @@ class ReportController extends Controller
             return $price * $item->quantity;
         });
 
-        $totalUsers = CartItem::where('updated_at', '<', $threshold)
+        $totalUsers = (clone $allAbandonedQuery)
             ->distinct('user_id')
             ->count('user_id');
 
@@ -1240,7 +1361,7 @@ class ReportController extends Controller
             ? "strftime('%Y-%m-%d', updated_at)"
             : 'CAST(updated_at AS DATE)';
 
-        $cartTrend = CartItem::where('updated_at', '<', $threshold)
+        $cartTrend = (clone $allAbandonedQuery)
             ->selectRaw("
                 {$dateFormat} as date,
                 SUM(quantity) as total_qty,
@@ -1292,10 +1413,18 @@ class ReportController extends Controller
         }
 
         $paidStatuses = Transaction::PAID_STATUSES;
+        $sellerInfo = $this->getSellerInfo($request);
 
         $query = Transaction::whereIn('status', $paidStatuses)
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->whereNotNull('voucher_code');
+
+        if ($sellerInfo) {
+            $sellerProductIds = $sellerInfo['product_ids'];
+            $query->whereIn('transactions.id', function ($sub) use ($sellerProductIds) {
+                $sub->select('transaction_id')->from('transaction_items')->whereIn('product_id', $sellerProductIds);
+            });
+        }
 
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -1304,7 +1433,7 @@ class ReportController extends Controller
             $query->where('voucher_code', $likeOperator, "%{$search}%");
         }
 
-        $vouchersData = $query->selectRaw('
+        $vouchersData = (clone $query)->selectRaw('
                 voucher_code,
                 COUNT(id) as usage_count,
                 SUM(discount_amount) as total_discount,
@@ -1316,9 +1445,7 @@ class ReportController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        $globalMetrics = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->whereNotNull('voucher_code')
+        $globalMetrics = (clone $query)
             ->selectRaw('
                 COUNT(id) as total_usage,
                 SUM(discount_amount) as total_discount_amount,
@@ -1331,9 +1458,7 @@ class ReportController extends Controller
             ? "strftime('%Y-%m-%d', created_at)"
             : 'CAST(created_at AS DATE)';
 
-        $voucherTrend = Transaction::whereIn('status', $paidStatuses)
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->whereNotNull('voucher_code')
+        $voucherTrend = (clone $query)
             ->selectRaw("
                 {$dateFormat} as date,
                 COUNT(id) as usage_count,

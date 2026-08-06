@@ -1786,26 +1786,28 @@
                     {/if}
 
                     <!-- Cart -->
-                    <div class="relative">
-                        <button
-                            onclick={goToCart}
-                            class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                            aria-label="Keranjang"
-                        >
-                            <div class="w-6 h-6 flex items-center justify-center relative">
-                                <i class="ti ti-shopping-cart text-xl"></i>
-                                {#if localCartCount > 0}
-                                    <span
-                                        class="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
-                                        style="background-color: {secondary}; font-family: sans-serif;"
-                                    >
-                                        {localCartCount}
-                                    </span>
-                                {/if}
-                            </div>
-                            <span class="text-[9px] font-bold text-white/80 mt-0.5">Keranjang</span>
-                        </button>
-                    </div>
+                    {#if !isSellerEnabled}
+                        <div class="relative">
+                            <button
+                                onclick={goToCart}
+                                class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                                aria-label="Keranjang"
+                            >
+                                <div class="w-6 h-6 flex items-center justify-center relative">
+                                    <i class="ti ti-shopping-cart text-xl"></i>
+                                    {#if localCartCount > 0}
+                                        <span
+                                            class="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm"
+                                            style="background-color: {secondary}; font-family: sans-serif;"
+                                        >
+                                            {localCartCount}
+                                        </span>
+                                    {/if}
+                                </div>
+                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Keranjang</span>
+                            </button>
+                        </div>
+                    {/if}
 
                     <!-- Notifications (Desktop) -->
                     {#if auth}
@@ -2416,23 +2418,25 @@
                     {/if}
 
                     <!-- Cart -->
-                    <div class="relative shrink-0">
-                        <button
-                            onclick={goToCart}
-                            class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition"
-                            aria-label="Keranjang"
-                        >
-                            <i class="ti ti-shopping-cart text-xl"></i>
-                        </button>
-                        {#if localCartCount > 0}
-                            <span
-                                class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm pointer-events-none"
-                                style="background-color: {secondary}; font-family: sans-serif;"
+                    {#if !isSellerEnabled}
+                        <div class="relative shrink-0">
+                            <button
+                                onclick={goToCart}
+                                class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition"
+                                aria-label="Keranjang"
                             >
-                                {localCartCount}
-                            </span>
-                        {/if}
-                    </div>
+                                <i class="ti ti-shopping-cart text-xl"></i>
+                            </button>
+                            {#if localCartCount > 0}
+                                <span
+                                    class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm pointer-events-none"
+                                    style="background-color: {secondary}; font-family: sans-serif;"
+                                >
+                                    {localCartCount}
+                                </span>
+                            {/if}
+                        </div>
+                    {/if}
 
                     <!-- Notifications Bell (Mobile) -->
                     {#if auth}
@@ -2683,7 +2687,7 @@
     <!-- Mobile notification dropdown -->
     {#if isNotifOpen && auth}
         <div
-            class="md:hidden fixed top-[56px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl max-h-[calc(100vh-56px)] overflow-y-auto"
+            class="md:hidden fixed top-[48px] left-0 right-0 z-[999] bg-white border-b border-slate-100 shadow-2xl max-h-[calc(100vh-48px)] overflow-y-auto"
         >
             <!-- Header -->
             <div

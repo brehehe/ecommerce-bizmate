@@ -6,6 +6,10 @@ import { wayfinder } from '@laravel/vite-plugin-wayfinder';
 import inertia from '@inertiajs/vite';
 
 export default defineConfig({
+    server: {
+        host: 'localhost',
+        port: 5173,
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],

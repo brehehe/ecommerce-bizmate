@@ -289,8 +289,10 @@
             'Transaksi',
             totalNewTransactions,
         )}
-        {@render NavItem('/admin/refunds', 'ti-cash-banknote-off', 'Refund')}
-        {@render NavItem('/admin/returns', 'ti-arrow-back-up', 'Retur')}
+        {#if !isSellerEnabled && !isSeller}
+            {@render NavItem('/admin/refunds', 'ti-cash-banknote-off', 'Refund')}
+            {@render NavItem('/admin/returns', 'ti-arrow-back-up', 'Retur')}
+        {/if}
         {@render NavItem(
             '/admin/stock-movements',
             'ti-transfer',
@@ -367,7 +369,9 @@
             'ti-building-store',
             'Toko & Stok',
         )}
-        {@render NavItem('/admin/promotions', 'ti-discount', 'Promosi')}
+        {#if !isSellerEnabled && !isSeller}
+            {@render NavItem('/admin/promotions', 'ti-discount', 'Promosi')}
+        {/if}
 
         <div class="my-3 h-px bg-slate-100"></div>
 
@@ -410,26 +414,32 @@
                 >
                     {@render SubNavItem('/admin/reports/sales', 'Penjualan')}
                     {@render SubNavItem('/admin/reports/products', 'Produk')}
-                    {@render SubNavItem(
-                        '/admin/reports/customers',
-                        'Pelanggan',
-                    )}
-                    {@render SubNavItem('/admin/reports/couriers', 'Kurir')}
+                    {#if !isSellerEnabled && !isSeller}
+                        {@render SubNavItem(
+                            '/admin/reports/customers',
+                            'Pelanggan',
+                        )}
+                        {@render SubNavItem('/admin/reports/couriers', 'Kurir')}
+                    {/if}
                     {@render SubNavItem(
                         '/admin/reports/profit-loss',
                         'Laba Rugi',
                     )}
                     {@render SubNavItem('/admin/reports/stocks', 'Stok')}
-                    {@render SubNavItem('/admin/reports/reviews', 'Ulasan')}
+                    {#if !isSellerEnabled && !isSeller}
+                        {@render SubNavItem('/admin/reports/reviews', 'Ulasan')}
+                    {/if}
                     {@render SubNavItem('/admin/reports/pareto', 'Pareto')}
-                    {@render SubNavItem(
-                        '/admin/reports/abandoned-carts',
-                        'Keranjang Terbengkalai',
-                    )}
-                    {@render SubNavItem(
-                        '/admin/reports/vouchers',
-                        'Voucher & Diskon',
-                    )}
+                    {#if !isSellerEnabled && !isSeller}
+                        {@render SubNavItem(
+                            '/admin/reports/abandoned-carts',
+                            'Keranjang Terbengkalai',
+                        )}
+                        {@render SubNavItem(
+                            '/admin/reports/vouchers',
+                            'Voucher & Diskon',
+                        )}
+                    {/if}
                 </div>
             {/if}
         </div>

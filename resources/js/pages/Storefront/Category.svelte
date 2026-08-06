@@ -10,8 +10,8 @@
 
     let {
         category = { id: '', name: '', slug: '' },
-        categories = undefined,
-        brands = undefined,
+        categories = [],
+        brands = [],
         products = undefined,
         filters = { q: '', min_price: '', max_price: '', sort: 'latest', brand: '', promo: false, type: 'all' },
         storeName = '',
@@ -80,6 +80,17 @@
         { id: 'price_desc', label: 'Harga ↓' },
     ]);
 
+    const popularLocations = [
+        'Jakarta',
+        'Surabaya',
+        'Bandung',
+        'Medan',
+        'Semarang',
+        'Yogyakarta',
+        'Makassar',
+        'Bali',
+    ];
+
     // Filter states
     // svelte-ignore state_referenced_locally
     let searchQ = $state(filters.q || '');
@@ -99,6 +110,8 @@
     let selectedCondition = $state(filters.condition || 'all');
     // svelte-ignore state_referenced_locally
     let selectedRating = $state(filters.rating || '');
+    // svelte-ignore state_referenced_locally
+    let selectedLocation = $state(filters.location || '');
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
@@ -117,6 +130,7 @@
         promoOnly = filters.promo || false;
         selectedCondition = filters.condition || 'all';
         selectedRating = filters.rating || '';
+        selectedLocation = filters.location || '';
     });
 
     // Auto-scroll the active category tab into view whenever category changes
@@ -179,6 +193,7 @@
                 promo: promoOnly ? 1 : 0,
                 condition: selectedCondition,
                 rating: selectedRating,
+                location: selectedLocation,
             },
             {
                 preserveState: true,
@@ -197,6 +212,7 @@
         promoOnly = false;
         selectedCondition = 'all';
         selectedRating = '';
+        selectedLocation = '';
 
         if (!keepMobileOpen) {
             showMobileFilters = false;
@@ -492,7 +508,7 @@
             bind:this={categoryScrollRef}
             class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-slate-100"
         >
-            {#each categories as cat}
+            {#each categories || [] as cat}
                 <button
                     data-active={cat.id === category.id ? 'true' : 'false'}
                     onclick={() => navigateToCategory(cat)}
@@ -633,7 +649,7 @@
                         >Kategori</span
                     >
                     <div class="space-y-1 max-h-60 overflow-y-auto pr-1">
-                        {#each categories as cat}
+                        {#each categories || [] as cat}
                             <button
                                 onclick={() => navigateToCategory(cat)}
                                 class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
@@ -832,6 +848,60 @@
                         </div>
                     </div>
                 {/if}
+
+                <hr class="border-slate-100" />
+
+                <!-- Lokasi Filter -->
+                <div class="space-y-2.5">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                        Lokasi Penjual / Kota
+                    </span>
+                    <div class="relative mb-2">
+                        <i class="ti ti-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input
+                            type="text"
+                            bind:value={selectedLocation}
+                            onchange={() => applyFilters(false)}
+                            placeholder="Cari Kota / Provinsi..."
+                            class="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300"
+                        />
+                        {#if selectedLocation}
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    selectedLocation = '';
+                                    applyFilters(false);
+                                }}
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            >
+                                <i class="ti ti-x text-xs"></i>
+                            </button>
+                        {/if}
+                    </div>
+                    <div class="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                        {#each popularLocations as loc}
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    selectedLocation = selectedLocation === loc ? '' : loc;
+                                    applyFilters(false);
+                                }}
+                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer
+                                       {selectedLocation === loc
+                                    ? 'bg-amber-50 text-amber-700 font-extrabold'
+                                    : 'text-slate-600 hover:text-slate-900'}"
+                            >
+                                <span class="flex items-center gap-2 truncate">
+                                    <i class="ti ti-map-pin text-sm text-slate-400"></i>
+                                    {loc}
+                                </span>
+                                {#if selectedLocation === loc}
+                                    <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
+                                {/if}
+                            </button>
+                        {/each}
+                    </div>
+                </div>
             </aside>
 
             <!-- ═══════════════════════════════════════════════════
@@ -1236,6 +1306,51 @@
                             </div>
                         </div>
                     {/if}
+
+                    <!-- Lokasi Filter Mobile Drawer -->
+                    <div class="space-y-3 mt-6">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                            Lokasi Penjual / Kota
+                        </span>
+                        <div class="relative mb-2">
+                            <i class="ti ti-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input
+                                type="text"
+                                bind:value={selectedLocation}
+                                placeholder="Cari Kota / Provinsi..."
+                                class="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300"
+                            />
+                            {#if selectedLocation}
+                                <button
+                                    type="button"
+                                    onclick={() => (selectedLocation = '')}
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <i class="ti ti-x text-xs"></i>
+                                </button>
+                            {/if}
+                        </div>
+                        <div class="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                            {#each popularLocations as loc}
+                                <button
+                                    type="button"
+                                    onclick={() => (selectedLocation = selectedLocation === loc ? '' : loc)}
+                                    class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
+                                           {selectedLocation === loc
+                                        ? 'bg-amber-50 text-amber-700 font-extrabold'
+                                        : 'text-slate-600 hover:text-slate-900'}"
+                                >
+                                    <span class="flex items-center gap-2 truncate">
+                                        <i class="ti ti-map-pin text-sm text-slate-400"></i>
+                                        {loc}
+                                    </span>
+                                    {#if selectedLocation === loc}
+                                        <i class="ti ti-check text-xs text-amber-600 font-bold"></i>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
                 </div>
 
                 <div
