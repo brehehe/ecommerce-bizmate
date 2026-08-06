@@ -1046,7 +1046,7 @@
      MOBILE FILTER DRAWER (Mobile)
     ═══════════════════════════════════════════════════ -->
         {#if showMobileFilters}
-            <div class="fixed inset-0 z-50 flex justify-end md:hidden">
+            <div class="fixed inset-0 z-[200] flex justify-end md:hidden">
                 <!-- Backdrop -->
                 <button
                     aria-label="Tutup"
@@ -1056,9 +1056,9 @@
 
                 <!-- Drawer body -->
                 <div
-                    class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between p-6 overflow-y-auto space-y-6"
+                    class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between overflow-hidden"
                 >
-                    <div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6">
                         <div
                             class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5"
                         >
@@ -1188,12 +1188,12 @@
                                     </button>
                                 {/each}
                             </div>
-                        </div>
                     </div>
+                </div>
 
-                    <div
-                        class="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100"
-                    >
+                <div
+                    class="p-4 pb-24 md:pb-6 bg-white border-t border-slate-100 grid grid-cols-2 gap-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]"
+                >
                         <button
                             onclick={() => resetFilters(true)}
                             class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
