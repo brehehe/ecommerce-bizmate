@@ -348,6 +348,7 @@
             <Pagination
                 data={products}
                 itemLabel="Produk"
+                {primary}
                 class="mt-8 flex flex-col sm:flex-row gap-3.5 sm:items-center sm:justify-between py-4 w-full"
             />
         {/if}

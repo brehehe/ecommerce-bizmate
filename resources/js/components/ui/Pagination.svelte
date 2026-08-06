@@ -1,7 +1,14 @@
 <script>
     import { inertia } from '@inertiajs/svelte';
 
-    let { paginator = null, data = null, links: rawLinksProp = null, itemLabel = 'Produk', class: className = '' } = $props();
+    let {
+        paginator = null,
+        data = null,
+        links: rawLinksProp = null,
+        itemLabel = 'Produk',
+        class: className = '',
+        primary = null,
+    } = $props();
 
     const activePaginator = $derived(paginator || data || {});
     const rawLinks = $derived(activePaginator.links || rawLinksProp || []);
@@ -28,22 +35,21 @@
     });
 
     const windowedLinks = $derived.by(() => {
-        if (numericLinks.length <= 9) {
+        const total = numericLinks.length;
+        if (total <= 5) {
             return numericLinks;
         }
 
         const activeIndex = numericLinks.findIndex((l) => l.active);
-        const total = numericLinks.length;
-
-        if (activeIndex === -1) return numericLinks.slice(0, 7);
+        if (activeIndex === -1) return numericLinks.slice(0, 5);
 
         const result = [];
         for (let i = 0; i < total; i++) {
-            const isFirstTwo = i < 2;
-            const isLastTwo = i >= total - 2;
+            const isFirst = i === 0;
+            const isLast = i === total - 1;
             const isAroundActive = Math.abs(i - activeIndex) <= 1;
 
-            if (isFirstTwo || isLastTwo || isAroundActive) {
+            if (isFirst || isLast || isAroundActive) {
                 result.push(numericLinks[i]);
             } else {
                 const lastAdded = result[result.length - 1];
@@ -59,6 +65,12 @@
         }
         return result;
     });
+
+    const activeStyle = $derived(
+        primary
+            ? `background-color: ${primary}; border-color: ${primary}; color: #ffffff;`
+            : '',
+    );
 </script>
 
 {#if activePaginator && rawLinks && rawLinks.length > 3}
@@ -109,8 +121,9 @@
                     <a
                         href={link.url || '#'}
                         use:inertia={{ preserveScroll: true }}
-                        class="min-w-[36px] h-9 px-2.5 rounded-xl flex items-center justify-center text-xs font-semibold transition flex-shrink-0 {link.active
-                            ? 'bg-brand-blueRoyal text-white shadow-sm shadow-brand-blueRoyal/25 ring-2 ring-brand-blueRoyal/20 font-bold'
+                        style={link.active ? activeStyle : ''}
+                        class="min-w-[36px] h-9 px-2.5 rounded-xl flex items-center justify-center text-xs font-bold transition flex-shrink-0 {link.active
+                            ? (primary ? 'shadow-md shadow-slate-900/10' : 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/20')
                             : 'bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-300 shadow-2xs'} {!link.url
                             ? 'opacity-40 cursor-not-allowed pointer-events-none'
                             : ''}"

@@ -7,6 +7,7 @@
     import { showToast } from '@/utils/toast';
     import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
+    import LocationModal from '@/components/ui/LocationModal.svelte';
 
     let {
         category = { id: '', name: '', slug: '' },
@@ -262,6 +263,8 @@
     let lastPage = $state(products?.last_page || 1);
     // svelte-ignore state_referenced_locally
     let total = $state(products?.total || 0);
+
+    let showLocationModal = $state(false);
 
     $effect(() => {
         if (!products) return;
@@ -903,6 +906,16 @@
                             </button>
                         {/each}
                     </div>
+                    <button
+                        type="button"
+                        onclick={() => (showLocationModal = true)}
+                        class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition mt-1.5 border border-dashed border-slate-200"
+                    >
+                        <span class="flex items-center gap-1.5">
+                            Lainnya
+                            <i class="ti ti-chevron-down text-xs"></i>
+                        </span>
+                    </button>
                 </div>
             </aside>
 
@@ -1123,6 +1136,7 @@
                     <Pagination
                         data={products}
                         itemLabel="Produk"
+                        {primary}
                         class="mt-8 flex flex-col sm:flex-row gap-3.5 sm:items-center sm:justify-between py-4 w-full"
                     />
                 {/if}
@@ -1352,6 +1366,16 @@
                                 </button>
                             {/each}
                         </div>
+                        <button
+                            type="button"
+                            onclick={() => (showLocationModal = true)}
+                            class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition mt-1.5 border border-dashed border-slate-200"
+                        >
+                            <span class="flex items-center gap-1.5">
+                                Lainnya
+                                <i class="ti ti-chevron-down text-xs"></i>
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -1383,5 +1407,16 @@
         {primary}
         {secondary}
         user={auth}
+    />
+
+    <LocationModal
+        show={showLocationModal}
+        onClose={() => (showLocationModal = false)}
+        {selectedLocation}
+        onSelectLocation={(loc) => {
+            selectedLocation = loc;
+            applyFilters(false);
+        }}
+        {primary}
     />
 </StorefrontLayout>
