@@ -2447,111 +2447,6 @@
                                         }}
                                         {@const bankColor = bankColors[instr.bank ?? ''] ?? '#64748b'}
 
-                                        <div class="space-y-3">
-                                            <!-- Header Card -->
-                                            <div
-                                                class="rounded-2xl p-4 text-center relative overflow-hidden"
-                                                style="background: linear-gradient(135deg, {bankColor}15 0%, {bankColor}05 100%); border: 1px solid {bankColor}25"
-                                            >
-                                                <div class="flex items-center justify-center gap-2 mb-2">
-                                                    <div class="w-6 h-6 rounded-full flex items-center justify-center" style="background:{bankColor}">
-                                                        <i class="ti ti-building-bank text-[10px] text-white"></i>
-                                                    </div>
-                                                    <p class="text-xs font-bold uppercase tracking-wider" style="color:{bankColor}">{instr.label}</p>
-                                                </div>
-                                                <p class="text-2xl font-black text-slate-900">{fmt(transaction.grand_total)}</p>
-                                                {#if instr.expiry_time}
-                                                    <div class="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded-full">
-                                                        <i class="ti ti-clock text-[9px] text-amber-500"></i>
-                                                        <p class="text-[10px] text-amber-600 font-medium">Berlaku hingga: {instr.expiry_time}</p>
-                                                    </div>
-                                                {/if}
-                                            </div>
-
-                                            <!-- VA / Bank Transfer -->
-                                            {#if instr.type === 'bank_transfer' && instr.va_number}
-                                                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                                                    <!-- VA Number Display -->
-                                                    <div class="px-4 pt-4 pb-3">
-                                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nomor Virtual Account</p>
-                                                        <p class="text-[11px] text-slate-500 font-medium mb-2">Bank {instr.bank}</p>
-                                                        <div
-                                                            class="rounded-xl px-4 py-3 border-2 flex items-center justify-between gap-3"
-                                                            style="border-color:{bankColor}30; background:{bankColor}08"
-                                                        >
-                                                            <p class="text-sm font-black font-mono text-slate-900 tracking-wide break-all leading-snug flex-1">{instr.va_number}</p>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onclick={() => { navigator.clipboard.writeText(instr.va_number ?? ''); showToast('Nomor VA disalin!', 'success'); }}
-                                                            class="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition active:scale-95"
-                                                            style="background:{bankColor}"
-                                                        >
-                                                            <i class="ti ti-copy text-sm"></i>
-                                                            Salin Nomor VA
-                                                        </button>
-                                                    </div>
-                                                    <!-- Steps -->
-                                                    <div class="px-4 pb-4 pt-1 border-t border-slate-50 bg-slate-50/50">
-                                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Cara Pembayaran</p>
-                                                        <div class="space-y-1.5">
-                                                            {#each [`Buka m-banking / ATM ${instr.bank} Anda`, 'Pilih menu Transfer → Virtual Account', 'Masukkan nomor VA di atas', 'Konfirmasi nominal dan selesaikan pembayaran'] as step, i}
-                                                                <div class="flex items-start gap-2">
-                                                                    <div class="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-white text-[9px] font-black" style="background:{bankColor}">{i+1}</div>
-                                                                    <p class="text-xs text-slate-600 leading-relaxed">{step}</p>
-                                                                </div>
-                                                            {/each}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            {/if}
-
-                                            <!-- Mandiri Echannel / Bill Payment -->
-                                            {#if instr.type === 'echannel' && instr.bill_key}
-                                                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-                                                    <div class="px-4 pt-4 pb-3">
-                                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Kode Pembayaran Mandiri</p>
-                                                        <div class="grid grid-cols-2 gap-2">
-                                                            <div class="rounded-xl p-3 border text-center" style="border-color:{bankColor}30; background:{bankColor}08">
-                                                                <p class="text-[10px] text-slate-400 mb-1">Biller Code</p>
-                                                                <p class="text-base font-black font-mono text-slate-900">{instr.biller_code}</p>
-                                                                <button type="button" onclick={() => { navigator.clipboard.writeText(instr.biller_code ?? ''); showToast('Biller Code disalin!', 'success'); }} class="mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md text-white" style="background:{bankColor}">Salin</button>
-                                                            </div>
-                                                            <div class="rounded-xl p-3 border text-center" style="border-color:{bankColor}30; background:{bankColor}08">
-                                                                <p class="text-[10px] text-slate-400 mb-1">Bill Key</p>
-                                                                <p class="text-base font-black font-mono text-slate-900">{instr.bill_key}</p>
-                                                                <button type="button" onclick={() => { navigator.clipboard.writeText(instr.bill_key ?? ''); showToast('Bill Key disalin!', 'success'); }} class="mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md text-white" style="background:{bankColor}">Salin</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="px-4 pb-4 pt-2 bg-slate-50/50 border-t border-slate-50">
-                                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Cara Pembayaran</p>
-                                                        <div class="space-y-1.5">
-                                                            {#each ['Buka ATM / Livin\' by Mandiri', 'Pilih menu Bayar → Multipayment', `Masukkan Biller Code: ${instr.biller_code}`, `Masukkan Bill Key: ${instr.bill_key}`, 'Konfirmasi dan selesaikan pembayaran'] as step, i}
-                                                                <div class="flex items-start gap-2">
-                                                                    <div class="w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-white text-[9px] font-black" style="background:{bankColor}">{i+1}</div>
-                                                                    <p class="text-xs text-slate-600 leading-relaxed">{step}</p>
-                                                                </div>
-                                                            {/each}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            {/if}
-
-                                            <!-- QRIS -->
-                                            {#if instr.type === 'qris' && instr.qr_image}
-                                                <div class="bg-white rounded-2xl border border-slate-100 p-4 flex flex-col items-center shadow-sm">
-                                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Scan QR Code untuk Membayar</p>
-                                                    <div class="p-3 bg-white rounded-2xl border-2 border-rose-100 shadow-sm">
-                                                        <img src={instr.qr_image} alt="QRIS" class="w-44 h-44 object-contain" />
-                                                    </div>
-                                                    <div class="mt-3 flex items-center gap-1.5 text-xs text-slate-500">
-                                                        <i class="ti ti-info-circle text-blue-400 text-sm"></i>
-                                                        Scan dengan GoPay, OVO, Dana, ShopeePay, dll.
-                                                    </div>
-                                                </div>
-                                            {/if}
-
                                             <!-- GoPay / ShopeePay -->
                                             {#if (instr.type === 'gopay' || instr.type === 'shopeepay')}
                                                 {@const ewalletColor = instr.type === 'gopay' ? '#00aa13' : '#ee4d2d'}
@@ -2632,7 +2527,6 @@
                                                     <p class="text-xs text-slate-400 text-center">Pembayaran kartu kredit Anda dienkripsi secara aman dan diproses oleh Midtrans.</p>
                                                 </div>
                                             {/if}
-                                        </div>
 
                                     {:else if isQris && qrisData}
 

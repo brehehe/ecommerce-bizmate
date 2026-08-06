@@ -178,7 +178,7 @@
 
 /* ── FORM INPUTS ──────────────────────────────────────────── */
 
-.sf-dark input:not([type='range']):not([type='checkbox']):not([type='radio']),
+.sf-dark input:not([type='range']):not([type='checkbox']):not([type='radio']):not(.bg-transparent):not(.placeholder-white\/70):not(.placeholder-white),
 .sf-dark select,
 .sf-dark textarea {
     background-color: #1e293b !important;
@@ -186,9 +186,27 @@
     color: #f1f5f9 !important;
 }
 
-.sf-dark input::placeholder,
+.sf-dark input:not(.bg-transparent):not(.placeholder-white\/70):not(.placeholder-white)::placeholder,
 .sf-dark textarea::placeholder {
     color: #64748b !important;
+}
+
+/* Header & Transparent search inputs override in dark mode */
+.sf-dark input.bg-transparent,
+.sf-dark .bg-white\/20 input,
+.sf-dark .bg-white\/10 input,
+.sf-dark .bg-white\/25 input {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+}
+
+.sf-dark input.placeholder-white\/70::placeholder,
+.sf-dark input.bg-transparent::placeholder,
+.sf-dark .bg-white\/20 input::placeholder,
+.sf-dark .bg-white\/10 input::placeholder,
+.sf-dark .bg-white\/25 input::placeholder {
+    color: rgba(255, 255, 255, 0.75) !important;
 }
 
 /* ── ERROR / DANGER STATES ────────────────────────────────── */
@@ -335,13 +353,21 @@ html {
     border-color: #334155 !important;
 }
 
-/* Checkout, cart input backgrounds that use bg-white/30 or similar */
+/* Header search bar translucent containers */
 .sf-dark .bg-white\/10 {
-    background-color: rgba(255, 255, 255, 0.05) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .sf-dark .bg-white\/20 {
-    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.sf-dark .bg-white\/25 {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.sf-dark .border-white\/30 {
+    border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Amber/yellow status badges - keep visible */

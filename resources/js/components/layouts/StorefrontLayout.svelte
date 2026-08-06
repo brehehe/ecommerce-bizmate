@@ -29,7 +29,8 @@
     let {
         children,
         hideMobileHeader = false,
-        hideMobileFooter = false,
+        hideMobileFooter = true,
+        hideMobileBottomNav = false,
         storeName: propStoreName = undefined,
         storeLogo: propStoreLogo = undefined,
     } = $props();
@@ -41,6 +42,10 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
     const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false);
+    const isSellerMode = $derived(
+        isSellerEnabled || Boolean((page.props as any).auth?.user?.is_seller)
+    );
+    const activePath = $derived((page.url || '').split('?')[0] || '/');
 
     const flash = $derived((page.props as any).flash);
 
@@ -2128,26 +2133,6 @@
                                                 ></i> Refund Saya
                                             </Link>
                                         {/if}
-                                        <button
-                                            onclick={() => {
-                                                profileDropOpen = false;
-                                                goToChat();
-                                            }}
-                                            class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left"
-                                        >
-                                            <i class="ti ti-message text-base"></i>
-                                            Chat Saya
-                                            {#if chatUnreadCount > 0}
-                                                <span
-                                                    class="ml-auto w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center text-white shrink-0"
-                                                    style="background-color: {secondary};"
-                                                >
-                                                    {chatUnreadCount > 99
-                                                        ? '99+'
-                                                        : chatUnreadCount}
-                                                </span>
-                                            {/if}
-                                        </button>
                                         {#if (page.props as any).settings?.coins_enabled}
                                             <button
                                                 onclick={() => {
@@ -2624,23 +2609,6 @@
                     </Link>
                 {/if}
 
-                <button
-                    onclick={() => {
-                        profileDropOpen = false;
-                        goToChat();
-                    }}
-                    class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left"
-                >
-                    <i class="ti ti-message text-lg"></i> Chat Saya
-                    {#if chatUnreadCount > 0}
-                        <span
-                            class="ml-auto w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center text-white shrink-0"
-                            style="background-color: {secondary};"
-                        >
-                            {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
-                        </span>
-                    {/if}
-                </button>
                 <Link
                     href="/about"
                     prefetch
@@ -2790,7 +2758,7 @@
     {/if}
 
     <!-- ====== MAIN CONTENT ====== -->
-    <main class="flex-grow flex flex-col transition-all duration-300">
+    <main class="flex-grow flex flex-col transition-all duration-300 {!hideMobileBottomNav ? 'pb-16 md:pb-0' : ''}">
         {@render children()}
     </main>
 
@@ -5088,5 +5056,247 @@
     </div>
 {/if}
 
+
+
+<!-- ====== MOBILE BOTTOM NAVIGATION BAR ====== -->
+{#if !hideMobileBottomNav}
+    <nav
+        class="md:hidden fixed bottom-0 left-0 right-0 z-[990] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] pb-safe transition-all duration-300"
+    >
+        <div class="max-w-md mx-auto px-2 h-16 flex items-center justify-around relative">
+            {#if isSellerMode}
+                <!-- CONCEPT 1: IS_SELLER = TRUE (OLX / FB MARKETPLACE STYLE) -->
+                <!-- 1. Beranda -->
+                <Link
+                    href="/"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-home-2 text-xl transition-transform duration-200 group-active:scale-90 {activePath === '/' ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/' ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath === '/' ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/' ? `color: ${primary}` : ''}
+                        >
+                            Beranda
+                        </span>
+                        {#if activePath === '/'}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 2. Jual (+) -->
+                <Link
+                    href={auth ? (auth.is_seller || isSuperAdmin ? '/admin/products/create' : '/profile') : '/login'}
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-circle-plus text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/admin/products/create') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/admin/products/create') ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/admin/products/create') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/admin/products/create') ? `color: ${primary}` : ''}
+                        >
+                            Jual
+                        </span>
+                        {#if activePath.startsWith('/admin/products/create')}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 3. CENTER BUTTON: Pesan (Prominent floating button) -->
+                <Link
+                    href="/chats"
+                    class="flex flex-col items-center justify-center w-full h-full group relative"
+                >
+                    <div class="absolute -top-5 flex flex-col items-center">
+                        <div class="relative">
+                            <div
+                                class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
+                                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                            >
+                                <i class="ti ti-message-dots text-2xl text-white font-black"></i>
+                            </div>
+                            {#if chatUnreadCount > 0}
+                                <span class="absolute -top-1 -right-1 px-1 py-0.2 min-w-[16px] h-[16px] bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 animate-pulse">
+                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                                </span>
+                            {/if}
+                        </div>
+                        <span class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary">
+                            Pesan
+                        </span>
+                    </div>
+                </Link>
+
+                <!-- 4. Toko Saya -->
+                {@const isStoreActive = activePath.startsWith('/admin') || activePath.startsWith('/seller') || (Boolean(auth?.store_slug) && activePath === '/' + auth.store_slug)}
+                <Link
+                    href={auth ? (auth.store_slug ? `/${auth.store_slug}` : '/admin/dashboard') : '/login'}
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-building-store text-xl transition-transform duration-200 group-active:scale-90 {isStoreActive ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={isStoreActive ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {isStoreActive ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={isStoreActive ? `color: ${primary}` : ''}
+                        >
+                            Toko Saya
+                        </span>
+                        {#if isStoreActive}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 5. Akun -->
+                <Link
+                    href="/profile"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/profile') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/profile') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                        >
+                            Akun
+                        </span>
+                        {#if activePath.startsWith('/profile')}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+            {:else}
+                <!-- CONCEPT 2: IS_SELLER = FALSE (SHOPEE PURE E-COMMERCE CONCEPT) -->
+                <!-- 1. Beranda -->
+                <Link
+                    href="/"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-home-2 text-xl transition-transform duration-200 group-active:scale-90 {activePath === '/' ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/' ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath === '/' ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/' ? `color: ${primary}` : ''}
+                        >
+                            Beranda
+                        </span>
+                        {#if activePath === '/'}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 2. Kategori -->
+                <Link
+                    href="/category"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-category text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? `color: ${primary}` : ''}
+                        >
+                            Kategori
+                        </span>
+                        {#if activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris')}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 3. CENTER BUTTON: Pesan (Prominent floating button) -->
+                <Link
+                    href="/chats"
+                    class="flex flex-col items-center justify-center w-full h-full group relative"
+                >
+                    <div class="absolute -top-5 flex flex-col items-center">
+                        <div class="relative">
+                            <div
+                                class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
+                                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                            >
+                                <i class="ti ti-message-dots text-2xl text-white font-black"></i>
+                            </div>
+                            {#if chatUnreadCount > 0}
+                                <span class="absolute -top-1 -right-1 px-1 py-0.2 min-w-[16px] h-[16px] bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 animate-pulse">
+                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                                </span>
+                            {/if}
+                        </div>
+                        <span class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary">
+                            Pesan
+                        </span>
+                    </div>
+                </Link>
+
+                <!-- 4. Transaksi -->
+                <Link
+                    href="/transactions"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-receipt text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/transaction') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/transaction') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
+                        >
+                            Transaksi
+                        </span>
+                        {#if activePath.startsWith('/transaction')}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 5. Akun -->
+                <Link
+                    href="/profile"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/profile') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/profile') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                        >
+                            Akun
+                        </span>
+                        {#if activePath.startsWith('/profile')}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+            {/if}
+        </div>
+    </nav>
+{/if}
 
 <OfflineDetector />

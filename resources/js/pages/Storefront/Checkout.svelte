@@ -1260,7 +1260,7 @@
 
 <svelte:window onclick={closeCourierDropdown} />
 
-<StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
+<StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true} hideMobileBottomNav={true}>
     <div class="min-h-dvh bg-slate-50">
         <!-- Header -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30">

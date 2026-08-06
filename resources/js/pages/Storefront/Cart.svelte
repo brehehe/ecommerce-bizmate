@@ -798,7 +798,7 @@
     <title>Keranjang Belanja 🛒 - {storeName || 'Bizmate Premium Store'}</title>
 </svelte:head>
 
-<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
+<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true} hideMobileBottomNav={true}>
     <!-- ═══════════════════════════════════════════════════
      STICKY MOBILE HEADER (Shopee Style - exact copy)
     ═══════════════════════════════════════════════════ -->

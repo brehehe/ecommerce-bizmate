@@ -675,7 +675,7 @@
     <title>Pusat Chat - {storeName}</title>
 </svelte:head>
 
-<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
+<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true} hideMobileBottomNav={true}>
     <div
         class="max-w-6xl mx-auto px-0 md:px-6 lg:px-8 py-0 md:py-8 w-full flex flex-col"
     >

@@ -41,7 +41,7 @@ Route::get('/search', [StorefrontController::class, 'search'])->name('search');
 Route::get('/search/suggest', [StorefrontController::class, 'suggest'])->name('search.suggest');
 Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');
 Route::get('/produk-terlaris', [StorefrontController::class, 'produkTerlaris'])->name('produk-terlaris');
-Route::get('/category/{category}', [StorefrontController::class, 'category'])->name('category');
+Route::get('/category/{category?}', [StorefrontController::class, 'category'])->name('category');
 Route::get('/products/{product}', [StorefrontController::class, 'show'])->name('products.show');
 Route::get('/about', [StorefrontController::class, 'about'])->name('about');
 
@@ -111,6 +111,7 @@ Route::middleware('auth')->group(function () {
     // Verified Customer Actions
     Route::middleware('verified')->group(function () {
         // Chat
+        Route::redirect('/chat', '/chats');
         Route::get('/chats', [ChatController::class, 'index'])->name('chats.index');
         Route::get('/chats/transactions', [ChatController::class, 'getTransactionsJson'])->name('chats.transactions');
         Route::post('/chats', [ChatController::class, 'createChat'])->name('chats.create');

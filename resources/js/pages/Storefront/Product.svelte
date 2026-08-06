@@ -1538,7 +1538,7 @@
 
 <svelte:window bind:scrollY />
 
-<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
+<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true} hideMobileBottomNav={true}>
     <!-- MOBILE NAVBAR (Always visible, matching Image 3) -->
     <div
         class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-xs py-2.5 px-3"

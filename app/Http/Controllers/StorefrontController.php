@@ -1374,17 +1374,26 @@ class StorefrontController extends Controller
      *
      * @return Response
      */
-    public function category(Request $request, string $category, ProductService $productService)
+    public function category(Request $request, ProductService $productService, ?string $category = null)
     {
         $this->initMembership();
-        $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $category);
+        $categoryModel = null;
 
-        $categoryModel = $isUuid
-            ? Category::where('id', $category)->firstOrFail()
-            : Category::where('slug', $category)->firstOrFail();
+        if ($category) {
+            $isUuid = preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $category);
+            $categoryModel = $isUuid
+                ? Category::where('id', $category)->first()
+                : Category::where('slug', $category)->first();
+        }
 
-        // Pass category model ID to request filters
-        $request->merge(['category' => $categoryModel->id]);
+        if (! $categoryModel) {
+            $categoryModel = Category::orderBy('order')->first() ?? Category::first();
+        }
+
+        // Pass category model ID to request filters if available
+        if ($categoryModel) {
+            $request->merge(['category' => $categoryModel->id]);
+        }
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
