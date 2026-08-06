@@ -49,9 +49,7 @@
 
     const page = usePage();
     const isSellerEnabled = $derived(
-        (page.props as any).app_config?.is_seller_enabled ??
-            (page.props as any).settings?.is_seller_enabled ??
-            false,
+        ((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false,
     );
     const enable3dModels = $derived(
         (page.props as any).settings?.enable_3d_models ?? true,
@@ -1479,6 +1477,33 @@
         variantOverride = null;
     }
 
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    function handleTouchStart(e: TouchEvent) {
+        if (e.touches.length === 1) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+        if (isZoomed) return;
+        if (e.changedTouches.length === 1 && gallery.length > 1) {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diffX = touchEndX - touchStartX;
+            const diffY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+
+            if (Math.abs(diffX) > 40 && diffY < 60) {
+                if (diffX < 0) {
+                    lightboxNext();
+                } else {
+                    lightboxPrev();
+                }
+            }
+        }
+    }
+
     /** Helper: check if a specific option's variant is out of stock */
     function isVariantSlideOutOfStock(slide: Slide): boolean {
         if (slide.type !== 'variant') return false;
@@ -1559,31 +1584,33 @@
                 </button> -->
 
                 <!-- Cart Button -->
-                <button
-                    onclick={() => {
-                        if (user) {
-                            router.visit('/cart');
-                        } else {
-                            window.dispatchEvent(
-                                new CustomEvent('open-login-modal'),
-                            );
-                        }
-                    }}
-                    class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer active:scale-95 shrink-0"
-                    aria-label="Keranjang"
-                >
-                    <div class="relative">
-                        <i class="ti ti-shopping-cart text-xl"></i>
-                        {#if cartCount > 0}
-                            <span
-                                class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white shadow-xs"
-                                style="background-color: {secondary}; font-family: sans-serif;"
-                            >
-                                {cartCount}
-                            </span>
-                        {/if}
-                    </div>
-                </button>
+                {#if !isSellerEnabled && !user?.is_seller}
+                    <button
+                        onclick={() => {
+                            if (user) {
+                                router.visit('/cart');
+                            } else {
+                                window.dispatchEvent(
+                                    new CustomEvent('open-login-modal'),
+                                );
+                            }
+                        }}
+                        class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer active:scale-95 shrink-0"
+                        aria-label="Keranjang"
+                    >
+                        <div class="relative">
+                            <i class="ti ti-shopping-cart text-xl"></i>
+                            {#if cartCount > 0}
+                                <span
+                                    class="absolute -top-1.5 -right-2 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white shadow-xs"
+                                    style="background-color: {secondary}; font-family: sans-serif;"
+                                >
+                                    {cartCount}
+                                </span>
+                            {/if}
+                        </div>
+                    </button>
+                {/if}
 
                 <!-- Menu Button -->
                 <button
@@ -4216,12 +4243,18 @@
      LIGHTBOX
 ───────────────────────────────────────────────────── -->
         {#if lightboxOpen && displayImage}
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <div
-                class="fixed inset-0 z-[200] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md p-4 sm:p-6"
+                class="fixed inset-0 z-[200] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md p-4 sm:p-6 select-none"
                 onclick={() => { lightboxOpen = false; isZoomed = false; }}
-                role="button"
-                tabindex="0"
-                onkeydown={(e) => e.key === 'Escape' && (lightboxOpen = false)}
+                role="dialog"
+                aria-label="Tampilan Foto Produk"
+                tabindex="-1"
+                onkeydown={(e) => {
+                    if (e.key === 'Escape') { lightboxOpen = false; isZoomed = false; }
+                    if (e.key === 'ArrowRight' && gallery.length > 1) { isZoomed = false; lightboxNext(); }
+                    if (e.key === 'ArrowLeft' && gallery.length > 1) { isZoomed = false; lightboxPrev(); }
+                }}
             >
                 <!-- Header -->
                 <div class="w-full flex items-center justify-between z-50">
@@ -4236,7 +4269,7 @@
                                 e.stopPropagation();
                                 isZoomed = !isZoomed;
                             }}
-                            class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20"
+                            class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20 active:scale-95 cursor-pointer"
                         >
                             <i class="ti {isZoomed ? 'ti-zoom-out' : 'ti-zoom-in'} text-lg"></i>
                         </button>
@@ -4244,20 +4277,23 @@
                             type="button"
                             aria-label="Tutup"
                             onclick={() => { lightboxOpen = false; isZoomed = false; }}
-                            class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20"
+                            class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20 active:scale-95 cursor-pointer"
                         >
                             <i class="ti ti-x text-lg"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Main Image Preview -->
+                <!-- Main Image Preview Container (With Touch Swipe & Zoom Pan) -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <div
-                    class="relative max-w-4xl max-h-[75vh] flex items-center justify-center my-auto w-full overflow-hidden"
+                    class="relative max-w-5xl max-h-[78vh] flex items-center justify-center my-auto w-full transition-all duration-200 {isZoomed ? 'overflow-auto cursor-zoom-out' : 'overflow-hidden cursor-zoom-in'}"
                     role="presentation"
                     onclick={(e) => e.stopPropagation()}
+                    ontouchstart={handleTouchStart}
+                    ontouchend={handleTouchEnd}
                 >
-                    {#if gallery.length > 1}
+                    {#if gallery.length > 1 && !isZoomed}
                         <button
                             type="button"
                             aria-label="Sebelumnya"
@@ -4266,7 +4302,7 @@
                                 isZoomed = false;
                                 lightboxPrev();
                             }}
-                            class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20"
+                            class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20 active:scale-95 cursor-pointer"
                         >
                             <i class="ti ti-chevron-left text-xl"></i>
                         </button>
@@ -4278,7 +4314,7 @@
                                 isZoomed = false;
                                 lightboxNext();
                             }}
-                            class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20"
+                            class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition z-50 shadow-lg border border-white/20 active:scale-95 cursor-pointer"
                         >
                             <i class="ti ti-chevron-right text-xl"></i>
                         </button>
@@ -4288,7 +4324,7 @@
                         src={displayImage}
                         alt={product.name}
                         onclick={() => (isZoomed = !isZoomed)}
-                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition-transform duration-300 select-none {isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'}"
+                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition-transform duration-300 select-none {isZoomed ? 'scale-[2] my-16' : 'scale-100'}"
                         onerror={(e) => {
                             (e.currentTarget as HTMLImageElement).src =
                                 '/noimage/image.png';
@@ -4299,7 +4335,7 @@
                 <!-- Thumbnail Strip Preview -->
                 {#if gallery.length > 1}
                     <div
-                        class="flex items-center gap-2 overflow-x-auto max-w-full py-2 px-3 bg-black/40 rounded-2xl border border-white/10 z-50 scrollbar-none"
+                        class="flex items-center gap-2 overflow-x-auto max-w-full py-2 px-3 bg-black/40 rounded-2xl border border-white/10 z-50 no-scrollbar"
                         role="presentation"
                         onclick={(e) => e.stopPropagation()}
                     >
@@ -4311,7 +4347,7 @@
                                     variantOverride = null;
                                     isZoomed = false;
                                 }}
-                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 {activeIdx === i && !variantOverride ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-100'}"
+                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 cursor-pointer active:scale-95 {activeIdx === i && !variantOverride ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-100'}"
                             >
                                 <img src={imgUrl} alt="Thumbnail {i + 1}" class="w-full h-full object-cover" />
                             </button>

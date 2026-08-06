@@ -40,7 +40,7 @@
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
     const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
-    const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled) ?? false);
+    const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false);
 
     const flash = $derived((page.props as any).flash);
 
@@ -1786,7 +1786,7 @@
                     {/if}
 
                     <!-- Cart -->
-                    {#if !isSellerEnabled}
+                    {#if !isSellerEnabled && !auth?.is_seller}
                         <div class="relative">
                             <button
                                 onclick={goToCart}
@@ -2418,7 +2418,7 @@
                     {/if}
 
                     <!-- Cart -->
-                    {#if !isSellerEnabled}
+                    {#if !isSellerEnabled && !auth?.is_seller}
                         <div class="relative shrink-0">
                             <button
                                 onclick={goToCart}
