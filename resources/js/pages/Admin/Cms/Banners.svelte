@@ -43,14 +43,62 @@
     }
     function removeHeroBanner(index: number) {
         form.hero_banners = form.hero_banners.filter((_, i) => i !== index);
-        if (form.hero_files[index]) { const f = { ...form.hero_files }; delete f[index]; form.hero_files = f; }
+        const newFiles: Record<number, File> = {};
+        for (const key in form.hero_files) {
+            const k = Number(key);
+            if (k < index) newFiles[k] = form.hero_files[k];
+            else if (k > index) newFiles[k - 1] = form.hero_files[k];
+        }
+        form.hero_files = newFiles;
+    }
+    function moveHeroBanner(index: number, direction: 'up' | 'down') {
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= form.hero_banners.length) return;
+        const updated = [...form.hero_banners];
+        const temp = updated[index];
+        updated[index] = updated[targetIndex];
+        updated[targetIndex] = temp;
+        form.hero_banners = updated;
+
+        const newFiles: Record<number, File> = {};
+        for (const key in form.hero_files) {
+            const k = Number(key);
+            if (k === index) newFiles[targetIndex] = form.hero_files[k];
+            else if (k === targetIndex) newFiles[index] = form.hero_files[k];
+            else newFiles[k] = form.hero_files[k];
+        }
+        form.hero_files = newFiles;
     }
     function addSideBanner() {
         form.side_banners = [...form.side_banners, { image: '', alt: 'Side Banner Baru', link: '#' }];
     }
     function removeSideBanner(index: number) {
         form.side_banners = form.side_banners.filter((_, i) => i !== index);
-        if (form.side_files[index]) { const f = { ...form.side_files }; delete f[index]; form.side_files = f; }
+        const newFiles: Record<number, File> = {};
+        for (const key in form.side_files) {
+            const k = Number(key);
+            if (k < index) newFiles[k] = form.side_files[k];
+            else if (k > index) newFiles[k - 1] = form.side_files[k];
+        }
+        form.side_files = newFiles;
+    }
+    function moveSideBanner(index: number, direction: 'up' | 'down') {
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= form.side_banners.length) return;
+        const updated = [...form.side_banners];
+        const temp = updated[index];
+        updated[index] = updated[targetIndex];
+        updated[targetIndex] = temp;
+        form.side_banners = updated;
+
+        const newFiles: Record<number, File> = {};
+        for (const key in form.side_files) {
+            const k = Number(key);
+            if (k === index) newFiles[targetIndex] = form.side_files[k];
+            else if (k === targetIndex) newFiles[index] = form.side_files[k];
+            else newFiles[k] = form.side_files[k];
+        }
+        form.side_files = newFiles;
     }
 
     function validateImageOrientation(file: File, expected: 'landscape' | 'portrait'): Promise<boolean> {
@@ -221,8 +269,31 @@
                                         title="Hapus Banner">
                                         <i class="ti ti-x text-[10px]"></i>
                                     </button>
-                                    <div class="flex items-center gap-2 mb-3">
+                                    <div class="flex items-center justify-between mb-3">
                                         <span class="text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider font-outfit">Banner #{index + 1}</span>
+                                        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                                            <button
+                                                type="button"
+                                                onclick={() => moveHeroBanner(index, 'up')}
+                                                disabled={index === 0}
+                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 transition flex items-center gap-1"
+                                                title="Pindahkan Ke Atas"
+                                            >
+                                                <i class="ti ti-arrow-up text-[10px]"></i>
+                                                <span class="text-[9px] font-bold">Atas</span>
+                                            </button>
+                                            <div class="w-[1px] h-3 bg-slate-200"></div>
+                                            <button
+                                                type="button"
+                                                onclick={() => moveHeroBanner(index, 'down')}
+                                                disabled={index === form.hero_banners.length - 1}
+                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 transition flex items-center gap-1"
+                                                title="Pindahkan Ke Bawah"
+                                            >
+                                                <i class="ti ti-arrow-down text-[10px]"></i>
+                                                <span class="text-[9px] font-bold">Bawah</span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
                                         <div class="sm:col-span-5">
@@ -303,8 +374,31 @@
                                         title="Hapus Banner">
                                         <i class="ti ti-x text-[10px]"></i>
                                     </button>
-                                    <div class="flex items-center gap-2 mb-3">
+                                    <div class="flex items-center justify-between mb-3">
                                         <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider font-outfit">Side #{index + 1}</span>
+                                        <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm">
+                                            <button
+                                                type="button"
+                                                onclick={() => moveSideBanner(index, 'up')}
+                                                disabled={index === 0}
+                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded disabled:opacity-30 transition flex items-center gap-1"
+                                                title="Pindahkan Ke Atas"
+                                            >
+                                                <i class="ti ti-arrow-up text-[10px]"></i>
+                                                <span class="text-[9px] font-bold">Atas</span>
+                                            </button>
+                                            <div class="w-[1px] h-3 bg-slate-200"></div>
+                                            <button
+                                                type="button"
+                                                onclick={() => moveSideBanner(index, 'down')}
+                                                disabled={index === form.side_banners.length - 1}
+                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded disabled:opacity-30 transition flex items-center gap-1"
+                                                title="Pindahkan Ke Bawah"
+                                            >
+                                                <i class="ti ti-arrow-down text-[10px]"></i>
+                                                <span class="text-[9px] font-bold">Bawah</span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
                                         <div class="sm:col-span-4">

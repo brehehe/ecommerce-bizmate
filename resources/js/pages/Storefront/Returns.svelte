@@ -1,4 +1,5 @@
 <script lang="ts">
+    import AccountLayout from '@/components/layouts/AccountLayout.svelte';
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
@@ -8,6 +9,7 @@
         returnStatusLabels = {} as Record<string, string>,
         storeName = '',
         storeLogo = '',
+        currentType = 'all',
     } = $props();
 
     let selectedReturn = $state<any>(null);
@@ -144,60 +146,82 @@
     };
 </script>
 
-<StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
-    <div class="min-h-dvh bg-slate-50">
-        <!-- Header -->
-        <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-                <Link
-                    href="/"
-                    class="hidden md:flex p-2 hover:bg-slate-100 rounded-full transition items-center justify-center"
-                >
-                    <i class="ti ti-arrow-left text-xl text-slate-700"></i>
-                </Link>
-                <h1 class="text-base font-bold text-slate-800">Retur Saya</h1>
-            </div>
-        </div>
-
-        <div class="max-w-6xl mx-auto px-4 py-6 pb-12">
-            {#if returns.total === 0}
-                <div
-                    class="w-full max-w-6xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm p-8 py-20 flex flex-col items-center justify-center text-center"
-                >
-                    <div
-                        class="w-20 h-20 rounded-full flex items-center justify-center mb-4"
-                        style="background-color: {secondary}10"
-                    >
-                        <i class="ti ti-arrow-back-up text-3xl text-orange-500"
-                        ></i>
-                    </div>
-                    <p class="font-bold text-slate-700 text-lg mb-1">
-                        Belum ada pengajuan retur
+<AccountLayout activeMenu="returns">
+    <div class="space-y-4">
+        <!-- Main Card Header -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-6 space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div>
+                    <h1 class="text-xl font-black text-slate-900 font-outfit tracking-tight">
+                        {currentType === 'refund' ? 'Refund' : currentType === 'replacement' || currentType === 'retur' ? 'Retur Barang' : 'Pengembalian & Retur Produk'}
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium mt-0.5">
+                        Kelola dan pantau seluruh status pengajuan retur barang serta Refund Anda
                     </p>
-                    <p
-                        class="text-sm text-slate-400 mb-6 font-medium leading-relaxed"
-                    >
-                        Anda tidak memiliki pengajuan retur aktif maupun riwayat
-                        pengembalian produk saat ini.
-                    </p>
-                    <Link
-                        href="/transactions"
-                        class="px-6 py-3 rounded-xl font-bold text-white transition active:scale-95 hover:opacity-95 shadow-md shadow-brand-blueRoyal/15"
-                        style="background:{primary}"
-                    >
-                        Lihat Pesanan Saya
-                    </Link>
                 </div>
-            {:else}
-                <div class="max-w-6xl mx-auto space-y-4">
+            </div>
+
+            <!-- Type Filter Tabs -->
+            <div class="flex items-center gap-2 border-b border-slate-100 pb-1 font-bold text-xs">
+                <Link
+                    href="/returns"
+                    class="px-4 py-2 rounded-xl transition border-b-2 {currentType === 'all'
+                        ? 'border-amber-500 text-amber-600 bg-amber-50/50'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}"
+                    style={currentType === 'all' ? `border-color: ${primary}; color: ${primary};` : ''}
+                >
+                    Semua ({returns.total ?? 0})
+                </Link>
+                <Link
+                    href="/returns?type=refund"
+                    class="px-4 py-2 rounded-xl transition border-b-2 {currentType === 'refund'
+                        ? 'border-amber-500 text-amber-600 bg-amber-50/50'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}"
+                    style={currentType === 'refund' ? `border-color: ${primary}; color: ${primary};` : ''}
+                >
+                    Refund Dana
+                </Link>
+                <Link
+                    href="/returns?type=replacement"
+                    class="px-4 py-2 rounded-xl transition border-b-2 {currentType === 'replacement' || currentType === 'retur'
+                        ? 'border-amber-500 text-amber-600 bg-amber-50/50'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'}"
+                    style={currentType === 'replacement' || currentType === 'retur' ? `border-color: ${primary}; color: ${primary};` : ''}
+                >
+                    Retur Barang
+                </Link>
+            </div>
+
+            <div>
+                {#if returns.total === 0}
+                    <div class="py-14 text-center bg-gradient-to-b from-slate-50/60 to-white rounded-2xl border border-slate-200/60 p-8">
+                        <div class="w-16 h-16 bg-white shadow-xs border border-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-500">
+                            <i class="ti ti-rotate-2 text-3xl"></i>
+                        </div>
+                        <h3 class="text-base font-outfit font-black text-slate-800">Belum Ada Pengajuan Retur</h3>
+                        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                            Anda tidak memiliki pengajuan retur aktif maupun riwayat pengembalian produk saat ini.
+                        </p>
+                        <Link
+                            href="/transactions"
+                            class="mt-5 inline-block px-6 py-2.5 rounded-xl font-bold text-white text-xs shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer"
+                            style="background-color: {primary};"
+                        >
+                            Lihat Pesanan Saya
+                        </Link>
+                    </div>
+                {:else}
+<div class="max-w-6xl mx-auto space-y-4">
                     {#each returns.data as ret (ret.id)}
                         {@const statusColor = returnStatusColors[
                             ret.status
                         ] ?? { bg: '#f1f5f9', text: '#475569' }}
-                        <button
-                            type="button"
+                        <div
+                            role="button"
+                            tabindex="0"
                             onclick={() => openReturnDetail(ret)}
-                            class="w-full text-left block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition duration-200 cursor-pointer"
+                            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') openReturnDetail(ret); }}
+                            class="w-full text-left block bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden hover:shadow-md transition duration-200 cursor-pointer"
                         >
                             <!-- Return Request Header -->
                             <div
@@ -219,49 +243,59 @@
                                                 ? 'Refund Dana'
                                                 : 'Tukar Barang'}
                                         </span>
+                                        <span
+                                            class="text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap"
+                                            style="background-color: {statusColor.bg}; color: {statusColor.text};"
+                                        >
+                                            {returnStatusLabels[ret.status] ??
+                                                ret.status}
+                                        </span>
                                     </div>
-                                    <p
-                                        class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1"
-                                    >
-                                        Diajukan: {fmtDate(ret.created_at)}
+                                    <p class="text-xs text-slate-400 mt-1 font-medium">
+                                        Tanggal Pengajuan: {fmtDate(
+                                            ret.created_at,
+                                        )}
                                     </p>
                                 </div>
-                                <div class="shrink-0 flex items-center">
-                                    <span
-                                        class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border whitespace-nowrap"
-                                        style="background:{statusColor.bg}; color:{statusColor.text}; border-color:{statusColor.text}15;"
-                                    >
-                                        {returnStatusLabels[ret.status] ??
-                                            ret.status}
-                                    </span>
+                                <div class="text-right shrink-0">
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">No. Pesanan</p>
+                                    <p class="text-xs font-mono font-bold text-slate-700 mt-0.5">
+                                        #{ret.transaction?.transaction_number ?? '-'}
+                                    </p>
                                 </div>
                             </div>
 
-                            <!-- Returned Items Preview -->
-                            <div class="px-4 py-3 divide-y divide-slate-50">
+                            <!-- Returned Items Summary -->
+                            <div class="p-4 space-y-3">
                                 {#each ret.items ?? [] as item}
                                     <div
-                                        class="w-full flex items-center gap-3 py-2"
+                                        class="flex items-center justify-between gap-3 text-xs"
                                     >
-                                        <div
-                                            class="w-10 h-10 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center border border-slate-150"
-                                        >
-                                            <i
-                                                class="ti ti-package text-slate-350 text-lg"
-                                            ></i>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p
-                                                class="text-xs font-bold text-slate-800 leading-tight truncate"
+                                        <div class="flex items-center gap-3 overflow-hidden">
+                                            <div
+                                                class="w-10 h-10 rounded-xl bg-slate-100 shrink-0 flex items-center justify-center border border-slate-100"
                                             >
-                                                {item.product_name}
-                                            </p>
-                                            {#if item.variant_name}
-                                                <span
-                                                    class="inline-block text-[9px] font-semibold text-slate-400 mt-0.5"
-                                                    >{item.variant_name}</span
+                                                <i
+                                                    class="ti ti-package text-slate-400 text-lg"
+                                                ></i>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <p
+                                                    class="font-bold text-slate-800 truncate text-xs"
                                                 >
-                                            {/if}
+                                                    {item.product_name}
+                                                </p>
+                                                {#if item.variant_name}
+                                                    <p
+                                                        class="text-[10px] text-slate-400 truncate mt-0.5"
+                                                    >
+                                                        Varian: {item.variant_name}
+                                                    </p>
+                                                {/if}
+                                                <p class="text-[11px] text-slate-500 font-medium mt-0.5">
+                                                    Alasan: "{ret.reason}"
+                                                </p>
+                                            </div>
                                         </div>
                                         <div class="text-right shrink-0">
                                             <p
@@ -314,12 +348,13 @@
                                     <i class="ti ti-chevron-right text-xs"></i>
                                 </div>
                             </div>
-                        </button>
+                        </div>
                     {/each}
                 </div>
             {/if}
         </div>
     </div>
+</div>
 
     <!-- Return Detail Modal -->
     {#if selectedReturn}
@@ -807,7 +842,7 @@
             </div>
         </div>
     {/if}
-</StorefrontLayout>
+</AccountLayout>
 
 <!-- Window Keydown Binder -->
 <svelte:window onkeydown={handleKeydown} />

@@ -260,6 +260,24 @@
     // ──────────────────────────────────────────────────
     // HELPERS
     // ──────────────────────────────────────────────────
+    function handleBannerClick(banner: any, e?: MouseEvent) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (!banner) return;
+        const link = banner.link ? String(banner.link).trim() : '';
+        if (link && link !== '#') {
+            if (link.startsWith('http://') || link.startsWith('https://')) {
+                window.open(link, '_blank');
+            } else {
+                router.visit(link);
+            }
+        } else if (banner.image) {
+            activeLightboxImage = banner.image;
+        }
+    }
+
     function formatPrice(price: any) {
         const n = Number(price);
         if (!n) return 'Rp 0';
@@ -674,11 +692,11 @@
                 >
                     {#each heroBanners as banner, i}
                         <button
-                            onclick={() => (activeLightboxImage = banner.image)}
+                            onclick={(e) => handleBannerClick(banner, e)}
                             class="block w-full transition-opacity duration-700 {i ===
                             activeHero
                                 ? 'opacity-100'
-                                : 'absolute inset-0 opacity-0 pointer-events-none'} text-left h-full"
+                                : 'absolute inset-0 opacity-0 pointer-events-none'} text-left h-full cursor-pointer"
                         >
                             <img
                                 src={banner.image}
@@ -731,8 +749,8 @@
                 <div class="hidden lg:flex flex-1 flex-col gap-2.5 min-w-0">
                     {#each sideBanners as banner}
                         <button
-                            onclick={() => (activeLightboxImage = banner.image)}
-                            class="rounded-2xl overflow-hidden block bg-slate-100 w-full text-left"
+                            onclick={(e) => handleBannerClick(banner, e)}
+                            class="rounded-2xl overflow-hidden block bg-slate-100 w-full text-left cursor-pointer"
                         >
                             <img
                                 src={banner.image}
@@ -1371,26 +1389,16 @@
             <div
                 class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
             >
-                {#if middleWide.link && middleWide.link !== '#'}
-                    <Link href={middleWide.link} class="block w-full">
-                        <img
-                            src={middleWide.image}
-                            alt={middleWide.alt}
-                            class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
-                        />
-                    </Link>
-                {:else}
-                    <button
-                        onclick={() => (activeLightboxImage = middleWide.image)}
-                        class="block w-full text-left"
-                    >
-                        <img
-                            src={middleWide.image}
-                            alt={middleWide.alt}
-                            class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
-                        />
-                    </button>
-                {/if}
+                <button
+                    onclick={(e) => handleBannerClick(middleWide, e)}
+                    class="block w-full text-left cursor-pointer"
+                >
+                    <img
+                        src={middleWide.image}
+                        alt={middleWide.alt}
+                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                    />
+                </button>
             </div>
         </section>
     {/if}
@@ -1754,31 +1762,35 @@
                 </button>
 
                 <!-- Banner Image Link -->
-                <Link
-                    href={popupBanner.link || '#'}
-                    onclick={() => (showPopup = false)}
-                    class="block w-full overflow-hidden aspect-[4/5] bg-slate-100 relative"
+                <button
+                    onclick={(e) => {
+                        showPopup = false;
+                        handleBannerClick(popupBanner, e);
+                    }}
+                    class="block w-full overflow-hidden aspect-[4/5] bg-slate-100 relative cursor-pointer text-left"
                 >
                     <img
                         src={popupBanner.image}
                         alt={popupBanner.alt || 'Promo Spesial'}
                         class="w-full h-full object-cover hover:scale-105 transition duration-500"
                     />
-                </Link>
+                </button>
 
                 <!-- Optional Action Button -->
                 {#if popupBanner.link && popupBanner.link !== '#'}
                     <div
                         class="p-4 bg-white border-t border-slate-50 flex justify-center"
                     >
-                        <Link
-                            href={popupBanner.link}
-                            onclick={() => (showPopup = false)}
-                            class="px-6 py-2.5 text-white font-bold rounded-xl text-xs sm:text-sm tracking-wide uppercase transition duration-200 shadow-md hover:shadow-lg w-full text-center"
+                        <button
+                            onclick={(e) => {
+                                showPopup = false;
+                                handleBannerClick(popupBanner, e);
+                            }}
+                            class="px-6 py-2.5 text-white font-bold rounded-xl text-xs sm:text-sm tracking-wide uppercase transition duration-200 shadow-md hover:shadow-lg w-full text-center cursor-pointer"
                             style="background-color: {primary};"
                         >
                             Lihat Detail Promo
-                        </Link>
+                        </button>
                     </div>
                 {/if}
             </div>

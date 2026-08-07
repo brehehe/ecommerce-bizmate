@@ -2571,7 +2571,7 @@
                         <i class="ti ti-id text-lg"></i> Membership Saya
                     </Link>
                 {/if}
-                {#if !isSellerEnabled}
+                {#if !isSellerEnabled && !auth?.user?.is_seller}
                     <Link
                         href="/profile/addresses"
                         prefetch
@@ -5251,27 +5251,45 @@
                     </div>
                 </Link>
 
-                <!-- 4. Transaksi -->
-                <Link
-                    href="/transactions"
-                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
-                >
-                    <div class="relative flex flex-col items-center">
-                        <i
-                            class="ti ti-receipt text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/transaction') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
-                        ></i>
-                        <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/transaction') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
-                        >
-                            Transaksi
-                        </span>
-                        {#if activePath.startsWith('/transaction')}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
-                        {/if}
-                    </div>
-                </Link>
+                <!-- 4. Transaksi / Toko Saya -->
+                {#if !isSellerEnabled && !auth?.user?.is_seller}
+                    <Link
+                        href="/transactions"
+                        class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                    >
+                        <div class="relative flex flex-col items-center">
+                            <i
+                                class="ti ti-receipt text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/transaction') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                                style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
+                            ></i>
+                            <span
+                                class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/transaction') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                                style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
+                            >
+                                Transaksi
+                            </span>
+                            {#if activePath.startsWith('/transaction')}
+                                <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            {/if}
+                        </div>
+                    </Link>
+                {:else if auth?.user?.is_seller || isSellerEnabled}
+                    <a
+                        href={auth?.user?.store_slug ? `/${auth.user.store_slug}` : '/profile'}
+                        class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                    >
+                        <div class="relative flex flex-col items-center">
+                            <i
+                                class="ti ti-building-store text-xl transition-transform duration-200 group-active:scale-90 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
+                            ></i>
+                            <span
+                                class="text-[10px] font-bold mt-0.5 transition-colors duration-200 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
+                            >
+                                Toko Saya
+                            </span>
+                        </div>
+                    </a>
+                {/if}
 
                 <!-- 5. Akun -->
                 <Link

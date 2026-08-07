@@ -1,4 +1,5 @@
 <script lang="ts">
+    import AccountLayout from '@/components/layouts/AccountLayout.svelte';
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link } from '@inertiajs/svelte';
 
@@ -89,24 +90,26 @@
     );
 </script>
 
-<StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true}>
-    <div class="min-h-dvh bg-slate-50">
+<AccountLayout activeMenu="refunds">
+    <div class="space-y-4">
         <!-- Header -->
-        <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-6 space-y-4">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
                 <Link
                     href="/refunds"
-                    class="hidden md:flex p-2 hover:bg-slate-100 rounded-full transition items-center justify-center"
+                    class="p-2 hover:bg-slate-100 rounded-full transition flex items-center justify-center"
                 >
                     <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                 </Link>
-                <h1 class="text-base font-bold text-slate-800">
-                    Detail Refund
-                </h1>
+                <div>
+                    <h1 class="text-xl font-black text-slate-900 font-outfit tracking-tight">
+                        Detail Pengajuan Refund
+                    </h1>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Status dan rincian pengembalian dana transaksi Anda
+                    </p>
+                </div>
             </div>
-        </div>
-
-        <div class="max-w-3xl mx-auto px-4 py-6 pb-12 space-y-6">
             <!-- Refund Request Overview Card -->
             <div
                 class="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-4"
@@ -481,4 +484,4 @@
             {/if}
         </div>
     </div>
-</StorefrontLayout>
+</AccountLayout>

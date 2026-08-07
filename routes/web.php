@@ -95,6 +95,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/bank-accounts/{bankAccount}/make-primary', [ProfileController::class, 'makePrimaryBankAccount'])->name('profile.bank-accounts.make-primary');
 
     // Customer Shipping Addresses (Keep open to setup address)
+    Route::redirect('/bank-accounts', '/profile/bank-accounts');
+    Route::redirect('/addresses', '/profile/addresses');
     Route::get('/profile/addresses', [CustomerAddressController::class, 'index'])->name('profile.addresses.index');
     Route::post('/profile/addresses', [CustomerAddressController::class, 'store'])->name('profile.addresses.store');
     Route::put('/profile/addresses/{address}', [CustomerAddressController::class, 'update'])->name('profile.addresses.update');

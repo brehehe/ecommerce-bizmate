@@ -26,10 +26,20 @@ class ReturnController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $returns = ReturnRequest::where('user_id', $user->id)
-            ->with(['transaction', 'items', 'media', 'replacementTransaction'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        $type = $request->input('type', 'all');
+
+        $query = ReturnRequest::where('user_id', $user->id)
+            ->with(['transaction', 'items', 'media', 'replacementTransaction']);
+
+        if ($type === 'refund') {
+            $query->where('type', 'refund');
+        } elseif ($type === 'replacement' || $type === 'retur') {
+            $query->where('type', 'replacement');
+        }
+
+        $returns = $query->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->withQueryString();
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
@@ -39,6 +49,7 @@ class ReturnController extends Controller
             'returnStatusLabels' => Transaction::returnStatusLabels(),
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'currentType' => $type,
         ]);
     }
 

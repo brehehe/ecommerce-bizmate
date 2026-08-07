@@ -7,8 +7,11 @@ import inertia from '@inertiajs/vite';
 
 export default defineConfig({
     server: {
-        host: 'localhost',
+        host: '127.0.0.1',
         port: 5173,
+        hmr: {
+            host: '127.0.0.1',
+        },
     },
     plugins: [
         laravel({

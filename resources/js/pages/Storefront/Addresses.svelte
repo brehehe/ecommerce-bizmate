@@ -1,4 +1,5 @@
 <script lang="ts">
+    import AccountLayout from '@/components/layouts/AccountLayout.svelte';
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, router, Link } from '@inertiajs/svelte';
     import { fade } from 'svelte/transition';
@@ -832,6 +833,26 @@
     // Quick set primary from list view
     function selectAndSetPrimary(id: number) {
         selectedAddressId = id;
+        confirmPilihAlamat();
+    }
+
+    function deleteAddress(id: number) {
+        if (confirm('Apakah Anda yakin ingin menghapus alamat ini?')) {
+            router.delete(`/profile/addresses/${id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    showToast('Alamat berhasil dihapus.', 'success', 'top');
+                },
+                onError: (errors) => {
+                    const firstError = Object.values(errors)[0] as string;
+                    showToast(
+                        firstError || 'Gagal menghapus alamat.',
+                        'error',
+                        'top',
+                    );
+                },
+            });
+        }
     }
 
     function confirmPilihAlamat() {
@@ -874,9 +895,9 @@
     }
 </script>
 
-<StorefrontLayout hideMobileFooter={true}>
+<AccountLayout activeMenu="addresses">
     <!-- Desktop: full-width two-col grid | Mobile: narrow card -->
-    <div class="w-full md:max-w-6xl md:mx-auto md:px-6 lg:px-8 md:py-8">
+    <div class="w-full">
         <!-- Mobile card wrapper -->
         <div
             class="max-w-md mx-auto min-h-[calc(100vh-56px)] md:hidden bg-white shadow-md flex flex-col relative"
@@ -1894,347 +1915,345 @@
         <!-- ══════════════════════════════════════════════
          DESKTOP LAYOUT (hidden on mobile)
     ══════════════════════════════════════════════ -->
-        <div class="hidden md:grid md:grid-cols-5 gap-8 items-start">
-            <!-- ── LEFT: Address List ── -->
-            <div
-                class="col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
-            >
-                <!-- Header -->
-                <div
-                    class="px-6 py-5 border-b border-slate-100 flex items-center justify-between"
-                >
-                    <div class="flex items-center gap-3">
-                        <button
-                            onclick={goBack}
-                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
-                            aria-label="Kembali"
-                        >
-                            <i class="ti ti-arrow-left text-xl text-slate-700"
-                            ></i>
-                        </button>
-                        <h1
-                            class="font-outfit font-black text-xl text-slate-800"
-                        >
-                            Detail Alamat
-                        </h1>
-                    </div>
-                    <button
-                        onclick={startAddAddress}
-                        class="text-sm font-bold px-4 py-2 rounded-xl border transition hover:opacity-80"
-                        style="color: {primary}; border-color: {primary};"
-                    >
-                        + Tambah
-                    </button>
-                </div>
-
-                <!-- Search -->
-                <div class="px-6 py-4 border-b border-slate-100">
-                    <div class="relative">
-                        <i
-                            class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                        ></i>
-                        <input
-                            type="text"
-                            bind:value={searchQuery}
-                            placeholder="Cari Alamat"
-                            class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition"
-                        />
-                    </div>
-                </div>
-
-                <!-- Tabs -->
-                <div
-                    class="flex border-b border-slate-100 text-center font-bold text-sm"
-                >
-                    <button
-                        onclick={() => (activeTab = 'semua')}
-                        class="flex-1 py-3.5 transition relative {activeTab ===
-                        'semua'
-                            ? 'text-slate-800'
-                            : 'text-slate-400 hover:text-slate-600'}"
-                    >
-                        Semua Alamat
-                        {#if activeTab === 'semua'}
-                            <div
-                                class="absolute bottom-0 left-0 right-0 h-[3px] rounded-t"
-                                style="background-color: {primary};"
-                            ></div>
-                        {/if}
-                    </button>
-                    <button
-                        onclick={() => (activeTab = 'teman')}
-                        class="flex-1 py-3.5 transition relative {activeTab ===
-                        'teman'
-                            ? 'text-slate-800'
-                            : 'text-slate-400 hover:text-slate-600'}"
-                    >
-                        Dari Teman
-                        {#if activeTab === 'teman'}
-                            <div
-                                class="absolute bottom-0 left-0 right-0 h-[3px] rounded-t"
-                                style="background-color: {primary};"
-                            ></div>
-                        {/if}
-                    </button>
-                </div>
-
-                <!-- Address List -->
-                <div class="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-                    {#if activeTab === 'teman'}
-                        <div class="py-16 text-center" transition:fade>
-                            <div
-                                class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"
-                            >
-                                <i class="ti ti-users text-2xl text-slate-400"
-                                ></i>
-                            </div>
-                            <p class="text-sm font-bold text-slate-700">
-                                Belum ada alamat dari teman
-                            </p>
-                            <p
-                                class="text-xs text-slate-400 mt-1 max-w-[240px] mx-auto"
-                            >
-                                Alamat yang dibagikan oleh kontak Anda akan
-                                muncul di sini.
-                            </p>
-                        </div>
-                    {:else if filteredAddresses.length === 0}
-                        <div class="py-16 text-center" transition:fade>
-                            <div
-                                class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"
-                            >
-                                <i class="ti ti-map text-2xl text-slate-400"
-                                ></i>
-                            </div>
-                            <p class="text-sm font-bold text-slate-700">
-                                Tidak ada alamat ditemukan
-                            </p>
-                            <p class="text-xs text-slate-400 mt-1">
-                                {searchQuery
-                                    ? 'Coba cari dengan kata kunci lain.'
-                                    : 'Silakan tambahkan alamat pengiriman baru Anda.'}
-                            </p>
-                        </div>
-                    {:else}
-                        {#each filteredAddresses as addr (addr.id)}
-                            <!-- svelte-ignore a11y_click_events_have_key_events -->
-                            <div
-                                role="button"
-                                tabindex="0"
-                                onclick={() => selectAndSetPrimary(addr.id)}
-                                class="relative p-4 border rounded-2xl transition cursor-pointer flex flex-col gap-2.5 {selectedAddressId ===
-                                addr.id
-                                    ? 'bg-emerald-50/20'
-                                    : 'hover:bg-slate-50/50 bg-white shadow-sm'}"
-                                style="border-color: {selectedAddressId ===
-                                addr.id
-                                    ? primary
-                                    : '#e2e8f0'};"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <span
-                                            class="text-xs font-black text-slate-700"
-                                            >{addr.label}</span
-                                        >
-                                        {#if addr.is_primary}
-                                            <span
-                                                class="px-2 py-0.5 text-[9px] font-bold text-slate-500 bg-slate-100 rounded-md border border-slate-200"
-                                                >Utama</span
-                                            >
-                                        {/if}
-                                    </div>
-                                    {#if selectedAddressId === addr.id}
-                                        <div
-                                            class="flex items-center justify-center w-6 h-6 rounded-full text-white"
-                                            style="background-color: {primary};"
-                                        >
-                                            <i
-                                                class="ti ti-check text-xs font-bold"
-                                            ></i>
-                                        </div>
-                                    {/if}
-                                </div>
-
-                                <div>
-                                    <h3
-                                        class="font-outfit font-black text-base text-slate-800 leading-tight"
-                                    >
-                                        {addr.receiver_name}
-                                    </h3>
-                                    <p class="text-xs text-slate-500 mt-0.5">
-                                        {addr.phone_number}
-                                    </p>
-                                    <p
-                                        class="text-xs text-slate-600 mt-1.5 leading-relaxed"
-                                    >
-                                        {addr.full_address}
-                                    </p>
-                                    {#if addr.note}
-                                        <p
-                                            class="text-[11px] text-slate-400 mt-1 italic leading-tight"
-                                        >
-                                            <i class="ti ti-note mr-0.5"
-                                            ></i>Catatan: "{addr.note}"
-                                        </p>
-                                    {/if}
-                                </div>
-
-                                {#if addr.latitude && addr.longitude}
-                                    <div
-                                        class="flex items-center gap-1.5 text-xs font-bold"
-                                        style="color: {primary};"
-                                    >
-                                        <i class="ti ti-map-pin"></i>
-                                        <span>Sudah Pinpoint</span>
-                                    </div>
-                                {/if}
-
-                                <div
-                                    class="flex items-center justify-between pt-2 border-t border-slate-100 mt-1"
-                                >
-                                    <button
-                                        onclick={(e) => {
-                                            e.stopPropagation();
-                                            startEditAddress(addr);
-                                        }}
-                                        class="px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-xs text-slate-600 transition"
-                                    >
-                                        Ubah Alamat
-                                    </button>
-                                </div>
-                            </div>
-                        {/each}
-                    {/if}
-                </div>
-
-                <!-- Inline Pilih Alamat button (desktop) -->
-                <div class="px-5 py-4 border-t border-slate-100">
-                    <button
-                        onclick={confirmPilihAlamat}
-                        disabled={!selectedAddressId}
-                        class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
-                        style="background-color: {primary};"
-                    >
-                        Pilih Alamat
-                    </button>
-                </div>
-            </div>
-
-            <!-- ── RIGHT: Form / Search / Map ── -->
-            <div class="col-span-3">
+        <div class="hidden md:block">
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-6 md:p-8 space-y-6">
+                <!-- ====== STEP 1: LIST VIEW ====== -->
                 {#if step === 'list'}
-                    <!-- Idle state: prompt to select or add -->
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center justify-center py-24 text-center"
-                    >
-                        <div
-                            class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4"
-                        >
-                            <i class="ti ti-map-2 text-3xl text-slate-300"></i>
+                    <!-- Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                        <div>
+                            <h1 class="font-outfit font-black text-2xl text-slate-900 tracking-tight">
+                                Alamat Saya
+                            </h1>
+                            <p class="text-xs text-slate-500 mt-1">
+                                Kelola alamat pengiriman kamu untuk mempermudah proses transaksi checkout.
+                            </p>
                         </div>
-                        <h3
-                            class="font-outfit font-black text-lg text-slate-700 mb-1"
-                        >
-                            Pilih atau Tambah Alamat
-                        </h3>
-                        <p class="text-sm text-slate-400 max-w-xs">
-                            Pilih alamat dari daftar, atau tambahkan alamat
-                            pengiriman baru.
-                        </p>
                         <button
                             onclick={startAddAddress}
-                            class="mt-6 px-8 py-3 rounded-xl font-bold text-white text-sm transition hover:opacity-90 shadow"
+                            class="px-5 py-2.5 rounded-xl font-bold text-white text-xs tracking-wide shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 self-start sm:self-auto cursor-pointer"
                             style="background-color: {primary};"
                         >
-                            + Tambah Alamat Baru
+                            <i class="ti ti-plus text-sm"></i>
+                            <span>Tambah Alamat Baru</span>
                         </button>
                     </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex border-b border-slate-200/80 gap-6 font-bold text-xs">
+                            <button
+                                onclick={() => (activeTab = 'semua')}
+                                class="pb-3 transition relative {activeTab === 'semua'
+                                    ? 'text-slate-900 font-black'
+                                    : 'text-slate-400 hover:text-slate-600'}"
+                            >
+                                Semua Alamat ({addresses.length})
+                                {#if activeTab === 'semua'}
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-t"
+                                        style="background-color: {primary};"
+                                    ></div>
+                                {/if}
+                            </button>
+                            <button
+                                onclick={() => (activeTab = 'teman')}
+                                class="pb-3 transition relative {activeTab === 'teman'
+                                    ? 'text-slate-900 font-black'
+                                    : 'text-slate-400 hover:text-slate-600'}"
+                            >
+                                Dari Teman (0)
+                                {#if activeTab === 'teman'}
+                                    <div
+                                        class="absolute bottom-0 left-0 right-0 h-[2.5px] rounded-t"
+                                        style="background-color: {primary};"
+                                    ></div>
+                                {/if}
+                            </button>
+                        </div>
+
+                        <div class="relative w-full sm:w-80">
+                            <i class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input
+                                type="text"
+                                bind:value={searchQuery}
+                                placeholder="Cari alamat atau nama penerima..."
+                                class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50/80 hover:bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100 rounded-xl transition-all"
+                            />
+                            {#if searchQuery}
+                                <button
+                                    onclick={() => (searchQuery = '')}
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <i class="ti ti-x text-xs"></i>
+                                </button>
+                            {/if}
+                        </div>
+                    </div>
+
+                    <!-- Address List Grid -->
+                    <div class="space-y-4 pt-1">
+                        {#if activeTab === 'teman'}
+                            <div class="py-16 text-center bg-slate-50/50 rounded-2xl border border-slate-100" transition:fade>
+                                <div class="w-14 h-14 bg-white rounded-2xl shadow-xs border border-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                    <i class="ti ti-users text-2xl"></i>
+                                </div>
+                                <p class="text-sm font-bold text-slate-800">Belum ada alamat dari teman</p>
+                                <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                                    Alamat yang dibagikan oleh kontak Anda akan muncul di sini.
+                                </p>
+                            </div>
+                        {:else if filteredAddresses.length === 0}
+                            <div class="py-14 text-center bg-gradient-to-b from-slate-50/60 to-white rounded-2xl border border-slate-200/60 p-8" transition:fade>
+                                <div class="w-16 h-16 bg-white shadow-xs border border-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+                                    <i class="ti ti-map-pin text-2xl"></i>
+                                </div>
+                                <h3 class="text-base font-outfit font-black text-slate-800">Belum Ada Alamat Tersimpan</h3>
+                                <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                                    {searchQuery ? 'Coba cari dengan kata kunci nama atau lokasi lain.' : 'Tambahkan alamat pengiriman kamu untuk mempermudah dan mempercepat proses checkout.'}
+                                </p>
+                                {#if !searchQuery}
+                                    <button
+                                        onclick={startAddAddress}
+                                        class="mt-5 px-6 py-2.5 rounded-xl font-bold text-white text-xs shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer"
+                                        style="background-color: {primary};"
+                                    >
+                                        + Tambah Alamat Baru
+                                    </button>
+                                {/if}
+                            </div>
+                        {:else}
+                            {#each filteredAddresses as addr (addr.id)}
+                                <div
+                                    class="p-5 border rounded-2xl transition-all duration-200 hover:shadow-xs space-y-3 {selectedAddressId === addr.id
+                                        ? 'bg-slate-50/60 border-slate-300'
+                                        : 'bg-white border-slate-200/80 hover:border-slate-300'}"
+                                >
+                                    <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                        <div class="space-y-2 flex-grow">
+                                            <!-- Receiver & Badges -->
+                                            <div class="flex items-center gap-2.5 flex-wrap">
+                                                <span class="text-sm font-outfit font-black text-slate-900">{addr.receiver_name}</span>
+                                                <span class="text-slate-300">•</span>
+                                                <span class="text-xs font-semibold text-slate-500">{addr.phone_number}</span>
+                                                <span class="px-2.5 py-0.5 text-[10px] font-black uppercase text-slate-600 bg-slate-100 rounded-md border border-slate-200">
+                                                    {addr.label}
+                                                </span>
+                                                {#if addr.is_primary}
+                                                    <span
+                                                        class="px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-md border border-emerald-200 flex items-center gap-1"
+                                                    >
+                                                        <i class="ti ti-check text-[11px]"></i> Utama
+                                                    </span>
+                                                {/if}
+                                                {#if addr.latitude && addr.longitude}
+                                                    <span class="px-2.5 py-0.5 text-[10px] font-bold text-blue-700 bg-blue-50 rounded-md border border-blue-200 flex items-center gap-1">
+                                                        <i class="ti ti-map-pin text-[11px]"></i> Sudah Pinpoint
+                                                    </span>
+                                                {/if}
+                                            </div>
+
+                                            <!-- Full Address -->
+                                            <p class="text-xs text-slate-600 leading-relaxed max-w-3xl font-sans">
+                                                {addr.full_address}
+                                            </p>
+
+                                            {#if addr.note}
+                                                <p class="text-[11px] text-slate-400 italic flex items-center gap-1">
+                                                    <i class="ti ti-note text-xs"></i> Catatan: "{addr.note}"
+                                                </p>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="flex items-center gap-2 shrink-0 self-end md:self-start pt-1">
+                                            {#if !addr.is_primary}
+                                                <button
+                                                    onclick={() => selectAndSetPrimary(addr.id)}
+                                                    class="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-xs text-slate-600 transition"
+                                                >
+                                                    Atur Utama
+                                                </button>
+                                            {/if}
+                                            <button
+                                                onclick={() => startEditAddress(addr)}
+                                                class="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-xs text-slate-700 transition flex items-center gap-1"
+                                            >
+                                                <i class="ti ti-edit text-xs"></i> Ubah
+                                            </button>
+                                            <button
+                                                onclick={() => deleteAddress(addr.id)}
+                                                class="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 font-bold text-xs text-slate-500 transition"
+                                                aria-label="Hapus alamat"
+                                            >
+                                                <i class="ti ti-trash text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {/each}
+                        {/if}
+                    </div>
+
+                <!-- ====== STEP 2: SEARCH VIEW ====== -->
                 {:else if step === 'search'}
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
-                    >
-                        <div
-                            class="px-6 py-5 border-b border-slate-100 flex items-center gap-3"
-                        >
+                    <div class="pb-4 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
                             <button
                                 onclick={goBack}
                                 class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
                                 aria-label="Kembali"
                             >
-                                <i
-                                    class="ti ti-arrow-left text-xl text-slate-700"
-                                ></i>
+                                <i class="ti ti-arrow-left text-xl text-slate-700"></i>
                             </button>
                             <div>
-                                <h1
-                                    class="font-outfit font-black text-xl text-slate-800"
-                                >
-                                    Cari Alamat
+                                <h1 class="font-outfit font-black text-xl text-slate-800">
+                                    Cari Alamat / Lokasi
                                 </h1>
                                 <p class="text-xs text-slate-400">
                                     Di mana lokasi tujuan pengirimanmu?
                                 </p>
                             </div>
                         </div>
-                        <div class="p-6 space-y-4">
-                            <div class="relative">
-                                <i
-                                    class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                                ></i>
-                                <input
-                                    type="text"
-                                    bind:value={searchInput}
-                                    oninput={handleSearchInput}
-                                    placeholder="Contoh: Surabaya"
-                                    class="w-full pl-10 pr-10 py-3 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition"
-                                />
-                                {#if searchInput}
-                                    <button
-                                        aria-label="Clear search"
-                                        onclick={() => {
-                                            searchInput = '';
-                                            searchResults = [];
-                                        }}
-                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                    >
-                                        <i class="ti ti-x text-base"></i>
-                                    </button>
+                    </div>
+                    <div class="space-y-4 max-w-2xl">
+                        <div class="relative">
+                            <i class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input
+                                type="text"
+                                bind:value={searchInput}
+                                oninput={handleSearchInput}
+                                placeholder="Contoh: Surabaya"
+                                class="w-full pl-10 pr-10 py-3 text-sm bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-300 transition"
+                            />
+                            {#if searchInput}
+                                <button
+                                    aria-label="Clear search"
+                                    onclick={() => {
+                                        searchInput = '';
+                                        searchResults = [];
+                                    }}
+                                    class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <i class="ti ti-x text-base"></i>
+                                </button>
+                            {/if}
+                        </div>
+
+                        <button
+                            onclick={getBrowserLocation}
+                            disabled={locationLoading}
+                            class="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl transition text-left"
+                        >
+                            <div class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-xs">
+                                {#if locationLoading}
+                                    <i class="ti ti-loader animate-spin text-lg" style="color: {primary};"></i>
+                                {:else}
+                                    <i class="ti ti-location text-lg" style="color: {primary};"></i>
                                 {/if}
                             </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-700">Gunakan Lokasi Saat Ini</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Deteksi cepat koordinat GPS Anda</p>
+                            </div>
+                        </button>
+                        <button
+                            onclick={() => {
+                                step = 'form';
+                                pinpointAddress = '';
+                                formFullAddress = '';
+                            }}
+                            class="w-full text-center py-3 border border-slate-200 rounded-2xl hover:bg-slate-50 font-bold text-xs text-slate-600 transition"
+                        >
+                            Tidak ketemu? Isi alamat secara manual
+                        </button>
+                        {#if searchLoading}
+                            <div class="py-12 text-center" transition:fade>
+                                <i class="ti ti-loader animate-spin text-2xl text-slate-400 mb-2"></i>
+                                <p class="text-xs text-slate-400">Mencari lokasi terbaik...</p>
+                            </div>
+                        {:else if searchResults.length > 0}
+                            <div class="space-y-1 pt-2" transition:fade>
+                                <h4 class="text-xs font-bold text-slate-400 px-1 mb-2">Hasil Pencarian</h4>
+                                {#each searchResults as item}
+                                    <button
+                                        onclick={() => selectSuggestion(item)}
+                                        class="w-full flex gap-3.5 p-3 hover:bg-slate-50 rounded-2xl text-left transition border border-transparent hover:border-slate-100"
+                                    >
+                                        <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                                            <i class="ti ti-map-pin text-slate-500"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <h5 class="text-sm font-bold text-slate-700 truncate">
+                                                {item.address?.road || item.address?.suburb || item.name}
+                                            </h5>
+                                            <p class="text-[11px] text-slate-400 mt-0.5 truncate leading-normal">
+                                                {item.display_name}
+                                            </p>
+                                        </div>
+                                    </button>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
 
+                <!-- ====== STEP 3: MAP VIEW ====== -->
+                {:else if step === 'map'}
+                    <div class="pb-4 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
                             <button
-                                onclick={getBrowserLocation}
-                                disabled={locationLoading}
-                                class="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl transition text-left"
+                                onclick={goBack}
+                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
+                                aria-label="Kembali"
                             >
-                                <div
-                                    class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm"
-                                >
-                                    {#if locationLoading}
-                                        <i
-                                            class="ti ti-loader animate-spin text-lg"
-                                            style="color: {primary};"
-                                        ></i>
-                                    {:else}
-                                        <i
-                                            class="ti ti-location text-lg"
-                                            style="color: {primary};"
-                                        ></i>
-                                    {/if}
-                                </div>
-                                <div>
-                                    <h3
-                                        class="text-sm font-bold text-slate-700"
-                                    >
-                                        Gunakan Lokasi Saat Ini
-                                    </h3>
-                                    <p
-                                        class="text-[11px] text-slate-400 mt-0.5"
-                                    >
-                                        Deteksi cepat koordinat GPS Anda
-                                    </p>
-                                </div>
+                                <i class="ti ti-arrow-left text-xl text-slate-700"></i>
+                            </button>
+                            <h1 class="font-outfit font-black text-xl text-slate-800">
+                                Tentukan Pinpoint Lokasi
+                            </h1>
+                        </div>
+                    </div>
+                    <div class="relative bg-slate-100 rounded-2xl overflow-hidden" style="height: 420px;">
+                        <div bind:this={desktopMapContainer} class="absolute inset-0 w-full h-full z-10"></div>
+                        <div class="absolute bottom-4 left-4 right-4 z-20 flex gap-2.5 max-w-md">
+                            <button
+                                onclick={recenterMap}
+                                class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 font-bold text-xs text-slate-700 transition"
+                            >
+                                <i class="ti ti-target text-sm" style="color: {primary};"></i> Lokasi Saya
+                            </button>
+                            <button
+                                onclick={() => (step = 'search')}
+                                class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 font-bold text-xs text-slate-700 transition"
+                            >
+                                <i class="ti ti-search text-sm" style="color: {primary};"></i> Cari Alamat
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4 max-w-2xl">
+                        <div class="flex gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                                <i class="ti ti-map-pin text-slate-500"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-800">Pinpoint Lokasi Aktif</h4>
+                                <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                    {pinpointAddress}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button
+                                onclick={() => {
+                                    if (pinpointAddress) {
+                                        formFullAddress = pinpointAddress;
+                                    }
+                                    step = 'form';
+                                }}
+                                class="flex-1 py-3.5 rounded-2xl font-bold text-white shadow-xs transition hover:opacity-90"
+                                style="background-color: {primary};"
+                            >
+                                Pilih Lokasi & Lanjut
                             </button>
                             <button
                                 onclick={() => {
@@ -2242,216 +2261,63 @@
                                     pinpointAddress = '';
                                     formFullAddress = '';
                                 }}
-                                class="w-full text-center py-3 border border-dashed border-slate-200 rounded-2xl hover:bg-slate-50 font-bold text-xs text-slate-600 transition"
+                                class="flex-1 py-3.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 text-xs transition"
                             >
-                                Tidak ketemu? Isi alamat secara manual
+                                Isi Manual
                             </button>
-                            {#if searchLoading}
-                                <div class="py-12 text-center" transition:fade>
-                                    <i
-                                        class="ti ti-loader animate-spin text-2xl text-slate-400 mb-2"
-                                    ></i>
-                                    <p class="text-xs text-slate-400">
-                                        Mencari lokasi terbaik...
-                                    </p>
-                                </div>
-                            {:else if searchResults.length > 0}
-                                <div class="space-y-1 pt-2" transition:fade>
-                                    <h4
-                                        class="text-xs font-bold text-slate-400 px-1 mb-2"
-                                    >
-                                        Hasil Pencarian
-                                    </h4>
-                                    {#each searchResults as item}
-                                        <button
-                                            onclick={() =>
-                                                selectSuggestion(item)}
-                                            class="w-full flex gap-3.5 p-3 hover:bg-slate-50 rounded-2xl text-left transition border border-transparent hover:border-slate-100"
-                                        >
-                                            <div
-                                                class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 mt-0.5"
-                                            >
-                                                <i
-                                                    class="ti ti-map-pin text-slate-500"
-                                                ></i>
-                                            </div>
-                                            <div class="overflow-hidden">
-                                                <h5
-                                                    class="text-sm font-bold text-slate-700 truncate"
-                                                >
-                                                    {item.address?.road ||
-                                                        item.address?.suburb ||
-                                                        item.name}
-                                                </h5>
-                                                <p
-                                                    class="text-[11px] text-slate-400 mt-0.5 truncate leading-normal"
-                                                >
-                                                    {item.display_name}
-                                                </p>
-                                            </div>
-                                        </button>
-                                    {/each}
-                                </div>
-                            {/if}
                         </div>
                     </div>
-                {:else if step === 'map'}
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
-                    >
-                        <div
-                            class="px-6 py-5 border-b border-slate-100 flex items-center gap-3"
-                        >
-                            <button
-                                onclick={goBack}
-                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
-                                aria-label="Kembali"
-                            >
-                                <i
-                                    class="ti ti-arrow-left text-xl text-slate-700"
-                                ></i>
-                            </button>
-                            <h1
-                                class="font-outfit font-black text-xl text-slate-800"
-                            >
-                                Tentukan Pinpoint Lokasi
-                            </h1>
-                        </div>
-                        <div
-                            class="relative bg-slate-100 overflow-hidden"
-                            style="height: 420px;"
-                        >
-                            <div
-                                bind:this={desktopMapContainer}
-                                class="absolute inset-0 w-full h-full z-10"
-                            ></div>
-                            <div
-                                class="absolute bottom-4 left-4 right-4 z-20 flex gap-2.5"
-                            >
-                                <button
-                                    onclick={recenterMap}
-                                    class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 font-bold text-xs text-slate-700 transition"
-                                >
-                                    <i
-                                        class="ti ti-target text-sm"
-                                        style="color: {primary};"
-                                    ></i> Lokasi Saya
-                                </button>
-                                <button
-                                    onclick={() => (step = 'search')}
-                                    class="flex-1 bg-white/95 hover:bg-white border border-slate-100 py-2.5 px-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 font-bold text-xs text-slate-700 transition"
-                                >
-                                    <i
-                                        class="ti ti-search text-sm"
-                                        style="color: {primary};"
-                                    ></i> Cari Alamat
-                                </button>
-                            </div>
-                        </div>
-                        <div class="p-6 flex flex-col gap-4">
-                            <div class="flex gap-3">
-                                <div
-                                    class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0"
-                                >
-                                    <i class="ti ti-map-pin text-slate-500"></i>
-                                </div>
-                                <div>
-                                    <h4
-                                        class="text-sm font-bold text-slate-800"
-                                    >
-                                        Pinpoint Lokasi Aktif
-                                    </h4>
-                                    <p
-                                        class="text-xs text-slate-500 mt-1.5 leading-relaxed line-clamp-2"
-                                    >
-                                        {pinpointAddress}
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="flex gap-3">
-                                <button
-                                    onclick={() => {
-                                        if (pinpointAddress) {
-                                            formFullAddress = pinpointAddress;
-                                        }
-                                        step = 'form';
-                                    }}
-                                    class="flex-1 py-3.5 rounded-2xl font-bold text-white shadow transition hover:opacity-90"
-                                    style="background-color: {primary};"
-                                >
-                                    Pilih Lokasi &amp; Lanjut
-                                </button>
-                                <button
-                                    onclick={() => {
-                                        step = 'form';
-                                        pinpointAddress = '';
-                                        formFullAddress = '';
-                                    }}
-                                    class="flex-1 py-3.5 rounded-2xl font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 text-xs transition"
-                                >
-                                    Isi Manual
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                {:else if step === 'form'}
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
-                    >
-                        <div
-                            class="px-6 py-5 border-b border-slate-100 flex items-center gap-3"
-                        >
-                            <button
-                                onclick={goBack}
-                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
-                                aria-label="Kembali"
-                            >
-                                <i
-                                    class="ti ti-arrow-left text-xl text-slate-700"
-                                ></i>
-                            </button>
-                            <h1
-                                class="font-outfit font-black text-xl text-slate-800"
-                            >
-                                Detail Alamat
-                            </h1>
-                        </div>
 
-                        <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-                            {#if mapLatitude && mapLongitude}
-                                <div
-                                    class="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl flex gap-3"
-                                >
-                                    <i
-                                        class="ti ti-map-pin text-slate-400 shrink-0 text-base mt-0.5"
-                                    ></i>
+                <!-- ====== STEP 4: FORM VIEW ====== -->
+                {:else if step === 'form'}
+                    <div class="pb-5 border-b border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <button
+                                onclick={goBack}
+                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition"
+                                aria-label="Kembali"
+                            >
+                                <i class="ti ti-arrow-left text-xl text-slate-700"></i>
+                            </button>
+                            <div>
+                                <h1 class="font-outfit font-black text-2xl text-slate-900 tracking-tight">
+                                    {isEditing ? 'Ubah Alamat' : 'Tambah Alamat Baru'}
+                                </h1>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Isi detail alamat pengiriman kamu secara lengkap.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6 max-w-3xl">
+                        {#if mapLatitude && mapLongitude}
+                            <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                        <i class="ti ti-map-pin text-lg"></i>
+                                    </div>
                                     <div class="overflow-hidden">
-                                        <h4
-                                            class="text-[11px] font-bold text-slate-400 uppercase tracking-wider"
-                                        >
-                                            Pinpoint Lokasi
-                                        </h4>
-                                        <p
-                                            class="text-xs text-slate-600 mt-0.5 truncate leading-relaxed"
-                                        >
+                                        <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider">Pinpoint Lokasi</h4>
+                                        <p class="text-xs text-blue-700 mt-0.5 truncate leading-relaxed">
                                             {pinpointAddress}
                                         </p>
                                     </div>
                                 </div>
-                            {/if}
-
-                            <div>
-                                <div
-                                    class="flex justify-between items-center mb-1.5"
+                                <button
+                                    onclick={() => (step = 'map')}
+                                    class="px-3 py-1.5 bg-white border border-blue-200 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-50 transition shrink-0"
                                 >
-                                    <label
-                                        for="dt-label-alamat"
-                                        class="text-xs font-bold text-slate-600"
-                                        >Label Alamat</label
-                                    >
-                                    <span class="text-[10px] text-slate-400"
-                                        >{formLabel.length}/30</span
-                                    >
+                                    Ubah Pinpoint
+                                </button>
+                            </div>
+                        {/if}
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label for="dt-label-alamat" class="text-xs font-bold text-slate-700">Label Alamat</label>
+                                    <span class="text-[10px] text-slate-400">{formLabel.length}/30</span>
                                 </div>
                                 <input
                                     id="dt-label-alamat"
@@ -2459,496 +2325,227 @@
                                     bind:value={formLabel}
                                     maxlength="30"
                                     placeholder="Contoh: Rumah, Kantor, Kos"
-                                    class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                                    class="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
                                 />
                             </div>
 
-                            <!-- Biteship Area Search card (desktop, shown before Wilayah if Biteship enabled) -->
-                            {#if isBiteshipEnabled}
-                                <div
-                                    class="p-4 border border-slate-100 rounded-2xl space-y-3 {formBiteshipAreaId
-                                        ? 'bg-emerald-50/40 border-emerald-200'
-                                        : 'bg-slate-50/50'}"
-                                >
-                                    <h3
-                                        class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
-                                    >
-                                        <i
-                                            class="ti ti-truck-delivery text-sm"
-                                            style="color: {primary};"
-                                        ></i>
-                                        Cari Area Pengiriman
-                                        {#if formBiteshipAreaId}
-                                            <span
-                                                class="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 normal-case"
-                                            >
-                                                <i class="ti ti-circle-check"
-                                                ></i> Terdeteksi
-                                            </span>
-                                        {/if}
-                                    </h3>
-
-                                    <div class="relative">
-                                        <div class="relative">
-                                            <i
-                                                class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"
-                                            ></i>
-                                            <input
-                                                id="dt-biteship-area-search"
-                                                type="text"
-                                                bind:value={areaSearchInput}
-                                                oninput={handleBiteshipAreaSearch}
-                                                placeholder="Ketik kecamatan / kota untuk cari area..."
-                                                class="w-full pl-10 pr-10 py-3 text-sm border rounded-xl bg-white focus:outline-none focus:ring-1 transition {formBiteshipAreaId
-                                                    ? 'border-emerald-300 focus:ring-emerald-200'
-                                                    : 'border-slate-200 focus:ring-slate-300'}"
-                                                autocomplete="off"
-                                            />
-                                            {#if biteshipAreaLoading}
-                                                <i
-                                                    class="ti ti-loader animate-spin absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"
-                                                ></i>
-                                            {:else if formBiteshipAreaId && !showAreaDropdown}
-                                                <button
-                                                    aria-label="Clear area"
-                                                    onclick={() => {
-                                                        formBiteshipAreaId = '';
-                                                        formBiteshipAreaLabel =
-                                                            '';
-                                                        areaSearchInput = '';
-                                                        biteshipAreaResults =
-                                                            [];
-                                                        showAreaDropdown = false;
-                                                        manualAreaMode = false;
-                                                    }}
-                                                    class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition"
-                                                >
-                                                    <i class="ti ti-x text-sm"
-                                                    ></i>
-                                                </button>
-                                            {/if}
-                                        </div>
-
-                                        <!-- Dropdown results -->
-                                        {#if showAreaDropdown && biteshipAreaResults.length > 0}
-                                            <div
-                                                class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-52 overflow-y-auto"
-                                            >
-                                                {#each biteshipAreaResults as area}
-                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                                    <div
-                                                        role="option"
-                                                        aria-selected={formBiteshipAreaId ===
-                                                            area.id}
-                                                        tabindex="0"
-                                                        onclick={() =>
-                                                            selectBiteshipArea(
-                                                                area,
-                                                            )}
-                                                        class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition border-b border-slate-50 last:border-0"
-                                                    >
-                                                        <i
-                                                            class="ti ti-map-pin text-slate-400 shrink-0 text-sm"
-                                                        ></i>
-                                                        <div class="min-w-0">
-                                                            <p
-                                                                class="text-sm font-semibold text-slate-700 truncate"
-                                                            >
-                                                                {area.administrative_division_level_3_name ||
-                                                                    area.name}
-                                                            </p>
-                                                            <p
-                                                                class="text-xs text-slate-400 truncate"
-                                                            >
-                                                                {area.administrative_division_level_2_name ||
-                                                                    ''}{area.administrative_division_level_2_name &&
-                                                                area.postal_code
-                                                                    ? ', '
-                                                                    : ''}{area.postal_code ||
-                                                                    ''}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                {/each}
-                                            </div>
-                                        {/if}
-                                    </div>
-
-                                    {#if formBiteshipAreaId}
-                                        <div
-                                            class="flex items-start gap-2 text-[11px] text-emerald-700"
-                                        >
-                                            <i
-                                                class="ti ti-circle-check mt-0.5 shrink-0"
-                                            ></i>
-                                            <span
-                                                >Area dipilih: <strong
-                                                    >{formBiteshipAreaLabel ||
-                                                        areaSearchInput}</strong
-                                                >. Wilayah pengiriman otomatis
-                                                terisi.</span
-                                            >
-                                        </div>
-                                    {:else if areaSearchInput.length >= 3 && !biteshipAreaLoading && biteshipAreaResults.length === 0}
-                                        <div
-                                            class="flex items-start gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5"
-                                        >
-                                            <i
-                                                class="ti ti-alert-triangle shrink-0 mt-0.5"
-                                            ></i>
-                                            <span
-                                                >Area <strong
-                                                    >"{areaSearchInput}"</strong
-                                                > tidak ditemukan. Coba kata kunci
-                                                lain atau isi data wilayah secara
-                                                manual.</span
-                                            >
-                                        </div>
-                                    {/if}
-
-                                    <!-- Manual toggle -->
-                                    <button
-                                        type="button"
-                                        onclick={() => {
-                                            manualAreaMode = !manualAreaMode;
-                                            showAreaDropdown = false;
-                                        }}
-                                        class="text-[11px] font-semibold flex items-center gap-1.5 transition {manualAreaMode
-                                            ? 'text-slate-500'
-                                            : 'text-slate-400 hover:text-slate-600'}"
-                                    >
-                                        <i class="ti ti-edit text-xs"></i>
-                                        {manualAreaMode
-                                            ? 'Kembali ke Pencarian Area'
-                                            : 'Tidak Ketemu? Isi Wilayah Manual'}
-                                    </button>
-                                </div>
-                            {/if}
-
-                            <!-- Wilayah Pengiriman: read-only summary (desktop, when Biteship area selected & not manual) -->
-                            {#if isBiteshipEnabled && formBiteshipAreaId && !manualAreaMode && formSelectedAreaData}
-                                <div
-                                    class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-3"
-                                >
-                                    <h3
-                                        class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
-                                    >
-                                        <i
-                                            class="ti ti-map-pin text-sm"
-                                            style="color: {primary};"
-                                        ></i>
-                                        Wilayah Pengiriman
-                                        <span
-                                            class="ml-auto text-[10px] font-normal text-slate-400 normal-case"
-                                            >dari Biteship</span
-                                        >
-                                    </h3>
-                                    <div
-                                        class="grid grid-cols-2 gap-x-4 gap-y-2.5"
-                                    >
-                                        <div>
-                                            <p
-                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
-                                            >
-                                                Provinsi
-                                            </p>
-                                            <p
-                                                class="text-sm font-semibold text-slate-700 mt-0.5"
-                                            >
-                                                {formSelectedAreaData.administrative_division_level_1_name ||
-                                                    '—'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
-                                            >
-                                                Kota / Kabupaten
-                                            </p>
-                                            <p
-                                                class="text-sm font-semibold text-slate-700 mt-0.5"
-                                            >
-                                                {formSelectedAreaData.administrative_division_level_2_name ||
-                                                    '—'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
-                                            >
-                                                Kecamatan
-                                            </p>
-                                            <p
-                                                class="text-sm font-semibold text-slate-700 mt-0.5"
-                                            >
-                                                {formSelectedAreaData.administrative_division_level_3_name ||
-                                                    '—'}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p
-                                                class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
-                                            >
-                                                Kode Pos
-                                            </p>
-                                            <p
-                                                class="text-sm font-semibold text-slate-700 mt-0.5"
-                                            >
-                                                {formPostalCode || '—'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="pt-1">
-                                        <p
-                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1"
-                                        >
-                                            Kelurahan
-                                        </p>
-                                        <input
-                                            id="dt-village-manual"
-                                            type="text"
-                                            bind:value={formVillageName}
-                                            placeholder="Isi kelurahan secara manual (opsional)"
-                                            class="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
-                                        />
-                                        <p
-                                            class="text-[10px] text-slate-400 mt-1"
-                                        >
-                                            Biteship tidak menyediakan data
-                                            kelurahan, isi sendiri jika
-                                            diperlukan.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <!-- Wilayah Pengiriman Dropdowns (desktop, when Biteship disabled OR manual mode) -->
-                            {:else if !isBiteshipEnabled || manualAreaMode}
-                                <div
-                                    class="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-4"
-                                >
-                                    <h3
-                                        class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
-                                    >
-                                        <i
-                                            class="ti ti-map-pin text-sm"
-                                            style="color: {primary};"
-                                        ></i> Wilayah Pengiriman
-                                    </h3>
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <SelectSearch
-                                            bind:value={formProvinceId}
-                                            options={provinces}
-                                            label="Provinsi"
-                                            placeholder="Pilih Provinsi"
-                                            required={true}
-                                            onchange={handleProvinceChange}
-                                        />
-                                        <SelectSearch
-                                            bind:value={formRegencyId}
-                                            options={regencies}
-                                            label="Kota / Kabupaten"
-                                            placeholder="Pilih Kota/Kabupaten"
-                                            required={true}
-                                            disabled={!regencies.length &&
-                                                !formProvinceId}
-                                            onchange={handleRegencyChange}
-                                        />
-                                        <SelectSearch
-                                            bind:value={formDistrictId}
-                                            options={districts}
-                                            label="Kecamatan"
-                                            placeholder="Pilih Kecamatan"
-                                            required={true}
-                                            disabled={!districts.length &&
-                                                !formRegencyId}
-                                            onchange={handleDistrictChange}
-                                        />
-                                        <SelectSearch
-                                            bind:value={formVillageId}
-                                            options={villages}
-                                            label="Kelurahan"
-                                            placeholder="Pilih Kelurahan"
-                                            required={true}
-                                            disabled={!villages.length &&
-                                                !formDistrictId}
-                                            onchange={handleVillageChange}
-                                        />
-                                        <div class="col-span-2">
-                                            <label
-                                                for="dt-kode-pos"
-                                                class="block text-xs font-bold text-slate-600 mb-1.5"
-                                                >Kode Pos</label
-                                            >
-                                            <input
-                                                id="dt-kode-pos"
-                                                type="text"
-                                                bind:value={formPostalCode}
-                                                placeholder="Masukkan Kode Pos"
-                                                class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            {/if}
-
                             <div>
-                                <div
-                                    class="flex justify-between items-center mb-1.5"
-                                >
-                                    <label
-                                        for="dt-alamat-lengkap"
-                                        class="text-xs font-bold text-slate-600"
-                                        >Alamat Lengkap</label
-                                    >
-                                    <span class="text-[10px] text-slate-400"
-                                        >{formFullAddress.length}/200</span
-                                    >
-                                </div>
-                                <textarea
-                                    id="dt-alamat-lengkap"
-                                    bind:value={formFullAddress}
-                                    maxlength="200"
-                                    rows="3"
-                                    placeholder="Tulis alamat jalan lengkap, blok, nomer rumah, RT/RW, kelurahan..."
-                                    class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition resize-none"
-                                >
-                                </textarea>
-                            </div>
-
-                            <div>
-                                <div
-                                    class="flex justify-between items-center mb-1.5"
-                                >
-                                    <label
-                                        for="dt-catatan"
-                                        class="text-xs font-bold text-slate-600"
-                                        >Catatan Untuk Kurir (Opsional)</label
-                                    >
-                                    <span class="text-[10px] text-slate-400"
-                                        >{formNote.length}/45</span
-                                    >
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label for="dt-nama" class="text-xs font-bold text-slate-700">Nama Penerima</label>
+                                    <span class="text-[10px] text-slate-400">{formReceiverName.length}/50</span>
                                 </div>
                                 <input
-                                    id="dt-catatan"
+                                    id="dt-nama"
                                     type="text"
-                                    bind:value={formNote}
-                                    maxlength="45"
-                                    placeholder="Contoh: Pagar hitam, samping warung bakso"
-                                    class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                                    bind:value={formReceiverName}
+                                    maxlength="50"
+                                    placeholder="Nama Lengkap Penerima"
+                                    class="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
                                 />
-                                <p class="text-[10px] text-slate-400 mt-1 pl-1">
-                                    Warna rumah, patokan, pesan khusus, dll.
-                                </p>
                             </div>
+                        </div>
 
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <div
-                                        class="flex justify-between items-center mb-1.5"
-                                    >
-                                        <label
-                                            for="dt-nama"
-                                            class="text-xs font-bold text-slate-600"
-                                            >Nama Penerima</label
-                                        >
-                                        <span class="text-[10px] text-slate-400"
-                                            >{formReceiverName.length}/50</span
-                                        >
-                                    </div>
-                                    <input
-                                        id="dt-nama"
-                                        type="text"
-                                        bind:value={formReceiverName}
-                                        maxlength="50"
-                                        placeholder="Nama Lengkap Penerima"
-                                        class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
-                                    />
-                                </div>
-                                <div>
-                                    <div
-                                        class="flex justify-between items-center mb-1.5"
-                                    >
-                                        <label
-                                            for="dt-hp"
-                                            class="text-xs font-bold text-slate-600"
-                                            >Nomor HP</label
-                                        >
-                                        <span class="text-[10px] text-slate-400"
-                                            >{formPhoneNumber.length}/15</span
-                                        >
-                                    </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label for="dt-hp" class="text-xs font-bold text-slate-700">Nomor HP / Telepon</label>
+                                <span class="text-[10px] text-slate-400">{formPhoneNumber.length}/15</span>
+                            </div>
+                            <input
+                                id="dt-hp"
+                                type="tel"
+                                bind:value={formPhoneNumber}
+                                maxlength="15"
+                                placeholder="Contoh: 08123456789"
+                                class="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
+                            />
+                        </div>
+
+                        <!-- Biteship Area Search card -->
+                        {#if isBiteshipEnabled}
+                            <div class="p-4 border border-slate-200 rounded-2xl space-y-3 {formBiteshipAreaId ? 'bg-emerald-50/40 border-emerald-200' : 'bg-slate-50/50'}">
+                                <h3 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="ti ti-truck-delivery text-sm" style="color: {primary};"></i>
+                                    Cari Area Pengiriman (Kecamatan / Kota)
+                                    {#if formBiteshipAreaId}
+                                        <span class="ml-auto text-[10px] font-bold text-emerald-600 flex items-center gap-1 normal-case">
+                                            <i class="ti ti-circle-check"></i> Terdeteksi
+                                        </span>
+                                    {/if}
+                                </h3>
+
+                                <div class="relative">
                                     <div class="relative">
+                                        <i class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
                                         <input
-                                            id="dt-hp"
-                                            type="tel"
-                                            bind:value={formPhoneNumber}
-                                            maxlength="15"
-                                            placeholder="Contoh: 08123456789"
-                                            class="w-full pl-4 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition"
+                                            id="dt-biteship-area-search"
+                                            type="text"
+                                            bind:value={areaSearchInput}
+                                            oninput={handleBiteshipAreaSearch}
+                                            placeholder="Ketik kecamatan / kota untuk cari area..."
+                                            class="w-full pl-10 pr-10 py-2.5 text-xs border rounded-xl bg-white focus:outline-none focus:ring-2 transition-all {formBiteshipAreaId
+                                                ? 'border-emerald-300 focus:ring-emerald-100'
+                                                : 'border-slate-200 focus:ring-slate-100'}"
+                                            autocomplete="off"
                                         />
-                                        <button
-                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                                            aria-label="Kontak"
-                                        >
-                                            <i
-                                                class="ti ti-address-book text-lg"
-                                            ></i>
-                                        </button>
+                                        {#if biteshipAreaLoading}
+                                            <i class="ti ti-loader animate-spin absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                        {:else if formBiteshipAreaId && !showAreaDropdown}
+                                            <button
+                                                aria-label="Clear area"
+                                                onclick={() => {
+                                                    formBiteshipAreaId = '';
+                                                    formBiteshipAreaLabel = '';
+                                                    areaSearchInput = '';
+                                                    biteshipAreaResults = [];
+                                                    showAreaDropdown = false;
+                                                    manualAreaMode = false;
+                                                }}
+                                                class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition"
+                                            >
+                                                <i class="ti ti-x text-sm"></i>
+                                            </button>
+                                        {/if}
                                     </div>
+
+                                    {#if showAreaDropdown && biteshipAreaResults.length > 0}
+                                        <div class="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-52 overflow-y-auto">
+                                            {#each biteshipAreaResults as area}
+                                                <div
+                                                    role="option"
+                                                    aria-selected={formBiteshipAreaId === area.id}
+                                                    tabindex="0"
+                                                    onclick={() => selectBiteshipArea(area)}
+                                                    class="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 cursor-pointer transition border-b border-slate-50 last:border-0"
+                                                >
+                                                    <i class="ti ti-map-pin text-slate-400 text-sm"></i>
+                                                    <span class="text-xs text-slate-700 font-medium">{area.name}</span>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                    {/if}
                                 </div>
                             </div>
+                        {/if}
 
-                            <hr class="border-slate-100" />
+                        <!-- Regional Dropdowns -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 mb-1.5 block">Provinsi</label>
+                                <SelectSearch
+                                    items={provinces.map((p) => ({ value: p.id, label: p.name }))}
+                                    value={formProvinceId}
+                                    placeholder="Pilih Provinsi..."
+                                    onchange={handleProvinceChange}
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 mb-1.5 block">Kota / Kabupaten</label>
+                                <SelectSearch
+                                    items={regencies.map((r) => ({ value: r.id, label: r.name }))}
+                                    value={formRegencyId}
+                                    placeholder="Pilih Kota/Kabupaten..."
+                                    onchange={handleRegencyChange}
+                                    disabled={!formProvinceId}
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 mb-1.5 block">Kecamatan</label>
+                                <SelectSearch
+                                    items={districts.map((d) => ({ value: d.id, label: d.name }))}
+                                    value={formDistrictId}
+                                    placeholder="Pilih Kecamatan..."
+                                    onchange={handleDistrictChange}
+                                    disabled={!formRegencyId}
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 mb-1.5 block">Kelurahan / Desa</label>
+                                <SelectSearch
+                                    items={villages.map((v) => ({ value: v.id, label: v.name }))}
+                                    value={formVillageId}
+                                    placeholder="Pilih Kelurahan/Desa..."
+                                    onchange={handleVillageChange}
+                                    disabled={!formDistrictId}
+                                />
+                            </div>
+                        </div>
 
-                            <label
-                                class="flex items-start gap-3 cursor-pointer"
-                            >
+                        <div>
+                            <label for="dt-kode-pos" class="text-xs font-bold text-slate-700 mb-1.5 block">Kode Pos</label>
+                            <input
+                                id="dt-kode-pos"
+                                type="text"
+                                bind:value={formPostalCode}
+                                maxlength="10"
+                                placeholder="Contoh: 60241"
+                                class="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all max-w-xs"
+                            />
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label for="dt-alamat-lengkap" class="text-xs font-bold text-slate-700">Alamat Lengkap</label>
+                                <span class="text-[10px] text-slate-400">{formFullAddress.length}/200</span>
+                            </div>
+                            <textarea
+                                id="dt-alamat-lengkap"
+                                bind:value={formFullAddress}
+                                maxlength="200"
+                                rows="3"
+                                placeholder="Tulis jalan, no. rumah, RT/RW, patokan..."
+                                class="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all resize-none"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label for="dt-catatan" class="text-xs font-bold text-slate-700">Catatan Untuk Kurir (Opsional)</label>
+                                <span class="text-[10px] text-slate-400">{formNote.length}/45</span>
+                            </div>
+                            <input
+                                id="dt-catatan"
+                                type="text"
+                                bind:value={formNote}
+                                maxlength="45"
+                                placeholder="Contoh: Pagar warna hitam, sebelah toko sembako"
+                                class="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100 transition-all"
+                            />
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 space-y-3">
+                            <label class="flex items-start gap-3 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     bind:checked={formIsPrimary}
-                                    class="mt-1 w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
+                                    class="mt-0.5 w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
                                 />
                                 <div>
-                                    <span
-                                        class="text-xs font-bold text-slate-700 select-none"
-                                        >Jadikan alamat utama</span
-                                    >
-                                    <p
-                                        class="text-[10px] text-slate-400 select-none"
-                                    >
-                                        Setiap pesanan baru otomatis dikirim ke
-                                        alamat ini.
+                                    <span class="text-xs font-bold text-slate-800 select-none">Jadikan alamat utama</span>
+                                    <p class="text-[10px] text-slate-400 select-none mt-0.5">
+                                        Setiap pesanan baru akan otomatis menggunakan alamat ini.
                                     </p>
                                 </div>
                             </label>
 
-                            <label
-                                class="flex items-start gap-3 cursor-pointer"
-                            >
+                            <label class="flex items-start gap-3 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     bind:checked={formAgree}
-                                    class="mt-1 w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
+                                    class="mt-0.5 w-4 h-4 text-emerald-600 bg-slate-100 border-slate-300 rounded focus:ring-emerald-500"
                                 />
-                                <div
-                                    class="select-none leading-relaxed text-[11px] text-slate-500"
-                                >
-                                    Saya menyetujui <span
-                                        class="font-bold text-slate-700"
-                                        >Syarat &amp; Ketentuan</span
-                                    >
-                                    serta
-                                    <span class="font-bold text-slate-700"
-                                        >Kebijakan Privasi</span
-                                    >
-                                    pengatur alamat di {(page.props as any)
-                                        .settings?.store_name || 'Toko Kami'}.
+                                <div class="select-none leading-relaxed text-[11px] text-slate-500">
+                                    Saya menyetujui <span class="font-bold text-slate-700">Syarat & Kebijakan Privasi</span> data alamat ini.
                                 </div>
                             </label>
                         </div>
 
-                        <!-- Inline Save button (desktop) -->
-                        <div class="px-6 py-4 border-t border-slate-100">
+                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                            <button
+                                onclick={goBack}
+                                class="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 text-xs transition"
+                            >
+                                Batal
+                            </button>
                             <button
                                 onclick={saveAddress}
                                 disabled={!formAgree ||
@@ -2965,10 +2562,10 @@
                                           !formDistrictId ||
                                           !formVillageId) ||
                                     !formPostalCode.trim()}
-                                class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
+                                class="px-7 py-2.5 rounded-xl font-bold text-white text-xs shadow-xs hover:shadow-md transition-all duration-200 disabled:opacity-50 cursor-pointer"
                                 style="background-color: {primary};"
                             >
-                                Simpan
+                                Simpan Alamat
                             </button>
                         </div>
                     </div>
@@ -2977,7 +2574,7 @@
         </div>
         <!-- End desktop layout -->
     </div>
-</StorefrontLayout>
+</AccountLayout>
 
 <style>
     /* Prevent default map outline border */

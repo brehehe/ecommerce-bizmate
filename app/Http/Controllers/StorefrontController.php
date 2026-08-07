@@ -1456,6 +1456,10 @@ class StorefrontController extends Controller
      */
     public function transactionHistory(Request $request)
     {
+        if (config('app.is_seller') || $request->user()?->is_seller) {
+            return redirect('/profile');
+        }
+
         Transaction::processAutoStatusUpdates($request->user()->id);
 
         $status = $request->input('status', 'all');
@@ -1476,10 +1480,21 @@ class StorefrontController extends Controller
                 $query->where('status', 'selesai');
             } elseif ($status === 'batal') {
                 $query->where('status', 'batal');
+            } elseif ($status === 'refund') {
+                $query->whereHas('returns', function ($q) {
+                    $q->where('type', 'refund');
+                });
+            } elseif ($status === 'retur') {
+                $query->where(function ($q) {
+                    $q->where('status', 'retur')
+                        ->orWhereHas('returns', function ($r) {
+                            $r->where('type', 'replacement');
+                        });
+                });
             }
         }
 
-        $transactions = $query->with('items.product')->latest()
+        $transactions = $query->with(['items.product', 'returns'])->latest()
             ->paginate(10)
             ->withQueryString();
 
@@ -1490,6 +1505,14 @@ class StorefrontController extends Controller
             'berjalan' => Transaction::where('user_id', $request->user()->id)->whereIn('status', ['menunggu', 'diproses', 'dikemas', 'dikirim'])->count(),
             'selesai' => Transaction::where('user_id', $request->user()->id)->where('status', 'selesai')->count(),
             'batal' => Transaction::where('user_id', $request->user()->id)->where('status', 'batal')->count(),
+            'refund' => Transaction::where('user_id', $request->user()->id)->whereHas('returns', function ($q) {
+                $q->where('type', 'refund');
+            })->count(),
+            'retur' => Transaction::where('user_id', $request->user()->id)->where(function ($q) {
+                $q->where('status', 'retur')->orWhereHas('returns', function ($r) {
+                    $r->where('type', 'replacement');
+                });
+            })->count(),
         ];
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
