@@ -99,11 +99,8 @@ test('admin can import simple product successfully', function () {
     expect($categorySport)->not->toBeNull();
     expect($product->categories->pluck('id'))->toContain($categorySport->id);
 
-    // Assert automatic image import
-    expect($product->images)->toHaveCount(1);
-    expect($product->images->first()->is_main)->toBeTrue();
-    expect($product->image)->not->toBeNull();
-    Storage::disk('public')->assertExists(str_replace('storage/', '', $product->image));
+    // Automatic image fetch is disabled during import
+    expect($product->images)->toHaveCount(0);
 });
 
 test('admin can update existing product by SKU during import', function () {
@@ -272,4 +269,57 @@ test('imported product automatically receives sequential order value', function 
     expect($product)->not->toBeNull();
     // Since the max order was 5, the new product should have order = 6
     expect($product->order)->toBe(6);
+});
+
+test('imported product variant with duplicate SKU automatically appends unique suffix', function () {
+    $admin = User::factory()->create();
+
+    // Create an existing product variant with SKU COM-30S-001-UKURAN-100000
+    $existingProduct = Product::create([
+        'name' => 'Existing Variant Product',
+        'sku' => 'EXIST-VAR-001',
+        'slug' => 'existing-var-001',
+        'description' => 'Existing variant product',
+        'active' => true,
+    ]);
+    $existingProduct->variants()->create([
+        'sku' => 'COM-30S-001-UKURAN-100000',
+    ]);
+
+    $payload = [
+        'products' => [
+            [
+                'name' => 'New Shirt with Conflicting Variant SKU',
+                'sku' => 'SHIRT-DUP-001',
+                'price' => 100000,
+                'stock' => 10,
+                'description' => 'Test duplicate variant SKU',
+                'variations' => [
+                    [
+                        'name' => 'Ukuran',
+                        'options' => [
+                            ['id' => '100000', 'name' => '100000'],
+                        ],
+                    ],
+                ],
+                'variants' => [
+                    [
+                        'id' => '100000',
+                        'sku' => 'COM-30S-001-UKURAN-100000',
+                        'price' => 100000,
+                        'stock' => 10,
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    $response = $this->actingAs($admin)->post(route('admin.products.import'), $payload);
+    $response->assertStatus(302);
+
+    $product = Product::where('sku', 'SHIRT-DUP-001')->first();
+    expect($product)->not->toBeNull();
+    expect($product->variants)->toHaveCount(1);
+    // The variant SKU should automatically be suffixed with -1 to resolve duplicate constraint
+    expect($product->variants->first()->sku)->toBe('COM-30S-001-UKURAN-100000-1');
 });

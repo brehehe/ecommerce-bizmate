@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Setting;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -43,8 +44,16 @@ class ImportProductsJob implements ShouldQueue
         try {
             DB::transaction(function () use ($globalTaxPercentage, &$importedProducts) {
                 foreach ($this->products as $pData) {
-                    $rawSku = trim($pData['sku']);
-                    $existingProduct = Product::where('sku', $rawSku)->first();
+                    $rawSku = trim($pData['sku'] ?? '');
+                    $isOriginalSkuProvided = ! empty($rawSku);
+                    if (empty($rawSku)) {
+                        $rawSku = Str::upper(Str::slug($pData['name'] ?? 'PRD'));
+                        if (empty($rawSku)) {
+                            $rawSku = 'PRD-'.Str::random(6);
+                        }
+                    }
+
+                    $existingProduct = $isOriginalSkuProvided ? Product::where('sku', $rawSku)->first() : null;
 
                     $rawCond = strtolower(trim($pData['condition'] ?? 'new'));
                     if (in_array($rawCond, ['rent', 'sewa'], true)) {
@@ -104,11 +113,17 @@ class ImportProductsJob implements ShouldQueue
                             ]);
                         }
                     } else {
+                        $sku = $rawSku;
+                        $count = 1;
+                        while (Product::where('sku', $sku)->exists()) {
+                            $sku = $rawSku.'-'.$count;
+                            $count++;
+                        }
                         $slug = Str::slug($pData['name']).'-'.Str::random(5);
                         $product = Product::create([
                             'user_id' => $this->userId,
                             'name' => $pData['name'],
-                            'sku' => $rawSku,
+                            'sku' => $sku,
                             'slug' => $slug,
                             'summary' => $pData['summary'] ?? null,
                             'description' => $pData['description'],
@@ -236,8 +251,20 @@ class ImportProductsJob implements ShouldQueue
 
                         if (! empty($pData['variants'])) {
                             foreach ($pData['variants'] as $vCombData) {
+                                $rawVariantSku = trim($vCombData['sku'] ?? '');
+                                if (empty($rawVariantSku)) {
+                                    $rawVariantSku = $product->sku.'-VAR-'.Str::random(4);
+                                }
+
+                                $variantSku = $rawVariantSku;
+                                $vCount = 1;
+                                while (ProductVariant::where('sku', $variantSku)->exists()) {
+                                    $variantSku = $rawVariantSku.'-'.$vCount;
+                                    $vCount++;
+                                }
+
                                 $variant = $product->variants()->create([
-                                    'sku' => $vCombData['sku'],
+                                    'sku' => $variantSku,
                                     'weight' => null,
                                     'length' => null,
                                     'width' => null,
