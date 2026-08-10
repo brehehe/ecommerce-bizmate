@@ -257,12 +257,20 @@ class ProductController extends Controller
         $isSellerMode = (bool) config('app.is_seller', false);
         $listingPricing = $this->getListingPricingConfig();
 
+        $prefix = 'PRD-'.date('Ymd').'-';
+        $count = 1;
+        do {
+            $suggestedSku = $prefix.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+            $count++;
+        } while (Product::where('sku', $suggestedSku)->exists() || ProductVariant::where('sku', $suggestedSku)->exists());
+
         return Inertia::render('Admin/Products/Create', [
             'categories' => $categories,
             'brands' => $brands,
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
             'isSellerMode' => $isSellerMode,
             'listingPricing' => $listingPricing,
+            'suggestedSku' => $suggestedSku,
         ]);
     }
 
@@ -279,7 +287,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku',
+            'sku' => 'nullable|string|max:100',
             'category_ids' => 'nullable|array',
             'category_ids.*' => 'exists:categories,id',
             'brand_ids' => 'nullable|array',
@@ -408,6 +416,18 @@ class ProductController extends Controller
             $productData['listing_days'] = 0;
         }
 
+        $rawSku = trim($validated['sku'] ?? '');
+        if (empty($rawSku)) {
+            $rawSku = Str::upper(Str::slug($validated['name']));
+        }
+        $sku = $rawSku;
+        $count = 1;
+        while (Product::where('sku', $sku)->exists()) {
+            $sku = $rawSku.'-'.$count;
+            $count++;
+        }
+        $productData['sku'] = $sku;
+
         $product = Product::create($productData);
 
         // Sync many-to-many relationships
@@ -496,8 +516,19 @@ class ProductController extends Controller
             if (! empty($variantsInput)) {
                 foreach ($variantsInput as $vCombData) {
                     $hasCustomWeight = ! empty($vCombData['is_custom']) && ! empty($vCombData['custom_weight']);
+                    $rawVariantSku = trim($vCombData['sku'] ?? '');
+                    if (empty($rawVariantSku)) {
+                        $rawVariantSku = $product->sku.'-VAR-'.Str::random(4);
+                    }
+                    $variantSku = $rawVariantSku;
+                    $vCount = 1;
+                    while (ProductVariant::where('sku', $variantSku)->exists()) {
+                        $variantSku = $rawVariantSku.'-'.$vCount;
+                        $vCount++;
+                    }
+
                     $variant = $product->variants()->create([
-                        'sku' => $vCombData['sku'],
+                        'sku' => $variantSku,
                         'weight' => $hasCustomWeight ? ($vCombData['weight'] ?: null) : null,
                         'length' => $hasCustomWeight ? ($vCombData['length'] ?: null) : null,
                         'width' => $hasCustomWeight ? ($vCombData['width'] ?: null) : null,
@@ -613,7 +644,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:100|unique:products,sku,'.$product->id,
+            'sku' => 'nullable|string|max:100',
             'category_ids' => 'nullable|array',
             'category_ids.*' => 'exists:categories,id',
             'brand_ids' => 'nullable|array',
@@ -727,6 +758,18 @@ class ProductController extends Controller
             'model_3d_usdz_url',
             'model_3d_usdz_file',
         ]);
+
+        $rawSku = trim($validated['sku'] ?? '');
+        if (empty($rawSku)) {
+            $rawSku = Str::upper(Str::slug($validated['name']));
+        }
+        $sku = $rawSku;
+        $count = 1;
+        while (Product::where('sku', $sku)->where('id', '!=', $product->id)->exists()) {
+            $sku = $rawSku.'-'.$count;
+            $count++;
+        }
+        $productData['sku'] = $sku;
 
         $product->update($productData);
 
@@ -979,21 +1022,33 @@ class ProductController extends Controller
                 ];
 
                 if ($matchedVariant) {
-                    // If the new SKU is already taken by a DIFFERENT variant, keep the current SKU.
-                    $newSku = $variantData['sku'];
-                    $skuConflict = ProductVariant::where('sku', $newSku)
-                        ->where('id', '!=', $matchedVariant->id)
-                        ->exists();
-
-                    if ($skuConflict) {
-                        // Preserve the existing SKU to avoid unique constraint violation.
-                        unset($variantData['sku']);
+                    $newSku = trim($variantData['sku'] ?? '');
+                    if (! empty($newSku)) {
+                        $variantSku = $newSku;
+                        $vCount = 1;
+                        while (ProductVariant::where('sku', $variantSku)->where('id', '!=', $matchedVariant->id)->exists()) {
+                            $variantSku = $newSku.'-'.$vCount;
+                            $vCount++;
+                        }
+                        $variantData['sku'] = $variantSku;
                     }
 
                     // Update existing
                     $matchedVariant->update($variantData);
                     $variant = $matchedVariant;
                 } else {
+                    $rawVariantSku = trim($variantData['sku'] ?? '');
+                    if (empty($rawVariantSku)) {
+                        $rawVariantSku = $product->sku.'-VAR-'.Str::random(4);
+                    }
+                    $variantSku = $rawVariantSku;
+                    $vCount = 1;
+                    while (ProductVariant::where('sku', $variantSku)->exists()) {
+                        $variantSku = $rawVariantSku.'-'.$vCount;
+                        $vCount++;
+                    }
+                    $variantData['sku'] = $variantSku;
+
                     // Create new
                     $variant = $product->variants()->create($variantData);
                     $variant->options()->attach($dbOptionIds);

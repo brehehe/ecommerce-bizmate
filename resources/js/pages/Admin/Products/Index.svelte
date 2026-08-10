@@ -1707,7 +1707,7 @@
                                     </tr>
 
                                     {#if hasVariants && expandedProducts.has(product.id)}
-                                        {#each product.variants as variant (variant.id)}
+                                        {#each product.variants as variant, idx (variant.id ? `${variant.id}-${idx}` : idx)}
                                             {@const vInfo = getStockInfo(
                                                 {
                                                     product_stock:
