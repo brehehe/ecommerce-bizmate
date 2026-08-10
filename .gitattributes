@@ -3,7 +3,6 @@
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html
-*.md diff=markdown
 *.php diff=php
 
 CHANGELOG.md export-ignore
