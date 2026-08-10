@@ -2074,9 +2074,18 @@
                                             href="/profile"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            onclick={() => (profileDropOpen = false)}
                                         >
                                             <i class="ti ti-user text-base"></i> Profil
                                             Saya
+                                        </Link>
+                                        <Link
+                                            href="/about"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            onclick={() => (profileDropOpen = false)}
+                                        >
+                                            <i class="ti ti-info-circle text-base text-sky-600"></i> Tentang Kami
                                         </Link>
                                         {#if isMembershipEnabled}
                                             <Link

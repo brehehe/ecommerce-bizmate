@@ -1,17 +1,14 @@
 <script lang="ts">
-    import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
+    import AccountLayout from '@/components/layouts/AccountLayout.svelte';
     import { page, Link } from '@inertiajs/svelte';
 
-    let {
-        storeName = '',
-        storeLogo = '',
-    } = $props();
+    let { storeName = '', storeLogo = '' } = $props();
 
     const primary = $derived(
-        (page.props as any).theme?.primary_color ?? '#ee4d2d',
+        (page.props as any).theme?.primary_color ?? '#fa7315',
     );
     const secondary = $derived(
-        (page.props as any).theme?.secondary_color ?? '#fa7315',
+        (page.props as any).theme?.secondary_color ?? '#0c4cb4',
     );
 
     function goBack() {
@@ -24,234 +21,259 @@
 </script>
 
 <svelte:head>
-    <title>Tentang Kami</title>
+    <title>Tentang Kami — {storeName || 'Toko Online'}</title>
 </svelte:head>
 
-<StorefrontLayout hideMobileFooter={true}>
-    <div class="w-full md:max-w-6xl md:mx-auto md:px-6 lg:px-8 md:py-8 font-sans">
-        <!-- ==================== MOBILE LAYOUT (hidden on desktop) ==================== -->
-        <div class="max-w-md mx-auto min-h-[calc(100vh-56px)] md:hidden bg-slate-50 flex flex-col relative pb-20">
-            <!-- Header -->
-            <div class="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-4 flex items-center gap-3">
-                <button
-                    onclick={goBack}
-                    class="hidden md:flex p-1 hover:bg-slate-100 rounded-full transition items-center justify-center shrink-0"
-                    aria-label="Kembali"
-                >
-                    <i class="ti ti-arrow-left text-xl text-slate-700"></i>
-                </button>
-                <h1 class="font-outfit font-black text-lg text-slate-800">
-                    Tentang Kami
+<AccountLayout activeMenu="about">
+    <div
+        class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs p-4 sm:p-6 md:p-8 space-y-6"
+    >
+        <!-- Card Header -->
+        <div
+            class="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+            <div>
+                <h1 class="text-lg font-bold text-slate-800 font-outfit">
+                    Tentang {storeName || 'Kami'}
                 </h1>
+                <p class="text-xs text-slate-400 font-medium mt-0.5">
+                    Mengenal lebih dekat layanan, komitmen, dan keunggulan
+                    belanja di {storeName || 'toko kami'}
+                </p>
             </div>
+            <!-- <button
+                type="button"
+                onclick={goBack}
+                class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition cursor-pointer shrink-0"
+            >
+                <i class="ti ti-arrow-left text-sm"></i>
+                Kembali
+            </button> -->
+        </div>
 
-            <!-- Content Mobile -->
-            <div class="p-4 space-y-4">
-                <!-- Hero Card Mobile -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div class="h-32 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative flex items-center justify-center p-4 text-center text-white">
-                        <div class="absolute inset-0 bg-black/10 backdrop-blur-xs"></div>
-                        <div class="relative z-10">
-                            {#if storeLogo}
-                                <img src={storeLogo} alt={storeName} class="h-12 mx-auto mb-2 object-contain rounded-lg bg-white/10 p-1 backdrop-blur-md" />
-                            {:else}
-                                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl font-black mx-auto mb-2 uppercase tracking-wider">
-                                    {storeName.substring(0, 2)}
-                                </div>
-                            {/if}
-                            <h2 class="text-base font-black uppercase tracking-wider">{storeName}</h2>
+        <!-- Banner / Intro Hero Box -->
+        <div
+            class="relative rounded-2xl overflow-hidden shadow-2xs border border-slate-100"
+        >
+            <div
+                class="h-36 sm:h-44 relative flex items-center justify-center p-6 text-center text-white"
+                style="background: linear-gradient(135deg, {primary}, {secondary});"
+            >
+                <div
+                    class="absolute inset-0 bg-black/10 backdrop-blur-xs"
+                ></div>
+                <div class="relative z-10 space-y-2">
+                    {#if storeLogo}
+                        <img
+                            src={storeLogo}
+                            alt={storeName}
+                            class="h-12 sm:h-14 mx-auto object-contain rounded-xl bg-white/20 p-1.5 backdrop-blur-md shadow-md"
+                        />
+                    {:else}
+                        <div
+                            class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-black mx-auto uppercase tracking-wider shadow-md"
+                        >
+                            {storeName ? storeName.substring(0, 2) : 'BM'}
                         </div>
-                    </div>
-                    <div class="p-5">
-                        <p class="text-xs text-slate-600 font-medium leading-relaxed text-center">
-                            Selamat datang di <strong>{storeName}</strong>! Kami berkomitmen untuk menghadirkan pengalaman belanja online terbaik dengan kualitas produk unggulan, harga bersaing, dan pelayanan yang ramah dan terpercaya.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Features Mobile -->
-                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
-                    <span class="text-[10px] font-black tracking-widest text-slate-400 uppercase block">
-                        Kenapa Memilih Kami?
-                    </span>
-                    <div class="space-y-3">
-                        <div class="flex gap-3 items-start">
-                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                <i class="ti ti-circle-check text-base"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800 text-xs">Produk Terjamin</h4>
-                                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                    Proses seleksi kualitas ketat sebelum dikirim ke pelanggan.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex gap-3 items-start">
-                            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                <i class="ti ti-truck text-base"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800 text-xs">Pengiriman Cepat</h4>
-                                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                    Bekerja sama dengan kurir terpercaya agar tiba tepat waktu.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex gap-3 items-start">
-                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                                <i class="ti ti-shield text-base"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800 text-xs">Belanja Aman</h4>
-                                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                    Sistem pembayaran aman dan garansi retur/refund mudah.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="flex gap-3 items-start">
-                            <div class="w-8 h-8 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                <i class="ti ti-headset text-base"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800 text-xs">Layanan Bantuan</h4>
-                                <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                                    Tim CS responsif melayani via fitur chat interaktif.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CTA Mobile -->
-                <div class="pt-2">
-                    <Link
-                        href="/"
-                        class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 text-center text-xs uppercase tracking-wider font-outfit font-black"
-                        style="background-color: {primary};"
+                    {/if}
+                    <h2
+                        class="text-lg sm:text-xl font-black uppercase tracking-wider font-outfit"
                     >
-                        <i class="ti ti-shopping-cart text-sm"></i> Mulai Belanja Sekarang
-                    </Link>
+                        {storeName}
+                    </h2>
+                    <p
+                        class="text-xs text-white/90 font-medium max-w-md mx-auto line-clamp-2"
+                    >
+                        Platform e-commerce belanja online aman, tepercaya, dan
+                        hemat untuk semua kebutuhan Anda.
+                    </p>
                 </div>
             </div>
         </div>
 
-        <!-- ==================== DESKTOP LAYOUT (hidden on mobile) ==================== -->
-        <div class="hidden md:block max-w-6xl mx-auto w-full">
-            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 sm:p-8 space-y-6">
-                <!-- Header Desktop -->
-                <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-                    <div class="flex items-center gap-3">
-                        <button
-                            onclick={goBack}
-                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-full transition shrink-0"
-                            aria-label="Kembali"
-                        >
-                            <i class="ti ti-arrow-left text-xl text-slate-700"></i>
-                        </button>
-                        <div>
-                            <h1 class="font-outfit font-black text-xl text-slate-800">
-                                Tentang Kami
-                            </h1>
-                            <p class="text-xs text-slate-400 font-medium mt-1">
-                                Informasi lengkap mengenai platform e-commerce kami.
-                            </p>
-                        </div>
-                    </div>
+        <!-- Two-Column Section (Main Description + Brand Benefits) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+            <!-- Left Column: Key Advantages & Features (2/3 width) -->
+            <div class="md:col-span-2 space-y-6">
+                <div class="space-y-2">
+                    <h3
+                        class="text-sm font-bold text-slate-800 font-outfit uppercase tracking-wider"
+                    >
+                        Komitmen & Pelayanan Kami
+                    </h3>
+                    <p
+                        class="text-xs text-slate-600 font-medium leading-relaxed"
+                    >
+                        Selamat datang di <strong>{storeName}</strong>! Kami
+                        selalu berkomitmen untuk memberikan pengalaman belanja
+                        online terbaik. Mulai dari kemudahan pencarian produk,
+                        kejelasan informasi harga, jaminan barang berkualitas,
+                        hingga kemudahan pembayaran dan proses retur yang
+                        transparan.
+                    </p>
                 </div>
 
-                <!-- Content Desktop -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-2">
-                    <!-- Left: Hero/Branding -->
-                    <div class="col-span-1 space-y-6">
-                        <div class="bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden shadow-xs">
-                            <div class="h-32 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative flex items-center justify-center p-4 text-white">
-                                <div class="absolute inset-0 bg-black/10 backdrop-blur-xs"></div>
-                                <div class="relative z-10 text-center">
-                                    {#if storeLogo}
-                                        <img src={storeLogo} alt={storeName} class="h-12 mx-auto mb-2 object-contain rounded-lg bg-white/10 p-1 backdrop-blur-md" />
-                                    {:else}
-                                        <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl font-black mx-auto mb-2 uppercase tracking-wider">
-                                            {storeName.substring(0, 2)}
-                                        </div>
-                                    {/if}
-                                    <h2 class="text-base font-black uppercase tracking-wider">{storeName}</h2>
-                                </div>
+                <div class="space-y-3">
+                    <span
+                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                    >
+                        Kenapa Memilih Belanja di {storeName}?
+                    </span>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div
+                            class="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3"
+                        >
+                            <div
+                                class="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0"
+                            >
+                                <i class="ti ti-circle-check text-lg"></i>
                             </div>
-                            <div class="p-6">
-                                <p class="text-xs text-slate-600 font-medium leading-relaxed text-center">
-                                    Selamat datang di <strong>{storeName}</strong>! Kami berkomitmen untuk menghadirkan pengalaman belanja online terbaik dengan kualitas produk unggulan, harga bersaing, dan pelayanan yang ramah dan terpercaya.
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs">
+                                    Produk Terjamin Original
+                                </h4>
+                                <p
+                                    class="text-[11px] text-slate-500 mt-0.5 leading-relaxed"
+                                >
+                                    Proses penyeleksian ketat untuk memastikan
+                                    kualitas produk terbaik.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3"
+                        >
+                            <div
+                                class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0"
+                            >
+                                <i class="ti ti-truck text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs">
+                                    Pengiriman Cepat & Aman
+                                </h4>
+                                <p
+                                    class="text-[11px] text-slate-500 mt-0.5 leading-relaxed"
+                                >
+                                    Bekerja sama dengan jasa ekspedisi
+                                    terpercaya ke seluruh Indonesia.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3"
+                        >
+                            <div
+                                class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0"
+                            >
+                                <i class="ti ti-shield-check text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs">
+                                    Jaminan Transaksi Aman
+                                </h4>
+                                <p
+                                    class="text-[11px] text-slate-500 mt-0.5 leading-relaxed"
+                                >
+                                    Sistem pembayaran terlindungi dan prosedur
+                                    retur dana transparan.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="p-4 rounded-xl border border-slate-100 bg-slate-50/60 flex items-start gap-3"
+                        >
+                            <div
+                                class="w-9 h-9 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0"
+                            >
+                                <i class="ti ti-headset text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-xs">
+                                    Customer Care Support
+                                </h4>
+                                <p
+                                    class="text-[11px] text-slate-500 mt-0.5 leading-relaxed"
+                                >
+                                    Tim layanan pelanggan ramah dan siap
+                                    membantu kebutuhan Anda.
                                 </p>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Right: Features & CTA -->
-                    <div class="col-span-2 space-y-6">
-                        <div class="border border-slate-100 rounded-2xl p-6 bg-white shadow-xs space-y-6">
-                            <span class="text-xs font-black tracking-widest text-slate-400 uppercase block border-b border-slate-100 pb-2">
-                                Kenapa Memilih Kami?
-                            </span>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div class="flex gap-4 items-start">
-                                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                        <i class="ti ti-circle-check text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm">Produk Terjamin</h4>
-                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                            Proses seleksi kualitas ketat sebelum dikirim ke pelanggan.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-4 items-start">
-                                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                        <i class="ti ti-truck text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm">Pengiriman Cepat</h4>
-                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                            Bekerja sama dengan kurir terpercaya agar tiba tepat waktu.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-4 items-start">
-                                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                                        <i class="ti ti-shield text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm">Belanja Aman</h4>
-                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                            Sistem pembayaran aman dan garansi retur/refund mudah.
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="flex gap-4 items-start">
-                                    <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                        <i class="ti ti-headset text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-bold text-slate-800 text-sm">Layanan Bantuan</h4>
-                                        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                            Tim CS responsif melayani via fitur chat interaktif.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <div class="pt-2">
+                    <Link
+                        href="/"
+                        class="px-6 py-3 rounded-xl font-bold text-xs text-white shadow-md hover:opacity-90 active:scale-95 transition inline-flex items-center justify-center gap-2"
+                        style="background-color: {primary};"
+                    >
+                        <i class="ti ti-shopping-cart text-sm"></i>
+                        Mulai Belanja Sekarang
+                    </Link>
+                </div>
+            </div>
 
-                        <!-- CTA Desktop -->
-                        <div class="flex justify-end">
-                            <Link
-                                href="/"
-                                class="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-black uppercase text-xs tracking-wider text-white shadow-md transition active:scale-95 hover:opacity-95 cursor-pointer font-outfit"
-                                style="background: {primary};"
-                            >
-                                <i class="ti ti-shopping-cart text-sm"></i> Mulai Belanja Sekarang
-                            </Link>
-                        </div>
+            <!-- Right Column: Store Summary & Quick Guarantee Badge (1/3 width with left border line) -->
+            <div
+                class="md:col-span-1 border-t md:border-t-0 md:border-l border-slate-100 pt-6 md:pt-0 md:pl-8 flex flex-col items-center text-center space-y-4"
+            >
+                <div
+                    class="w-20 h-20 rounded-2xl bg-slate-100 border-2 border-slate-200/80 shadow-2xs overflow-hidden flex items-center justify-center"
+                >
+                    {#if storeLogo}
+                        <img
+                            src={storeLogo}
+                            alt={storeName}
+                            class="w-full h-full object-contain p-2"
+                        />
+                    {:else}
+                        <i class="ti ti-building-store text-3xl text-slate-400"
+                        ></i>
+                    {/if}
+                </div>
+
+                <div>
+                    <h4 class="font-outfit font-black text-sm text-slate-800">
+                        {storeName}
+                    </h4>
+                    <span
+                        class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100 mt-1 inline-block"
+                    >
+                        Toko Resmi Terverifikasi
+                    </span>
+                </div>
+
+                <div class="w-full pt-2 space-y-2 text-left">
+                    <div
+                        class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5 text-xs text-slate-700 font-medium"
+                    >
+                        <i class="ti ti-shield-check text-base text-blue-600"
+                        ></i>
+                        <span>100% Produk Original</span>
+                    </div>
+                    <div
+                        class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5 text-xs text-slate-700 font-medium"
+                    >
+                        <i
+                            class="ti ti-rotate-clockwise-2 text-base text-emerald-600"
+                        ></i>
+                        <span>Garansi Retur 7 Hari</span>
+                    </div>
+                    <div
+                        class="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-2.5 text-xs text-slate-700 font-medium"
+                    >
+                        <i class="ti ti-message-dots text-base text-amber-600"
+                        ></i>
+                        <span>Layanan Chat Interaktif</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</StorefrontLayout>
+</AccountLayout>

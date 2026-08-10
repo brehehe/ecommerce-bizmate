@@ -170,9 +170,9 @@
 </svelte:head>
 
 <AccountLayout activeMenu="bank-accounts">
-    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-6 md:p-8 space-y-6">
+    <div class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs p-4 sm:p-6 md:p-8 space-y-6">
         <!-- Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
                 <h1 class="text-lg font-bold text-slate-800 font-outfit">
                     Bank & Rekening Saya
@@ -184,7 +184,7 @@
 
             <button
                 onclick={openAddModal}
-                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs transition hover:opacity-90 cursor-pointer"
+                class="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-xs transition hover:opacity-90 cursor-pointer shrink-0 w-full sm:w-auto text-nowrap whitespace-nowrap"
                 style="background-color: {primary};"
             >
                 <i class="ti ti-plus text-sm"></i>

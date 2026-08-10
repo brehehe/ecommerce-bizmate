@@ -21,14 +21,14 @@
 
 <StorefrontLayout hideMobileFooter={true}>
     <div class="min-h-dvh bg-slate-50/60 pb-16 font-sans">
-        <div class="max-w-6xl mx-auto px-4 py-6 md:py-8">
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        <div class="max-w-6xl mx-auto px-0 sm:px-4 py-0 sm:py-6 md:py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-2.5 sm:gap-6 items-start">
                 <!-- ═══════════════════════════════════════════════════
                  LEFT SIDEBAR (Shopee / Tokopedia Style Unified Menu)
                 ═══════════════════════════════════════════════════ -->
                 <div class="col-span-1 space-y-4">
                     <div
-                        class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden p-4 space-y-4"
+                        class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs overflow-hidden p-3.5 sm:p-4 space-y-4"
                     >
                         <!-- User Profile Header -->
                         <div
@@ -144,9 +144,19 @@
 
                                 <Link
                                     href="/profile?tab=password"
-                                    class="w-full text-left py-2 px-3 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition block"
+                                    class="w-full text-left py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-between
+                                           {activeMenu === 'password'
+                                        ? 'text-white shadow-xs font-bold'
+                                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}"
+                                    style={activeMenu === 'password'
+                                        ? `background-color: ${primary};`
+                                        : ''}
                                 >
-                                    Ubah Password
+                                    <span>Ubah Password</span>
+                                    {#if activeMenu === 'password'}
+                                        <i class="ti ti-check text-xs font-bold font-bold"
+                                        ></i>
+                                    {/if}
                                 </Link>
                             </div>
 
@@ -245,6 +255,32 @@
                                     class="ti ti-message-dots text-base text-emerald-600"
                                 ></i>
                                 <span>Pesan Chat</span>
+                            </Link>
+
+                            <!-- Tentang Kami -->
+                            <Link
+                                href="/about"
+                                class="px-3 py-2 rounded-xl flex items-center justify-between text-xs font-bold transition
+                                       {activeMenu === 'about'
+                                    ? 'text-white shadow-xs font-bold'
+                                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'}"
+                                style={activeMenu === 'about'
+                                    ? `background-color: ${primary};`
+                                    : ''}
+                            >
+                                <div class="flex items-center gap-2.5">
+                                    <i
+                                        class="ti ti-info-circle text-base {activeMenu ===
+                                        'about'
+                                            ? 'text-white'
+                                            : 'text-sky-600'}"
+                                    ></i>
+                                    <span>Tentang Kami</span>
+                                </div>
+                                {#if activeMenu === 'about'}
+                                    <i class="ti ti-check text-xs font-bold"
+                                    ></i>
+                                {/if}
                             </Link>
 
                             <!-- Toko Saya / Mulai Jual Barang Banner Menu -->

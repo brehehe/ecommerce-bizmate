@@ -84,11 +84,15 @@
                 profileForm.reset('current_password');
                 localPreviewUrl = null;
                 showPasswordModal = false;
+                isEditingEmail = false;
                 showToast('Profil Anda berhasil diperbarui!', 'success', 'top');
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
                 showToast(firstError as string, 'error', 'top');
+                if (errors.email) {
+                    isEditingEmail = true;
+                }
             },
         });
     }
@@ -107,16 +111,17 @@
         });
     }
 
+    let isEditingEmail = $state(false);
     let showPasswordModal = $state(false);
     let sendingReset = $state(false);
     let activeTab = $state<'profile' | 'password'>('profile');
 
     $effect(() => {
-        if (typeof window !== 'undefined') {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('tab') === 'password') {
-                activeTab = 'password';
-            }
+        const urlStr = page.url || (typeof window !== 'undefined' ? window.location.search : '');
+        if (urlStr.includes('tab=password')) {
+            activeTab = 'password';
+        } else {
+            activeTab = 'profile';
         }
     });
 
@@ -155,7 +160,7 @@
     <title>Profil Saya</title>
 </svelte:head>
 
-<AccountLayout activeMenu={activeTab === 'password' ? 'profile' : 'profile'}>
+<AccountLayout activeMenu={activeTab}>
     <!-- Hidden File Input for Avatar Upload -->
     <input
         type="file"
@@ -168,7 +173,7 @@
     <div class="space-y-6">
         {#if activeTab === 'profile'}
             <!-- PROFIL SAYA CARD -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-6 md:p-8">
+            <div class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs p-4 sm:p-6 md:p-8">
                 <!-- Card Header -->
                 <div class="border-b border-slate-100 pb-4 mb-6">
                     <h1 class="text-lg font-bold text-slate-800 font-outfit">
@@ -228,19 +233,53 @@
                             <label for="email" class="text-xs font-semibold text-slate-500 sm:text-right">
                                 Email
                             </label>
-                            <div class="sm:col-span-3 flex items-center gap-3">
-                                <span class="text-xs font-bold text-slate-700">
-                                    {maskedEmail || user?.email}
-                                </span>
-                                <button
-                                    type="button"
-                                    onclick={() => (activeTab = 'profile')}
-                                    class="text-xs font-bold hover:underline"
-                                    style="color: {primary};"
-                                >
-                                    Ubah
-                                </button>
-                            </div>
+                            {#if isEditingEmail}
+                                <div class="sm:col-span-3 space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            id="email"
+                                            type="email"
+                                            bind:value={profileForm.email}
+                                            required
+                                            placeholder="email@domain.com"
+                                            class="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 transition text-slate-800 font-medium {profileForm.errors.email ? 'border-rose-500' : ''}"
+                                        />
+                                        <button
+                                            type="button"
+                                            onclick={() => {
+                                                isEditingEmail = false;
+                                                profileForm.email = user?.email || '';
+                                                delete profileForm.errors.email;
+                                            }}
+                                            class="text-xs font-bold text-slate-400 hover:text-slate-600 px-2.5 py-2 rounded-xl hover:bg-slate-100 border border-slate-200 transition shrink-0"
+                                        >
+                                            Batal
+                                        </button>
+                                    </div>
+                                    {#if profileForm.errors.email}
+                                        <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                            {profileForm.errors.email}
+                                        </p>
+                                    {/if}
+                                </div>
+                            {:else}
+                                <div class="sm:col-span-3 flex items-center gap-3">
+                                    <span class="text-xs font-bold text-slate-700">
+                                        {maskedEmail || user?.email}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onclick={() => {
+                                            isEditingEmail = true;
+                                            profileForm.email = user?.email || '';
+                                        }}
+                                        class="text-xs font-bold hover:underline"
+                                        style="color: {primary};"
+                                    >
+                                        Ubah
+                                    </button>
+                                </div>
+                            {/if}
                         </div>
 
                         <!-- Nomor Telepon -->
@@ -355,7 +394,7 @@
                     </div>
 
                     <!-- Right Column: Avatar Upload Section (1/3 width with left border line) -->
-                    <div class="md:col-span-1 border-t md:border-t-0 md:border-l border-slate-100 pt-6 md:pt-0 md:pl-8 flex flex-col items-center justify-center text-center space-y-4">
+                    <div class="md:col-span-1 border-b pb-6 md:pb-0 md:border-b-0 md:border-l border-slate-100 pt-2 md:pt-0 md:pl-8 flex flex-col items-center justify-center text-center space-y-4 order-first md:order-last">
                         <button
                             type="button"
                             onclick={() => fileInput.click()}
@@ -396,7 +435,7 @@
             </div>
         {:else if activeTab === 'password'}
             <!-- KEAMANAN / UBAH PASSWORD CARD -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-6 md:p-8">
+            <div class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs p-4 sm:p-6 md:p-8">
                 <div class="border-b border-slate-100 pb-4 mb-6">
                     <h1 class="text-lg font-bold text-slate-800 font-outfit">
                         Keamanan & Kata Sandi
