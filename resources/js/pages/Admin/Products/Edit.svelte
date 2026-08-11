@@ -25,12 +25,16 @@
         product,
         ai_enabled = false,
         isSellerMode = false,
+        isAdmin = false,
+        sellers = [],
     } = $props();
 
     let globalTaxEnabled = $derived(page.props.settings?.tax_enabled ?? false);
     let globalTaxPercentage = $derived(
         page.props.settings?.tax_percentage ?? 0,
     );
+
+    let showEditSellerToggle = $state(false);
 
     // Catalog Builder state & handler
     let showCatalogBuilderModal = $state(false);
@@ -154,9 +158,26 @@
         height: p.height || '',
         tax_enabled: !!p.tax_enabled,
         tax_rate: p.tax_rate || '',
-        active: !!p.active,
         is_digital: !!p.is_digital,
         condition: p.condition || 'new',
+        price_type: p.price_type || 'net',
+        usage_period: p.usage_period || '',
+        contact_name: p.contact_name || p.seller?.name || p.user?.name || '',
+        contact_phone: p.contact_phone || p.seller?.phone_number || p.user?.phone_number || '',
+        user_id: p.user_id || '',
+        new_seller: {
+            name: '',
+            phone_number: '',
+            email: '',
+            address: '',
+        },
+        edit_seller: {
+            name: p.seller?.name || p.user?.name || '',
+            phone_number: p.seller?.phone_number || p.user?.phone_number || '',
+            email: p.seller?.email || p.user?.email || '',
+            store_name: p.seller?.store_name || p.user?.store_name || '',
+            address: p.seller?.customer_addresses?.[0]?.address || p.seller?.customerAddresses?.[0]?.address || p.user?.customer_addresses?.[0]?.address || p.user?.customerAddresses?.[0]?.address || '',
+        },
         is_exclusive: !!p.is_exclusive,
         exclusive_min_level_order: p.exclusive_min_level_order ?? 0,
         is_early_access: !!p.is_early_access,
@@ -4133,6 +4154,157 @@
                     {/if}
                 </div>
 
+                <!-- Card: Informasi Penjual & Kontak Person -->
+                <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs mb-6">
+                    <h3 class="text-base font-semibold text-slate-900 border-b border-slate-150 pb-3 mb-4 flex items-center gap-2">
+                        <i class="ti ti-user-check text-emerald-600 text-lg"></i>
+                        Informasi Penjual & Kontak Person
+                    </h3>
+
+                    {#if isAdmin}
+                        <div class="mb-5 space-y-2">
+                            <label class="block text-xs font-semibold text-slate-700 flex items-center justify-between">
+                                <span>Pilih / Ganti Seller Owner Produk (Khusus Admin)</span>
+                                {#if form.user_id && form.user_id !== '__NEW__'}
+                                    <button
+                                        type="button"
+                                        onclick={() => (showEditSellerToggle = !showEditSellerToggle)}
+                                        class="text-xs font-bold text-brand-blueRoyal hover:underline flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <i class="ti ti-edit text-xs"></i>
+                                        {showEditSellerToggle ? 'Sembunyikan Edit Seller' : 'Edit Profil Seller Ini'}
+                                    </button>
+                                {/if}
+                            </label>
+                            <select
+                                bind:value={form.user_id}
+                                onchange={(e) => {
+                                    const val = e.target.value;
+                                    if (val && val !== '__NEW__') {
+                                        const s = sellers.find(item => String(item.id) === String(val));
+                                        if (s) {
+                                            form.contact_name = s.name;
+                                            form.contact_phone = s.phone_number || '';
+                                            form.edit_seller.name = s.name;
+                                            form.edit_seller.phone_number = s.phone_number || '';
+                                            form.edit_seller.email = s.email || '';
+                                            form.edit_seller.store_name = s.store_name || s.name;
+                                            form.edit_seller.address = s.customerAddresses?.[0]?.address || '';
+                                        }
+                                    }
+                                }}
+                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
+                            >
+                                <option value="">-- Akun Owner / Seller Terpasang --</option>
+                                {#each sellers as s}
+                                    <option value={s.id}>
+                                        {s.name} {s.phone_number ? `(${s.phone_number})` : ''} {s.is_seller ? '• Seller' : '• Customer'}
+                                    </option>
+                                {/each}
+                                <option value="__NEW__" class="font-bold text-emerald-600">+ Tambah Customer / Seller Baru (Inline Form)</option>
+                            </select>
+                        </div>
+
+                        <!-- Form Edit Profil Seller Ini (jika di-toggle ON) -->
+                        {#if showEditSellerToggle && form.user_id && form.user_id !== '__NEW__'}
+                            <div class="mb-5 p-4 bg-blue-50/60 border border-blue-200 rounded-2xl space-y-4 animate-in fade-in duration-200">
+                                <div class="flex items-center gap-2 text-blue-900 font-bold text-xs">
+                                    <i class="ti ti-user-edit text-base text-blue-600"></i>
+                                    Edit Data / Profil Seller Yang Dipilih (Khusus Admin)
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        bind:value={form.edit_seller.name}
+                                        id="edit_seller_name"
+                                        label="Nama Seller / Owner"
+                                        placeholder="Nama Lengkap"
+                                    />
+                                    <Input
+                                        bind:value={form.edit_seller.store_name}
+                                        id="edit_seller_store_name"
+                                        label="Nama Toko"
+                                        placeholder="Nama Toko"
+                                    />
+                                    <Input
+                                        bind:value={form.edit_seller.phone_number}
+                                        id="edit_seller_phone"
+                                        label="No. Telepon / WhatsApp"
+                                        placeholder="08123456789"
+                                    />
+                                    <Input
+                                        bind:value={form.edit_seller.email}
+                                        id="edit_seller_email"
+                                        label="Email Seller"
+                                        placeholder="seller@email.com"
+                                    />
+                                    <div class="md:col-span-2">
+                                        <Input
+                                            bind:value={form.edit_seller.address}
+                                            id="edit_seller_address"
+                                            label="Alamat Toko / Seller"
+                                            placeholder="Alamat lengkap seller"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        {/if}
+
+                        {#if form.user_id === '__NEW__'}
+                            <div class="mb-5 p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-4">
+                                <div class="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                                    <i class="ti ti-user-plus text-base text-emerald-600"></i>
+                                    Form Data Seller / Customer Baru
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        bind:value={form.new_seller.name}
+                                        id="new_seller_name"
+                                        label="Nama Lengkap / Toko *"
+                                        placeholder="Cth: Budi Toko"
+                                        required={true}
+                                    />
+                                    <Input
+                                        bind:value={form.new_seller.phone_number}
+                                        id="new_seller_phone"
+                                        label="No. Telepon / WhatsApp *"
+                                        placeholder="Cth: 08123456789"
+                                        required={true}
+                                    />
+                                    <Input
+                                        bind:value={form.new_seller.email}
+                                        id="new_seller_email"
+                                        label="Email (Opsional)"
+                                        placeholder="Cth: seller@email.com"
+                                    />
+                                    <Input
+                                        bind:value={form.new_seller.address}
+                                        id="new_seller_address"
+                                        label="Alamat Toko / Seller"
+                                        placeholder="Cth: Jl. Sudirman No. 123, Jakarta"
+                                    />
+                                </div>
+                            </div>
+                        {/if}
+                    {/if}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Input
+                            bind:value={form.contact_name}
+                            id="contact_name"
+                            label="Nama Kontak Person"
+                            placeholder="Cth: Pak Budi (Pemilik)"
+                            error={form.errors.contact_name}
+                        />
+                        <Input
+                            bind:value={form.contact_phone}
+                            id="contact_phone"
+                            label="No. HP / WhatsApp Kontak Person"
+                            placeholder="Cth: 081234567890"
+                            error={form.errors.contact_phone}
+                        />
+                    </div>
+                </div>
+
                 <!-- Card: Informasi Dasar -->
                 <div
                     class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
@@ -4213,6 +4385,18 @@
                                 </div>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Masa / Tanggal Pemakaian -->
+                    <div class="mb-6">
+                        <Input
+                            bind:value={form.usage_period}
+                            id="usage_period"
+                            label="Masa / Tanggal Pemakaian (Opsional)"
+                            placeholder="Cth: 3 Bulan / Beli Jan 2024 / Pemakaian Ringan"
+                            error={form.errors.usage_period}
+                        />
+                        <p class="text-[11px] text-slate-400 mt-1">Menginformasikan durasi atau tanggal pemakaian produk ke calon pembeli.</p>
                     </div>
 
                     <div
@@ -4433,6 +4617,33 @@
                             prefix="Rp"
                             error={form.errors.cost}
                         />
+                    </div>
+
+                    <!-- Tipe Harga (NET / NEGO) -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Status Harga (NET / NEGO)</label>
+                        <div class="grid grid-cols-2 gap-3 max-w-xs">
+                            <button
+                                type="button"
+                                onclick={() => (form.price_type = 'net')}
+                                class="px-3 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.price_type === 'net' || !form.price_type
+                                    ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            >
+                                <i class="ti ti-check text-sm"></i>
+                                NET (Harga Pas)
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => (form.price_type = 'nego')}
+                                class="px-3 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.price_type === 'nego'
+                                    ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-500/20 shadow-2xs'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            >
+                                <i class="ti ti-tag text-sm"></i>
+                                NEGO (Bisa Nego)
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Wholesale Prices Section (Master) -->

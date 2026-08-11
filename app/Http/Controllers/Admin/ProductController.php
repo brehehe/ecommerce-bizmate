@@ -13,6 +13,7 @@ use App\Models\ProductListingPayment;
 use App\Models\ProductVariant;
 use App\Models\ProductVariationOption;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\MidtransService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -249,13 +250,22 @@ class ProductController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $categories = Category::select('id', 'name')->get();
         $brands = Brand::where('is_active', true)->orderBy('name')->get();
 
         $isSellerMode = (bool) config('app.is_seller', false);
         $listingPricing = $this->getListingPricingConfig();
+
+        $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
+        $sellers = [];
+        if ($isAdmin) {
+            $sellers = User::select('id', 'name', 'email', 'phone_number', 'store_name', 'is_seller')
+                ->with('customerAddresses')
+                ->orderBy('name')
+                ->get();
+        }
 
         $prefix = 'PRD-'.date('Ymd').'-';
         $count = 1;
@@ -271,6 +281,8 @@ class ProductController extends Controller
             'isSellerMode' => $isSellerMode,
             'listingPricing' => $listingPricing,
             'suggestedSku' => $suggestedSku,
+            'isAdmin' => $isAdmin,
+            'sellers' => $sellers,
         ]);
     }
 
@@ -283,6 +295,10 @@ class ProductController extends Controller
         }
         if ($request->has('brand_id') && ! $request->has('brand_ids')) {
             $request->merge(['brand_ids' => array_filter([$request->input('brand_id')])]);
+        }
+
+        if ($request->has('user_id') && (! $request->input('user_id') || ! Str::isUuid($request->input('user_id')))) {
+            $request->merge(['user_id' => null]);
         }
 
         $validated = $request->validate([
@@ -398,9 +414,48 @@ class ProductController extends Controller
             'model_3d_file',
             'model_3d_usdz_url',
             'model_3d_usdz_file',
+            'new_seller',
         ]);
 
-        $productData['user_id'] = $request->user()?->id;
+        $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
+
+        if ($isAdmin && ! empty($request->input('new_seller.name'))) {
+            $newSellerData = $request->input('new_seller');
+            $sellerEmail = ! empty($newSellerData['email'])
+                ? $newSellerData['email']
+                : ('seller_'.time().'_'.Str::random(4).'@bizmate.local');
+
+            $newUser = User::create([
+                'name' => $newSellerData['name'],
+                'email' => $sellerEmail,
+                'password' => bcrypt(Str::random(16)),
+                'phone_number' => $newSellerData['phone_number'] ?? null,
+                'is_seller' => true,
+                'is_active' => true,
+                'store_name' => $newSellerData['name'],
+            ]);
+
+            if (! empty($newSellerData['address'])) {
+                $newUser->customerAddresses()->create([
+                    'label' => 'Utama',
+                    'receiver_name' => $newUser->name,
+                    'phone_number' => $newUser->phone_number ?? '',
+                    'full_address' => $newSellerData['address'],
+                    'is_primary' => true,
+                ]);
+            }
+            $productData['user_id'] = $newUser->id;
+            if (empty($productData['contact_name'])) {
+                $productData['contact_name'] = $newUser->name;
+            }
+            if (empty($productData['contact_phone'])) {
+                $productData['contact_phone'] = $newUser->phone_number;
+            }
+        } elseif ($isAdmin && $request->filled('user_id')) {
+            $productData['user_id'] = $request->input('user_id');
+        } else {
+            $productData['user_id'] = $request->user()?->id;
+        }
 
         $isSellerMode = (bool) config('app.is_seller', false);
         if ($isSellerMode && $request->user()?->is_seller) {
@@ -602,6 +657,16 @@ class ProductController extends Controller
 
         $categories = Category::select('id', 'name')->get();
         $brands = Brand::orderBy('name')->get();
+
+        $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
+        $sellers = [];
+        if ($isAdmin) {
+            $sellers = User::select('id', 'name', 'email', 'phone_number', 'store_name', 'is_seller')
+                ->with('customerAddresses')
+                ->orderBy('name')
+                ->get();
+        }
+
         $product->load([
             'images',
             'productPrice',
@@ -614,6 +679,8 @@ class ProductController extends Controller
             'variants.tierPrices',
             'categories',
             'brands',
+            'user',
+            'seller.customerAddresses',
         ]);
 
         $isSellerMode = (bool) config('app.is_seller', false);
@@ -626,6 +693,8 @@ class ProductController extends Controller
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
             'isSellerMode' => $isSellerMode,
             'listingPricing' => $listingPricing,
+            'isAdmin' => $isAdmin,
+            'sellers' => $sellers,
         ]);
     }
 
@@ -640,6 +709,10 @@ class ProductController extends Controller
         }
         if ($request->has('brand_id') && ! $request->has('brand_ids')) {
             $request->merge(['brand_ids' => array_filter([$request->input('brand_id')])]);
+        }
+
+        if ($request->has('user_id') && (! $request->input('user_id') || ! Str::isUuid($request->input('user_id')))) {
+            $request->merge(['user_id' => null]);
         }
 
         $validated = $request->validate([
@@ -664,6 +737,22 @@ class ProductController extends Controller
             'early_access_min_level_order' => 'nullable|integer|min:0',
             'stock_status' => 'nullable|string',
             'condition' => 'nullable|string|in:new,used,second,rent',
+            'price_type' => 'nullable|string|in:net,nego',
+            'usage_period' => 'nullable|string|max:255',
+            'contact_name' => 'nullable|string|max:255',
+            'contact_phone' => 'nullable|string|max:50',
+            'user_id' => 'nullable|exists:users,id',
+            'new_seller' => 'nullable|array',
+            'new_seller.name' => 'nullable|string|max:255',
+            'new_seller.phone_number' => 'nullable|string|max:50',
+            'new_seller.email' => 'nullable|email|max:255',
+            'new_seller.address' => 'nullable|string|max:500',
+            'edit_seller' => 'nullable|array',
+            'edit_seller.name' => 'nullable|string|max:255',
+            'edit_seller.phone_number' => 'nullable|string|max:50',
+            'edit_seller.email' => 'nullable|email|max:255',
+            'edit_seller.store_name' => 'nullable|string|max:255',
+            'edit_seller.address' => 'nullable|string|max:500',
             'summary' => 'nullable|string|max:255',
             'description' => 'required|string',
             'specifications' => 'nullable|array',
@@ -757,7 +846,86 @@ class ProductController extends Controller
             'model_3d_file',
             'model_3d_usdz_url',
             'model_3d_usdz_file',
+            'new_seller',
+            'edit_seller',
         ]);
+
+        $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
+
+        if ($isAdmin) {
+            if (! empty($request->input('new_seller.name'))) {
+                $newSellerData = $request->input('new_seller');
+                $sellerEmail = ! empty($newSellerData['email'])
+                    ? $newSellerData['email']
+                    : ('seller_'.time().'_'.Str::random(4).'@bizmate.local');
+
+                $newUser = User::create([
+                    'name' => $newSellerData['name'],
+                    'email' => $sellerEmail,
+                    'password' => bcrypt('password'),
+                    'phone_number' => $newSellerData['phone_number'] ?? null,
+                    'is_seller' => true,
+                    'is_active' => true,
+                    'store_name' => $newSellerData['name'],
+                ]);
+
+                if (! empty($newSellerData['address'])) {
+                    $newUser->customerAddresses()->create([
+                        'label' => 'Utama',
+                        'receiver_name' => $newUser->name,
+                        'phone_number' => $newUser->phone_number ?? '',
+                        'full_address' => $newSellerData['address'],
+                        'is_primary' => true,
+                    ]);
+                }
+                $productData['user_id'] = $newUser->id;
+                if (empty($productData['contact_name'])) {
+                    $productData['contact_name'] = $newUser->name;
+                }
+                if (empty($productData['contact_phone'])) {
+                    $productData['contact_phone'] = $newUser->phone_number;
+                }
+            } elseif ($request->filled('user_id')) {
+                $productData['user_id'] = $request->input('user_id');
+            }
+
+            // Process edit_seller inline profile updates
+            if (! empty($request->input('edit_seller')) && is_array($request->input('edit_seller'))) {
+                $editSellerData = $request->input('edit_seller');
+                $targetUserId = $productData['user_id'] ?? $product->user_id;
+                if ($targetUserId) {
+                    $sellerUser = User::find($targetUserId);
+                    if ($sellerUser) {
+                        $updateFields = array_filter([
+                            'name' => $editSellerData['name'] ?? null,
+                            'phone_number' => $editSellerData['phone_number'] ?? null,
+                            'email' => $editSellerData['email'] ?? null,
+                            'store_name' => $editSellerData['store_name'] ?? null,
+                        ], fn ($v) => ! is_null($v) && $v !== '');
+
+                        if (! empty($updateFields)) {
+                            $sellerUser->update($updateFields);
+                        }
+
+                        if (! empty($editSellerData['address'])) {
+                            $addr = $sellerUser->customerAddresses()->where('is_primary', true)->first()
+                                ?? $sellerUser->customerAddresses()->first();
+                            if ($addr) {
+                                $addr->update(['full_address' => $editSellerData['address']]);
+                            } else {
+                                $sellerUser->customerAddresses()->create([
+                                    'label' => 'Utama',
+                                    'receiver_name' => $sellerUser->name,
+                                    'phone_number' => $sellerUser->phone_number ?? '',
+                                    'full_address' => $editSellerData['address'],
+                                    'is_primary' => true,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         $rawSku = trim($validated['sku'] ?? '');
         if (empty($rawSku)) {

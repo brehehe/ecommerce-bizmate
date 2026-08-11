@@ -1021,8 +1021,9 @@
         const sellerObj = product.seller || product.user;
         const settings = (page.props.settings as any) || {};
 
-        // Retrieve phone directly from database (seller phone_number, or DB settings store_whatsapp/store_phone)
+        // Retrieve phone directly from database (product.contact_phone, seller phone_number, or DB settings store_whatsapp/store_phone)
         const dbPhone =
+            product.contact_phone ||
             sellerObj?.phone_number ||
             sellerObj?.phone ||
             settings.store_whatsapp ||
@@ -2004,6 +2005,9 @@
                                 >
                                     {fmt(activeUnitPrice)}
                                 </span>
+                                <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
+                                    {product.price_type === 'nego' ? 'NEGO' : 'NET'}
+                                </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
                                         class="text-xs text-slate-400 line-through font-medium"
@@ -2031,6 +2035,9 @@
                                         style="color: {secondary};"
                                     >
                                         {fmt(activeUnitPrice)}
+                                    </span>
+                                    <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
+                                        {product.price_type === 'nego' ? 'NEGO' : 'NET'}
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
@@ -2464,6 +2471,9 @@
                                 >
                                     {fmt(activeUnitPrice)}
                                 </span>
+                                <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
+                                    {product.price_type === 'nego' ? 'NEGO' : 'NET'}
+                                </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
                                         class="text-sm text-slate-400 line-through font-medium"
@@ -2489,6 +2499,9 @@
                                         style="color: {secondary};"
                                     >
                                         {fmt(activeUnitPrice)}
+                                    </span>
+                                    <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
+                                        {product.price_type === 'nego' ? 'NEGO' : 'NET'}
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
@@ -3266,6 +3279,20 @@
                                           : 'New'}</b
                                 ></span
                             >
+                            {#if product.usage_period}
+                                <span
+                                    >Pemakaian: <b class="text-slate-700 font-bold"
+                                        >{product.usage_period}</b
+                                    ></span
+                                >
+                            {/if}
+                            {#if product.price_type}
+                                <span
+                                    >Status Harga: <b class="text-slate-700 font-bold uppercase"
+                                        >{product.price_type === 'nego' ? 'Bisa Nego' : 'NET (Pas)'}</b
+                                    ></span
+                                >
+                            {/if}
                             {#if product.weight}
                                 <span
                                     >Berat: <b class="text-slate-600"
@@ -3343,6 +3370,22 @@
                                     >
                                         /{sellerObj.store_slug}
                                     </p>
+                                {/if}
+                                {#if product.contact_name || product.contact_phone}
+                                    <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
+                                        {#if product.contact_name}
+                                            <span class="flex items-center gap-1 text-slate-600 font-medium">
+                                                <i class="ti ti-user text-emerald-600 text-sm"></i>
+                                                Kontak: <strong class="text-slate-800 font-bold">{product.contact_name}</strong>
+                                            </span>
+                                        {/if}
+                                        {#if product.contact_phone}
+                                            <span class="flex items-center gap-1 text-slate-600 font-medium">
+                                                <i class="ti ti-phone text-blue-600 text-sm"></i>
+                                                No. HP/WA: <strong class="text-slate-800 font-bold">{product.contact_phone}</strong>
+                                            </span>
+                                        {/if}
+                                    </div>
                                 {/if}
                             </div>
                         </div>
