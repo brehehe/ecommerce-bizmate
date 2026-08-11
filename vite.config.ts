@@ -10,40 +10,40 @@ export default defineConfig({
     server: {
         host: '127.0.0.1',
     },
+    build: {
+        target: 'esnext',
+        minify: 'esbuild',
+        cssMinify: true,
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules/leaflet/')) {
+                        return 'vendor-leaflet';
+                    }
+                    if (id.includes('node_modules/quill/')) {
+                        return 'vendor-quill';
+                    }
+                    if (id.includes('node_modules/plyr/')) {
+                        return 'vendor-plyr';
+                    }
+                },
+            },
+        },
+    },
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
             fonts: [
                 bunny('Plus Jakarta Sans', {
-                    weights: [300, 400, 500, 600, 700, 800],
+                    weights: [400, 500, 600, 700, 800],
                 }),
                 bunny('Outfit', {
-                    weights: [300, 400, 500, 600, 700, 800],
+                    weights: [400, 500, 600, 700, 800],
                 }),
                 bunny('Inter', {
-                    weights: [300, 400, 500, 600, 700, 800],
-                }),
-                bunny('Roboto', {
-                    weights: [300, 400, 500, 700],
-                }),
-                bunny('Poppins', {
-                    weights: [300, 400, 500, 600, 700, 800],
-                }),
-                bunny('Montserrat', {
-                    weights: [300, 400, 500, 600, 700, 800],
-                }),
-                bunny('Nunito', {
-                    weights: [300, 400, 500, 600, 700, 800],
-                }),
-                bunny('Ubuntu', {
-                    weights: [300, 400, 500, 700],
-                }),
-                bunny('Playfair Display', {
                     weights: [400, 500, 600, 700],
-                }),
-                bunny('Merriweather', {
-                    weights: [300, 400, 700],
                 }),
             ],
         }),
