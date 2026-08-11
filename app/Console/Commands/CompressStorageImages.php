@@ -168,50 +168,54 @@ class CompressStorageImages extends Command
      *
      * @param  array<string, string>  $convertedPaths  Map of old path -> new webp path
      */
+    /**
+     * Update database table references when files are converted to WebP.
+     *
+     * @param  array<string, string>  $convertedPaths  Map of old path -> new webp path
+     */
     protected function updateDatabaseImageReferences(array $convertedPaths): void
     {
-        $replacements = [];
-        $publicPath = public_path();
-
-        foreach ($convertedPaths as $oldAbsPath => $newAbsPath) {
-            $oldRel = ltrim(str_replace($publicPath, '', $oldAbsPath), '/');
-            $newRel = ltrim(str_replace($publicPath, '', $newAbsPath), '/');
-
-            // Format variations (e.g. storage/products/xyz.png, /storage/products/xyz.png, products/xyz.png)
-            $replacements[$oldRel] = $newRel;
-            $replacements['/'.$oldRel] = '/'.$newRel;
-
-            if (str_starts_with($oldRel, 'storage/')) {
-                $shortOld = substr($oldRel, strlen('storage/'));
-                $shortNew = substr($newRel, strlen('storage/'));
-                $replacements[$shortOld] = $shortNew;
-                $replacements['/'.$shortOld] = '/'.$shortNew;
+        // 1. Update products table 'image' column
+        if (DB::getSchemaBuilder()->hasColumn('products', 'image')) {
+            foreach (DB::table('products')->whereNotNull('image')->get() as $p) {
+                $newPath = preg_replace('/\.(png|jpg|jpeg)$/i', '.webp', $p->image);
+                if ($newPath !== $p->image) {
+                    DB::table('products')->where('id', $p->id)->update(['image' => $newPath]);
+                }
             }
         }
 
-        // 1. Update database tables
-        $hasProductsImage = DB::getSchemaBuilder()->hasColumn('products', 'image');
-        $hasProductImagesPath = DB::getSchemaBuilder()->hasTable('product_images') && DB::getSchemaBuilder()->hasColumn('product_images', 'path');
-        $hasCategoriesImage = DB::getSchemaBuilder()->hasTable('categories') && DB::getSchemaBuilder()->hasColumn('categories', 'image');
-        $hasBrandsImage = DB::getSchemaBuilder()->hasTable('brands') && DB::getSchemaBuilder()->hasColumn('brands', 'image');
-
-        foreach ($replacements as $oldPath => $newPath) {
-            if ($hasProductsImage) {
-                DB::table('products')->where('image', $oldPath)->update(['image' => $newPath]);
-            }
-            if ($hasProductImagesPath) {
-                DB::table('product_images')->where('path', $oldPath)->update(['path' => $newPath]);
-            }
-            if ($hasCategoriesImage) {
-                DB::table('categories')->where('image', $oldPath)->update(['image' => $newPath]);
-            }
-            if ($hasBrandsImage) {
-                DB::table('brands')->where('image', $oldPath)->update(['image' => $newPath]);
+        // 2. Update product_images table 'path' column
+        if (DB::getSchemaBuilder()->hasTable('product_images') && DB::getSchemaBuilder()->hasColumn('product_images', 'path')) {
+            foreach (DB::table('product_images')->whereNotNull('path')->get() as $pi) {
+                $newPath = preg_replace('/\.(png|jpg|jpeg)$/i', '.webp', $pi->path);
+                if ($newPath !== $pi->path) {
+                    DB::table('product_images')->where('id', $pi->id)->update(['path' => $newPath]);
+                }
             }
         }
 
+        // 3. Update categories table 'image' column
+        if (DB::getSchemaBuilder()->hasTable('categories') && DB::getSchemaBuilder()->hasColumn('categories', 'image')) {
+            foreach (DB::table('categories')->whereNotNull('image')->get() as $c) {
+                $newPath = preg_replace('/\.(png|jpg|jpeg)$/i', '.webp', $c->image);
+                if ($newPath !== $c->image) {
+                    DB::table('categories')->where('id', $c->id)->update(['image' => $newPath]);
+                }
+            }
+        }
 
-        // 2. Update settings table JSON values
+        // 4. Update brands table 'image' column if exists
+        if (DB::getSchemaBuilder()->hasTable('brands') && DB::getSchemaBuilder()->hasColumn('brands', 'image')) {
+            foreach (DB::table('brands')->whereNotNull('image')->get() as $b) {
+                $newPath = preg_replace('/\.(png|jpg|jpeg)$/i', '.webp', $b->image);
+                if ($newPath !== $b->image) {
+                    DB::table('brands')->where('id', $b->id)->update(['image' => $newPath]);
+                }
+            }
+        }
+
+        // 5. Update settings table JSON values
         $settingKeys = ['hero_banners', 'side_banners', 'middle_wide_banner', 'popup_banner', 'store_logo', 'store_icon'];
         $settings = DB::table('settings')->whereIn('key', $settingKeys)->get();
 
@@ -221,16 +225,9 @@ class CompressStorageImages extends Command
                 continue;
             }
 
-            $updated = false;
-            foreach ($replacements as $oldPath => $newPath) {
-                if (str_contains($val, $oldPath)) {
-                    $val = str_replace($oldPath, $newPath, $val);
-                    $updated = true;
-                }
-            }
-
-            if ($updated) {
-                DB::table('settings')->where('id', $setting->id)->update(['value' => $val]);
+            $newVal = preg_replace('/\.(png|jpg|jpeg)/i', '.webp', $val);
+            if ($newVal !== $val) {
+                DB::table('settings')->where('id', $setting->id)->update(['value' => $newVal]);
             }
         }
     }
