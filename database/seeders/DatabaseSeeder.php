@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             // PromotionSeeder::class,
             // DummyReportSeeder::class,
             // MembershipLevelSeeder::class,
+            SportgigsSeeder::class,
         ]);
 
         // User::factory()->create([
