@@ -125,7 +125,7 @@
 
     const form = useForm({
         name: '',
-        sku: suggestedSku,
+        sku: '',
         category_ids: [],
         brand_ids: [],
         specifications: {},
@@ -183,6 +183,12 @@
         // Seller Listing Duration
         listing_duration_type: '15_days',
         custom_days: 1,
+    });
+
+    $effect(() => {
+        if (!form.sku && suggestedSku) {
+            form.sku = suggestedSku;
+        }
     });
 
     let uploadedPhotos = $state([]);
