@@ -36,10 +36,10 @@
     const isSellerEnabled = $derived(
         Boolean(
             (page.props as any).app_config?.is_seller_enabled ??
-                (page.props as any).settings?.is_seller_enabled ??
-                (page.props as any).is_seller_enabled ??
-                (page.props as any).isSellerMode ??
-                false,
+            (page.props as any).settings?.is_seller_enabled ??
+            (page.props as any).is_seller_enabled ??
+            (page.props as any).isSellerMode ??
+            false,
         ),
     );
 
@@ -681,27 +681,35 @@
 ═══════════════════════════════════════════════════ -->
     <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
-            <div class="flex gap-2.5 lg:gap-3">
+            <div class="flex gap-2.5 lg:gap-3 items-stretch">
                 <!-- Main slider (left, 2/3 width) -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 max-h-[160px] sm:max-h-[350px]"
+                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 aspect-[2/1] sm:aspect-[2.35/1] lg:aspect-[2.5/1] max-h-[360px]"
                 >
                     {#each heroBanners as banner, i}
                         <button
                             onclick={(e) => handleBannerClick(banner, e)}
-                            class="block w-full transition-opacity duration-700 {i ===
+                            class="absolute inset-0 w-full h-full transition-opacity duration-700 {i ===
                             activeHero
-                                ? 'opacity-100'
-                                : 'absolute inset-0 opacity-0 pointer-events-none'} text-left h-full cursor-pointer"
+                                ? 'opacity-100 z-10 pointer-events-auto'
+                                : 'opacity-0 z-0 pointer-events-none'} text-left cursor-pointer overflow-hidden"
                         >
+                            <!-- Ambient blur background for non-standard image aspect ratios -->
+                            <img
+                                src={banner.image}
+                                alt=""
+                                class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
+                                aria-hidden="true"
+                            />
+                            <!-- Main Banner Image (Full uncropped original image display) -->
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-full max-h-[160px] sm:max-h-[350px] object-cover block"
+                                class="absolute inset-0 z-10 w-full h-full {banner.fit === 'cover' ? 'object-cover' : 'object-contain'} object-center block"
                             />
                         </button>
                     {/each}
@@ -750,12 +758,18 @@
                     {#each sideBanners as banner}
                         <button
                             onclick={(e) => handleBannerClick(banner, e)}
-                            class="rounded-2xl overflow-hidden block bg-slate-100 w-full text-left cursor-pointer"
+                            class="rounded-2xl overflow-hidden block bg-slate-100 w-full text-left cursor-pointer flex-1 relative group/side"
                         >
                             <img
                                 src={banner.image}
+                                alt=""
+                                class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
+                                aria-hidden="true"
+                            />
+                            <img
+                                src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-auto max-h-[350px] object-cover block hover:scale-105 transition duration-300"
+                                class="absolute inset-0 z-10 w-full h-full {banner.fit === 'cover' ? 'object-cover' : 'object-contain'} block group-hover/side:scale-105 transition duration-300 object-center"
                             />
                         </button>
                     {/each}
@@ -794,9 +808,9 @@
      SECTION 3: KATEGORI (Clean, Compact, Real Categories Only)
     ═══════════════════════════════════════════════════ -->
     {#if categories === undefined}
-        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 pt-2.5 pb-0.5">
+        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
             <div class="max-w-6xl mx-auto">
-                <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center justify-between mb-2">
                     <div
                         class="h-4 w-20 bg-slate-200 rounded-md animate-pulse"
                     ></div>
@@ -804,11 +818,11 @@
                         class="h-3 w-14 bg-slate-200 rounded-md animate-pulse"
                     ></div>
                 </div>
-                <div class="overflow-x-auto no-scrollbar py-0.5">
-                    <div class="flex gap-2 sm:gap-3">
+                <div class="overflow-x-auto no-scrollbar py-1">
+                    <div class="flex gap-2.5 sm:gap-4">
                         {#each Array(6) as _}
                             <div
-                                class="flex flex-col items-center gap-1 w-14 sm:w-16 shrink-0 animate-pulse"
+                                class="flex flex-col items-center gap-1.5 w-14 sm:w-16 shrink-0 animate-pulse"
                             >
                                 <div
                                     class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-slate-200/70"
@@ -823,10 +837,10 @@
             </div>
         </section>
     {:else if categories && categories.length > 0}
-        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 pt-2.5 pb-0.5">
+        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
             <div class="max-w-6xl mx-auto">
                 <!-- Section Header -->
-                <div class="flex items-center justify-between mb-1.5 px-0.5">
+                <div class="flex items-center justify-between mb-2.5 px-0.5">
                     <h2
                         class="font-outfit font-black text-sm sm:text-base text-slate-800 tracking-tight"
                     >
@@ -844,36 +858,59 @@
                 </div>
 
                 <!-- Categories Scroll Row (No Card Box, Sleek & Compact) -->
-                <div class="overflow-x-auto no-scrollbar py-0.5">
-                    <div class="flex gap-2 sm:gap-3 w-max sm:w-auto">
+                <div class="overflow-x-auto no-scrollbar py-1">
+                    <div class="flex gap-3.5 sm:gap-5 w-max sm:w-auto">
+                        <!-- First Item: Lihat Semua -->
+                        <!-- <Link
+                            href="/search"
+                            prefetch
+                            class="flex flex-col items-center gap-1.5 group cursor-pointer w-[68px] sm:w-[76px] shrink-0 text-center"
+                        >
+                            <div
+                                class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-white/20 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden bg-gradient-to-br from-blue-500 via-sky-400 to-teal-400 shadow-xs"
+                            >
+                                <div class="grid grid-cols-2 gap-1 w-6 h-6 p-0.5 bg-white/95 rounded-xl shadow-2xs">
+                                    <div class="rounded-md bg-blue-500"></div>
+                                    <div class="rounded-md bg-orange-400"></div>
+                                    <div class="rounded-md bg-amber-400"></div>
+                                    <div class="rounded-md bg-emerald-500"></div>
+                                </div>
+                            </div>
+                            <span
+                                class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[72px] line-clamp-2 group-hover:text-slate-900 transition"
+                            >
+                                Lihat Semua
+                            </span>
+                        </Link> -->
+
                         <!-- Real Database Categories -->
                         {#each categories as cat, i}
                             <Link
                                 href="/category/{cat.slug || cat.id}"
                                 prefetch
-                                class="flex flex-col items-center gap-1 group cursor-pointer w-[60px] sm:w-[68px] shrink-0 text-center"
+                                class="flex flex-col items-center gap-1.5 group cursor-pointer w-[68px] sm:w-[76px] shrink-0 text-center"
                             >
                                 <div
-                                    class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center border border-slate-200/80 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:border-slate-300 bg-white shadow-2xs"
+                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-slate-200/80 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:border-slate-300 bg-white shadow-2xs"
                                     style="color: {primary};"
                                 >
                                     {#if cat.image}
                                         <img
                                             src={cat.image}
                                             alt={cat.name}
-                                            class="w-6.5 h-6.5 sm:w-7.5 sm:h-7.5 object-contain"
+                                            class="w-7 h-7 sm:w-8 sm:h-8 object-contain"
                                         />
                                     {:else}
                                         <i
                                             class="ti {getCategoryIcon(
                                                 cat,
-                                            )} text-xl sm:text-2xl"
+                                            )} text-2xl sm:text-3xl"
                                             style="color: {primary};"
                                         ></i>
                                     {/if}
                                 </div>
                                 <span
-                                    class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[68px] line-clamp-2 group-hover:text-slate-900 transition"
+                                    class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[72px] line-clamp-2 group-hover:text-slate-900 transition"
                                 >
                                     {cat.name}
                                 </span>
@@ -1032,12 +1069,30 @@
                                                 class="w-full h-full object-cover"
                                             />
                                         {/if}
-                                        <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                        <div
+                                            class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
+                                        >
                                             {#if isSellerEnabled}
                                                 <span
-                                                    class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                                    class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
+                                                    'rent'
+                                                        ? 'bg-purple-600'
+                                                        : product.condition ===
+                                                                'used' ||
+                                                            product.condition ===
+                                                                'second'
+                                                          ? 'bg-amber-600'
+                                                          : 'bg-emerald-600'}"
                                                 >
-                                                    {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                                    {product.condition ===
+                                                    'rent'
+                                                        ? 'Rent'
+                                                        : product.condition ===
+                                                                'used' ||
+                                                            product.condition ===
+                                                                'second'
+                                                          ? 'Second'
+                                                          : 'New'}
                                                 </span>
                                             {/if}
                                             {#if product.remaining_promo_stock !== null && product.remaining_promo_stock !== undefined && product.remaining_promo_stock <= 0}
@@ -1277,12 +1332,29 @@
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
-                                    <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                    <div
+                                        class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
+                                    >
                                         {#if isSellerEnabled}
                                             <span
-                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
+                                                'rent'
+                                                    ? 'bg-purple-600'
+                                                    : product.condition ===
+                                                            'used' ||
+                                                        product.condition ===
+                                                            'second'
+                                                      ? 'bg-amber-600'
+                                                      : 'bg-emerald-600'}"
                                             >
-                                                {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                                {product.condition === 'rent'
+                                                    ? 'Rent'
+                                                    : product.condition ===
+                                                            'used' ||
+                                                        product.condition ===
+                                                            'second'
+                                                      ? 'Second'
+                                                      : 'New'}
                                             </span>
                                         {/if}
                                         {#if isPromo && discountPercentage > 0}
@@ -1364,16 +1436,24 @@
     {#if middleWide && middleWide.image}
         <section class="px-3 sm:px-5 lg:px-8 mt-2.5 mb-1">
             <div
-                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition"
+                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition bg-slate-100 max-h-[500px] relative"
             >
                 <button
                     onclick={(e) => handleBannerClick(middleWide, e)}
-                    class="block w-full text-left cursor-pointer"
+                    class="block w-full text-left cursor-pointer relative overflow-hidden max-h-[500px]"
                 >
+                    <!-- Ambient blur background for non-standard image aspect ratios -->
+                    <img
+                        src={middleWide.image}
+                        alt=""
+                        class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
+                        aria-hidden="true"
+                    />
+                    <!-- Main Middle Wide Banner Image (Max height 500px) -->
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="block w-full h-auto aspect-[3.5/1] sm:aspect-[4.5/1] object-cover hover:opacity-95 transition"
+                        class="relative z-10 block w-full h-auto max-h-[500px] {middleWide.fit === 'cover' ? 'object-cover' : 'object-contain'} object-center hover:opacity-95 transition mx-auto"
                     />
                 </button>
             </div>
@@ -1445,12 +1525,29 @@
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
-                                    <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                    <div
+                                        class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
+                                    >
                                         {#if isReal && isSellerEnabled}
                                             <span
-                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
+                                                class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
+                                                'rent'
+                                                    ? 'bg-purple-600'
+                                                    : product.condition ===
+                                                            'used' ||
+                                                        product.condition ===
+                                                            'second'
+                                                      ? 'bg-amber-600'
+                                                      : 'bg-emerald-600'}"
                                             >
-                                                {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
+                                                {product.condition === 'rent'
+                                                    ? 'Rent'
+                                                    : product.condition ===
+                                                            'used' ||
+                                                        product.condition ===
+                                                            'second'
+                                                      ? 'Second'
+                                                      : 'New'}
                                             </span>
                                         {/if}
                                         {#if isReal && isPromo && discountPercentage > 0}
@@ -1560,9 +1657,14 @@
 
                 <!-- Infinite scroll sentinel -->
                 {#if hasMore || loadingMore}
-                    <div bind:this={sentinelEl} class="mt-3 w-full flex justify-center py-1">
+                    <div
+                        bind:this={sentinelEl}
+                        class="mt-3 w-full flex justify-center py-1"
+                    >
                         {#if loadingMore}
-                            <div class="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 rounded-xl shadow-xs text-slate-600 font-bold text-[11px]">
+                            <div
+                                class="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 rounded-xl shadow-xs text-slate-600 font-bold text-[11px]"
+                            >
                                 <svg
                                     class="animate-spin h-4 w-4"
                                     style="color: {primary};"

@@ -76,6 +76,7 @@ class CmsController extends Controller
                     'image' => $imagePath,
                     'alt' => $banner['alt'] ?? '',
                     'link' => $banner['link'] ?? '#',
+                    'fit' => $banner['fit'] ?? 'contain',
                 ];
             }
         }
@@ -96,6 +97,7 @@ class CmsController extends Controller
                     'image' => $imagePath,
                     'alt' => $banner['alt'] ?? '',
                     'link' => $banner['link'] ?? '#',
+                    'fit' => $banner['fit'] ?? 'contain',
                 ];
             }
         }
@@ -125,6 +127,7 @@ class CmsController extends Controller
                 'alt' => $middleInput['alt'] ?? '',
                 'link' => $middleInput['link'] ?? '#',
                 'is_active' => filter_var($middleInput['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'fit' => $middleInput['fit'] ?? 'contain',
             ];
 
             Setting::updateOrCreate(
@@ -149,6 +152,7 @@ class CmsController extends Controller
                 'link' => $popupInput['link'] ?? '#',
                 'is_active' => filter_var($popupInput['is_active'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'orientation' => $popupInput['orientation'] ?? 'portrait',
+                'fit' => $popupInput['fit'] ?? 'contain',
             ];
 
             Setting::updateOrCreate(
