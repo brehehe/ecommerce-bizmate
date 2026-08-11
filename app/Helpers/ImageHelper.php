@@ -4,58 +4,46 @@ namespace App\Helpers;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Laravel\Facades\Image;
 
 class ImageHelper
 {
     /**
-     * Compress an image's binary data using the PHP GD library.
+     * Compress an image's binary data using Intervention Image / GD library.
      *
      * @param  string  $binaryData  The raw binary content of the image.
      * @param  string  $extension  The file extension (e.g., jpg, png, webp, gif).
-     * @param  int  $quality  Compression quality (0-100, default 75).
+     * @param  int  $quality  Compression quality (0-100, default 80).
+     * @param  int  $maxWidth  Maximum width threshold (default 1200).
+     * @param  int  $maxHeight  Maximum height threshold (default 1200).
      * @return string The compressed binary content, or original if compression failed or is unsupported.
      */
-    public static function compress(string $binaryData, string $extension, int $quality = 75): string
-    {
-        if (! extension_loaded('gd')) {
-            return $binaryData;
-        }
-
+    public static function compress(
+        string $binaryData,
+        string $extension,
+        int $quality = 80,
+        int $maxWidth = 1200,
+        int $maxHeight = 1200
+    ): string {
         try {
-            $image = @imagecreatefromstring($binaryData);
-            if (! $image) {
-                return $binaryData;
+            $image = Image::decodeBinary($binaryData);
+
+            if ($maxWidth > 0 || $maxHeight > 0) {
+                $image->scaleDown($maxWidth, $maxHeight);
             }
 
-            // Preserve alpha channel information for PNG and WebP
-            imagealphablending($image, false);
-            imagesavealpha($image, true);
-
-            ob_start();
-            $extension = strtolower($extension);
-
-            if ($extension === 'jpeg' || $extension === 'jpg') {
-                imagejpeg($image, null, $quality);
-            } elseif ($extension === 'webp') {
-                imagewebp($image, null, $quality);
-            } elseif ($extension === 'png') {
-                // Map quality (0-100) to PNG compression level (0-9)
-                $compressionLevel = (int) round((100 - $quality) / 11.11);
-                $compressionLevel = max(0, min(9, $compressionLevel));
-                imagepng($image, null, $compressionLevel);
-            } elseif ($extension === 'gif') {
-                imagegif($image, null);
+            $ext = strtolower($extension);
+            if (in_array($ext, ['jpeg', 'jpg'])) {
+                $encoded = $image->encodeUsingFileExtension('jpg', quality: $quality);
+            } elseif ($ext === 'webp') {
+                $encoded = $image->encodeUsingFileExtension('webp', quality: $quality);
+            } elseif ($ext === 'png') {
+                $encoded = $image->encodeUsingFileExtension('png', quality: $quality);
             } else {
-                imagedestroy($image);
-                ob_end_clean();
-
                 return $binaryData;
             }
 
-            $compressedData = ob_get_clean();
-            imagedestroy($image);
-
-            return $compressedData ?: $binaryData;
+            return (string) $encoded;
         } catch (\Throwable $e) {
             return $binaryData;
         }
@@ -67,17 +55,25 @@ class ImageHelper
      * @param  UploadedFile  $file  The uploaded file.
      * @param  string  $directory  The target directory path within the storage disk.
      * @param  string  $disk  The storage disk (default 'public').
-     * @param  int  $quality  Compression quality (default 75).
+     * @param  int  $quality  Compression quality (default 80).
+     * @param  int  $maxWidth  Maximum width constraint (default 1200).
+     * @param  int  $maxHeight  Maximum height constraint (default 1200).
      * @return string The stored file path relative to the disk.
      */
-    public static function compressAndStore(UploadedFile $file, string $directory, string $disk = 'public', int $quality = 75): string
-    {
+    public static function compressAndStore(
+        UploadedFile $file,
+        string $directory,
+        string $disk = 'public',
+        int $quality = 80,
+        int $maxWidth = 1200,
+        int $maxHeight = 1200
+    ): string {
         $extension = $file->getClientOriginalExtension() ?: 'jpg';
         $binaryData = file_get_contents($file->getRealPath());
 
-        $isImage = str_starts_with($file->getMimeType(), 'image/');
+        $isImage = str_starts_with($file->getMimeType() ?? '', 'image/');
         if ($isImage) {
-            $compressedData = self::compress($binaryData, $extension, $quality);
+            $compressedData = self::compress($binaryData, $extension, $quality, $maxWidth, $maxHeight);
         } else {
             $compressedData = $binaryData;
         }

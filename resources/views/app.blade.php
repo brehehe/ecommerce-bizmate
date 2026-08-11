@@ -4,6 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        <!-- Resource Hints & Preconnect for Speed -->
+        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
+        <link rel="dns-prefetch" href="https://fonts.bunny.net">
+
 
         @php
             $storeIcon = \App\Models\Setting::where('key', 'store_icon')->value('value');

@@ -13,6 +13,7 @@
         "spatie/laravel-permission"
     ],
     "skills": [
+        "infer-conventions",
         "laravel-best-practices",
         "wayfinder-development",
         "pest-testing",

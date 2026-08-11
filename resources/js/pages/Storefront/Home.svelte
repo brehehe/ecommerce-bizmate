@@ -769,12 +769,17 @@
                             <img
                                 src={banner.image}
                                 alt=""
+                                loading="lazy"
+                                decoding="async"
                                 class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
                                 aria-hidden="true"
                             />
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
+                                fetchpriority={i === 0 ? 'high' : 'low'}
+                                loading={i === 0 ? 'eager' : 'lazy'}
+                                decoding={i === 0 ? 'sync' : 'async'}
                                 class="absolute inset-0 z-10 w-full h-full object-cover object-center block"
                             />
                         </button>
@@ -829,6 +834,8 @@
                                 <img
                                     src={banner.image}
                                     alt=""
+                                    loading="lazy"
+                                    decoding="async"
                                     class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
                                     aria-hidden="true"
                                 />
@@ -836,6 +843,8 @@
                                 <img
                                     src={banner.image}
                                     alt={banner.alt}
+                                    loading="lazy"
+                                    decoding="async"
                                     class="absolute inset-0 z-10 w-full h-full object-contain block group-hover/side:scale-105 transition duration-300"
                                 />
                             {:else}
@@ -843,11 +852,14 @@
                                 <img
                                     src={banner.image}
                                     alt={banner.alt}
+                                    loading="lazy"
+                                    decoding="async"
                                     class="absolute inset-0 z-10 w-full h-full object-cover block group-hover/side:scale-105 transition duration-300 object-center"
                                 />
                             {/if}
                         </button>
                     {/each}
+
                 </div>
             </div>
         </div>
