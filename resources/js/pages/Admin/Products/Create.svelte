@@ -3932,94 +3932,96 @@
                 </div>
 
                 <!-- Card: Informasi Penjual & Kontak Person -->
-                <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs mb-6">
-                    <h3 class="text-base font-semibold text-slate-900 border-b border-slate-150 pb-3 mb-4 flex items-center gap-2">
-                        <i class="ti ti-user-check text-emerald-600 text-lg"></i>
-                        Informasi Penjual & Kontak Person
-                    </h3>
+                {#if isSellerMode}
+                    <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs mb-6">
+                        <h3 class="text-base font-semibold text-slate-900 border-b border-slate-150 pb-3 mb-4 flex items-center gap-2">
+                            <i class="ti ti-user-check text-emerald-600 text-lg"></i>
+                            Informasi Penjual & Kontak Person
+                        </h3>
 
-                    {#if isAdmin}
-                        <div class="mb-5 space-y-2">
-                            <label class="block text-xs font-semibold text-slate-700">Pilih Seller / Owner Produk</label>
-                            <select
-                                bind:value={form.user_id}
-                                onchange={(e) => {
-                                    const val = e.target.value;
-                                    if (val && val !== '__NEW__') {
-                                        const s = sellers.find(item => String(item.id) === String(val));
-                                        if (s) {
-                                            if (!form.contact_name) form.contact_name = s.name;
-                                            if (!form.contact_phone) form.contact_phone = s.phone_number || '';
+                        {#if isAdmin}
+                            <div class="mb-5 space-y-2">
+                                <label class="block text-xs font-semibold text-slate-700">Pilih Seller / Owner Produk</label>
+                                <select
+                                    bind:value={form.user_id}
+                                    onchange={(e) => {
+                                        const val = e.target.value;
+                                        if (val && val !== '__NEW__') {
+                                            const s = sellers.find(item => String(item.id) === String(val));
+                                            if (s) {
+                                                if (!form.contact_name) form.contact_name = s.name;
+                                                if (!form.contact_phone) form.contact_phone = s.phone_number || '';
+                                            }
                                         }
-                                    }
-                                }}
-                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
-                            >
-                                <option value="">-- Gunakan Akun Login Sekarang --</option>
-                                {#each sellers as s}
-                                    <option value={s.id}>
-                                        {s.name} {s.phone_number ? `(${s.phone_number})` : ''} {s.is_seller ? '• Seller' : '• Customer'}
-                                    </option>
-                                {/each}
-                                <option value="__NEW__" class="font-bold text-emerald-600">+ Tambah Customer / Seller Baru (Inline Form)</option>
-                            </select>
-                        </div>
-
-                        {#if form.user_id === '__NEW__'}
-                            <div class="mb-5 p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-4">
-                                <div class="flex items-center gap-2 text-emerald-900 font-bold text-xs">
-                                    <i class="ti ti-user-plus text-base text-emerald-600"></i>
-                                    Form Data Seller / Customer Baru
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input
-                                        bind:value={form.new_seller.name}
-                                        id="new_seller_name"
-                                        label="Nama Lengkap / Toko *"
-                                        placeholder="Cth: Budi Toko"
-                                        required={true}
-                                    />
-                                    <Input
-                                        bind:value={form.new_seller.phone_number}
-                                        id="new_seller_phone"
-                                        label="No. Telepon / WhatsApp *"
-                                        placeholder="Cth: 08123456789"
-                                        required={true}
-                                    />
-                                    <Input
-                                        bind:value={form.new_seller.email}
-                                        id="new_seller_email"
-                                        label="Email (Opsional)"
-                                        placeholder="Cth: seller@email.com"
-                                    />
-                                    <Input
-                                        bind:value={form.new_seller.address}
-                                        id="new_seller_address"
-                                        label="Alamat Toko / Seller"
-                                        placeholder="Cth: Jl. Sudirman No. 123, Jakarta"
-                                    />
-                                </div>
+                                    }}
+                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
+                                >
+                                    <option value="">-- Gunakan Akun Login Sekarang --</option>
+                                    {#each sellers as s}
+                                        <option value={s.id}>
+                                            {s.name} {s.phone_number ? `(${s.phone_number})` : ''} {s.is_seller ? '• Seller' : '• Customer'}
+                                        </option>
+                                    {/each}
+                                    <option value="__NEW__" class="font-bold text-emerald-600">+ Tambah Customer / Seller Baru (Inline Form)</option>
+                                </select>
                             </div>
-                        {/if}
-                    {/if}
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Input
-                            bind:value={form.contact_name}
-                            id="contact_name"
-                            label="Nama Kontak Person"
-                            placeholder="Cth: Pak Budi (Pemilik)"
-                            error={form.errors.contact_name}
-                        />
-                        <Input
-                            bind:value={form.contact_phone}
-                            id="contact_phone"
-                            label="No. HP / WhatsApp Kontak Person"
-                            placeholder="Cth: 081234567890"
-                            error={form.errors.contact_phone}
-                        />
+                            {#if form.user_id === '__NEW__'}
+                                <div class="mb-5 p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-4">
+                                    <div class="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                                        <i class="ti ti-user-plus text-base text-emerald-600"></i>
+                                        Form Data Seller / Customer Baru
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input
+                                            bind:value={form.new_seller.name}
+                                            id="new_seller_name"
+                                            label="Nama Lengkap / Toko *"
+                                            placeholder="Cth: Budi Toko"
+                                            required={true}
+                                        />
+                                        <Input
+                                            bind:value={form.new_seller.phone_number}
+                                            id="new_seller_phone"
+                                            label="No. Telepon / WhatsApp *"
+                                            placeholder="Cth: 08123456789"
+                                            required={true}
+                                        />
+                                        <Input
+                                            bind:value={form.new_seller.email}
+                                            id="new_seller_email"
+                                            label="Email (Opsional)"
+                                            placeholder="Cth: seller@email.com"
+                                        />
+                                        <Input
+                                            bind:value={form.new_seller.address}
+                                            id="new_seller_address"
+                                            label="Alamat Toko / Seller"
+                                            placeholder="Cth: Jl. Sudirman No. 123, Jakarta"
+                                        />
+                                    </div>
+                                </div>
+                            {/if}
+                        {/if}
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <Input
+                                bind:value={form.contact_name}
+                                id="contact_name"
+                                label="Nama Kontak Person"
+                                placeholder="Cth: Pak Budi (Pemilik)"
+                                error={form.errors.contact_name}
+                            />
+                            <Input
+                                bind:value={form.contact_phone}
+                                id="contact_phone"
+                                label="No. HP / WhatsApp Kontak Person"
+                                placeholder="Cth: 081234567890"
+                                error={form.errors.contact_phone}
+                            />
+                        </div>
                     </div>
-                </div>
+                {/if}
 
                 <!-- Card: Informasi Dasar -->
                 <div
