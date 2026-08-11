@@ -707,6 +707,9 @@
         name="description"
         content="Belanja produk berkualitas di {storeName}. Flash Sale, Gratis Ongkir, Diskon s.d. 80%. Belanja aman & terpercaya."
     />
+    {#if heroBanners && heroBanners.length > 0 && heroBanners[0].image}
+        <link rel="preload" as="image" href={heroBanners[0].image} fetchpriority="high" />
+    {/if}
 </svelte:head>
 
 <StorefrontLayout hideMobileFooter={true}>
@@ -716,26 +719,30 @@
     <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3 items-start">
-                <!-- ── MOBILE: Full natural image, no cropping ── -->
+                <!-- ── MOBILE: Responsive aspect ratio to prevent CLS layout shift ── -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer"
+                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer aspect-2/1"
                 >
                     {#each heroBanners as banner, i}
                         <button
                             onclick={(e) => handleBannerClick(banner, e)}
-                            class="w-full text-left cursor-pointer block {i === activeHero ? 'block' : 'hidden'}"
+                            class="w-full h-full text-left cursor-pointer {i === activeHero ? 'block' : 'hidden'}"
                         >
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="w-full h-auto block"
+                                fetchpriority={i === 0 ? 'high' : 'low'}
+                                loading={i === 0 ? 'eager' : 'lazy'}
+                                decoding={i === 0 ? 'sync' : 'async'}
+                                class="w-full h-full object-cover block"
                             />
                         </button>
                     {/each}
+
                     <!-- Dots (mobile) -->
                     {#if heroBanners.length > 1}
                         <div class="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
