@@ -32,17 +32,28 @@ use App\Http\Controllers\Kurir\KurirDeliveryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RefundController;
 use App\Http\Controllers\ReturnController;
+use App\Http\Controllers\Storefront\BrandController as StorefrontBrandController;
+use App\Http\Controllers\Storefront\CategoryController as StorefrontCategoryController;
+use App\Http\Controllers\Storefront\FlashSaleController as StorefrontFlashSaleController;
+use App\Http\Controllers\Storefront\HomeController as StorefrontHomeController;
+use App\Http\Controllers\Storefront\NotificationController as StorefrontNotificationController;
+use App\Http\Controllers\Storefront\ProductController as StorefrontProductController;
+use App\Http\Controllers\Storefront\ProdukTerlarisController as StorefrontProdukTerlarisController;
+use App\Http\Controllers\Storefront\ReviewController as StorefrontReviewController;
+use App\Http\Controllers\Storefront\SearchController as StorefrontSearchController;
+use App\Http\Controllers\Storefront\TransactionController as StorefrontTransactionController;
 use App\Http\Controllers\StorefrontController;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [StorefrontController::class, 'index'])->name('home');
-Route::get('/search', [StorefrontController::class, 'search'])->name('search');
-Route::get('/search/suggest', [StorefrontController::class, 'suggest'])->name('search.suggest');
-Route::get('/flash-sale', [StorefrontController::class, 'flashSale'])->name('flash-sale');
-Route::get('/produk-terlaris', [StorefrontController::class, 'produkTerlaris'])->name('produk-terlaris');
-Route::get('/category/{category?}', [StorefrontController::class, 'category'])->name('category');
-Route::get('/products/{product}', [StorefrontController::class, 'show'])->name('products.show');
+Route::get('/', [StorefrontHomeController::class, 'index'])->name('home');
+Route::get('/search', [StorefrontSearchController::class, 'search'])->name('search');
+Route::get('/search/suggest', [StorefrontSearchController::class, 'suggest'])->name('search.suggest');
+Route::get('/flash-sale', [StorefrontFlashSaleController::class, 'index'])->name('flash-sale');
+Route::get('/produk-terlaris', [StorefrontProdukTerlarisController::class, 'index'])->name('produk-terlaris');
+Route::get('/category/{category?}', [StorefrontCategoryController::class, 'index'])->name('category');
+Route::get('/brands/{brand?}', [StorefrontBrandController::class, 'index'])->name('brands');
+Route::get('/products/{product}', [StorefrontProductController::class, 'show'])->name('products.show');
 Route::get('/about', [StorefrontController::class, 'about'])->name('about');
 
 Route::get('/zozzuehmqewbobfo', [AppConfigController::class, 'show'])->name('app-config.show');
@@ -133,16 +144,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/checkout/komerce/search-destination', [CheckoutController::class, 'searchKomerceDestination'])->name('checkout.komerce.search-destination');
 
         // Transaction (Customer)
-        Route::get('/transactions', [StorefrontController::class, 'transactionHistory'])->name('transactions.index');
-        Route::get('/transactions/{transaction}', [StorefrontController::class, 'transactionDetail'])->name('transactions.show');
-        Route::get('/transactions/{transaction}/print-invoice', [StorefrontController::class, 'printInvoice'])->name('transactions.print-invoice-customer');
+        Route::get('/transactions', [StorefrontTransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/transactions/{transaction}', [StorefrontTransactionController::class, 'show'])->name('transactions.show');
+        Route::get('/transactions/{transaction}/print-invoice', [StorefrontTransactionController::class, 'printInvoice'])->name('transactions.print-invoice-customer');
         Route::post('/transactions/{transaction}/upload-proof', [CheckoutController::class, 'uploadProof'])->name('transactions.upload-proof');
-        Route::post('/transactions/{transaction}/cancel', [StorefrontController::class, 'cancelTransaction'])->name('transactions.cancel');
-        Route::post('/transactions/{transaction}/change-payment', [StorefrontController::class, 'changePaymentMethod'])->name('transactions.change-payment');
-        Route::post('/transactions/{transaction}/complete', [StorefrontController::class, 'completeTransaction'])->name('transactions.complete');
-        Route::post('/transactions/{transaction}/extend-auto-complete', [StorefrontController::class, 'extendAutoComplete'])->name('transactions.extend-auto-complete');
-        Route::post('/transactions/{transaction}/review', [StorefrontController::class, 'submitReview'])->name('transactions.review');
-        Route::post('/reviews/{review}/report', [StorefrontController::class, 'reportReview'])->name('reviews.report');
+        Route::post('/transactions/{transaction}/cancel', [StorefrontTransactionController::class, 'cancel'])->name('transactions.cancel');
+        Route::post('/transactions/{transaction}/change-payment', [StorefrontTransactionController::class, 'changePayment'])->name('transactions.change-payment');
+        Route::post('/transactions/{transaction}/complete', [StorefrontTransactionController::class, 'complete'])->name('transactions.complete');
+        Route::post('/transactions/{transaction}/extend-auto-complete', [StorefrontTransactionController::class, 'extendAutoComplete'])->name('transactions.extend-auto-complete');
+        Route::post('/transactions/{transaction}/review', [StorefrontReviewController::class, 'store'])->name('transactions.review');
+        Route::post('/reviews/{review}/report', [StorefrontReviewController::class, 'report'])->name('reviews.report');
         Route::get('/transactions/{transaction}/komerce/track', [KomerceShipmentController::class, 'trackShipment'])->name('transactions.komerce.track');
 
         // Returns (Customer)
@@ -156,8 +167,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/returns/{returnRequest}/tracking', [ReturnController::class, 'updateTracking'])->name('returns.tracking');
 
         // Notifications (Customer)
-        Route::post('/notifications/{notification}/read', [StorefrontController::class, 'markNotificationAsRead'])->name('notifications.read');
-        Route::post('/notifications/read-all', [StorefrontController::class, 'markAllNotificationsAsRead'])->name('notifications.read-all');
+        Route::post('/notifications/{notification}/read', [StorefrontNotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::post('/notifications/read-all', [StorefrontNotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
     });
 });
 

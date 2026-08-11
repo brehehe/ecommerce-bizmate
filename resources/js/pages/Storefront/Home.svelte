@@ -8,6 +8,7 @@
 
     let {
         categories = undefined,
+        brands = undefined,
         featuredProducts = undefined,
         newProducts = undefined,
         bestSellerProducts = undefined,
@@ -547,35 +548,68 @@
     );
     // bestSellerProducts is now passed from the server (sorted by real sold count)
 
-    // Infinite Scroll State for Hanya Untukmu
+    // Infinite Scroll State for Hanya Untukmu / Rekomendasi Produk
     let displayedCount = $state(10);
     let loadingMore = $state(false);
     let activeLightboxImage = $state<string | null>(null);
     let sentinelEl = $state<HTMLElement | null>(null);
 
-    let shuffledRecommendations = $state([]);
+    let selectedBrandId = $state<string | null>(null);
 
-    $effect(() => {
-        if (newProducts && newProducts.length > 0) {
-            let arr = [...newProducts];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            shuffledRecommendations = arr;
-        } else {
-            shuffledRecommendations = [];
+    const availableBrands = $derived.by(() => {
+        if (brands && brands.length > 0) {
+            return brands;
         }
+        if (!newProducts || newProducts.length === 0) return [];
+        const map = new Map();
+        newProducts.forEach((p: any) => {
+            if (p.brands && p.brands.length > 0) {
+                p.brands.forEach((b: any) => {
+                    const bId = b.id || b.name;
+                    if (!map.has(bId)) {
+                        map.set(bId, { id: bId, name: b.name, slug: b.slug || b.name });
+                    }
+                });
+            } else if (p.brand) {
+                const bId = p.brand.id || p.brand.name;
+                if (!map.has(bId)) {
+                    map.set(bId, { id: bId, name: p.brand.name, slug: p.brand.slug || p.brand.name });
+                }
+            }
+        });
+        return Array.from(map.values());
+    });
+
+    // Stable recommendations list (DETERMINISTIC ORDER - NEVER SHUFFLES ON REFRESH)
+    const filteredRecommendations = $derived.by(() => {
+        if (!newProducts || newProducts.length === 0) return [];
+        let list = [...newProducts];
+
+        if (selectedBrandId) {
+            list = list.filter((p: any) => {
+                if (p.brands && p.brands.length > 0) {
+                    return p.brands.some(
+                        (b: any) => b.id === selectedBrandId || b.slug === selectedBrandId || b.name === selectedBrandId
+                    );
+                }
+                if (p.brand) {
+                    return p.brand.id === selectedBrandId || p.brand.name === selectedBrandId;
+                }
+                return p.brand_id === selectedBrandId;
+            });
+        }
+
+        return list;
     });
 
     const recommendedProducts = $derived(
-        shuffledRecommendations.length > 0
-            ? shuffledRecommendations.slice(0, displayedCount)
+        filteredRecommendations.length > 0
+            ? filteredRecommendations.slice(0, displayedCount)
             : undefined,
     );
     const hasMore = $derived(
-        shuffledRecommendations.length > 0
-            ? displayedCount < shuffledRecommendations.length
+        filteredRecommendations.length > 0
+            ? displayedCount < filteredRecommendations.length
             : false,
     );
 
@@ -585,7 +619,7 @@
         setTimeout(() => {
             displayedCount = Math.min(
                 displayedCount + 10,
-                shuffledRecommendations.length,
+                filteredRecommendations.length,
             );
             loadingMore = false;
         }, 300);
@@ -1056,6 +1090,8 @@
                                             <img
                                                 src={img}
                                                 alt={product.name}
+                                                loading="lazy"
+                                                decoding="async"
                                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                                 onerror={(e) => {
                                                     e.currentTarget.src =
@@ -1066,6 +1102,8 @@
                                             <img
                                                 src="/noimage/image.png"
                                                 alt="Tidak ada gambar"
+                                                loading="lazy"
+                                                decoding="async"
                                                 class="w-full h-full object-cover"
                                             />
                                         {/if}
@@ -1319,6 +1357,8 @@
                                         <img
                                             src={img}
                                             alt={product.name}
+                                            loading="lazy"
+                                            decoding="async"
                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                             onerror={(e) => {
                                                 e.currentTarget.src =
@@ -1329,6 +1369,8 @@
                                         <img
                                             src="/noimage/image.png"
                                             alt="Tidak ada gambar"
+                                            loading="lazy"
+                                            decoding="async"
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}
@@ -1431,16 +1473,16 @@
     {/if}
 
     <!-- ═══════════════════════════════════════════════════
-     SECTION 7: BANNER WIDE (full width promo)
+     SECTION 7: BANNER WIDE (full width promo - Max 500px & Ratio 4.5:1 / 3.6:1)
 ═══════════════════════════════════════════════════ -->
     {#if middleWide && middleWide.image}
         <section class="px-3 sm:px-5 lg:px-8 mt-2.5 mb-1">
             <div
-                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition bg-slate-100 max-h-[500px] relative"
+                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition bg-slate-100 relative aspect-[2.5/1] sm:aspect-[3.6/1] lg:aspect-[4.5/1] max-h-[500px]"
             >
                 <button
                     onclick={(e) => handleBannerClick(middleWide, e)}
-                    class="block w-full text-left cursor-pointer relative overflow-hidden max-h-[500px]"
+                    class="block w-full h-full text-left cursor-pointer relative overflow-hidden"
                 >
                     <!-- Ambient blur background for non-standard image aspect ratios -->
                     <img
@@ -1449,11 +1491,13 @@
                         class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
                         aria-hidden="true"
                     />
-                    <!-- Main Middle Wide Banner Image (Max height 500px) -->
+                    <!-- Main Middle Wide Banner Image (Max height 500px, responsive aspect ratio) -->
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
-                        class="relative z-10 block w-full h-auto max-h-[500px] {middleWide.fit === 'cover' ? 'object-cover' : 'object-contain'} object-center hover:opacity-95 transition mx-auto"
+                        loading="lazy"
+                        decoding="async"
+                        class="relative z-10 block w-full h-full {middleWide.fit === 'cover' ? 'object-cover' : 'object-contain'} object-center hover:opacity-95 transition mx-auto"
                     />
                 </button>
             </div>
@@ -1461,10 +1505,135 @@
     {/if}
 
     <!-- ═══════════════════════════════════════════════════
-     SECTION 10: REKOMENDASI / HANYA UNTUKMU (Infinite Scroll)
-═══════════════════════════════════════════════════ -->
-    <section id="recommendations-section" class="px-3 sm:px-5 lg:px-8">
+     SECTION 8: OFFICIAL BRAND STORE (Bar Brand E-commerce Premium)
+    ═══════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════════
+     SECTION 8: BRAND PILIHAN (Official Store - Sleek Cards Like Categories)
+    ═══════════════════════════════════════════════════ -->
+    <section id="brands-section" class="px-3 sm:px-5 lg:px-8 pt-4 pb-2">
+        <div class="max-w-6xl mx-auto">
+            <!-- Section Header -->
+            <div class="flex items-center justify-between mb-3 px-0.5">
+                <div class="flex items-center gap-2">
+                    <h2
+                        class="font-outfit font-black text-sm sm:text-base text-slate-900 tracking-tight flex items-center gap-1.5"
+                    >
+                        Brand Pilihan
+                    </h2>
+                    <div
+                        class="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border shadow-2xs"
+                        style="color: {primary}; background-color: {primary}12; border-color: {primary}30;"
+                    >
+                        <i class="ti ti-circle-check-filled text-xs" style="color: {primary};"></i>
+                        <span>Official Store</span>
+                    </div>
+                </div>
+                <Link
+                    href="/brands"
+                    prefetch
+                    class="text-[11px] sm:text-xs font-bold flex items-center gap-0.5 transition hover:opacity-80 cursor-pointer"
+                    style="color: {primary};"
+                >
+                    Lihat Semua <i class="ti ti-chevron-right text-[10px]"></i>
+                </Link>
+            </div>
+
+            <!-- Brand Icon Cards Scroll Row (Styled like Categories) -->
+            <div class="overflow-x-auto no-scrollbar py-1">
+                <div class="flex gap-3 sm:gap-4 w-max sm:w-auto items-center">
+                    <!-- First Card: Semua Brand -->
+                    <button
+                        type="button"
+                        onclick={() => (selectedBrandId = null)}
+                        class="flex flex-col items-center gap-1.5 group cursor-pointer w-[72px] sm:w-[80px] shrink-0 text-center"
+                    >
+                        <div
+                            class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden shadow-2xs {selectedBrandId === null
+                                ? 'shadow-md scale-105'
+                                : 'bg-white border-slate-200/90 group-hover:border-slate-300'}"
+                            style={selectedBrandId === null ? `background-color: ${primary}; border-color: ${primary}; color: #ffffff;` : `color: ${primary};`}
+                        >
+                            <i class="ti ti-building-store text-xl sm:text-2xl" style={selectedBrandId === null ? 'color: #ffffff;' : `color: ${primary};`}></i>
+                        </div>
+                        <span
+                            class="text-[11px] sm:text-xs font-semibold text-center leading-tight max-w-[76px] line-clamp-2 transition {selectedBrandId === null ? 'font-bold text-slate-900' : 'text-slate-700 group-hover:text-slate-900'}"
+                        >
+                            Semua Brand
+                        </span>
+                    </button>
+
+                    {#if availableBrands && availableBrands.length > 0}
+                        {#each availableBrands as brand}
+                            {@const isSelected = selectedBrandId === brand.id || selectedBrandId === brand.name || selectedBrandId === brand.slug}
+                            <button
+                                type="button"
+                                onclick={() => (selectedBrandId = isSelected ? null : (brand.id || brand.name))}
+                                class="flex flex-col items-center gap-1.5 group cursor-pointer w-[72px] sm:w-[80px] shrink-0 text-center"
+                            >
+                                <div
+                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden shadow-2xs {isSelected
+                                        ? 'shadow-md scale-105'
+                                        : 'bg-white border-slate-200/90 group-hover:border-slate-300'}"
+                                    style={isSelected ? `background-color: ${primary}; border-color: ${primary}; color: #ffffff;` : ''}
+                                >
+                                    <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black uppercase transition-colors {isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-800'}" style={!isSelected ? `color: ${primary};` : ''}>
+                                        {brand.name.charAt(0)}
+                                    </span>
+                                    {#if isSelected}
+                                        <div class="absolute top-1 right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-xs">
+                                            <i class="ti ti-check text-[10px] font-bold" style="color: {secondary};"></i>
+                                        </div>
+                                    {/if}
+                                </div>
+                                <span
+                                    class="text-[11px] sm:text-xs font-semibold text-center leading-tight max-w-[76px] line-clamp-2 transition {isSelected ? 'font-bold text-slate-900' : 'text-slate-700 group-hover:text-slate-900'}"
+                                >
+                                    {brand.name}
+                                </span>
+                            </button>
+                        {/each}
+                    {/if}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════
+     SECTION 10: REKOMENDASI PRODUK (Urutan Tetap & Konsisten)
+    ═══════════════════════════════════════════════════ -->
+    <section id="recommendations-section" class="px-3 sm:px-5 lg:px-8 pt-3">
         <div class="max-w-6xl mx-auto bg-transparent shadow-none">
+            <!-- Section Header Rekomendasi -->
+            <div class="flex items-center justify-between mb-3 px-0.5">
+                <div>
+                    <h2
+                        class="font-outfit font-black text-base sm:text-lg text-slate-900 tracking-tight flex items-center gap-2"
+                    >
+                        <i class="ti ti-sparkles text-lg" style="color: {secondary};"></i>
+                        Rekomendasi Untuk Anda
+                        {#if selectedBrandId}
+                            {@const activeBrand = availableBrands.find(b => b.id === selectedBrandId || b.name === selectedBrandId || b.slug === selectedBrandId)}
+                            {#if activeBrand}
+                                <span
+                                    class="text-xs font-bold border px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs"
+                                    style="color: {primary}; background-color: {primary}12; border-color: {primary}30;"
+                                >
+                                    Brand: {activeBrand.name}
+                                    <button
+                                        type="button"
+                                        onclick={() => (selectedBrandId = null)}
+                                        class="hover:opacity-75 ml-1"
+                                        title="Hapus Filter"
+                                    >
+                                        <i class="ti ti-x text-xs"></i>
+                                    </button>
+                                </span>
+                            {/if}
+                        {/if}
+                    </h2>
+                    <p class="text-xs text-slate-500 font-medium">Koleksi produk unggulan berkualitas dengan penawaran terbaik</p>
+                </div>
+            </div>
             <!-- Masonry-style grid -->
             <div class="pt-1 pb-3 px-0">
                 <div
@@ -1508,6 +1677,8 @@
                                         <img
                                             src={img}
                                             alt={product.name}
+                                            loading="lazy"
+                                            decoding="async"
                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                             onerror={(e) => {
                                                 e.currentTarget.src =
@@ -1522,6 +1693,8 @@
                                         <img
                                             src="/noimage/image.png"
                                             alt="Tidak ada gambar"
+                                            loading="lazy"
+                                            decoding="async"
                                             class="w-full h-full object-cover"
                                         />
                                     {/if}

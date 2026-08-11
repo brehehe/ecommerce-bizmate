@@ -103,6 +103,7 @@ test('biteship calculates domestic cost and formats correctly', function () {
 });
 
 test('checkout shipping cost endpoint uses biteship when enabled', function () {
+    Setting::updateOrCreate(['key' => 'biteship_api_enabled'], ['value' => '1']);
     $user = User::factory()->create();
     $address = CustomerAddress::create([
         'user_id' => $user->id,
@@ -158,10 +159,6 @@ test('checkout shipping cost endpoint uses biteship when enabled', function () {
             'courier' => 'jne',
             'address_id' => $address->id,
         ]);
-
-    if ($response->status() !== 200) {
-        dump($response->json());
-    }
 
     $response->assertOk();
 });

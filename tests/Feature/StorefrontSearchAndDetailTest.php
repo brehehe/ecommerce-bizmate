@@ -100,17 +100,21 @@ test('storefront product detail loads categories and brands relationships', func
     $response = $this->get('/products/'.$product->slug);
     $response->assertOk();
 
-    $pageProps = $response->original->getData()['page']['props'];
-    $productInProps = $pageProps['product'];
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Product')
+        ->where('product.brands.0.name', 'IKEA')
+        ->where('product.categories.0.name', 'Furniture')
+        ->where('product.specifications.Material', 'Bentwood')
+        ->where('product.specifications.Color', 'Birch')
+    );
+});
 
-    // Verify relationships loaded
-    expect($productInProps['brands'])->toHaveCount(1);
-    expect($productInProps['brands'][0]['name'])->toBe('IKEA');
-    expect($productInProps['categories'])->toHaveCount(1);
-    expect($productInProps['categories'][0]['name'])->toBe('Furniture');
+test('storefront brands page loads successfully and filters by brand', function () {
+    $brand = Brand::create(['name' => 'Sony', 'slug' => 'sony', 'is_active' => true]);
 
-    // Verify specifications are correct
-    expect($productInProps['specifications'])->toBeArray()
-        ->toHaveKey('Material', 'Bentwood')
-        ->toHaveKey('Color', 'Birch');
+    $response = $this->get('/brands');
+    $response->assertOk();
+
+    $responseFilter = $this->get('/brands/'.$brand->slug);
+    $responseFilter->assertOk();
 });

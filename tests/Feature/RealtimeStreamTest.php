@@ -66,6 +66,5 @@ test('broadcasting auth denies access to other user chat channel', function (): 
         'channel_name' => "private-chat.{$chat->id}",
         'socket_id' => '1234.1234',
     ]);
-
     $response->assertStatus(403);
 });

@@ -94,6 +94,13 @@ class Product extends Model
         return $query->where('active', true)->notExpired();
     }
 
+    public function scopeOrderedLatest($query)
+    {
+        return $query->orderBy('products.order', 'asc')
+            ->orderByDesc('products.created_at')
+            ->orderByDesc('products.id');
+    }
+
     public function isListingExpired(): bool
     {
         // Rule: If IS_SELLER is false, listing_expires_at does NOT apply!

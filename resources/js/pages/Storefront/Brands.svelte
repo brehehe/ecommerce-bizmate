@@ -10,11 +10,11 @@
     import LocationModal from '@/components/ui/LocationModal.svelte';
 
     let {
-        category = { id: '', name: '', slug: '' },
-        categories = [],
+        brand = { id: '', name: 'Semua Brand', slug: '' },
         brands = [],
+        categories = [],
         products = undefined,
-        filters = { q: '', min_price: '', max_price: '', sort: 'latest', brand: '', promo: false, type: 'all' },
+        filters = { q: '', min_price: '', max_price: '', sort: 'latest', category: '', promo: false, type: 'all', condition: 'all', rating: '', location: '' },
         storeName = '',
     } = $props();
 
@@ -54,19 +54,10 @@
             {
                 preserveScroll: true,
                 onError: () => {
-                    showToast(
-                        'Gagal menambahkan produk ke keranjang.',
-                        'error',
-                    );
+                    showToast('Gagal menambahkan produk ke keranjang.', 'error');
                 },
             },
         );
-    }
-
-    function getBrandsFromFilter(val: any): string[] {
-        if (!val) return [];
-        if (Array.isArray(val)) return val;
-        return typeof val === 'string' ? val.split(',') : [val.toString()];
     }
 
     const isSellerEnabled = $derived(
@@ -82,14 +73,8 @@
     ]);
 
     const popularLocations = [
-        'Jakarta',
-        'Surabaya',
-        'Bandung',
-        'Medan',
-        'Semarang',
-        'Yogyakarta',
-        'Makassar',
-        'Bali',
+        'Jakarta', 'Surabaya', 'Bandung', 'Medan',
+        'Semarang', 'Yogyakarta', 'Makassar', 'Bali',
     ];
 
     // Filter states
@@ -104,8 +89,6 @@
     // svelte-ignore state_referenced_locally
     let selectedType = $state(filters.type || 'all');
     // svelte-ignore state_referenced_locally
-    let selectedBrands = $state(getBrandsFromFilter(filters.brand));
-    // svelte-ignore state_referenced_locally
     let promoOnly = $state(filters.promo || false);
     // svelte-ignore state_referenced_locally
     let selectedCondition = $state(filters.condition || 'all');
@@ -113,12 +96,29 @@
     let selectedRating = $state(filters.rating || '');
     // svelte-ignore state_referenced_locally
     let selectedLocation = $state(filters.location || '');
+    // svelte-ignore state_referenced_locally
+    let selectedCategories = $state(getCategoriesFromFilter(filters.category));
+
+    function getCategoriesFromFilter(val: any): string[] {
+        if (!val) return [];
+        if (Array.isArray(val)) return val;
+        return typeof val === 'string' ? val.split(',').filter(Boolean) : [val.toString()];
+    }
+
+    function selectCategory(catSlug: string) {
+        if (selectedCategories.includes(catSlug)) {
+            selectedCategories = selectedCategories.filter((s) => s !== catSlug);
+        } else {
+            selectedCategories = [...selectedCategories, catSlug];
+        }
+    }
 
     // Mobile filter overlay state
     let showMobileFilters = $state(false);
+    let showLocationModal = $state(false);
 
-    // Ref for auto-scrolling active category pill
-    let categoryScrollRef: HTMLDivElement;
+    // Ref for auto-scrolling active brand pill
+    let brandScrollRef: HTMLDivElement;
 
     // Sync state if props change (Inertia navigate)
     $effect(() => {
@@ -127,21 +127,19 @@
         maxPrice = filters.max_price || '';
         selectedSort = (!filters.sort || filters.sort === 'relevance') ? 'latest' : filters.sort;
         selectedType = filters.type || 'all';
-        selectedBrands = getBrandsFromFilter(filters.brand);
         promoOnly = filters.promo || false;
         selectedCondition = filters.condition || 'all';
         selectedRating = filters.rating || '';
         selectedLocation = filters.location || '';
+        selectedCategories = getCategoriesFromFilter(filters.category);
     });
 
-    // Auto-scroll the active category tab into view whenever category changes
+    // Auto-scroll the active brand tab into view
     $effect(() => {
-        const _dep = category.id; // reactive dependency
-        if (categoryScrollRef) {
+        const _dep = brand?.id || brand?.slug;
+        if (brandScrollRef) {
             requestAnimationFrame(() => {
-                const activeEl = categoryScrollRef?.querySelector(
-                    '[data-active="true"]',
-                );
+                const activeEl = brandScrollRef?.querySelector('[data-active="true"]');
                 if (activeEl) {
                     (activeEl as HTMLElement).scrollIntoView({
                         inline: 'center',
@@ -153,53 +151,35 @@
         }
     });
 
-    // Navigate between category tabs without stacking browser history
-    function navigateToCategory(cat: any) {
-        router.get(
-            `/category/${cat.slug || cat.id}`,
-            {},
-            {
-                replace: true,
-                preserveScroll: false,
-            },
-        );
+    // Navigate between brand tabs
+    function navigateToBrand(b: any) {
+        const targetUrl = b.slug || b.id ? `/brands/${b.slug || b.id}` : '/brands';
+        router.get(targetUrl, {}, { replace: true, preserveScroll: false });
     }
 
-    function selectBrand(brandSlug: string) {
-        if (selectedBrands.includes(brandSlug)) {
-            selectedBrands = selectedBrands.filter(
-                (slug) => slug !== brandSlug,
-            );
-        } else {
-            selectedBrands = [...selectedBrands, brandSlug];
-        }
-    }
-
-    function selectBrandDesktop(brandSlug: string) {
-        selectBrand(brandSlug);
-        applyFilters(false);
+    function getTargetUrl() {
+        return brand && (brand.slug || brand.id)
+            ? `/brands/${brand.slug || brand.id}`
+            : '/brands';
     }
 
     function applyFilters(closeDrawer = true) {
         if (closeDrawer) showMobileFilters = false;
         router.get(
-            `/category/${category.slug || category.id}`,
+            getTargetUrl(),
             {
                 q: searchQ,
                 min_price: minPrice,
                 max_price: maxPrice,
                 sort: selectedSort,
                 type: selectedType,
-                brand: selectedBrands,
                 promo: promoOnly ? 1 : 0,
                 condition: selectedCondition,
                 rating: selectedRating,
                 location: selectedLocation,
+                category: selectedCategories,
             },
-            {
-                preserveState: true,
-                replace: true,
-            },
+            { preserveState: true, replace: true },
         );
     }
 
@@ -209,24 +189,17 @@
         maxPrice = '';
         selectedSort = 'latest';
         selectedType = 'all';
-        selectedBrands = [];
         promoOnly = false;
         selectedCondition = 'all';
         selectedRating = '';
         selectedLocation = '';
+        selectedCategories = [];
 
         if (!keepMobileOpen) {
             showMobileFilters = false;
         }
 
-        router.get(
-            `/category/${category.slug || category.id}`,
-            {},
-            {
-                preserveState: true,
-                replace: true,
-            },
-        );
+        router.get(getTargetUrl(), {}, { preserveState: true, replace: true });
     }
 
     function formatPrice(price: any) {
@@ -243,17 +216,13 @@
             path = product.image;
         }
         if (!path || typeof path !== 'string') return null;
-        if (
-            path.startsWith('http://') ||
-            path.startsWith('https://') ||
-            path.startsWith('/')
-        ) {
+        if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
             return path;
         }
         return '/' + path;
     }
 
-    // ── Pagination ────────────────────────────────────────────────────────────
+    // Pagination
     // svelte-ignore state_referenced_locally
     let allProducts = $state<any[]>(products?.data || []);
     let isLoadingMore = $state(false);
@@ -264,8 +233,6 @@
     // svelte-ignore state_referenced_locally
     let total = $state(products?.total || 0);
 
-    let showLocationModal = $state(false);
-
     $effect(() => {
         if (!products) return;
         allProducts = products.data || [];
@@ -275,71 +242,8 @@
         isLoadingMore = false;
     });
 
-    function goToPage(page: number) {
-        if (page < 1 || page > lastPage || page === currentPage) return;
-        isLoadingMore = true;
-        router.get(
-            `/category/${category.slug || category.id}`,
-            {
-                q: searchQ,
-                min_price: minPrice,
-                max_price: maxPrice,
-                sort: selectedSort,
-                type: selectedType,
-                page,
-            },
-            {
-                preserveState: true,
-                replace: true,
-                onFinish: () => {
-                    isLoadingMore = false;
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                },
-            },
-        );
-    }
-
-    // Build visible page numbers: always show first, last, current ±2
-    const pageNumbers = $derived(() => {
-        const pages: (number | '...')[] = [];
-        if (lastPage <= 7) {
-            for (let i = 1; i <= lastPage; i++) pages.push(i);
-            return pages;
-        }
-        pages.push(1);
-        if (currentPage > 4) pages.push('...');
-        const start = Math.max(2, currentPage - 1);
-        const end = Math.min(lastPage - 1, currentPage + 1);
-        for (let i = start; i <= end; i++) pages.push(i);
-        if (currentPage < lastPage - 3) pages.push('...');
-        pages.push(lastPage);
-        return pages;
-    });
-
-    function directClick(node: HTMLElement, callback: (e: MouseEvent) => void) {
-        let currentCallback = callback;
-        const handler = (e: MouseEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            currentCallback(e);
-        };
-        node.addEventListener('click', handler);
-        return {
-            update(newCallback: (e: MouseEvent) => void) {
-                currentCallback = newCallback;
-            },
-            destroy() {
-                node.removeEventListener('click', handler);
-            },
-        };
-    }
-
     function goBack() {
-        if (
-            window.history.length > 1 &&
-            document.referrer &&
-            document.referrer.includes(window.location.host)
-        ) {
+        if (window.history.length > 1 && document.referrer && document.referrer.includes(window.location.host)) {
             window.history.back();
         } else {
             router.visit('/');
@@ -348,19 +252,14 @@
 </script>
 
 <svelte:head>
-    <title
-        >Kategori: {category.name || 'Kategori'} - {storeName ||
-            'Toko Kami'}</title
-    >
+    <title>Brand: {brand.name || 'Semua Brand'} - {storeName || 'Toko Kami'}</title>
 </svelte:head>
 
 <StorefrontLayout hideMobileHeader={true} hideMobileFooter={true}>
     <!-- ═══════════════════════════════════════════════════
      STICKY MOBILE TOP BAR (mobile only, replaces global header)
     ═══════════════════════════════════════════════════ -->
-    <div
-        class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm"
-    >
+    <div class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm">
         <!-- Row 1: Back, Search, Cart, Profile -->
         <div
             class="flex items-center gap-3 px-3 py-2.5 text-white"
@@ -377,29 +276,21 @@
 
             <!-- Inline search input -->
             <form
-                onsubmit={(e) => {
-                    e.preventDefault();
-                    applyFilters();
-                }}
+                onsubmit={(e) => { e.preventDefault(); applyFilters(); }}
                 class="flex-grow"
             >
-                <div
-                    class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs"
-                >
+                <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
                     <input
                         type="text"
                         bind:value={searchQ}
-                        placeholder="Cari produk..."
+                        placeholder="Cari produk, brand..."
                         class="w-full pl-3.5 pr-8 py-1.5 text-xs sm:text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
                     />
                     {#if searchQ}
                         <button
                             aria-label="Tutup"
                             type="button"
-                            onclick={() => {
-                                searchQ = '';
-                                applyFilters();
-                            }}
+                            onclick={() => { searchQ = ''; applyFilters(); }}
                             class="absolute right-2.5 text-white/80 hover:text-white transition"
                         >
                             <i class="ti ti-x text-sm"></i>
@@ -426,9 +317,7 @@
                                 if (auth) {
                                     router.visit('/cart');
                                 } else {
-                                    window.dispatchEvent(
-                                        new CustomEvent('open-login-modal'),
-                                    );
+                                    window.dispatchEvent(new CustomEvent('open-login-modal'));
                                 }
                             }}
                             class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
@@ -450,11 +339,7 @@
                 <!-- Notifications Bell -->
                 {#if auth}
                     <button
-                        onclick={() => {
-                            window.dispatchEvent(
-                                new CustomEvent('toggle-notif-dropdown'),
-                            );
-                        }}
+                        onclick={() => { window.dispatchEvent(new CustomEvent('toggle-notif-dropdown')); }}
                         class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition cursor-pointer"
                         aria-label="Notifikasi"
                     >
@@ -468,37 +353,21 @@
                         onclick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.dispatchEvent(
-                                new CustomEvent('toggle-profile-dropdown'),
-                            );
+                            window.dispatchEvent(new CustomEvent('toggle-profile-dropdown'));
                         }}
                         class="w-8 h-8 rounded-full overflow-hidden border border-white/40 flex items-center justify-center font-black text-xs text-white shrink-0 cursor-pointer hover:opacity-90 transition"
                     >
                         {#if auth.avatar}
-                            <img
-                                src="/storage/{auth.avatar}"
-                                alt={auth.name}
-                                class="w-full h-full object-cover"
-                            />
+                            <img src="/storage/{auth.avatar}" alt={auth.name} class="w-full h-full object-cover" />
                         {:else}
-                            <div
-                                class="w-full h-full bg-white/20 flex items-center justify-center"
-                            >
-                                {auth.name
-                                    .split(' ')
-                                    .map((n: string) => n[0])
-                                    .slice(0, 2)
-                                    .join('')
-                                    .toUpperCase()}
+                            <div class="w-full h-full bg-white/20 flex items-center justify-center">
+                                {auth.name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase()}
                             </div>
                         {/if}
                     </button>
                 {:else}
                     <button
-                        onclick={() =>
-                            window.dispatchEvent(
-                                new CustomEvent('open-login-modal'),
-                            )}
+                        onclick={() => window.dispatchEvent(new CustomEvent('open-login-modal'))}
                         class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition cursor-pointer"
                         aria-label="Masuk"
                     >
@@ -508,48 +377,47 @@
             </div>
         </div>
 
-        <!-- Row 2: Categories scroll row -->
+        <!-- Row 2: Brands scroll row -->
         <div
-            bind:this={categoryScrollRef}
+            bind:this={brandScrollRef}
             class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto no-scrollbar border-b border-slate-100"
         >
-            {#each categories || [] as cat}
+            <!-- All Brands -->
+            <button
+                data-active={!brand || !brand.id ? 'true' : 'false'}
+                onclick={() => navigateToBrand({ id: '', slug: '' })}
+                class="shrink-0 px-3.5 py-1.5 text-[10px] font-bold rounded-full border transition whitespace-nowrap active:scale-95
+                       {!brand || !brand.id ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-600'}"
+                style={!brand || !brand.id ? `background-color: ${primary};` : ''}
+            >
+                Semua Brand
+            </button>
+            {#each brands as b}
+                {@const isActive = (brand?.id && brand.id === b.id) || (brand?.slug && brand.slug === b.slug)}
                 <button
-                    data-active={cat.id === category.id ? 'true' : 'false'}
-                    onclick={() => navigateToCategory(cat)}
+                    data-active={isActive ? 'true' : 'false'}
+                    onclick={() => navigateToBrand(b)}
                     class="shrink-0 px-3.5 py-1.5 text-[10px] font-bold rounded-full border transition whitespace-nowrap active:scale-95
-                           {cat.id === category.id
-                        ? 'text-white border-transparent'
-                        : 'bg-white border-slate-200 text-slate-600'}"
-                    style={cat.id === category.id
-                        ? `background-color: ${primary};`
-                        : ''}
+                           {isActive ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-600'}"
+                    style={isActive ? `background-color: ${primary};` : ''}
                 >
-                    <i class="ti {cat.icon || 'ti-tag'} mr-1"></i>
-                    {cat.name}
+                    {b.name}
                 </button>
             {/each}
         </div>
 
         <!-- Row 3: Sort pills + Filter button -->
-        <div
-            class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto no-scrollbar border-b border-slate-100"
-        >
+        <div class="flex items-center gap-2 px-3 py-2 bg-white overflow-x-auto no-scrollbar border-b border-slate-100">
             {#each sortOptions as sortOpt}
                 <button
-                    onclick={() => {
-                        selectedSort = sortOpt.id;
-                        applyFilters();
-                    }}
+                    onclick={() => { selectedSort = sortOpt.id; applyFilters(); }}
                     class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95"
                     class:text-white={selectedSort === sortOpt.id}
                     class:border-transparent={selectedSort === sortOpt.id}
                     class:bg-white={selectedSort !== sortOpt.id}
                     class:border-slate-200={selectedSort !== sortOpt.id}
                     class:text-slate-600={selectedSort !== sortOpt.id}
-                    style={selectedSort === sortOpt.id
-                        ? `background-color: ${primary};`
-                        : ''}
+                    style={selectedSort === sortOpt.id ? `background-color: ${primary};` : ''}
                 >
                     {sortOpt.label}
                 </button>
@@ -559,12 +427,8 @@
             <button
                 onclick={() => (showMobileFilters = true)}
                 class="shrink-0 px-3 py-1 text-xs font-bold rounded-full border transition whitespace-nowrap active:scale-95 flex items-center gap-1
-                       {minPrice || maxPrice
-                    ? 'text-white border-transparent'
-                    : 'bg-white border-slate-200 text-slate-600'}"
-                style={minPrice || maxPrice
-                    ? `background-color: ${secondary};`
-                    : ''}
+                       {minPrice || maxPrice ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-600'}"
+                style={minPrice || maxPrice ? `background-color: ${secondary};` : ''}
                 aria-label="Filter"
             >
                 <i class="ti ti-adjustments-horizontal"></i>
@@ -576,19 +440,17 @@
     <!-- Spacer for mobile sticky bar -->
     <div class="md:hidden h-[138px]"></div>
 
-    <div
-        class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full min-h-[calc(100dvh-138px)] md:min-h-0"
-    >
-        <!-- Desktop Header: matching Search layout -->
+    <div class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full min-h-[calc(100dvh-138px)] md:min-h-0">
+        <!-- Desktop Header -->
         <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
                 <h1 class="font-outfit font-black text-xl sm:text-2xl text-slate-800 flex items-center gap-2">
-                    <i class="ti {category.icon || 'ti-category'}" style="color: {primary};"></i>
-                    {category.name || 'Kategori'}
+                    <i class="ti ti-building-store" style="color: {primary};"></i>
+                    {brand.name || 'Brand Pilihan'}
                 </h1>
             </div>
 
-            <!-- Sorting right side -->
+            <!-- Sorting right side (Desktop) -->
             <div class="hidden md:flex items-center gap-3.5 self-end md:self-auto">
                 <div class="flex items-center gap-2 z-20">
                     <span class="text-xs font-bold text-slate-400 uppercase whitespace-nowrap mr-1">Urutkan:</span>
@@ -597,12 +459,8 @@
                         <button
                             onclick={() => { selectedSort = sortOpt.id; applyFilters(false); }}
                             class="px-4 py-2 text-xs font-bold rounded-xl border transition cursor-pointer
-                               {selectedSort === sortOpt.id
-                                ? 'text-white'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            style={selectedSort === sortOpt.id
-                                ? `background-color: ${primary}; border-color: ${primary};`
-                                : ''}
+                               {selectedSort === sortOpt.id ? 'text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                            style={selectedSort === sortOpt.id ? `background-color: ${primary}; border-color: ${primary};` : ''}
                         >
                             {sortOpt.label}
                         </button>
@@ -611,7 +469,7 @@
                     <div class="w-40">
                         <Select
                             value={['price_asc', 'price_desc'].includes(selectedSort) ? selectedSort : ''}
-                            onchange={(val) => { selectedSort = val; applyFilters(false); }}
+                            onchange={(val: string) => { selectedSort = val; applyFilters(false); }}
                             placeholder="Harga"
                             options={[
                                 { id: 'price_asc', name: 'Harga: Terendah' },
@@ -623,22 +481,43 @@
             </div>
         </div>
 
+        <!-- Desktop Brand pills row -->
+        <div class="hidden md:flex items-center gap-2 flex-wrap mb-6">
+            <button
+                onclick={() => navigateToBrand({ id: '', slug: '' })}
+                class="px-4 py-1.5 text-xs font-bold rounded-full border transition
+                       {!brand || !brand.id ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                style={!brand || !brand.id ? `background-color: ${primary};` : ''}
+            >
+                Semua Brand
+            </button>
+            {#each brands as b}
+                {@const isActive = (brand?.id && brand.id === b.id) || (brand?.slug && brand.slug === b.slug)}
+                <button
+                    onclick={() => navigateToBrand(b)}
+                    class="px-4 py-1.5 text-xs font-bold rounded-full border transition
+                           {isActive ? 'text-white border-transparent' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                    style={isActive ? `background-color: ${primary};` : ''}
+                >
+                    {b.name}
+                    {#if b.products_count !== undefined}
+                        <span class="opacity-70">({b.products_count})</span>
+                    {/if}
+                </button>
+            {/each}
+        </div>
+
         <div class="flex gap-8 items-start">
             <!-- ═══════════════════════════════════════════════════
              FILTER SIDEBAR (Desktop)
             ═══════════════════════════════════════════════════ -->
             <aside class="hidden md:block w-64 shrink-0 space-y-6 pt-1">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <span
-                        class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
-                    >
-                        <i
-                            class="ti ti-filter text-base"
-                            style="color: {primary};"
-                        ></i> Filter
+                    <span class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ti ti-filter text-base" style="color: {primary};"></i> Filter
                     </span>
                     <button
-                        onclick={resetFilters}
+                        onclick={() => resetFilters()}
                         class="px-2.5 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
                         title="Reset semua filter"
                     >
@@ -647,73 +526,34 @@
                     </button>
                 </div>
 
-                <!-- Kategori list (switch category) -->
-                <div class="space-y-2.5">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >Kategori</span
-                    >
-                    <div class="space-y-1 max-h-60 overflow-y-auto pr-1">
-                        {#each categories || [] as cat}
-                            <button
-                                onclick={() => navigateToCategory(cat)}
-                                class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                       {cat.id === category.id
-                                    ? 'bg-slate-50'
-                                    : 'text-slate-600 hover:text-slate-900'}"
-                                style={cat.id === category.id
-                                    ? `color: ${primary};`
-                                    : ''}
-                            >
-                                <span class="flex items-center gap-2">
-                                    <i class="ti {cat.icon || 'ti-tag'} text-sm"
-                                    ></i>
-                                    {cat.name}
-                                </span>
-                                {#if cat.id === category.id}
-                                    <i class="ti ti-check text-xs"></i>
-                                {/if}
-                            </button>
-                        {/each}
-                    </div>
-                </div>
-
-                {#if brands && brands.length > 0}
-                    <hr class="border-slate-100" />
-
-                    <!-- Brand / Merek Filter -->
+                <!-- Categories filter -->
+                {#if categories && categories.length > 0}
                     <div class="space-y-2.5">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                            >Merek / Brand</span
-                        >
-                        <div
-                            class="space-y-1.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin"
-                        >
-                            {#each brands as brand}
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kategori</span>
+                            {#if selectedCategories.length > 0}
                                 <button
-                                    onclick={() =>
-                                        selectBrandDesktop(
-                                            brand.slug || brand.id.toString(),
-                                        )}
+                                    type="button"
+                                    onclick={() => { selectedCategories = []; applyFilters(false); }}
+                                    class="text-[10px] font-bold text-rose-600 hover:text-rose-700"
+                                >Hapus</button>
+                            {/if}
+                        </div>
+                        <div class="space-y-1 max-h-48 overflow-y-auto pr-1">
+                            {#each categories as cat}
+                                {@const isChecked = selectedCategories.includes(cat.slug) || selectedCategories.includes(cat.id)}
+                                <button
+                                    type="button"
+                                    onclick={() => { selectCategory(cat.slug || cat.id); applyFilters(false); }}
                                     class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                       {selectedBrands.includes(
-                                        brand.slug || brand.id.toString(),
-                                    )
-                                        ? 'bg-slate-50'
-                                        : 'text-slate-600 hover:text-slate-900'}"
-                                    style={selectedBrands.includes(
-                                        brand.slug || brand.id.toString(),
-                                    )
-                                        ? `color: ${primary};`
-                                        : ''}
+                                           {isChecked ? 'bg-slate-50' : 'text-slate-600 hover:text-slate-900'}"
+                                    style={isChecked ? `color: ${primary};` : ''}
                                 >
                                     <span class="flex items-center gap-2">
-                                        <i class="ti ti-building-store text-sm"
-                                        ></i>
-                                        {brand.name}
+                                        <i class="ti {cat.icon || 'ti-tag'} text-sm"></i>
+                                        {cat.name}
                                     </span>
-                                    {#if selectedBrands.includes(brand.slug || brand.id.toString())}
+                                    {#if isChecked}
                                         <i class="ti ti-check text-xs"></i>
                                     {/if}
                                 </button>
@@ -726,26 +566,13 @@
 
                 <!-- Rentang Harga Filter -->
                 <div class="space-y-3">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >Rentang Harga</span
-                    >
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
                     <div class="space-y-3">
-                        <InputCurrency
-                            bind:value={minPrice}
-                            placeholder="0"
-                            prefix="Rp"
-                            label="Harga Minimum"
-                        />
-                        <InputCurrency
-                            bind:value={maxPrice}
-                            placeholder="Maks"
-                            prefix="Rp"
-                            label="Harga Maksimum"
-                        />
+                        <InputCurrency bind:value={minPrice} placeholder="0" prefix="Rp" label="Harga Minimum" />
+                        <InputCurrency bind:value={maxPrice} placeholder="Maks" prefix="Rp" label="Harga Maksimum" />
                     </div>
                     <button
-                        onclick={applyFilters}
+                        onclick={() => applyFilters(false)}
                         class="w-full py-2 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] shadow-sm"
                         style="background-color: {primary};"
                     >
@@ -756,15 +583,12 @@
                 {#if !isSellerEnabled}
                     <hr class="border-slate-100" />
 
-                    <!-- Promo Toko Checkbox -->
+                    <!-- Promo Toggle -->
                     <div
                         role="button"
                         tabindex="0"
-                        onkeydown={(e) =>
-                            e.key === 'Enter' && setTimeout(applyFilters, 0)}
-                        onclick={() => {
-                            setTimeout(applyFilters, 0);
-                        }}
+                        onkeydown={(e) => e.key === 'Enter' && setTimeout(() => applyFilters(false), 0)}
+                        onclick={() => { setTimeout(() => applyFilters(false), 0); }}
                     >
                         <Toggle
                             bind:checked={promoOnly}
@@ -779,11 +603,7 @@
 
                 <!-- Jenis Produk Filter -->
                 <div class="space-y-2.5">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                    >
-                        Jenis Produk
-                    </span>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Jenis Produk</span>
                     <select
                         bind:value={selectedType}
                         onchange={() => applyFilters(false)}
@@ -799,22 +619,13 @@
 
                 <!-- Kondisi Produk Filter -->
                 <div class="space-y-2.5">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                    >
-                        Kondisi Produk
-                    </span>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kondisi Produk</span>
                     <div class="grid grid-cols-4 gap-1">
                         {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
                             <button
-                                onclick={() => {
-                                    selectedCondition = cond.id;
-                                    applyFilters(false);
-                                }}
+                                onclick={() => { selectedCondition = cond.id; applyFilters(false); }}
                                 class="py-1.5 text-[11px] font-bold rounded-lg border transition text-center
-                                       {selectedCondition === cond.id
-                                    ? 'bg-slate-800 text-white border-slate-800'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                                       {selectedCondition === cond.id ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
                             >
                                 {cond.label}
                             </button>
@@ -827,22 +638,13 @@
 
                     <!-- Rating Filter -->
                     <div class="space-y-2.5">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >
-                            Rating Minimum
-                        </span>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rating Minimum</span>
                         <div class="space-y-1">
                             {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
                                 <button
-                                    onclick={() => {
-                                        selectedRating = rate.value;
-                                        applyFilters(false);
-                                    }}
+                                    onclick={() => { selectedRating = rate.value; applyFilters(false); }}
                                     class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                           {selectedRating === rate.value
-                                        ? 'bg-amber-50 text-amber-700 font-extrabold'
-                                        : 'text-slate-600 hover:text-slate-900'}"
+                                           {selectedRating === rate.value ? 'bg-amber-50 text-amber-700 font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
                                 >
                                     <span>{rate.label}</span>
                                     {#if selectedRating === rate.value}
@@ -858,9 +660,7 @@
 
                 <!-- Lokasi Filter -->
                 <div class="space-y-2.5">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                        Lokasi Penjual / Kota
-                    </span>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Lokasi Penjual / Kota</span>
                     <div class="relative mb-2">
                         <i class="ti ti-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                         <input
@@ -873,10 +673,7 @@
                         {#if selectedLocation}
                             <button
                                 type="button"
-                                onclick={() => {
-                                    selectedLocation = '';
-                                    applyFilters(false);
-                                }}
+                                onclick={() => { selectedLocation = ''; applyFilters(false); }}
                                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                             >
                                 <i class="ti ti-x text-xs"></i>
@@ -887,14 +684,9 @@
                         {#each popularLocations as loc}
                             <button
                                 type="button"
-                                onclick={() => {
-                                    selectedLocation = selectedLocation === loc ? '' : loc;
-                                    applyFilters(false);
-                                }}
+                                onclick={() => { selectedLocation = selectedLocation === loc ? '' : loc; applyFilters(false); }}
                                 class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition cursor-pointer
-                                       {selectedLocation === loc
-                                    ? 'bg-amber-50 text-amber-700 font-extrabold'
-                                    : 'text-slate-600 hover:text-slate-900'}"
+                                       {selectedLocation === loc ? 'bg-amber-50 text-amber-700 font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
                             >
                                 <span class="flex items-center gap-2 truncate">
                                     <i class="ti ti-map-pin text-sm text-slate-400"></i>
@@ -925,81 +717,51 @@
             <div class="flex-grow flex flex-col min-w-0">
                 {#if products === undefined}
                     <!-- Skeleton Grid -->
-                    <div
-                        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
-                    >
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         {#each Array(8) as _}
-                            <div
-                                class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse"
-                            >
+                            <div class="bg-white rounded-xl border border-slate-100 overflow-hidden animate-pulse">
                                 <div class="aspect-square bg-slate-100"></div>
                                 <div class="p-3 space-y-2">
-                                    <div
-                                        class="h-3 bg-slate-100 rounded w-3/4"
-                                    ></div>
-                                    <div
-                                        class="h-3 bg-slate-100 rounded w-1/2"
-                                    ></div>
-                                    <div
-                                        class="h-4 bg-slate-100 rounded w-2/3 mt-2"
-                                    ></div>
+                                    <div class="h-3 bg-slate-100 rounded w-3/4"></div>
+                                    <div class="h-3 bg-slate-100 rounded w-1/2"></div>
+                                    <div class="h-4 bg-slate-100 rounded w-2/3 mt-2"></div>
                                 </div>
                             </div>
                         {/each}
                     </div>
                 {:else if allProducts.length === 0 && !isLoadingMore}
-                    <!-- Empty state: clean, plain, no border -->
+                    <!-- Empty state -->
                     <div class="py-16 px-6 sm:px-12 text-center w-full transition-all duration-300 flex flex-col items-center justify-center">
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
                             <i class="ti ti-package-off text-3xl sm:text-4xl"></i>
                         </div>
-
                         <h3 class="text-[#0a1d37] font-bold text-xl sm:text-2xl mb-2 tracking-tight">
                             Produk Tidak Ditemukan
                         </h3>
-
                         <p class="text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed mt-2 mb-8">
                             Kami tidak dapat menemukan produk yang cocok dengan pencarian atau filter Anda. Coba reset filter atau gunakan kata kunci lain.
                         </p>
-
                         <button
-                            onclick={resetFilters}
+                            onclick={() => resetFilters()}
                             class="px-8 py-3 rounded-xl font-bold text-xs sm:text-sm text-white transition active:scale-95 shadow-lg shadow-blue-600/25 hover:shadow-blue-600/35"
                             style="background-color: {primary};"
                         >
                             Reset Filter
                         </button>
                     </div>
-
-
                 {:else}
                     <!-- Product Grid -->
-                    <div
-                        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
-                    >
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                         {#each allProducts as product, index (product.id + '_' + index)}
                             {@const img = getProductImage(product)}
                             {@const isPromo = product.is_promo}
-                            {@const price = isPromo
-                                ? product.promo_price
-                                : (product.product_price?.price ?? 0)}
-                            {@const originalPrice = isPromo
-                                ? product.original_price
-                                : 0}
-                            {@const discountPercentage = isPromo
-                                ? product.discount_percentage
-                                : 0}
+                            {@const price = isPromo ? product.promo_price : (product.product_price?.price ?? 0)}
+                            {@const originalPrice = isPromo ? product.original_price : 0}
+                            {@const discountPercentage = isPromo ? product.discount_percentage : 0}
 
-                            <div
-                                class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full"
-                            >
-                                <a
-                                    href={`/products/${product.id}`}
-                                    class="flex flex-col flex-1 cursor-pointer"
-                                >
-                                    <div
-                                        class="relative aspect-square overflow-hidden border-b border-slate-50"
-                                    >
+                            <div class="relative group bg-white border border-slate-100 hover:border-slate-200 hover:shadow-lg rounded-xl overflow-hidden transition flex flex-col h-full">
+                                <a href={`/products/${product.id}`} class="flex flex-col flex-1 cursor-pointer">
+                                    <div class="relative aspect-square overflow-hidden border-b border-slate-50">
                                         {#if img}
                                             <img
                                                 src={img}
@@ -1007,25 +769,14 @@
                                                 loading="lazy"
                                                 decoding="async"
                                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                                onerror={(e) => {
-                                                    e.currentTarget.src =
-                                                        '/noimage/image.png';
-                                                }}
+                                                onerror={(e) => { e.currentTarget.src = '/noimage/image.png'; }}
                                             />
                                         {:else}
-                                            <img
-                                                src="/noimage/image.png"
-                                                alt=""
-                                                loading="lazy"
-                                                decoding="async"
-                                                class="w-full h-full object-cover"
-                                            />
+                                            <img src="/noimage/image.png" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover" />
                                         {/if}
                                         <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
                                             {#if isSellerEnabled}
-                                                <span
-                                                    class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
-                                                >
+                                                <span class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}">
                                                     {product.condition === 'rent' ? 'Rent' : (product.condition === 'used' || product.condition === 'second' ? 'Second' : 'New')}
                                                 </span>
                                             {/if}
@@ -1039,61 +790,29 @@
                                             {/if}
                                         </div>
                                     </div>
-                                    <div
-                                        class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
-                                    >
+                                    <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
                                         <div>
-                                            <div
-                                                class="flex items-center justify-between gap-1 mb-1"
-                                            >
-                                                <!-- <p
-                                                    class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate"
-                                                    style="color: {primary};"
-                                                >
-                                                    {product.category?.name ||
-                                                        'PRODUK'}
-                                                </p> -->
+                                            <div class="flex items-center justify-between gap-1 mb-1">
                                                 {#if product.seller?.store_name || product.seller?.name}
-                                                    <span
-                                                        class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 max-w-[50%] truncate"
-                                                    >
-                                                        <i
-                                                            class="ti ti-building-store text-blue-600 text-[11px]"
-                                                        ></i>
-                                                        <span class="truncate"
-                                                            >{product.seller
-                                                                .store_name ||
-                                                                product.seller
-                                                                    .name}</span
-                                                        >
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 max-w-[50%] truncate">
+                                                        <i class="ti ti-building-store text-blue-600 text-[11px]"></i>
+                                                        <span class="truncate">{product.seller.store_name || product.seller.name}</span>
                                                     </span>
                                                 {/if}
                                             </div>
-                                            <div
-                                                class="h-[2.5rem] overflow-hidden mb-1"
-                                            >
-                                                <p
-                                                    class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
-                                                    style="color: #1e293b;"
-                                                >
+                                            <div class="h-[2.5rem] overflow-hidden mb-1">
+                                                <p class="text-xs sm:text-sm font-black leading-tight line-clamp-2" style="color: #1e293b;">
                                                     {product.name}
                                                 </p>
                                             </div>
                                             <hr class="border-slate-100 my-2" />
                                             <div class="mb-1">
-                                                <p
-                                                    class="text-sm sm:text-base font-black leading-tight"
-                                                    style="color: {secondary};"
-                                                >
+                                                <p class="text-sm sm:text-base font-black leading-tight" style="color: {secondary};">
                                                     {formatPrice(price)}
                                                 </p>
                                                 {#if isPromo && originalPrice > price}
-                                                    <p
-                                                        class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5"
-                                                    >
-                                                        {formatPrice(
-                                                            originalPrice,
-                                                        )}
+                                                    <p class="text-[10px] sm:text-xs text-slate-400 line-through font-medium mt-0.5">
+                                                        {formatPrice(originalPrice)}
                                                     </p>
                                                 {/if}
                                             </div>
@@ -1104,30 +823,24 @@
                                 {#if cartButtonStyle === 'icon'}
                                     <button
                                         type="button"
-                                        onclick={(e) =>
-                                            handleAddToCart(product, e)}
+                                        onclick={(e) => handleAddToCart(product, e)}
                                         class="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md border transition-all duration-200 active:scale-90 hover:scale-105 z-10"
                                         style="border-color: {primary}; color: {primary};"
                                         title="Tambah ke Keranjang"
                                     >
-                                        <i
-                                            class="ti ti-plus text-2xl sm:text-base font-black"
-                                        ></i>
+                                        <i class="ti ti-plus text-2xl sm:text-base font-black"></i>
                                     </button>
                                 {/if}
                                 {#if cartButtonStyle === 'button'}
                                     <div class="px-2.5 pb-2.5">
                                         <button
                                             type="button"
-                                            onclick={(e) =>
-                                                handleAddToCart(product, e)}
+                                            onclick={(e) => handleAddToCart(product, e)}
                                             class="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[10px] sm:text-xs text-white uppercase tracking-wider transition duration-200 hover:brightness-95 active:scale-[0.98] cursor-pointer"
                                             style="background-color: {primary};"
                                             title="Tambah ke Keranjang"
                                         >
-                                            <i
-                                                class="ti ti-shopping-cart text-xs sm:text-sm"
-                                            ></i>
+                                            <i class="ti ti-shopping-cart text-xs sm:text-sm"></i>
                                             + KERANJANG
                                         </button>
                                     </div>
@@ -1149,7 +862,7 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════════
-     MOBILE FILTER DRAWER (Mobile)
+     MOBILE FILTER DRAWER
     ═══════════════════════════════════════════════════ -->
     {#if showMobileFilters}
         <div class="fixed inset-0 z-[200] flex justify-end md:hidden">
@@ -1161,20 +874,11 @@
             ></button>
 
             <!-- Drawer body -->
-            <div
-                class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between overflow-hidden"
-            >
+            <div class="relative w-80 max-w-xs h-full bg-white shadow-2xl flex flex-col justify-between overflow-hidden">
                 <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                    <div
-                        class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5"
-                    >
-                        <span
-                            class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5"
-                        >
-                            <i
-                                class="ti ti-filter text-base"
-                                style="color: {primary};"
-                            ></i> Filter
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+                        <span class="font-outfit font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="ti ti-filter text-base" style="color: {primary};"></i> Filter
                         </span>
                         <button
                             aria-label="Tutup"
@@ -1185,40 +889,34 @@
                         </button>
                     </div>
 
-                    {#if brands && brands.length > 0}
-                        <!-- Brand / Merek Filter -->
-                        <div class="space-y-2.5 mb-6">
-                            <span
-                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                                >Merek / Brand</span
-                            >
-                            <div
-                                class="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin"
-                            >
-                                {#each brands as brand}
+                    <!-- Kategori Filter (Mobile) -->
+                    {#if categories && categories.length > 0}
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kategori</span>
+                                {#if selectedCategories.length > 0}
                                     <button
-                                        onclick={() =>
-                                            selectBrand(
-                                                brand.slug || brand.id.toString(),
-                                            )}
+                                        type="button"
+                                        onclick={() => (selectedCategories = [])}
+                                        class="text-[10px] font-bold text-rose-600"
+                                    >Hapus</button>
+                                {/if}
+                            </div>
+                            <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
+                                {#each categories as cat}
+                                    {@const isChecked = selectedCategories.includes(cat.slug) || selectedCategories.includes(cat.id)}
+                                    <button
+                                        type="button"
+                                        onclick={() => selectCategory(cat.slug || cat.id)}
                                         class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                           {selectedBrands.includes(
-                                            brand.slug || brand.id.toString(),
-                                        )
-                                            ? 'bg-slate-50'
-                                            : 'text-slate-600 hover:text-slate-900'}"
-                                        style={selectedBrands.includes(
-                                            brand.slug || brand.id.toString(),
-                                        )
-                                            ? `color: ${primary};`
-                                            : ''}
+                                               {isChecked ? 'bg-slate-50' : 'text-slate-600 hover:text-slate-900'}"
+                                        style={isChecked ? `color: ${primary};` : ''}
                                     >
                                         <span class="flex items-center gap-2">
-                                            <i class="ti ti-building-store text-sm"
-                                            ></i>
-                                            {brand.name}
+                                            <i class="ti {cat.icon || 'ti-tag'} text-sm"></i>
+                                            {cat.name}
                                         </span>
-                                        {#if selectedBrands.includes(brand.slug || brand.id.toString())}
+                                        {#if isChecked}
                                             <i class="ti ti-check text-xs"></i>
                                         {/if}
                                     </button>
@@ -1229,45 +927,23 @@
 
                     <!-- Rentang Harga Filter -->
                     <div class="space-y-3">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                            >Rentang Harga</span
-                        >
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rentang Harga</span>
                         <div class="space-y-3">
-                            <InputCurrency
-                                bind:value={minPrice}
-                                placeholder="0"
-                                prefix="Rp"
-                                label="Harga Minimum"
-                            />
-                            <InputCurrency
-                                bind:value={maxPrice}
-                                placeholder="Maks"
-                                prefix="Rp"
-                                label="Harga Maksimum"
-                            />
+                            <InputCurrency bind:value={minPrice} placeholder="0" prefix="Rp" label="Harga Minimum" />
+                            <InputCurrency bind:value={maxPrice} placeholder="Maks" prefix="Rp" label="Harga Maksimum" />
                         </div>
                     </div>
 
                     {#if !isSellerEnabled}
-                        <!-- Promo Toko Checkbox -->
+                        <!-- Promo Toggle -->
                         <div class="mt-6">
-                            <Toggle
-                                bind:checked={promoOnly}
-                                label="Hanya Promo Toko"
-                                description="Tampilkan diskon aktif"
-                                icon="ti-tag"
-                            />
+                            <Toggle bind:checked={promoOnly} label="Hanya Promo Toko" description="Tampilkan diskon aktif" icon="ti-tag" />
                         </div>
                     {/if}
 
                     <!-- Jenis Produk Filter -->
                     <div class="space-y-3 mt-6">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >
-                            Jenis Produk
-                        </span>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Jenis Produk</span>
                         <select
                             bind:value={selectedType}
                             class="w-full px-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 bg-white"
@@ -1280,19 +956,13 @@
 
                     <!-- Kondisi Produk Filter -->
                     <div class="space-y-3 mt-6">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >
-                            Kondisi Produk
-                        </span>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Kondisi Produk</span>
                         <div class="grid grid-cols-4 gap-1.5">
                             {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
                                 <button
                                     onclick={() => (selectedCondition = cond.id)}
                                     class="py-2 text-[11px] font-bold rounded-lg border transition text-center
-                                           {selectedCondition === cond.id
-                                        ? 'bg-slate-800 text-white border-slate-800'
-                                        : 'bg-white border-slate-200 text-slate-600'}"
+                                           {selectedCondition === cond.id ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-200 text-slate-600'}"
                                 >
                                     {cond.label}
                                 </button>
@@ -1303,19 +973,13 @@
                     {#if !isSellerEnabled}
                         <!-- Rating Filter -->
                         <div class="space-y-3 mt-6">
-                            <span
-                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                            >
-                                Rating Minimum
-                            </span>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Rating Minimum</span>
                             <div class="space-y-1">
                                 {#each [{ value: '', label: 'Semua Rating' }, { value: '5', label: '⭐ 5 Bintang' }, { value: '4', label: '⭐ 4 ke atas' }, { value: '3', label: '⭐ 3 ke atas' }] as rate}
                                     <button
                                         onclick={() => (selectedRating = rate.value)}
                                         class="w-full text-left flex items-center justify-between py-2 px-2.5 rounded-lg text-xs font-bold transition
-                                               {selectedRating === rate.value
-                                            ? 'bg-amber-50 text-amber-700'
-                                            : 'text-slate-600'}"
+                                               {selectedRating === rate.value ? 'bg-amber-50 text-amber-700' : 'text-slate-600'}"
                                     >
                                         <span>{rate.label}</span>
                                         {#if selectedRating === rate.value}
@@ -1329,9 +993,7 @@
 
                     <!-- Lokasi Filter Mobile Drawer -->
                     <div class="space-y-3 mt-6">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                            Lokasi Penjual / Kota
-                        </span>
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Lokasi Penjual / Kota</span>
                         <div class="relative mb-2">
                             <i class="ti ti-map-pin absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                             <input
@@ -1356,9 +1018,7 @@
                                     type="button"
                                     onclick={() => (selectedLocation = selectedLocation === loc ? '' : loc)}
                                     class="w-full text-left flex items-center justify-between py-1.5 px-2 rounded-lg text-xs font-bold transition
-                                           {selectedLocation === loc
-                                        ? 'bg-amber-50 text-amber-700 font-extrabold'
-                                        : 'text-slate-600 hover:text-slate-900'}"
+                                           {selectedLocation === loc ? 'bg-amber-50 text-amber-700 font-extrabold' : 'text-slate-600 hover:text-slate-900'}"
                                 >
                                     <span class="flex items-center gap-2 truncate">
                                         <i class="ti ti-map-pin text-sm text-slate-400"></i>
@@ -1383,9 +1043,7 @@
                     </div>
                 </div>
 
-                <div
-                    class="p-4 pb-24 md:pb-6 bg-white border-t border-slate-100 grid grid-cols-2 gap-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]"
-                >
+                <div class="p-4 pb-24 md:pb-6 bg-white border-t border-slate-100 grid grid-cols-2 gap-3 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
                     <button
                         onclick={() => resetFilters(true)}
                         class="py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-500 active:scale-95 transition"
@@ -1393,7 +1051,7 @@
                         Reset
                     </button>
                     <button
-                        onclick={applyFilters}
+                        onclick={() => applyFilters(true)}
                         class="py-3 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition"
                         style="background-color: {primary};"
                     >

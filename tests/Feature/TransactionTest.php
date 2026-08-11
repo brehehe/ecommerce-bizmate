@@ -19,6 +19,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    config(['broadcasting.default' => 'log']);
+});
+
 /**
  * Helper to create a completed transaction.
  *
@@ -112,6 +116,7 @@ function createTestTransaction(): array
 }
 
 test('customer can view their transaction history', function () {
+    config(['app.is_seller' => false]);
     ['transaction' => $transaction, 'customer' => $customer] = createTestTransaction();
 
     $response = $this->actingAs($customer)->get(route('transactions.index'));

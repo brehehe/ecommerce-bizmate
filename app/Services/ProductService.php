@@ -225,16 +225,25 @@ class ProductService
             $query->join('product_prices', function ($join) {
                 $join->on('products.id', '=', 'product_prices.product_id')
                     ->whereNull('product_prices.product_variant_id');
-            })->orderBy('product_prices.price', 'asc')->select('products.*');
+            })->orderBy('product_prices.price', 'asc')
+                ->orderBy('products.order', 'asc')
+                ->orderByDesc('products.id')
+                ->select('products.*');
         } elseif ($sort === 'price_desc') {
             $query->join('product_prices', function ($join) {
                 $join->on('products.id', '=', 'product_prices.product_id')
                     ->whereNull('product_prices.product_variant_id');
-            })->orderBy('product_prices.price', 'desc')->select('products.*');
+            })->orderBy('product_prices.price', 'desc')
+                ->orderBy('products.order', 'asc')
+                ->orderByDesc('products.id')
+                ->select('products.*');
         } elseif ($sort === 'oldest') {
-            $query->orderBy('products.created_at', 'asc');
+            $query->orderBy('products.created_at', 'asc')
+                ->orderBy('products.id', 'asc');
         } else {
-            $query->orderBy('products.created_at', 'desc');
+            $query->orderBy('products.order', 'asc')
+                ->orderByDesc('products.created_at')
+                ->orderByDesc('products.id');
         }
 
         // Execute SQL pagination (fetches ONLY $perPage items for the requested page)
