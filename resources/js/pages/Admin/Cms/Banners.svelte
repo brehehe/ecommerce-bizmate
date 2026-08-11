@@ -159,7 +159,7 @@
     function addSideBanner() {
         form.side_banners = [
             ...form.side_banners,
-            { image: '', alt: 'Side Banner Baru', link: '#' },
+            { image: '', alt: 'Side Banner Baru', link: '#', fit: 'contain' },
         ];
     }
     function removeSideBanner(index: number) {
@@ -236,18 +236,11 @@
             target.value = '';
             return;
         }
-        if (!(await validateImageMinHeight(file, 350))) {
-            uploadErrors[key] = 'Tinggi gambar minimal 350px.';
-            target.value = '';
-            return;
-        }
-        if (!(await validateImageOrientation(file, 'landscape'))) {
-            uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).';
-            target.value = '';
-            return;
-        }
+        const previewUrl = URL.createObjectURL(file);
         form.hero_files[index] = file;
-        form.hero_banners[index].image = URL.createObjectURL(file);
+        form.hero_banners[index].image = previewUrl;
+        target.value = '';
+        openImageEditor(previewUrl, 'hero', index);
     }
 
     async function handleSideFileChange(index: number, e: Event) {
@@ -261,18 +254,11 @@
             target.value = '';
             return;
         }
-        if (!(await validateImageMinHeight(file, 350))) {
-            uploadErrors[key] = 'Tinggi gambar minimal 350px.';
-            target.value = '';
-            return;
-        }
-        if (!(await validateImageOrientation(file, 'portrait'))) {
-            uploadErrors[key] = 'Gambar harus potret (tinggi > lebar).';
-            target.value = '';
-            return;
-        }
+        const previewUrl = URL.createObjectURL(file);
         form.side_files[index] = file;
-        form.side_banners[index].image = URL.createObjectURL(file);
+        form.side_banners[index].image = previewUrl;
+        target.value = '';
+        openImageEditor(previewUrl, 'side', index);
     }
 
     async function handleMiddleWideFileChange(e: Event) {
@@ -286,18 +272,11 @@
             target.value = '';
             return;
         }
-        if (!(await validateImageMinHeight(file, 350))) {
-            uploadErrors[key] = 'Tinggi gambar minimal 350px.';
-            target.value = '';
-            return;
-        }
-        if (!(await validateImageOrientation(file, 'landscape'))) {
-            uploadErrors[key] = 'Gambar harus lanskap (lebar > tinggi).';
-            target.value = '';
-            return;
-        }
+        const previewUrl = URL.createObjectURL(file);
         form.middle_wide_file = file;
-        form.middle_wide_banner.image = URL.createObjectURL(file);
+        form.middle_wide_banner.image = previewUrl;
+        target.value = '';
+        openImageEditor(previewUrl, 'middle_wide');
     }
 
     async function handlePopupFileChange(e: Event) {
@@ -311,22 +290,11 @@
             target.value = '';
             return;
         }
-        if (!(await validateImageMinHeight(file, 350))) {
-            uploadErrors[key] = 'Tinggi gambar minimal 350px.';
-            target.value = '';
-            return;
-        }
-        const orient = form.popup_banner.orientation || 'portrait';
-        if (!(await validateImageOrientation(file, orient))) {
-            uploadErrors[key] =
-                orient === 'portrait'
-                    ? 'Gambar harus potret (tinggi > lebar).'
-                    : 'Gambar harus lanskap (lebar > tinggi).';
-            target.value = '';
-            return;
-        }
+        const previewUrl = URL.createObjectURL(file);
         form.popup_file = file;
-        form.popup_banner.image = URL.createObjectURL(file);
+        form.popup_banner.image = previewUrl;
+        target.value = '';
+        openImageEditor(previewUrl, 'popup');
     }
 
     function clearPopupBanner() {
@@ -886,8 +854,10 @@
                                     <p
                                         class="text-[11px] text-slate-400 font-medium"
                                     >
-                                        Banner samping kanan (Ukuran ideal: 750
-                                        × 300 px · Rasio 2.5:1)
+                                        Landscape: 750 × 300 px (2.5:1) · Alt:
+                                        720 × 288 / 600 × 240 px
+                                        <br />
+                                        Persegi (Utuh): 600 × 600 px (1:1)
                                     </p>
                                 </div>
                             </div>
@@ -970,12 +940,12 @@
                                         <div class="sm:col-span-4">
                                             {#if banner.image}
                                                 <div
-                                                    class="relative rounded-xl overflow-hidden aspect-[3/4] border border-slate-200 shadow-sm bg-white group/preview max-w-[100px]"
+                                                    class="relative rounded-xl overflow-hidden aspect-[2.5/1] border border-slate-200 shadow-sm bg-white group/preview max-w-[140px]"
                                                 >
                                                     <img
                                                         src={banner.image}
                                                         alt="Preview"
-                                                        class="w-full h-full object-cover"
+                                                        class="w-full h-full {banner.fit === 'contain' ? 'object-contain' : 'object-cover'}"
                                                     />
                                                     <label
                                                         class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
@@ -1016,7 +986,7 @@
                                                 </button>
                                             {:else}
                                                 <label
-                                                    class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[16/9] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30 max-w-[120px]"
+                                                    class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[2.5/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30 max-w-[140px]"
                                                 >
                                                     <input
                                                         type="file"
@@ -1085,6 +1055,45 @@
                                                         class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
                                                     />
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
+                                                    >Tampilan Gambar (Fit Mode)</label
+                                                >
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => (banner.fit = 'contain')}
+                                                        class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {banner.fit === 'contain'
+                                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-2xs'
+                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                                                    >
+                                                        <i class="ti ti-aspect-ratio text-sm"></i>
+                                                        Utuh (100% Asli)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => (banner.fit = 'cover')}
+                                                        class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {!banner.fit || banner.fit === 'cover'
+                                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-2xs'
+                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                                                    >
+                                                        <i class="ti ti-maximize text-sm"></i>
+                                                        Penuh Box (Crop)
+                                                    </button>
+                                                </div>
+                                                {#if banner.fit === 'contain'}
+                                                    <p class="mt-1.5 text-[10px] text-indigo-500 font-semibold flex items-center gap-1">
+                                                        <i class="ti ti-info-circle"></i>
+                                                        Gunakan gambar persegi: <strong>600 × 600 px</strong> (1:1)
+                                                    </p>
+                                                {:else}
+                                                    <p class="mt-1.5 text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                                                        <i class="ti ti-info-circle"></i>
+                                                        Gunakan gambar landscape: <strong>750 × 300 px</strong> (2.5:1)
+                                                    </p>
+                                                {/if}
                                             </div>
                                         </div>
                                     </div>
@@ -1307,11 +1316,7 @@
                                                     onclick={() =>
                                                         (form.middle_wide_banner.fit =
                                                             'contain')}
-                                                    class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {!form
-                                                        .middle_wide_banner
-                                                        .fit ||
-                                                    form.middle_wide_banner
-                                                        .fit === 'contain'
+                                                    class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.middle_wide_banner.fit === 'contain'
                                                         ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs'
                                                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
                                                 >
@@ -1325,9 +1330,7 @@
                                                     onclick={() =>
                                                         (form.middle_wide_banner.fit =
                                                             'cover')}
-                                                    class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form
-                                                        .middle_wide_banner
-                                                        .fit === 'cover'
+                                                    class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {!form.middle_wide_banner.fit || form.middle_wide_banner.fit === 'cover'
                                                         ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs'
                                                         : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
                                                 >

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { slide } from 'svelte/transition';
 
     let {
         isOpen = false,
@@ -15,88 +16,66 @@
         onClose: () => void;
     }>();
 
-    // Editor Tabs
-    type TabType = 'crop' | 'rotate' | 'adjust' | 'remove_bg';
-    let activeTab = $state<TabType>('crop');
+    // Editor Core State
+    let editorCanvas = $state<HTMLCanvasElement | null>(null);
+    let editorLoadedImage = $state<HTMLImageElement | null>(null);
+    let editorWidth = $state(1500);
+    let editorHeight = $state(600);
+    let lockAspectRatio = $state(true);
 
-    // Canvas & Image State
-    let canvasEl = $state<HTMLCanvasElement>();
-    let originalImage = $state<HTMLImageElement | null>(null);
-    let originalWidth = $state(0);
-    let originalHeight = $state(0);
+    // Independent Scale Controls (Lebar X & Tinggi Y untuk Perlebaran Bebas Gambar)
+    let editorScaleX = $state(1.0);
+    let editorScaleY = $state(1.0);
+    let linkScales = $state(true); // Default true (skala proporsional 1:1)
 
-    // Transformations
-    let rotation = $state(0); // 0, 90, 180, 270
-    let flipH = $state(false);
-    let flipV = $state(false);
+    let editorRotation = $state(0); // 0, 90, 180, 270
+    let editorSharpen = $state(0); // 0.0 to 1.0
+    let editorRemoveBg = $state(false);
+    let editorTolerance = $state(30); // 5 to 150
 
-    // Crop State
-    let aspectPreset = $state<string>('free'); // 'free', '16:9', '4:3', '1:1', '4:1', '21:9', '9:16', '3:1'
-    let cropX = $state(0);
-    let cropY = $state(0);
-    let cropW = $state(0);
-    let cropH = $state(0);
-    let isDraggingCrop = $state(false);
-    let cropDragStart = $state<{ x: number; y: number }>({ x: 0, y: 0 });
+    // Interactive Crop State
+    let isCropMode = $state(false);
+    let cropDragging = $state(false);
+    let cropStart = $state({ x: 0, y: 0 });
+    let cropBox = $state({ x: 0, y: 0, w: 0, h: 0 });
 
-    // Dimension / Resize State
-    let targetWidth = $state(0);
-    let targetHeight = $state(0);
-    let lockAspect = $state(true);
+    let fileInputEl = $state<HTMLInputElement>();
 
-    // Adjustments & HD Filters
-    let brightness = $state(100); // 0 to 200 (100 normal)
-    let contrast = $state(100); // 0 to 200 (100 normal)
-    let saturation = $state(100); // 0 to 200 (100 normal)
-    let sharpness = $state(0); // 0 to 100
-    let exportQuality = $state(92); // 50 to 100%
-
-    // Remove BG & Transparency
-    let removeBgMode = $state(false);
-    let transparentBg = $state(true);
-    let bgFillColor = $state('#ffffff');
-    let bgTolerance = $state(30); // 0 to 100
-    let keyColor = $state<{ r: number; g: number; b: number } | null>(null);
-
-    // Zoom & Pan
-    let zoomLevel = $state(100); // 50% to 200%
-
-    // Recommended aspect ratios based on banner type
-    const aspectPresets = $derived.by(() => {
+    // Dynamic preset sizes based on bannerType
+    const presets = $derived.by(() => {
         if (bannerType === 'hero') {
             return [
-                { id: 'free', label: 'Utuh / Full (Gambar Asli 100%)' },
-                { id: '1500:600', label: '1500 × 600 px (Rasio 2.5:1)' },
-                { id: '1420:560', label: '1420 × 560 px (Lanskap)' },
-                { id: '21:9', label: '21:9 (Ultrawide)' },
+                { w: 1500, h: 600, label: '1500 × 600 (Ideal 2.5:1)' },
+                { w: 1420, h: 560, label: '1420 × 560 (Alt Medium)' },
+                { w: 1200, h: 480, label: '1200 × 480 (Alt Kompak)' },
+                { w: 1680, h: 720, label: '1680 × 720 (21:9)' },
             ];
         } else if (bannerType === 'side') {
             return [
-                { id: 'free', label: 'Utuh / Full (Gambar Asli 100%)' },
-                { id: '750:300', label: '750 × 300 px (Rasio 2.5:1)' },
-                { id: '3:4', label: '3:4 (Potret Side)' },
-                { id: '1:1', label: '1:1 (Persegi)' },
+                { w: 750, h: 300, label: '750 × 300 (Ideal 2.5:1)' },
+                { w: 720, h: 288, label: '720 × 288 (Alt Medium)' },
+                { w: 600, h: 240, label: '600 × 240 (Alt Kompak)' },
+                { w: 600, h: 600, label: '600 × 600 (1:1 Persegi)' },
             ];
         } else if (bannerType === 'middle_wide') {
             return [
-                { id: 'free', label: 'Utuh / Full (Gambar Asli 100%)' },
-                { id: '1800:500', label: '1800 × 500 px (Maks 500px)' },
-                { id: '1800:400', label: '1800 × 400 px (Lebar 4.5:1)' },
-                { id: '16:5', label: '16:5 (Lanskap Lebar)' },
+                { w: 1800, h: 500, label: '1800 × 500 (Ideal Maks 500px)' },
+                { w: 1440, h: 400, label: '1440 × 400 (Alt Medium)' },
+                { w: 1200, h: 330, label: '1200 × 330 (Alt Kompak)' },
+                { w: 1800, h: 400, label: '1800 × 400 (Lebar 4.5:1)' },
             ];
         } else if (bannerType === 'popup') {
             return [
-                { id: 'free', label: 'Utuh / Full (Gambar Asli 100%)' },
-                { id: '4:5', label: '800 × 1000 px (Potret 4:5)' },
-                { id: '1:1', label: '800 × 800 px (Persegi 1:1)' },
-                { id: '9:16', label: '9:16 (Full Screen)' },
+                { w: 800, h: 1000, label: '800 × 1000 (Ideal Potret 4:5)' },
+                { w: 800, h: 800, label: '800 × 800 (1:1 Persegi)' },
+                { w: 600, h: 750, label: '600 × 750 (Alt Medium)' },
+                { w: 720, h: 1280, label: '720 × 1280 (9:16)' },
             ];
         }
         return [
-            { id: 'free', label: 'Utuh / Full (Gambar Asli 100%)' },
-            { id: '16:9', label: '16:9' },
-            { id: '4:3', label: '4:3' },
-            { id: '1:1', label: '1:1' },
+            { w: 1200, h: 675, label: '16:9' },
+            { w: 800, h: 600, label: '4:3' },
+            { w: 600, h: 600, label: '1:1' },
         ];
     });
 
@@ -111,724 +90,957 @@
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            originalImage = img;
-            originalWidth = img.naturalWidth;
-            originalHeight = img.naturalHeight;
-            targetWidth = img.naturalWidth;
-            targetHeight = img.naturalHeight;
+            editorLoadedImage = img;
+            isCropMode = false;
+            cropBox = { x: 0, y: 0, w: 0, h: 0 };
+            editorRotation = 0;
+            editorSharpen = 0;
+            editorRemoveBg = false;
 
-            // Set initial crop to full image
-            cropX = 0;
-            cropY = 0;
-            cropW = img.naturalWidth;
-            cropH = img.naturalHeight;
+            // Set initial dimensions according to bannerType defaults
+            if (bannerType === 'hero') {
+                editorWidth = 1500;
+                editorHeight = 600;
+            } else if (bannerType === 'side') {
+                editorWidth = 750;
+                editorHeight = 300;
+            } else if (bannerType === 'middle_wide') {
+                editorWidth = 1800;
+                editorHeight = 500;
+            } else if (bannerType === 'popup') {
+                editorWidth = 800;
+                editorHeight = 1000;
+            } else {
+                editorWidth = img.naturalWidth;
+                editorHeight = img.naturalHeight;
+            }
 
-            // Reset transformations
-            rotation = 0;
-            flipH = false;
-            flipV = false;
-            brightness = 100;
-            contrast = 100;
-            saturation = 100;
-            sharpness = 0;
-            keyColor = null;
-            removeBgMode = false;
+            editorScaleX = 1.0;
+            editorScaleY = 1.0;
+            linkScales = true;
 
-            // Apply default aspect preset to 'free' (100% full original uncropped image)
-            applyAspectPreset('free');
-            renderCanvas();
+            fillImage();
         };
         img.src = src;
     }
 
-    function applyAspectPreset(preset: string) {
-        aspectPreset = preset;
-        if (!originalWidth || !originalHeight) return;
+    function handleInlineFileChange(e: Event) {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (file) {
+            loadImage(URL.createObjectURL(file));
+        }
+    }
 
-        if (preset === 'free') {
-            cropX = 0;
-            cropY = 0;
-            cropW = originalWidth;
-            cropH = originalHeight;
-            targetWidth = originalWidth;
-            targetHeight = originalHeight;
-            renderCanvas();
+    function setPresetDimensions(w: number, h: number) {
+        editorWidth = w;
+        editorHeight = h;
+        fillImage();
+    }
+
+    function setOriginalImageDimensions() {
+        if (!editorLoadedImage) return;
+        const isRotated90 = editorRotation % 180 !== 0;
+        editorWidth = isRotated90 ? editorLoadedImage.naturalHeight : editorLoadedImage.naturalWidth;
+        editorHeight = isRotated90 ? editorLoadedImage.naturalWidth : editorLoadedImage.naturalHeight;
+        editorScaleX = 1.0;
+        editorScaleY = 1.0;
+    }
+
+    function handleWidthInput(e: Event) {
+        const val = parseInt((e.target as HTMLInputElement).value, 10);
+        if (isNaN(val) || val < 16) return;
+        if (lockAspectRatio && editorWidth > 0) {
+            const ratio = editorHeight / editorWidth;
+            editorWidth = val;
+            editorHeight = Math.round(val * ratio);
+        } else {
+            editorWidth = val;
+        }
+        fillImage();
+    }
+
+    function handleHeightInput(e: Event) {
+        const val = parseInt((e.target as HTMLInputElement).value, 10);
+        if (isNaN(val) || val < 16) return;
+        if (lockAspectRatio && editorHeight > 0) {
+            const ratio = editorWidth / editorHeight;
+            editorHeight = val;
+            editorWidth = Math.round(val * ratio);
+        } else {
+            editorHeight = val;
+        }
+        fillImage();
+    }
+
+    function swapDimensions() {
+        const temp = editorWidth;
+        editorWidth = editorHeight;
+        editorHeight = temp;
+        fillImage();
+    }
+
+    // Scaling & Stretching Helper Functions
+    function fitImage() {
+        if (!editorLoadedImage) return;
+        const isRotated90 = editorRotation % 180 !== 0;
+        const imgW = isRotated90 ? editorLoadedImage.naturalHeight : editorLoadedImage.naturalWidth;
+        const imgH = isRotated90 ? editorLoadedImage.naturalWidth : editorLoadedImage.naturalHeight;
+        const scaleW = editorWidth / imgW;
+        const scaleH = editorHeight / imgH;
+        const s = Math.min(scaleW, scaleH);
+        editorScaleX = s;
+        editorScaleY = s;
+    }
+
+    function fillImage() {
+        if (!editorLoadedImage) return;
+        const isRotated90 = editorRotation % 180 !== 0;
+        const imgW = isRotated90 ? editorLoadedImage.naturalHeight : editorLoadedImage.naturalWidth;
+        const imgH = isRotated90 ? editorLoadedImage.naturalWidth : editorLoadedImage.naturalHeight;
+        const scaleW = editorWidth / imgW;
+        const scaleH = editorHeight / imgH;
+        const s = Math.max(scaleW, scaleH);
+        editorScaleX = s;
+        editorScaleY = s;
+    }
+
+    function stretchWidthToFill() {
+        if (!editorLoadedImage) return;
+        const isRotated90 = editorRotation % 180 !== 0;
+        const imgW = isRotated90 ? editorLoadedImage.naturalHeight : editorLoadedImage.naturalWidth;
+        editorScaleX = editorWidth / imgW;
+    }
+
+    function stretchHeightToFill() {
+        if (!editorLoadedImage) return;
+        const isRotated90 = editorRotation % 180 !== 0;
+        const imgH = isRotated90 ? editorLoadedImage.naturalWidth : editorLoadedImage.naturalHeight;
+        editorScaleY = editorHeight / imgH;
+    }
+
+    function stretchFullToFill() {
+        if (!editorLoadedImage) return;
+        const isRotated90 = editorRotation % 180 !== 0;
+        const imgW = isRotated90 ? editorLoadedImage.naturalHeight : editorLoadedImage.naturalWidth;
+        const imgH = isRotated90 ? editorLoadedImage.naturalWidth : editorLoadedImage.naturalHeight;
+        editorScaleX = editorWidth / imgW;
+        editorScaleY = editorHeight / imgH;
+    }
+
+    function handleScaleXChange(newScaleX: number) {
+        const val = Math.max(0.1, Math.min(3.0, newScaleX));
+        editorScaleX = val;
+        if (linkScales) {
+            editorScaleY = val;
+        }
+    }
+
+    function handleScaleYChange(newScaleY: number) {
+        const val = Math.max(0.1, Math.min(3.0, newScaleY));
+        editorScaleY = val;
+        if (linkScales) {
+            editorScaleX = val;
+        }
+    }
+
+    function enhanceToHD() {
+        editorSharpen = 0.4;
+    }
+
+    // Crop Pointer Events
+    function toggleCropMode() {
+        isCropMode = !isCropMode;
+        if (isCropMode) {
+            cropBox = { x: 0, y: 0, w: 0, h: 0 };
+        }
+    }
+
+    function cancelCrop() {
+        isCropMode = false;
+        cropBox = { x: 0, y: 0, w: 0, h: 0 };
+    }
+
+    function getCropEventPos(e: MouseEvent, element: HTMLElement) {
+        const rect = element.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+        };
+    }
+
+    function onCropPointerDown(e: MouseEvent) {
+        if (!isCropMode || !editorCanvas) return;
+        const pos = getCropEventPos(e, editorCanvas);
+        cropDragging = true;
+        cropStart = pos;
+        cropBox = { x: pos.x, y: pos.y, w: 0, h: 0 };
+    }
+
+    function onCropPointerMove(e: MouseEvent) {
+        if (!cropDragging || !editorCanvas) return;
+        const pos = getCropEventPos(e, editorCanvas);
+        const x = Math.min(pos.x, cropStart.x);
+        const y = Math.min(pos.y, cropStart.y);
+        const w = Math.abs(pos.x - cropStart.x);
+        const h = Math.abs(pos.y - cropStart.y);
+
+        const canvasRect = editorCanvas.getBoundingClientRect();
+        const clampedX = Math.max(0, Math.min(x, canvasRect.width));
+        const clampedY = Math.max(0, Math.min(y, canvasRect.height));
+        const clampedW = Math.min(w, canvasRect.width - clampedX);
+        const clampedH = Math.min(h, canvasRect.height - clampedY);
+
+        cropBox = { x: clampedX, y: clampedY, w: clampedW, h: clampedH };
+    }
+
+    function onCropPointerUp() {
+        if (!cropDragging) return;
+        cropDragging = false;
+
+        if (!editorCanvas || cropBox.w < 4 || cropBox.h < 4) {
             return;
         }
 
-        const [rw, rh] = preset.split(':').map(Number);
-        if (!rw || !rh) return;
+        const canvasRect = editorCanvas.getBoundingClientRect();
+        const scaleX = editorCanvas.width / canvasRect.width;
+        const scaleY = editorCanvas.height / canvasRect.height;
 
-        const targetRatio = rw / rh;
-        const currentRatio = originalWidth / originalHeight;
+        const srcX = Math.round(cropBox.x * scaleX);
+        const srcY = Math.round(cropBox.y * scaleY);
+        const srcW = Math.round(cropBox.w * scaleX);
+        const srcH = Math.round(cropBox.h * scaleY);
 
-        if (currentRatio > targetRatio) {
-            // Image is wider than target ratio -> crop width
-            cropH = originalHeight;
-            cropW = Math.round(originalHeight * targetRatio);
-            cropX = Math.round((originalWidth - cropW) / 2);
-            cropY = 0;
-        } else {
-            // Image is taller than target ratio -> crop height
-            cropW = originalWidth;
-            cropH = Math.round(originalWidth / targetRatio);
-            cropX = 0;
-            cropY = Math.round((originalHeight - cropH) / 2);
+        const ctx = editorCanvas.getContext('2d');
+        if (!ctx || srcW < 1 || srcH < 1) return;
+
+        const croppedData = ctx.getImageData(srcX, srcY, srcW, srcH);
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = srcW;
+        tempCanvas.height = srcH;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) return;
+
+        tempCtx.putImageData(croppedData, 0, 0);
+
+        const newImg = new Image();
+        newImg.onload = () => {
+            editorLoadedImage = newImg;
+            editorWidth = srcW;
+            editorHeight = srcH;
+            editorScaleX = 1.0;
+            editorScaleY = 1.0;
+            isCropMode = false;
+            cropBox = { x: 0, y: 0, w: 0, h: 0 };
+        };
+        newImg.src = tempCanvas.toDataURL();
+    }
+
+    // High Quality Bicubic Rendering Engine (Dengan Independent Scale X & Y)
+    $effect(() => {
+        if (isOpen && editorLoadedImage && editorCanvas) {
+            renderEditorCanvas(
+                editorLoadedImage,
+                editorScaleX,
+                editorScaleY,
+                editorRotation,
+                editorRemoveBg,
+                editorTolerance,
+                editorWidth,
+                editorHeight,
+                editorSharpen
+            );
         }
+    });
 
-        targetWidth = cropW;
-        targetHeight = cropH;
-        renderCanvas();
-    }
-
-    function handleWidthInput(val: number) {
-        targetWidth = val;
-        if (lockAspect && cropW > 0 && cropH > 0) {
-            targetHeight = Math.round((val * cropH) / cropW);
-        }
-        renderCanvas();
-    }
-
-    function handleHeightInput(val: number) {
-        targetHeight = val;
-        if (lockAspect && cropW > 0 && cropH > 0) {
-            targetWidth = Math.round((val * cropW) / cropH);
-        }
-        renderCanvas();
-    }
-
-    function rotateClockwise() {
-        rotation = (rotation + 90) % 360;
-        renderCanvas();
-    }
-
-    function rotateCounterClockwise() {
-        rotation = (rotation - 90 + 360) % 360;
-        renderCanvas();
-    }
-
-    function toggleFlipH() {
-        flipH = !flipH;
-        renderCanvas();
-    }
-
-    function toggleFlipV() {
-        flipV = !flipV;
-        renderCanvas();
-    }
-
-    function renderCanvas() {
-        if (!canvasEl || !originalImage) return;
-
-        const ctx = canvasEl.getContext('2d', { willReadFrequently: true });
+    function renderEditorCanvas(
+        img: HTMLImageElement,
+        scaleX: number,
+        scaleY: number,
+        rotation: number,
+        removeBg: boolean,
+        tolerance: number,
+        canvasWidth: number,
+        canvasHeight: number,
+        sharpenAmount: number
+    ) {
+        if (!editorCanvas) return;
+        const ctx = editorCanvas.getContext('2d');
         if (!ctx) return;
 
-        const renderW = targetWidth > 0 ? targetWidth : cropW;
-        const renderH = targetHeight > 0 ? targetHeight : cropH;
+        editorCanvas.width = canvasWidth;
+        editorCanvas.height = canvasHeight;
 
-        canvasEl.width = renderW;
-        canvasEl.height = renderH;
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-        ctx.clearRect(0, 0, renderW, renderH);
+        const isRotated90 = rotation % 180 !== 0;
+        const tempW = isRotated90 ? img.naturalHeight : img.naturalWidth;
+        const tempH = isRotated90 ? img.naturalWidth : img.naturalHeight;
 
-        // Fill background if transparentBg is false
-        if (!transparentBg && bgFillColor) {
-            ctx.fillStyle = bgFillColor;
-            ctx.fillRect(0, 0, renderW, renderH);
-        }
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = tempW;
+        tempCanvas.height = tempH;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) return;
 
-        ctx.save();
+        tempCtx.translate(tempW / 2, tempH / 2);
+        tempCtx.rotate((rotation * Math.PI) / 180);
+        tempCtx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
 
-        // Position & Transformation matrix
-        ctx.translate(renderW / 2, renderH / 2);
-        ctx.rotate((rotation * Math.PI) / 180);
-        ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+        const srcImgData = tempCtx.getImageData(0, 0, tempW, tempH);
+        const srcData = srcImgData.data;
 
-        // Apply Brightness / Contrast / Saturation CSS filters
-        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
+        const destImgData = ctx.createImageData(canvasWidth, canvasHeight);
+        const destData = destImgData.data;
 
-        const drawW = (rotation % 180 !== 0) ? renderH : renderW;
-        const drawH = (rotation % 180 !== 0) ? renderW : renderH;
-
-        ctx.drawImage(
-            originalImage,
-            cropX,
-            cropY,
-            cropW,
-            cropH,
-            -drawW / 2,
-            -drawH / 2,
-            drawW,
-            drawH
-        );
-
-        ctx.restore();
-
-        // Apply Sharpness HD Pass if > 0
-        if (sharpness > 0) {
-            applySharpnessFilter(ctx, renderW, renderH, sharpness / 100);
-        }
-
-        // Apply Background Removal / Keying if keyColor is active
-        if (keyColor && removeBgMode) {
-            applyColorKeying(ctx, renderW, renderH, keyColor, bgTolerance);
-        }
-    }
-
-    function applySharpnessFilter(
-        ctx: CanvasRenderingContext2D,
-        w: number,
-        h: number,
-        amount: number
-    ) {
-        try {
-            const imgData = ctx.getImageData(0, 0, w, h);
-            const data = imgData.data;
-            const factor = amount * 0.5;
-
-            // Simple 3x3 sharpen kernel
-            for (let i = w * 4 + 4; i < data.length - w * 4 - 4; i += 4) {
-                data[i] = Math.min(
-                    255,
-                    Math.max(0, data[i] + (data[i] - data[i - 4]) * factor)
-                );
-                data[i + 1] = Math.min(
-                    255,
-                    Math.max(0, data[i + 1] + (data[i + 1] - data[i - 4 + 1]) * factor)
-                );
-                data[i + 2] = Math.min(
-                    255,
-                    Math.max(0, data[i + 2] + (data[i + 2] - data[i - 4 + 2]) * factor)
-                );
+        function getCubicWeight(t: number) {
+            const absT = Math.abs(t);
+            if (absT <= 1) {
+                return 1.5 * absT * absT * absT - 2.5 * absT * absT + 1;
+            } else if (absT < 2) {
+                return -0.5 * absT * absT * absT + 2.5 * absT * absT - 4 * absT + 2;
             }
-            ctx.putImageData(imgData, 0, 0);
-        } catch (e) {
-            console.error('Error applying sharpness filter:', e);
+            return 0;
         }
-    }
 
-    function applyColorKeying(
-        ctx: CanvasRenderingContext2D,
-        w: number,
-        h: number,
-        key: { r: number; g: number; b: number },
-        tolerance: number
-    ) {
-        try {
-            const imgData = ctx.getImageData(0, 0, w, h);
-            const data = imgData.data;
-            const tolSq = (tolerance * 2.55) ** 2;
+        const halfCW = canvasWidth / 2;
+        const halfCH = canvasHeight / 2;
+        const halfTW = tempW / 2;
+        const halfTH = tempH / 2;
 
-            for (let i = 0; i < data.length; i += 4) {
-                const dr = data[i] - key.r;
-                const dg = data[i + 1] - key.g;
-                const db = data[i + 2] - key.b;
-                const distSq = dr * dr + dg * dg + db * db;
+        for (let y = 0; y < canvasHeight; y++) {
+            const v = halfTH + (y - halfCH) / scaleY;
+            const yRow = Math.floor(v);
+            const dy = v - yRow;
 
-                if (distSq <= tolSq) {
-                    if (transparentBg) {
-                        data[i + 3] = 0; // Transparent
-                    } else {
-                        const hex = bgFillColor.replace('#', '');
-                        data[i] = parseInt(hex.substring(0, 2), 16) || 255;
-                        data[i + 1] = parseInt(hex.substring(2, 4), 16) || 255;
-                        data[i + 2] = parseInt(hex.substring(4, 6), 16) || 255;
+            const wY0 = getCubicWeight(dy + 1);
+            const wY1 = getCubicWeight(dy);
+            const wY2 = getCubicWeight(dy - 1);
+            const wY3 = getCubicWeight(dy - 2);
+
+            const destRowOffset = y * canvasWidth * 4;
+
+            for (let x = 0; x < canvasWidth; x++) {
+                const u = halfTW + (x - halfCW) / scaleX;
+                const destOffset = destRowOffset + x * 4;
+
+                if (u < -1 || u >= tempW + 1 || v < -1 || v >= tempH + 1) {
+                    destData[destOffset + 3] = 0;
+                    continue;
+                }
+
+                const xCol = Math.floor(u);
+                const dx = u - xCol;
+
+                const wX0 = getCubicWeight(dx + 1);
+                const wX1 = getCubicWeight(dx);
+                const wX2 = getCubicWeight(dx - 1);
+                const wX3 = getCubicWeight(dx - 2);
+
+                let r = 0, g = 0, b = 0, a = 0;
+
+                for (let m = -1; m <= 2; m++) {
+                    const py = yRow + m;
+                    if (py < 0 || py >= tempH) continue;
+
+                    const weightY =
+                        m === -1 ? wY0 : m === 0 ? wY1 : m === 1 ? wY2 : wY3;
+
+                    const srcRowOffset = py * tempW * 4;
+
+                    for (let n = -1; n <= 2; n++) {
+                        const px = xCol + n;
+                        if (px < 0 || px >= tempW) continue;
+
+                        const weightX =
+                            n === -1 ? wX0 : n === 0 ? wX1 : n === 1 ? wX2 : wX3;
+                        const weight = weightX * weightY;
+
+                        const srcOffset = srcRowOffset + px * 4;
+
+                        r += srcData[srcOffset] * weight;
+                        g += srcData[srcOffset + 1] * weight;
+                        b += srcData[srcOffset + 2] * weight;
+                        a += srcData[srcOffset + 3] * weight;
+                    }
+                }
+
+                destData[destOffset] = Math.min(255, Math.max(0, r));
+                destData[destOffset + 1] = Math.min(255, Math.max(0, g));
+                destData[destOffset + 2] = Math.min(255, Math.max(0, b));
+                destData[destOffset + 3] = Math.min(255, Math.max(0, a));
+            }
+        }
+
+        // Apply background removal (white keying) if active
+        if (removeBg) {
+            for (let i = 0; i < destData.length; i += 4) {
+                const pr = destData[i];
+                const pg = destData[i + 1];
+                const pb = destData[i + 2];
+
+                const isNearWhite =
+                    pr >= 255 - tolerance &&
+                    pg >= 255 - tolerance &&
+                    pb >= 255 - tolerance;
+
+                if (isNearWhite) {
+                    const maxDiff = Math.max(
+                        Math.abs(pr - pg),
+                        Math.abs(pg - pb),
+                        Math.abs(pr - pb)
+                    );
+                    if (maxDiff < 20) {
+                        destData[i + 3] = 0;
                     }
                 }
             }
-            ctx.putImageData(imgData, 0, 0);
-        } catch (e) {
-            console.error('Color keying error:', e);
+        }
+
+        // Apply Sharpening pass if requested (> 0)
+        if (sharpenAmount > 0) {
+            const sharpenData = ctx.createImageData(canvasWidth, canvasHeight);
+            const src = destData;
+            const dst = sharpenData.data;
+
+            dst.set(src);
+
+            const amount = sharpenAmount * 0.8;
+            const kernel = [
+                0, -amount, 0,
+                -amount, 1 + 4 * amount, -amount,
+                0, -amount, 0
+            ];
+
+            for (let y = 1; y < canvasHeight - 1; y++) {
+                for (let x = 1; x < canvasWidth - 1; x++) {
+                    const idx = (y * canvasWidth + x) * 4;
+
+                    if (src[idx + 3] === 0) continue;
+
+                    for (let c = 0; c < 3; c++) {
+                        let val = 0;
+                        let kIdx = 0;
+
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const pIdx = ((y + ky) * canvasWidth + (x + kx)) * 4 + c;
+                                val += src[pIdx] * kernel[kIdx++];
+                            }
+                        }
+
+                        dst[idx + c] = Math.min(255, Math.max(0, val));
+                    }
+                }
+            }
+
+            ctx.putImageData(sharpenData, 0, 0);
+        } else {
+            ctx.putImageData(destImgData, 0, 0);
         }
     }
 
-    function handleCanvasClick(e: MouseEvent) {
-        if (!removeBgMode || !canvasEl) return;
-        const rect = canvasEl.getBoundingClientRect();
-        const scaleX = canvasEl.width / rect.width;
-        const scaleY = canvasEl.height / rect.height;
-
-        const x = Math.round((e.clientX - rect.left) * scaleX);
-        const y = Math.round((e.clientY - rect.top) * scaleY);
-
-        const ctx = canvasEl.getContext('2d');
-        if (!ctx) return;
-
-        const pixel = ctx.getImageData(x, y, 1, 1).data;
-        keyColor = { r: pixel[0], g: pixel[1], b: pixel[2] };
-        renderCanvas();
-    }
-
-    function resetAll() {
-        if (!originalImage) return;
-        zoomLevel = 100;
-        rotation = 0;
-        flipH = false;
-        flipV = false;
-        brightness = 100;
-        contrast = 100;
-        saturation = 100;
-        sharpness = 0;
-        exportQuality = 92;
-        removeBgMode = false;
-        transparentBg = true;
-        keyColor = null;
-        cropX = 0;
-        cropY = 0;
-        cropW = originalWidth;
-        cropH = originalHeight;
-        targetWidth = originalWidth;
-        targetHeight = originalHeight;
-        aspectPreset = 'free';
-        renderCanvas();
-    }
-
     function handleSave() {
-        if (!canvasEl) return;
+        if (!editorCanvas) return;
 
-        const format = transparentBg ? 'image/png' : 'image/jpeg';
-        const quality = exportQuality / 100;
-
-        canvasEl.toBlob(
-            (blob) => {
-                if (!blob) return;
-                const ext = transparentBg ? 'png' : 'jpg';
-                const file = new File([blob], `banner_edited_${Date.now()}.${ext}`, {
-                    type: format,
-                });
-                const previewUrl = URL.createObjectURL(file);
-                onSave(file, previewUrl);
-                onClose();
-            },
-            format,
-            quality
-        );
+        editorCanvas.toBlob((blob) => {
+            if (!blob) return;
+            const file = new File([blob], `banner_${Date.now()}.png`, {
+                type: 'image/png',
+            });
+            const previewUrl = URL.createObjectURL(file);
+            onSave(file, previewUrl);
+            onClose();
+        }, 'image/png');
     }
 </script>
 
 {#if isOpen}
     <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto"
+        class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6"
     >
+        <!-- Backdrop -->
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-            class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh] font-sans"
+            class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onclick={onClose}
+        ></div>
+
+        <!-- Modal Content -->
+        <div
+            class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all font-sans"
         >
-            <!-- Modal Header -->
+            <!-- Header -->
             <div
-                class="px-6 py-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0"
+                class="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0"
             >
-                <div class="flex items-center gap-3">
-                    <div
-                        class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20 text-white shrink-0"
-                    >
-                        <i class="ti ti-photo-edit text-xl"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-outfit font-black text-lg text-slate-800 tracking-tight">
-                            Studio Editor Gambar Banner
-                        </h2>
-                        <p class="text-xs text-slate-500 font-medium">
-                            Rotasi, Potong, HD Filters, Hapus Background & Atur Resolusi
-                        </p>
-                    </div>
+                <div>
+                    <h3 class="font-outfit font-black text-slate-800 text-lg">
+                        Studio Editor Gambar Banner
+                    </h3>
+                    <p class="text-xs text-slate-400 font-medium">
+                        Sesuaikan ukuran, rotasi, crop, perlebaran gambar, dan transparansi sebelum diunggah
+                    </p>
                 </div>
-                <button
-                    onclick={onClose}
-                    class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition flex items-center justify-center cursor-pointer"
-                >
-                    <i class="ti ti-x text-lg"></i>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onclick={() => fileInputEl?.click()}
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-bold transition cursor-pointer"
+                        title="Ganti gambar"
+                    >
+                        <i class="ti ti-photo-edit text-base"></i>
+                        <span class="hidden sm:inline">Ganti Gambar</span>
+                    </button>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        bind:this={fileInputEl}
+                        onchange={handleInlineFileChange}
+                        class="hidden"
+                    />
+
+                    <button
+                        type="button"
+                        onclick={onClose}
+                        class="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition cursor-pointer"
+                    >
+                        <i class="ti ti-x text-lg"></i>
+                    </button>
+                </div>
             </div>
 
-            <!-- Modal Content (Main Split) -->
-            <div class="flex-grow grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
-                <!-- Left: Canvas Studio View (Col 7) -->
-                <div
-                    class="lg:col-span-7 bg-slate-900/95 p-4 sm:p-6 flex flex-col items-center justify-center relative overflow-hidden min-h-[320px] lg:min-h-[460px]"
-                >
-                    <!-- Checkerboard pattern for transparency -->
-                    <div
-                        class="absolute inset-0 opacity-20 pointer-events-none"
-                        style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 16px 16px;"
-                    ></div>
-
-                    <!-- Main Interactive Canvas -->
-                    <div
-                        class="relative max-w-full max-h-full flex items-center justify-center overflow-auto shadow-2xl rounded-xl border border-white/10 p-2 bg-black/40"
-                    >
-                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-                        <canvas
-                            bind:this={canvasEl}
-                            onclick={handleCanvasClick}
-                            class="max-w-full max-h-[380px] sm:max-h-[420px] object-contain rounded-lg transition-transform duration-150 {removeBgMode
-                                ? 'cursor-crosshair'
-                                : 'cursor-default'}"
-                            style="transform: scale({zoomLevel / 100});"
-                        ></canvas>
-                    </div>
-
-                    <!-- Canvas Floating Controls -->
-                    <div
-                        class="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-slate-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 shadow-lg text-white text-xs"
-                    >
-                        <span class="text-slate-300 text-[11px] font-semibold mr-1">Zoom</span>
-                        <button
-                            onclick={() => (zoomLevel = Math.max(50, zoomLevel - 25))}
-                            class="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center font-bold"
-                        >
-                            -
-                        </button>
-                        <span class="w-12 text-center font-mono font-bold text-sky-400">{zoomLevel}%</span>
-                        <button
-                            onclick={() => (zoomLevel = Math.min(200, zoomLevel + 25))}
-                            class="w-6 h-6 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center font-bold"
-                        >
-                            +
-                        </button>
-                        <span class="w-px h-4 bg-white/20 mx-1"></span>
+            <!-- Body Grid (Split Left Preview & Right Controls) -->
+            <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left: Studio Preview Area -->
+                <div class="flex flex-col items-center justify-center bg-slate-50/50 rounded-2xl p-4 border border-slate-100 min-h-[300px]">
+                    <!-- Crop Toggle Button -->
+                    <div class="w-full flex justify-between items-center mb-3">
+                        <span class="text-xs font-bold text-slate-700">Preview Studio Gambar</span>
                         <button
                             type="button"
-                            onclick={resetAll}
-                            class="text-slate-300 hover:text-white flex items-center gap-1 hover:underline transition text-[11px] cursor-pointer"
+                            onclick={toggleCropMode}
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer {isCropMode
+                                ? 'bg-amber-500 text-white shadow-sm'
+                                : 'bg-white border border-slate-200 hover:border-slate-300 text-slate-700'}"
                         >
-                            <i class="ti ti-refresh text-sm"></i>
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Right: Editing Controls Panel (Col 5) -->
-                <div class="lg:col-span-5 flex flex-col bg-white border-t lg:border-t-0 lg:border-l border-slate-200 overflow-hidden">
-                    <!-- Tab Buttons -->
-                    <div class="grid grid-cols-4 border-b border-slate-100 bg-slate-50/50 p-1.5 gap-1 shrink-0 text-xs font-bold">
-                        <button
-                            onclick={() => (activeTab = 'crop')}
-                            class="py-2 rounded-xl flex flex-col items-center gap-1 transition {activeTab === 'crop' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            <i class="ti ti-crop text-base"></i>
-                            <span>Potong</span>
-                        </button>
-                        <button
-                            onclick={() => (activeTab = 'rotate')}
-                            class="py-2 rounded-xl flex flex-col items-center gap-1 transition {activeTab === 'rotate' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            <i class="ti ti-rotate-clockwise text-base"></i>
-                            <span>Rotasi</span>
-                        </button>
-                        <button
-                            onclick={() => (activeTab = 'adjust')}
-                            class="py-2 rounded-xl flex flex-col items-center gap-1 transition {activeTab === 'adjust' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            <i class="ti ti-adjustments-horizontal text-base"></i>
-                            <span>HD Filter</span>
-                        </button>
-                        <button
-                            onclick={() => (activeTab = 'remove_bg')}
-                            class="py-2 rounded-xl flex flex-col items-center gap-1 transition {activeTab === 'remove_bg' ? 'bg-white text-blue-600 shadow-sm border border-slate-200/80' : 'text-slate-500 hover:text-slate-800'}"
-                        >
-                            <i class="ti ti-wand text-base"></i>
-                            <span>Hapus BG</span>
+                            <i class="ti ti-crop text-sm"></i>
+                            {isCropMode ? 'Batal Crop' : 'Pilih Area Crop (Potong)'}
                         </button>
                     </div>
 
-                    <!-- Tab Panel Content (Scrollable) -->
-                    <div class="flex-grow p-5 space-y-5 overflow-y-auto min-h-0 text-slate-700 text-xs">
-                        {#if activeTab === 'crop'}
-                            <!-- CROP & DIMENSION TAB -->
-                            <div class="space-y-4">
-                                <h3 class="font-outfit font-bold text-sm text-slate-800 flex items-center gap-2">
-                                    <i class="ti ti-aspect-ratio text-blue-600 text-base"></i>
-                                    Rasio Aspek & Dimensi Presets
-                                </h3>
+                    {#if isCropMode}
+                        <div class="w-full bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 mb-2 flex items-center justify-between">
+                            <p class="text-[10px] font-bold text-amber-700">
+                                Seret di atas gambar untuk memilih area crop
+                            </p>
+                            <button
+                                type="button"
+                                onclick={cancelCrop}
+                                class="text-[10px] font-black text-amber-600 hover:text-amber-800 uppercase tracking-wider cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                        </div>
+                    {/if}
 
-                                <div class="grid grid-cols-2 gap-2">
-                                    {#each aspectPresets as p}
-                                        <button
-                                            onclick={() => applyAspectPreset(p.id)}
-                                            class="p-2.5 rounded-xl border text-left font-medium transition flex items-center justify-between {aspectPreset === p.id ? 'border-blue-500 bg-blue-50/50 text-blue-700 font-bold shadow-xs' : 'border-slate-200 hover:border-slate-300 text-slate-600'}"
-                                        >
-                                            <span>{p.label}</span>
-                                            {#if aspectPreset === p.id}
-                                                <i class="ti ti-check text-blue-600"></i>
-                                            {/if}
-                                        </button>
-                                    {/each}
-                                </div>
+                    <!-- Canvas Wrapper: aspect ratio follows output dimensions -->
+                    <div
+                        class="checkerboard rounded-xl shadow-inner border {isCropMode
+                            ? 'border-amber-400'
+                            : 'border-slate-200'} overflow-hidden relative select-none"
+                        style="width: min(340px, 100%); aspect-ratio: {editorWidth} / {editorHeight}; max-height: 280px;"
+                    >
+                        <!-- svelte-ignore a11y_no_static_element_interactions -->
+                        <canvas
+                            bind:this={editorCanvas}
+                            class="w-full h-full {isCropMode ? 'cursor-crosshair' : 'cursor-default'}"
+                            onmousedown={isCropMode ? onCropPointerDown : undefined}
+                            onmousemove={isCropMode ? onCropPointerMove : undefined}
+                            onmouseup={isCropMode ? onCropPointerUp : undefined}
+                            onmouseleave={isCropMode ? onCropPointerUp : undefined}
+                        ></canvas>
 
-                                <div class="pt-3 border-t border-slate-100 space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <h4 class="font-bold text-slate-800">Atur Ukuran Resolusi (px)</h4>
-                                        <label class="flex items-center gap-1.5 cursor-pointer text-slate-600 font-medium">
-                                            <input type="checkbox" bind:checked={lockAspect} class="rounded text-blue-600 focus:ring-blue-500" />
-                                            <span>Kunci Rasio</span>
-                                        </label>
-                                    </div>
-
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <span class="text-[11px] text-slate-500 font-medium block mb-1">Lebar (W)</span>
-                                            <input
-                                                type="number"
-                                                value={targetWidth}
-                                                oninput={(e) => handleWidthInput(Number((e.target as HTMLInputElement).value))}
-                                                class="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            />
-                                        </div>
-                                        <div>
-                                            <span class="text-[11px] text-slate-500 font-medium block mb-1">Tinggi (H)</span>
-                                            <input
-                                                type="number"
-                                                value={targetHeight}
-                                                oninput={(e) => handleHeightInput(Number((e.target as HTMLInputElement).value))}
-                                                class="w-full px-3 py-2 border border-slate-200 rounded-xl text-slate-800 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {:else if activeTab === 'rotate'}
-                            <!-- ROTATE & FLIP TAB -->
-                            <div class="space-y-4">
-                                <h3 class="font-outfit font-bold text-sm text-slate-800 flex items-center gap-2">
-                                    <i class="ti ti-rotate text-blue-600 text-base"></i>
-                                    Rotasi & Pemutaran Gambar
-                                </h3>
-
-                                <div class="grid grid-cols-2 gap-2.5">
-                                    <button
-                                        onclick={rotateCounterClockwise}
-                                        class="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center gap-2 font-bold text-slate-700 transition"
-                                    >
-                                        <i class="ti ti-rotate-2 text-lg text-blue-600"></i>
-                                        -90° Kiri
-                                    </button>
-                                    <button
-                                        onclick={rotateClockwise}
-                                        class="p-3 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center gap-2 font-bold text-slate-700 transition"
-                                    >
-                                        <i class="ti ti-rotate-clockwise-2 text-lg text-blue-600"></i>
-                                        +90° Kanan
-                                    </button>
-                                </div>
-
-                                <div class="pt-3 border-t border-slate-100 space-y-2">
-                                    <h4 class="font-bold text-slate-800 mb-2">Cermin (Flip Image)</h4>
-                                    <div class="grid grid-cols-2 gap-2.5">
-                                        <button
-                                            onclick={toggleFlipH}
-                                            class="p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition {flipH ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'}"
-                                        >
-                                            <i class="ti ti-flip-horizontal text-lg"></i>
-                                            Flip Horizontal
-                                        </button>
-                                        <button
-                                            onclick={toggleFlipV}
-                                            class="p-3 rounded-xl border flex items-center justify-center gap-2 font-bold transition {flipV ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'}"
-                                        >
-                                            <i class="ti ti-flip-vertical text-lg"></i>
-                                            Flip Vertical
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        {:else if activeTab === 'adjust'}
-                            <!-- ADJUSTMENTS & HD FILTERS TAB -->
-                            <div class="space-y-4">
-                                <h3 class="font-outfit font-bold text-sm text-slate-800 flex items-center gap-2">
-                                    <i class="ti ti-sparkles text-blue-600 text-base"></i>
-                                    Kualitas & Filter HD
-                                </h3>
-
-                                <div class="space-y-3">
-                                    <div>
-                                        <div class="flex justify-between font-bold text-slate-700 mb-1">
-                                            <span>Kecerahan (Brightness)</span>
-                                            <span class="text-blue-600 font-mono">{brightness}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="30"
-                                            max="170"
-                                            bind:value={brightness}
-                                            oninput={renderCanvas}
-                                            class="w-full accent-blue-600 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <div class="flex justify-between font-bold text-slate-700 mb-1">
-                                            <span>Kontras (Contrast)</span>
-                                            <span class="text-blue-600 font-mono">{contrast}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="30"
-                                            max="170"
-                                            bind:value={contrast}
-                                            oninput={renderCanvas}
-                                            class="w-full accent-blue-600 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <div class="flex justify-between font-bold text-slate-700 mb-1">
-                                            <span>Saturasi Warna</span>
-                                            <span class="text-blue-600 font-mono">{saturation}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="200"
-                                            bind:value={saturation}
-                                            oninput={renderCanvas}
-                                            class="w-full accent-blue-600 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <div class="flex justify-between font-bold text-slate-700 mb-1">
-                                            <span>Ketajaman HD (Clarity)</span>
-                                            <span class="text-blue-600 font-mono">{sharpness}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="100"
-                                            bind:value={sharpness}
-                                            oninput={renderCanvas}
-                                            class="w-full accent-blue-600 cursor-pointer"
-                                        />
-                                    </div>
-
-                                    <div class="pt-3 border-t border-slate-100">
-                                        <div class="flex justify-between font-bold text-slate-700 mb-1">
-                                            <span>Kualitas Hasil Ekspor</span>
-                                            <span class="text-blue-600 font-mono">{exportQuality}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="50"
-                                            max="100"
-                                            bind:value={exportQuality}
-                                            class="w-full accent-blue-600 cursor-pointer"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        {:else if activeTab === 'remove_bg'}
-                            <!-- REMOVE BG TAB -->
-                            <div class="space-y-4">
-                                <h3 class="font-outfit font-bold text-sm text-slate-800 flex items-center gap-2">
-                                    <i class="ti ti-wand text-blue-600 text-base"></i>
-                                    Hapus & Ganti Background
-                                </h3>
-
-                                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-800 text-[11px] flex gap-2">
-                                    <i class="ti ti-info-circle text-amber-600 text-base shrink-0"></i>
-                                    <span>Aktifkan mode lalu <strong>klik pada warna background gambar</strong> di kanvas sebelah kiri untuk menghapusnya secara otomatis.</span>
-                                </div>
-
-                                <button
-                                    onclick={() => {
-                                        removeBgMode = !removeBgMode;
-                                        renderCanvas();
-                                    }}
-                                    class="w-full py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition cursor-pointer {removeBgMode ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-800 text-white hover:bg-slate-700'}"
-                                >
-                                    <i class="ti ti-pointer text-base"></i>
-                                    {removeBgMode ? 'Mode Pemilih Warna Aktif (Klik Gambar)' : 'Aktifkan Tool Hapus Background'}
-                                </button>
-
-                                {#if keyColor}
-                                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-                                        <div class="flex items-center justify-between">
-                                            <span class="font-bold text-slate-700">Warna Terpilih:</span>
-                                            <div class="flex items-center gap-2">
-                                                <div
-                                                    class="w-5 h-5 rounded-full border border-slate-300 shadow-xs"
-                                                    style="background-color: rgb({keyColor.r}, {keyColor.g}, {keyColor.b});"
-                                                ></div>
-                                                <button
-                                                    onclick={() => { keyColor = null; renderCanvas(); }}
-                                                    class="text-red-500 hover:text-red-700 font-bold"
-                                                >
-                                                    Hapus
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <div class="flex justify-between font-bold text-slate-700 mb-1">
-                                                <span>Toleransi Penghapusan Warna</span>
-                                                <span class="text-blue-600 font-mono">{bgTolerance}</span>
-                                            </div>
-                                            <input
-                                                type="range"
-                                                min="5"
-                                                max="80"
-                                                bind:value={bgTolerance}
-                                                oninput={renderCanvas}
-                                                class="w-full accent-blue-600 cursor-pointer"
-                                            />
-                                        </div>
-                                    </div>
-                                {/if}
-
-                                <div class="pt-3 border-t border-slate-100 space-y-3">
-                                    <h4 class="font-bold text-slate-800">Isi Background Pengganti</h4>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <button
-                                            onclick={() => { transparentBg = true; renderCanvas(); }}
-                                            class="p-2.5 rounded-xl border text-center font-bold transition flex items-center justify-center gap-2 {transparentBg ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'}"
-                                        >
-                                            <i class="ti ti-brand-abstract text-base"></i>
-                                            Transparan (PNG)
-                                        </button>
-                                        <button
-                                            onclick={() => { transparentBg = false; renderCanvas(); }}
-                                            class="p-2.5 rounded-xl border text-center font-bold transition flex items-center justify-center gap-2 {!transparentBg ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 hover:bg-slate-50 text-slate-700'}"
-                                        >
-                                            <i class="ti ti-palette text-base"></i>
-                                            Warna Padat
-                                        </button>
-                                    </div>
-
-                                    {#if !transparentBg}
-                                        <div class="flex items-center gap-3 pt-1">
-                                            <span class="font-bold text-slate-700">Pilih Warna:</span>
-                                            <input
-                                                type="color"
-                                                bind:value={bgFillColor}
-                                                oninput={renderCanvas}
-                                                class="w-10 h-8 rounded border border-slate-200 cursor-pointer p-0"
-                                            />
-                                            <span class="font-mono text-slate-600 uppercase font-bold">{bgFillColor}</span>
-                                        </div>
-                                    {/if}
-                                </div>
+                        <!-- Interactive Crop Selection Box -->
+                        {#if isCropMode && cropBox.w > 2 && cropBox.h > 2}
+                            <div
+                                class="absolute border-2 border-amber-400 bg-amber-400/10 pointer-events-none"
+                                style="left:{cropBox.x}px; top:{cropBox.y}px; width:{cropBox.w}px; height:{cropBox.h}px;"
+                            >
+                                <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
+                                <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-amber-400 rounded-sm"></div>
                             </div>
                         {/if}
                     </div>
 
-                    <!-- Action Footer -->
-                    <div class="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0 gap-3">
-                        <button
-                            onclick={onClose}
-                            class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold transition cursor-pointer"
-                        >
-                            Batal
-                        </button>
-                        <button
-                            onclick={handleSave}
-                            class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold transition shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
-                        >
-                            <i class="ti ti-check text-base"></i>
-                            Terapkan & Simpan Gambar
-                        </button>
+                    {#if isCropMode && cropBox.w > 2 && cropBox.h > 2}
+                        <p class="text-[10px] text-amber-600 font-bold mt-2 font-mono">
+                            {Math.round(cropBox.w)} × {Math.round(cropBox.h)} px (preview)
+                        </p>
+                    {:else}
+                        <p class="text-[10px] text-slate-400 font-semibold mt-3 flex items-center gap-1">
+                            <i class="ti ti-info-circle"></i> Kotak kotak-kotak menandakan area transparan (tanpa background)
+                        </p>
+                    {/if}
+                </div>
+
+                <!-- Right: Controls Area -->
+                <div class="flex flex-col justify-between space-y-6">
+                    <div class="space-y-5">
+                        <!-- Custom Width & Height Inputs -->
+                        <div class="space-y-2">
+                            <span class="text-xs font-bold text-slate-700 block">Dimensi Output (Piksel)</span>
+                            <div class="flex items-center gap-3">
+                                <!-- Width Input -->
+                                <div class="flex-1 relative">
+                                    <input
+                                        type="number"
+                                        min="16"
+                                        max="4096"
+                                        value={editorWidth}
+                                        oninput={handleWidthInput}
+                                        class="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:outline-none focus:border-brand-teal transition bg-slate-50 focus:bg-white font-mono"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">W (px)</span>
+                                </div>
+
+                                <!-- Lock Aspect Ratio -->
+                                <button
+                                    type="button"
+                                    onclick={() => (lockAspectRatio = !lockAspectRatio)}
+                                    class="p-2.5 rounded-xl border transition flex items-center justify-center cursor-pointer {lockAspectRatio
+                                        ? 'border-brand-teal bg-brand-teal/5 text-brand-teal'
+                                        : 'border-slate-200 hover:border-slate-300 text-slate-400 bg-white'}"
+                                    title={lockAspectRatio ? 'Kunci Rasio Aktif' : 'Kunci Rasio Nonaktif'}
+                                >
+                                    <i class={lockAspectRatio ? 'ti ti-lock text-base' : 'ti ti-lock-open text-base'}></i>
+                                </button>
+
+                                <!-- Height Input -->
+                                <div class="flex-1 relative">
+                                    <input
+                                        type="number"
+                                        min="16"
+                                        max="4096"
+                                        value={editorHeight}
+                                        oninput={handleHeightInput}
+                                        class="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:outline-none focus:border-brand-teal transition bg-slate-50 focus:bg-white font-mono"
+                                    />
+                                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">H (px)</span>
+                                </div>
+
+                                <!-- Swap Button -->
+                                <button
+                                    type="button"
+                                    onclick={swapDimensions}
+                                    class="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 text-slate-500 bg-white hover:bg-slate-50 transition flex items-center justify-center cursor-pointer"
+                                    title="Tukar Lebar & Tinggi"
+                                >
+                                    <i class="ti ti-arrows-left-right text-base"></i>
+                                </button>
+                            </div>
+
+                            <!-- Preset sizes -->
+                            <div class="flex flex-wrap gap-1.5 mt-1">
+                                {#each presets as p}
+                                    <button
+                                        type="button"
+                                        onclick={() => setPresetDimensions(p.w, p.h)}
+                                        class="px-2.5 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition cursor-pointer"
+                                    >
+                                        {p.label}
+                                    </button>
+                                {/each}
+                                <button
+                                    type="button"
+                                    onclick={setOriginalImageDimensions}
+                                    class="px-2.5 py-1 text-[10px] font-bold rounded-lg border border-slate-100 hover:border-slate-200 text-slate-500 hover:text-slate-700 bg-slate-50 transition cursor-pointer"
+                                >
+                                    Asli (Ukuran Gambar)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Scale / Zoom & Independent Stretch (Perlebaran Gambar) Controls -->
+                        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <i class="ti ti-arrows-maximize text-blue-600"></i>
+                                    Skala & Perlebaran Gambar
+                                </span>
+                                <button
+                                    type="button"
+                                    onclick={() => (linkScales = !linkScales)}
+                                    class="px-2 py-1 text-[10px] font-bold rounded-lg border transition flex items-center gap-1 cursor-pointer {linkScales
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                        : 'border-amber-400 bg-amber-50 text-amber-700'}"
+                                    title={linkScales ? 'Skala Terkunci (1:1 Proporsional)' : 'Skala Bebas (Perlebar X & Y Terpisah)'}
+                                >
+                                    <i class={linkScales ? 'ti ti-link text-xs' : 'ti ti-link-off text-xs'}></i>
+                                    <span>{linkScales ? 'Terkunci 1:1' : 'Bebas X/Y'}</span>
+                                </button>
+                            </div>
+
+                            <!-- Scale X Slider (Lebar ↔) -->
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between items-center text-[11px]">
+                                    <span class="font-bold text-slate-600 flex items-center gap-1">
+                                        <i class="ti ti-arrows-horizontal text-blue-500"></i>
+                                        Lebar Gambar (Perlebar ke Samping ↔)
+                                    </span>
+                                    <span class="font-mono font-bold text-slate-700">{Math.round(editorScaleX * 100)}%</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition cursor-pointer text-xs font-bold"
+                                        onclick={() => handleScaleXChange(+(editorScaleX - 0.05).toFixed(2))}
+                                        aria-label="Kurangi perlebaran"
+                                    >
+                                        <i class="ti ti-minus"></i>
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min="0.1"
+                                        max="3"
+                                        step="0.05"
+                                        bind:value={editorScaleX}
+                                        oninput={(e) => handleScaleXChange(Number((e.target as HTMLInputElement).value))}
+                                        class="flex-grow accent-blue-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition cursor-pointer text-xs font-bold"
+                                        onclick={() => handleScaleXChange(+(editorScaleX + 0.05).toFixed(2))}
+                                        aria-label="Tambah perlebaran"
+                                    >
+                                        <i class="ti ti-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Scale Y Slider (Tinggi ↕) -->
+                            {#if !linkScales}
+                                <div class="space-y-1.5 pt-1" transition:slide>
+                                    <div class="flex justify-between items-center text-[11px]">
+                                        <span class="font-bold text-slate-600 flex items-center gap-1">
+                                            <i class="ti ti-arrows-vertical text-indigo-500"></i>
+                                            Tinggi Gambar (Meninggikan ↕)
+                                        </span>
+                                        <span class="font-mono font-bold text-slate-700">{Math.round(editorScaleY * 100)}%</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition cursor-pointer text-xs font-bold"
+                                            onclick={() => handleScaleYChange(+(editorScaleY - 0.05).toFixed(2))}
+                                            aria-label="Kurangi tinggi"
+                                        >
+                                            <i class="ti ti-minus"></i>
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="0.1"
+                                            max="3"
+                                            step="0.05"
+                                            bind:value={editorScaleY}
+                                            oninput={(e) => handleScaleYChange(Number((e.target as HTMLInputElement).value))}
+                                            class="flex-grow accent-indigo-600 h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <button
+                                            type="button"
+                                            class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition cursor-pointer text-xs font-bold"
+                                            onclick={() => handleScaleYChange(+(editorScaleY + 0.05).toFixed(2))}
+                                            aria-label="Tambah tinggi"
+                                        >
+                                            <i class="ti ti-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {/if}
+
+                            <!-- Fit / Stretch / Fill Helper Buttons -->
+                            <div class="grid grid-cols-3 gap-1.5 pt-1">
+                                <button
+                                    type="button"
+                                    onclick={stretchWidthToFill}
+                                    class="py-1.5 px-2 text-[10px] font-bold rounded-xl border border-slate-200 hover:border-blue-400 text-slate-700 bg-white hover:bg-blue-50 transition text-center cursor-pointer flex items-center justify-center gap-1"
+                                    title="Lebarkan gambar memenuhi frame kiri-kanan"
+                                >
+                                    <i class="ti ti-arrows-maximize text-blue-600"></i>
+                                    Lebarkan ↔
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={stretchFullToFill}
+                                    class="py-1.5 px-2 text-[10px] font-bold rounded-xl border border-slate-200 hover:border-blue-400 text-slate-700 bg-white hover:bg-blue-50 transition text-center cursor-pointer flex items-center justify-center gap-1"
+                                    title="Tarik gambar memenuhi 100% frame (Full Stretch)"
+                                >
+                                    <i class="ti ti-transform text-blue-600"></i>
+                                    Stretch Full ⤢
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={fitImage}
+                                    class="py-1.5 px-2 text-[10px] font-bold rounded-xl border border-slate-200 hover:border-slate-300 text-slate-600 bg-white hover:bg-slate-50 transition text-center cursor-pointer"
+                                >
+                                    Proporsional
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Rotation Controls -->
+                        <div class="space-y-2">
+                            <span class="text-xs font-bold text-slate-700 block">Putar Gambar (Rotasi)</span>
+                            <div class="grid grid-cols-4 gap-2">
+                                {#each [0, 90, 180, 270] as deg}
+                                    <button
+                                        type="button"
+                                        class="py-2 px-3 text-xs font-bold rounded-xl border transition-all text-center cursor-pointer {editorRotation === deg
+                                            ? 'border-brand-teal bg-brand-teal/5 text-brand-teal'
+                                            : 'border-slate-100 hover:border-slate-200 text-slate-600 bg-white'}"
+                                        onclick={() => (editorRotation = deg)}
+                                    >
+                                        {deg}°
+                                    </button>
+                                {/each}
+                            </div>
+                        </div>
+
+                        <!-- HD Mode / Quality Enhancement Controls -->
+                        <div class="p-4 bg-gradient-to-br from-indigo-50/50 to-brand-teal/5 rounded-2xl border border-slate-100 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                        <i class="ti ti-sparkles text-indigo-500"></i>
+                                        Tingkatkan Kualitas (HD Mode)
+                                    </span>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 font-medium">
+                                        Kurangi blur dan pertajam detail gambar secara otomatis
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onclick={enhanceToHD}
+                                    class="px-2.5 py-1.5 text-[10px] font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm hover:shadow transition flex items-center gap-1 shrink-0 cursor-pointer"
+                                >
+                                    <i class="ti ti-wand text-xs"></i>
+                                    Auto HD
+                                </button>
+                            </div>
+
+                            <div class="space-y-2 pt-1">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-600">Ketajaman (Sharpening)</span>
+                                    <span class="text-[10px] font-bold text-indigo-600">{Math.round(editorSharpen * 100)}%</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        class="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition text-xs cursor-pointer"
+                                        onclick={() => (editorSharpen = Math.max(0, +(editorSharpen - 0.1).toFixed(1)))}
+                                        aria-label="Kurangi ketajaman"
+                                    >
+                                        <i class="ti ti-minus"></i>
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.05"
+                                        bind:value={editorSharpen}
+                                        class="flex-grow accent-indigo-600 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition text-xs cursor-pointer"
+                                        onclick={() => (editorSharpen = Math.min(1, +(editorSharpen + 0.1).toFixed(1)))}
+                                        aria-label="Tambah ketajaman"
+                                    >
+                                        <i class="ti ti-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Background Removal Controls -->
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-xs font-bold text-slate-700 block">Hapus Background Putih</span>
+                                    <p class="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                        Membuat latar belakang putih/terang menjadi transparan
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" bind:checked={editorRemoveBg} class="sr-only peer" />
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            {#if editorRemoveBg}
+                                <div class="space-y-2 pt-2" transition:slide>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[10px] font-bold text-slate-600">Sensitivitas Warna</span>
+                                        <span class="text-[10px] font-bold text-slate-500 font-mono">{editorTolerance}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="5"
+                                        max="150"
+                                        step="5"
+                                        bind:value={editorTolerance}
+                                        class="w-full accent-brand-teal h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                    <p class="text-[9px] text-amber-600 font-bold leading-normal">
+                                        *Naikkan jika background putih tidak terhapus sempurna. Turunkan jika gambar utama ikut terhapus.
+                                    </p>
+                                </div>
+                            {/if}
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0 gap-3">
+                <button
+                    type="button"
+                    onclick={onClose}
+                    class="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 font-bold text-slate-600 transition cursor-pointer text-xs"
+                >
+                    Batal
+                </button>
+                <button
+                    type="button"
+                    onclick={handleSave}
+                    class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold transition shadow-lg shadow-blue-500/25 flex items-center gap-2 cursor-pointer text-xs"
+                >
+                    <i class="ti ti-check text-base"></i>
+                    Terapkan & Simpan Gambar
+                </button>
             </div>
         </div>
     </div>
 {/if}
+
+<style>
+    .checkerboard {
+        background-color: #f8fafc;
+        background-image:
+            linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+            linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+            linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+        background-size: 16px 16px;
+        background-position:
+            0 0,
+            0 8px,
+            8px -8px,
+            -8px 0px;
+    }
+</style>

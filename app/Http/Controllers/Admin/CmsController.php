@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -76,7 +77,7 @@ class CmsController extends Controller
                     'image' => $imagePath,
                     'alt' => $banner['alt'] ?? '',
                     'link' => $banner['link'] ?? '#',
-                    'fit' => $banner['fit'] ?? 'contain',
+                    'fit' => $banner['fit'] ?? 'cover',
                 ];
             }
         }
@@ -127,7 +128,7 @@ class CmsController extends Controller
                 'alt' => $middleInput['alt'] ?? '',
                 'link' => $middleInput['link'] ?? '#',
                 'is_active' => filter_var($middleInput['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
-                'fit' => $middleInput['fit'] ?? 'contain',
+                'fit' => $middleInput['fit'] ?? 'cover',
             ];
 
             Setting::updateOrCreate(
@@ -160,6 +161,8 @@ class CmsController extends Controller
                 ['value' => json_encode($popupBanner)]
             );
         }
+
+        Cache::forget('storefront_home_settings');
 
         return redirect()->back()->with('success', 'Banner berhasil diperbarui.');
     }

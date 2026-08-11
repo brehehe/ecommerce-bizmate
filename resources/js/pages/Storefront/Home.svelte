@@ -715,14 +715,48 @@
 ═══════════════════════════════════════════════════ -->
     <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
-            <div class="flex gap-2.5 lg:gap-3 items-stretch">
-                <!-- Main slider (left, 2/3 width) -->
+            <div class="flex gap-2.5 lg:gap-3 items-start">
+                <!-- ── MOBILE: Full natural image, no cropping ── -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="relative flex-[2] rounded-none sm:rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 aspect-[2/1] sm:aspect-[2.35/1] lg:aspect-[2.5/1] max-h-[360px]"
+                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer"
+                >
+                    {#each heroBanners as banner, i}
+                        <button
+                            onclick={(e) => handleBannerClick(banner, e)}
+                            class="w-full text-left cursor-pointer block {i === activeHero ? 'block' : 'hidden'}"
+                        >
+                            <img
+                                src={banner.image}
+                                alt={banner.alt}
+                                class="w-full h-auto block"
+                            />
+                        </button>
+                    {/each}
+                    <!-- Dots (mobile) -->
+                    {#if heroBanners.length > 1}
+                        <div class="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                            {#each heroBanners as _, i}
+                                <button
+                                    aria-label="Go to slide {i + 1}"
+                                    onclick={() => goHero(i)}
+                                    class="rounded-full transition-all duration-300 {activeHero === i ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/50'}"
+                                ></button>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+
+                <!-- ── DESKTOP: Fixed aspect ratio crossfade slider ── -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                    role="presentation"
+                    ontouchstart={handleTouchStart}
+                    ontouchend={handleTouchEnd}
+                    class="hidden sm:block relative flex-1 min-w-0 rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 sm:aspect-[2.35/1] lg:aspect-[2.5/1] max-h-[360px]"
                 >
                     {#each heroBanners as banner, i}
                         <button
@@ -732,18 +766,16 @@
                                 ? 'opacity-100 z-10 pointer-events-auto'
                                 : 'opacity-0 z-0 pointer-events-none'} text-left cursor-pointer overflow-hidden"
                         >
-                            <!-- Ambient blur background for non-standard image aspect ratios -->
                             <img
                                 src={banner.image}
                                 alt=""
                                 class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
                                 aria-hidden="true"
                             />
-                            <!-- Main Banner Image (Full uncropped original image display) -->
                             <img
                                 src={banner.image}
                                 alt={banner.alt}
-                                class="absolute inset-0 z-10 w-full h-full {banner.fit === 'cover' ? 'object-cover' : 'object-contain'} object-center block"
+                                class="absolute inset-0 z-10 w-full h-full object-cover object-center block"
                             />
                         </button>
                     {/each}
@@ -770,9 +802,7 @@
                     </button>
 
                     <!-- Dots -->
-                    <div
-                        class="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex gap-1.5"
-                    >
+                    <div class="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
                         {#each heroBanners as _, i}
                             <button
                                 aria-label="Go to slide {i + 1}"
@@ -787,24 +817,35 @@
                     </div>
                 </div>
 
-                <!-- Side banners (right, 1/3 width) — hidden on mobile -->
-                <div class="hidden lg:flex flex-1 flex-col gap-2.5 min-w-0">
+                <!-- Side banners (right, fixed square) — hidden on mobile -->
+                <div class="hidden w-[300px] aspect-square shrink-0 self-start flex-col gap-2.5 overflow-hidden rounded-2xl">
                     {#each sideBanners as banner}
                         <button
                             onclick={(e) => handleBannerClick(banner, e)}
-                            class="rounded-2xl overflow-hidden block bg-slate-100 w-full text-left cursor-pointer flex-1 relative group/side"
+                            class="overflow-hidden block bg-slate-100 w-full text-left cursor-pointer relative group/side flex-1"
                         >
-                            <img
-                                src={banner.image}
-                                alt=""
-                                class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
-                                aria-hidden="true"
-                            />
-                            <img
-                                src={banner.image}
-                                alt={banner.alt}
-                                class="absolute inset-0 z-10 w-full h-full {banner.fit === 'cover' ? 'object-cover' : 'object-contain'} block group-hover/side:scale-105 transition duration-300 object-center"
-                            />
+                            {#if banner.fit === 'contain'}
+                                <!-- Ambient blurred background (always fills box) -->
+                                <img
+                                    src={banner.image}
+                                    alt=""
+                                    class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
+                                    aria-hidden="true"
+                                />
+                                <!-- Main image: shown fully without crop, centered -->
+                                <img
+                                    src={banner.image}
+                                    alt={banner.alt}
+                                    class="absolute inset-0 z-10 w-full h-full object-contain block group-hover/side:scale-105 transition duration-300"
+                                />
+                            {:else}
+                                <!-- Cover mode: fills entire box, may crop edges -->
+                                <img
+                                    src={banner.image}
+                                    alt={banner.alt}
+                                    class="absolute inset-0 z-10 w-full h-full object-cover block group-hover/side:scale-105 transition duration-300 object-center"
+                                />
+                            {/if}
                         </button>
                     {/each}
                 </div>
@@ -1478,26 +1519,19 @@
     {#if middleWide && middleWide.image}
         <section class="px-3 sm:px-5 lg:px-8 mt-2.5 mb-1">
             <div
-                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition bg-slate-100 relative aspect-[2.5/1] sm:aspect-[3.6/1] lg:aspect-[4.5/1] max-h-[500px]"
+                class="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-sm hover:shadow transition relative max-h-[500px]"
             >
                 <button
                     onclick={(e) => handleBannerClick(middleWide, e)}
-                    class="block w-full h-full text-left cursor-pointer relative overflow-hidden"
+                    class="block w-full text-left cursor-pointer relative overflow-hidden rounded-2xl"
                 >
-                    <!-- Ambient blur background for non-standard image aspect ratios -->
-                    <img
-                        src={middleWide.image}
-                        alt=""
-                        class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
-                        aria-hidden="true"
-                    />
-                    <!-- Main Middle Wide Banner Image (Max height 500px, responsive aspect ratio) -->
+                    <!-- Main Middle Wide Banner Image (100% full width, natural responsive height) -->
                     <img
                         src={middleWide.image}
                         alt={middleWide.alt}
                         loading="lazy"
                         decoding="async"
-                        class="relative z-10 block w-full h-full {middleWide.fit === 'cover' ? 'object-cover' : 'object-contain'} object-center hover:opacity-95 transition mx-auto"
+                        class="relative z-10 block w-full h-auto max-h-[500px] object-cover object-center hover:opacity-95 transition rounded-2xl mx-auto"
                     />
                 </button>
             </div>
