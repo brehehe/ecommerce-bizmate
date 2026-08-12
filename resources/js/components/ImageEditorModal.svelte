@@ -49,16 +49,15 @@
     const presets = $derived.by(() => {
         if (bannerType === 'hero') {
             return [
-                { w: 1500, h: 500, label: '1500 × 500 (Ideal 3:1)' },
-                { w: 1420, h: 560, label: '1420 × 560 (Alt Medium)' },
-                { w: 1200, h: 480, label: '1200 × 480 (Alt Kompak)' },
-                { w: 1680, h: 720, label: '1680 × 720 (21:9)' },
+                { w: 1750, h: 500, label: '1750 × 500 (Ideal 3.5:1)' },
+                { w: 1500, h: 428, label: '1500 × 428 (Rasio 3.5:1)' },
+                { w: 1400, h: 400, label: '1400 × 400 (Alt Kompak)' },
             ];
         } else if (bannerType === 'hero_mobile') {
             return [
-                { w: 1500, h: 600, label: '1500 × 600 (Ideal Mobile 2.5:1)' },
-                { w: 1200, h: 480, label: '1200 × 480 (Alt Medium)' },
-                { w: 900, h: 360, label: '900 × 360 (Alt Kompak)' },
+                { w: 1400, h: 400, label: '1400 × 400 (Ideal Mobile 3.5:1)' },
+                { w: 1750, h: 500, label: '1750 × 500 (Rasio 3.5:1)' },
+                { w: 1050, h: 300, label: '1050 × 300 (Alt Kompak)' },
             ];
         } else if (bannerType === 'side') {
             return [
@@ -109,11 +108,11 @@
 
             // Set initial dimensions according to bannerType defaults
             if (bannerType === 'hero') {
-                editorWidth = 1500;
+                editorWidth = 1750;
                 editorHeight = 500;
             } else if (bannerType === 'hero_mobile') {
-                editorWidth = 1500;
-                editorHeight = 600;
+                editorWidth = 1400;
+                editorHeight = 400;
             } else if (bannerType === 'side') {
                 editorWidth = 750;
                 editorHeight = 300;
@@ -731,8 +730,8 @@
                                 <div class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
                                     <i class="ti ti-device-desktop text-blue-500 text-sm shrink-0"></i>
                                     <div>
-                                        <span class="text-xs font-black text-blue-700">Ukuran Output Terkunci: 1500 × 500 px</span>
-                                        <p class="text-[10px] text-blue-400 font-medium mt-0.5">Desktop · Rasio 3:1 · Ukuran ideal hero banner</p>
+                                        <span class="text-xs font-black text-blue-700">Ukuran Output Terkunci: 1750 × 500 px</span>
+                                        <p class="text-[10px] text-blue-400 font-medium mt-0.5">Desktop · Rasio 3.5:1 · Lebar sejajar header</p>
                                     </div>
                                 </div>
                             {:else if bannerType === 'hero_mobile'}
@@ -740,8 +739,8 @@
                                 <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
                                     <i class="ti ti-device-mobile text-emerald-500 text-sm shrink-0"></i>
                                     <div>
-                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1500 × 600 px</span>
-                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 2.5:1 · Ukuran ideal mobile banner</p>
+                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1400 × 400 px</span>
+                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 3.5:1 (Sama dengan Desktop 3.5:1)</p>
                                     </div>
                                 </div>
                             {:else if bannerType === 'middle_wide'}
