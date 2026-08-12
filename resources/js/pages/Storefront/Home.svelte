@@ -725,7 +725,7 @@
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer aspect-2/1"
+                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer aspect-[15/4]"
                 >
                     {#each heroBanners as banner, i}
                         <button
@@ -733,7 +733,7 @@
                             class="w-full h-full text-left cursor-pointer {i === activeHero ? 'block' : 'hidden'}"
                         >
                             <img
-                                src={banner.image}
+                                src={banner.mobile_image || banner.image}
                                 alt={banner.alt}
                                 fetchpriority={i === 0 ? 'high' : 'low'}
                                 loading={i === 0 ? 'eager' : 'lazy'}
@@ -763,7 +763,7 @@
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="hidden sm:block relative flex-1 min-w-0 rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 sm:aspect-[2.35/1] lg:aspect-[2.5/1] max-h-[360px]"
+                    class="hidden sm:block relative flex-1 min-w-0 rounded-2xl overflow-hidden w-full bg-slate-100 group cursor-pointer shrink-0 aspect-[15/4]"
                 >
                     {#each heroBanners as banner, i}
                         <button
@@ -787,7 +787,7 @@
                                 fetchpriority={i === 0 ? 'high' : 'low'}
                                 loading={i === 0 ? 'eager' : 'lazy'}
                                 decoding={i === 0 ? 'sync' : 'async'}
-                                class="absolute inset-0 z-10 w-full h-full object-cover object-center block"
+                                class="absolute inset-0 z-10 w-full h-full object-contain object-center block"
                             />
                         </button>
                     {/each}

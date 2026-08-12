@@ -11,7 +11,7 @@
     } = $props<{
         isOpen: boolean;
         imageSrc: string;
-        bannerType?: 'hero' | 'side' | 'middle_wide' | 'popup' | 'general';
+        bannerType?: 'hero' | 'hero_mobile' | 'side' | 'middle_wide' | 'popup' | 'general';
         onSave: (file: File, previewUrl: string) => void;
         onClose: () => void;
     }>();
@@ -20,7 +20,7 @@
     let editorCanvas = $state<HTMLCanvasElement | null>(null);
     let editorLoadedImage = $state<HTMLImageElement | null>(null);
     let editorWidth = $state(1500);
-    let editorHeight = $state(600);
+    let editorHeight = $state(400);
     let lockAspectRatio = $state(true);
 
     // Independent Scale Controls (Lebar X & Tinggi Y untuk Perlebaran Bebas Gambar)
@@ -41,14 +41,24 @@
 
     let fileInputEl = $state<HTMLInputElement>();
 
+    // Crop Confirmation State
+    let cropConfirmPending = $state(false);
+    let pendingCropData = $state<{ srcX: number; srcY: number; srcW: number; srcH: number } | null>(null);
+
     // Dynamic preset sizes based on bannerType
     const presets = $derived.by(() => {
         if (bannerType === 'hero') {
             return [
-                { w: 1500, h: 600, label: '1500 × 600 (Ideal 2.5:1)' },
+                { w: 1500, h: 400, label: '1500 × 400 (Ideal 15:4)' },
                 { w: 1420, h: 560, label: '1420 × 560 (Alt Medium)' },
                 { w: 1200, h: 480, label: '1200 × 480 (Alt Kompak)' },
                 { w: 1680, h: 720, label: '1680 × 720 (21:9)' },
+            ];
+        } else if (bannerType === 'hero_mobile') {
+            return [
+                { w: 1500, h: 400, label: '1500 × 400 (Ideal Mobile 15:4)' },
+                { w: 1200, h: 320, label: '1200 × 320 (Alt Medium)' },
+                { w: 900, h: 240, label: '900 × 240 (Alt Kompak)' },
             ];
         } else if (bannerType === 'side') {
             return [
@@ -59,7 +69,7 @@
             ];
         } else if (bannerType === 'middle_wide') {
             return [
-                { w: 1800, h: 500, label: '1800 × 500 (Ideal Maks 500px)' },
+                { w: 1800, h: 600, label: '1800 × 600 (Ideal)' },
                 { w: 1440, h: 400, label: '1440 × 400 (Alt Medium)' },
                 { w: 1200, h: 330, label: '1200 × 330 (Alt Kompak)' },
                 { w: 1800, h: 400, label: '1800 × 400 (Lebar 4.5:1)' },
@@ -100,13 +110,16 @@
             // Set initial dimensions according to bannerType defaults
             if (bannerType === 'hero') {
                 editorWidth = 1500;
-                editorHeight = 600;
+                editorHeight = 400;
+            } else if (bannerType === 'hero_mobile') {
+                editorWidth = 1500;
+                editorHeight = 400;
             } else if (bannerType === 'side') {
                 editorWidth = 750;
                 editorHeight = 300;
             } else if (bannerType === 'middle_wide') {
                 editorWidth = 1800;
-                editorHeight = 500;
+                editorHeight = 600;
             } else if (bannerType === 'popup') {
                 editorWidth = 800;
                 editorHeight = 1000;
@@ -311,8 +324,19 @@
         const srcW = Math.round(cropBox.w * scaleX);
         const srcH = Math.round(cropBox.h * scaleY);
 
+        if (srcW < 1 || srcH < 1) return;
+
+        // Show confirmation instead of immediately cropping
+        pendingCropData = { srcX, srcY, srcW, srcH };
+        cropConfirmPending = true;
+    }
+
+    function confirmCrop() {
+        if (!pendingCropData || !editorCanvas) return;
+        const { srcX, srcY, srcW, srcH } = pendingCropData;
+
         const ctx = editorCanvas.getContext('2d');
-        if (!ctx || srcW < 1 || srcH < 1) return;
+        if (!ctx) return;
 
         const croppedData = ctx.getImageData(srcX, srcY, srcW, srcH);
 
@@ -335,6 +359,15 @@
             cropBox = { x: 0, y: 0, w: 0, h: 0 };
         };
         newImg.src = tempCanvas.toDataURL();
+
+        cropConfirmPending = false;
+        pendingCropData = null;
+    }
+
+    function cancelCropConfirm() {
+        cropConfirmPending = false;
+        pendingCropData = null;
+        // Keep isCropMode active so user can re-select
     }
 
     // High Quality Bicubic Rendering Engine (Dengan Independent Scale X & Y)
@@ -570,7 +603,7 @@
 
         <!-- Modal Content -->
         <div
-            class="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all font-sans"
+            class="bg-white rounded-3xl shadow-2xl {bannerType === 'hero' ? 'max-w-5xl' : 'max-w-4xl'} w-full max-h-[92vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all font-sans"
         >
             <!-- Header -->
             <div
@@ -613,7 +646,7 @@
             </div>
 
             <!-- Body Grid (Split Left Preview & Right Controls) -->
-            <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 {bannerType === 'hero' ? 'lg:grid-cols-[1fr_360px]' : 'lg:grid-cols-2'} gap-8">
                 <!-- Left: Studio Preview Area -->
                 <div class="flex flex-col items-center justify-center bg-slate-50/50 rounded-2xl p-4 border border-slate-100 min-h-[300px]">
                     <!-- Crop Toggle Button -->
@@ -650,8 +683,8 @@
                     <div
                         class="checkerboard rounded-xl shadow-inner border {isCropMode
                             ? 'border-amber-400'
-                            : 'border-slate-200'} overflow-hidden relative select-none"
-                        style="width: min(340px, 100%); aspect-ratio: {editorWidth} / {editorHeight}; max-height: 280px;"
+                            : 'border-slate-200'} overflow-hidden relative select-none w-full"
+                        style="aspect-ratio: {editorWidth} / {editorHeight};"
                     >
                         <!-- svelte-ignore a11y_no_static_element_interactions -->
                         <canvas
@@ -691,8 +724,27 @@
                 <!-- Right: Controls Area -->
                 <div class="flex flex-col justify-between space-y-6">
                     <div class="space-y-5">
-                        <!-- Custom Width & Height Inputs -->
+                        <!-- Dimensi Output: locked badge for hero, editable for others -->
                         <div class="space-y-2">
+                            {#if bannerType === 'hero'}
+                                <!-- Locked size indicator for hero desktop banner -->
+                                <div class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                                    <i class="ti ti-device-desktop text-blue-500 text-sm shrink-0"></i>
+                                    <div>
+                                        <span class="text-xs font-black text-blue-700">Ukuran Output Terkunci: 1500 × 400 px</span>
+                                        <p class="text-[10px] text-blue-400 font-medium mt-0.5">Desktop · Rasio 15:4 · Ukuran ideal hero banner</p>
+                                    </div>
+                                </div>
+                            {:else if bannerType === 'hero_mobile'}
+                                <!-- Locked size indicator for hero mobile banner -->
+                                <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                    <i class="ti ti-device-mobile text-emerald-500 text-sm shrink-0"></i>
+                                    <div>
+                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1500 × 400 px</span>
+                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 15:4 · Ukuran ideal mobile banner</p>
+                                    </div>
+                                </div>
+                            {:else}
                             <span class="text-xs font-bold text-slate-700 block">Dimensi Output (Piksel)</span>
                             <div class="flex items-center gap-3">
                                 <!-- Width Input -->
@@ -763,6 +815,7 @@
                                     Asli (Ukuran Gambar)
                                 </button>
                             </div>
+                            {/if}
                         </div>
 
                         <!-- Scale / Zoom & Independent Stretch (Perlebaran Gambar) Controls -->
@@ -1024,6 +1077,52 @@
                     Terapkan & Simpan Gambar
                 </button>
             </div>
+
+            <!-- Crop Confirmation Overlay -->
+            {#if cropConfirmPending && pendingCropData}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div class="absolute inset-0 z-20 bg-slate-900/50 backdrop-blur-[2px] flex items-center justify-center rounded-3xl">
+                    <div class="bg-white rounded-2xl shadow-2xl border border-amber-200 p-6 mx-6 max-w-sm w-full" transition:slide>
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                                <i class="ti ti-crop text-amber-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-outfit font-black text-slate-800 text-sm">Konfirmasi Pemotongan Gambar</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5 font-medium leading-relaxed">
+                                    Gambar akan dipotong ke area yang dipilih. Tindakan ini tidak dapat dibatalkan setelah diterapkan.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mb-5 flex items-center gap-2">
+                            <i class="ti ti-ruler text-amber-500 text-sm shrink-0"></i>
+                            <span class="text-[11px] font-bold text-amber-700 font-mono">
+                                Area Crop: {pendingCropData.srcW} × {pendingCropData.srcH} px
+                            </span>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button
+                                type="button"
+                                onclick={cancelCropConfirm}
+                                class="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs transition cursor-pointer"
+                            >
+                                <i class="ti ti-arrow-back-up text-sm"></i>
+                                Pilih Ulang
+                            </button>
+                            <button
+                                type="button"
+                                onclick={confirmCrop}
+                                class="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition shadow-sm shadow-amber-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <i class="ti ti-scissors text-sm"></i>
+                                Ya, Potong Gambar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {/if}
         </div>
     </div>
 {/if}

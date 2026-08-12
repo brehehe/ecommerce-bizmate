@@ -56,6 +56,7 @@ class CmsController extends Controller
         $this->authorizeAdminOnly($request);
         $request->validate([
             'hero_files.*' => 'nullable|image|max:10240',
+            'hero_mobile_files.*' => 'nullable|image|max:10240',
             'side_files.*' => 'nullable|image|max:10240',
             'middle_wide_file' => 'nullable|image|max:10240',
             'popup_file' => 'nullable|image|max:10240',
@@ -73,8 +74,18 @@ class CmsController extends Controller
                     $imagePath = '/storage/'.$path;
                 }
 
+                $mobileImagePath = $banner['mobile_image'] ?? '';
+
+                // Handle mobile file upload for this specific hero banner index
+                if ($request->hasFile("hero_mobile_files.{$index}")) {
+                    $mobileFile = $request->file("hero_mobile_files.{$index}");
+                    $mobilePath = ImageHelper::compressAndStore($mobileFile, 'banners', 'public', 85);
+                    $mobileImagePath = '/storage/'.$mobilePath;
+                }
+
                 $heroBanners[] = [
                     'image' => $imagePath,
+                    'mobile_image' => $mobileImagePath,
                     'alt' => $banner['alt'] ?? '',
                     'link' => $banner['link'] ?? '#',
                     'fit' => $banner['fit'] ?? 'cover',
