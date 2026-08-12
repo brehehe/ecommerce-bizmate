@@ -49,7 +49,7 @@
     const presets = $derived.by(() => {
         if (bannerType === 'hero') {
             return [
-                { w: 1500, h: 400, label: '1500 × 400 (Ideal 15:4)' },
+                { w: 1500, h: 500, label: '1500 × 500 (Ideal 3:1)' },
                 { w: 1420, h: 560, label: '1420 × 560 (Alt Medium)' },
                 { w: 1200, h: 480, label: '1200 × 480 (Alt Kompak)' },
                 { w: 1680, h: 720, label: '1680 × 720 (21:9)' },
@@ -110,7 +110,7 @@
             // Set initial dimensions according to bannerType defaults
             if (bannerType === 'hero') {
                 editorWidth = 1500;
-                editorHeight = 400;
+                editorHeight = 500;
             } else if (bannerType === 'hero_mobile') {
                 editorWidth = 1500;
                 editorHeight = 600;
@@ -731,8 +731,8 @@
                                 <div class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-100 rounded-xl">
                                     <i class="ti ti-device-desktop text-blue-500 text-sm shrink-0"></i>
                                     <div>
-                                        <span class="text-xs font-black text-blue-700">Ukuran Output Terkunci: 1500 × 400 px</span>
-                                        <p class="text-[10px] text-blue-400 font-medium mt-0.5">Desktop · Rasio 15:4 · Ukuran ideal hero banner</p>
+                                        <span class="text-xs font-black text-blue-700">Ukuran Output Terkunci: 1500 × 500 px</span>
+                                        <p class="text-[10px] text-blue-400 font-medium mt-0.5">Desktop · Rasio 3:1 · Ukuran ideal hero banner</p>
                                     </div>
                                 </div>
                             {:else if bannerType === 'hero_mobile'}

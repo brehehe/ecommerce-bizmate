@@ -483,13 +483,13 @@
                                 >
                                 <span
                                     class="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200/80 px-1.5 py-0.5 rounded"
-                                    >Rasio 2.5 : 1</span
+                                    >Rasio 3 : 1</span
                                 >
                             </div>
                             <div
                                 class="text-sm font-black text-slate-800 font-outfit"
                             >
-                                1500 × 400 px
+                                1500 × 500 px
                             </div>
                             <p class="text-[11px] text-slate-500 leading-snug">
                                 Alt: 1420 × 560 px / 1200 × 480 px
@@ -702,11 +702,11 @@
                                                     >
                                                         <i
                                                             class="ti ti-device-desktop text-[10px]"
-                                                        ></i> Desktop (1500×400)
+                                                        ></i> Desktop (1500×500)
                                                     </p>
                                                     {#if banner.image}
                                                         <div
-                                                            class="relative rounded-xl overflow-hidden aspect-[15/4] border border-slate-200 shadow-sm bg-white group/preview"
+                                                            class="relative rounded-xl overflow-hidden aspect-[3/1] border border-slate-200 shadow-sm bg-white group/preview"
                                                         >
                                                             <img
                                                                 src={banner.image}
@@ -754,7 +754,7 @@
                                                         </button>
                                                     {:else}
                                                         <label
-                                                            class="rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white aspect-[15/4] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-blue-50/30 py-3"
+                                                            class="rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white aspect-[3/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-blue-50/30 py-3"
                                                         >
                                                             <input
                                                                 type="file"
@@ -772,7 +772,7 @@
                                                             <span
                                                                 class="text-[10px] font-bold text-slate-400 group-hover/drop:text-blue-500"
                                                                 >Upload Desktop
-                                                                (1500×400)</span
+                                                                (1500×500)</span
                                                             >
                                                         </label>
                                                     {/if}
