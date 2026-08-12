@@ -1266,8 +1266,9 @@
         if (isNaN(val)) {
             return;
         }
-        if (!currentIsUnlimited && val > currentStock) {
+        if (!currentIsUnlimited && currentStock > 0 && val > currentStock) {
             qty = currentStock;
+            target.value = String(currentStock);
         } else {
             qty = val;
         }
@@ -1277,10 +1278,13 @@
         let val = parseInt(target.value);
         if (isNaN(val) || val < currentMinPurchase) {
             qty = currentMinPurchase;
-        } else if (!currentIsUnlimited && val > currentStock) {
+            target.value = String(currentMinPurchase);
+        } else if (!currentIsUnlimited && currentStock > 0 && val > currentStock) {
             qty = currentStock;
+            target.value = String(currentStock);
         } else {
             qty = val;
+            target.value = String(val);
         }
     }
 
@@ -2349,11 +2353,21 @@
                 <div class="flex flex-col gap-0 divide-y divide-slate-100">
                     <!-- Header: name + rating/terjual -->
                     <div class="pb-4 flex flex-col">
-                        <h1
-                            class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight"
-                        >
-                            {product.name}
-                        </h1>
+                        <div class="flex items-start justify-between gap-3">
+                            <h1
+                                class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight"
+                            >
+                                {product.name}
+                            </h1>
+                            <button
+                                onclick={shareProduct}
+                                class="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer shrink-0 shadow-2xs active:scale-95"
+                                title="Bagikan Produk"
+                            >
+                                <i class="ti ti-share text-base text-slate-500"></i>
+                                <span>Bagikan</span>
+                            </button>
+                        </div>
                         <!-- Rating / terjual row -->
                         <div
                             class="flex items-center gap-3 text-xs text-slate-400 flex-wrap mt-1.5"
@@ -3054,48 +3068,50 @@
                             {/each}
                         {/if}
 
-                        <!-- ── QUANTITY ────────────────────────────── -->
+                        <!-- ── STOK & KUANTITAS ────────────────────────────── -->
                         <div class="py-4 flex items-center gap-5">
                             <span
                                 class="text-sm text-slate-500 w-28 shrink-0 font-medium"
-                                >Kuantitas</span
+                                >{isSellerEnabled ? 'Stok Produk' : 'Kuantitas'}</span
                             >
                             <div class="flex items-center gap-3 flex-wrap">
-                                <!-- Stepper -->
-                                <div
-                                    class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white"
-                                >
-                                    <button
-                                        aria-label="Decrease quantity"
-                                        onclick={decQty}
-                                        disabled={qty <= currentMinPurchase}
-                                        class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                <!-- Stepper (Hidden when IS_SELLER=true) -->
+                                {#if !isSellerEnabled}
+                                    <div
+                                        class="flex items-center border border-slate-300 rounded-lg overflow-hidden bg-white"
                                     >
-                                        <i class="ti ti-minus text-sm"></i>
-                                    </button>
-                                    <input
-                                        type="number"
-                                        value={qty}
-                                        min={currentMinPurchase}
-                                        max={currentIsUnlimited
-                                            ? undefined
-                                            : currentStock}
-                                        class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        oninput={handleQtyInput}
-                                        onblur={handleQtyBlur}
-                                    />
-                                    <button
-                                        aria-label="Increase quantity"
-                                        onclick={incQty}
-                                        disabled={!currentIsUnlimited &&
-                                            qty >= currentStock}
-                                        class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
-                                    >
-                                        <i class="ti ti-plus text-sm"></i>
-                                    </button>
-                                </div>
+                                        <button
+                                            aria-label="Decrease quantity"
+                                            onclick={decQty}
+                                            disabled={qty <= currentMinPurchase}
+                                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                        >
+                                            <i class="ti ti-minus text-sm"></i>
+                                        </button>
+                                        <input
+                                            type="number"
+                                            value={qty}
+                                            min={currentMinPurchase}
+                                            max={!currentIsUnlimited
+                                                ? currentStock
+                                                : undefined}
+                                            class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            oninput={handleQtyInput}
+                                            onblur={handleQtyBlur}
+                                        />
+                                        <button
+                                            aria-label="Increase quantity"
+                                            onclick={incQty}
+                                            disabled={!currentIsUnlimited &&
+                                                qty >= currentStock}
+                                            class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                        >
+                                            <i class="ti ti-plus text-sm"></i>
+                                        </button>
+                                    </div>
+                                {/if}
 
-                                <!-- Stock label -->
+                                <!-- Stock label (Always shown) -->
                                 {#if hasVariations && !fullySelected}
                                     <span class="text-xs text-slate-400"
                                         >Pilih variasi terlebih dahulu</span
@@ -3116,10 +3132,10 @@
                                     >
                                 {/if}
 
-                                {#if currentMinPurchase > 1}
+                                {#if !isSellerEnabled && currentMinPurchase > 1}
                                     <span
-                                        class="text-[11px] text-slate-400 font-semibold"
-                                        >Min. {currentMinPurchase} pcs</span
+                                        class="text-xs text-slate-400 font-medium"
+                                        >(Min. Pembelian {currentMinPurchase} pcs)</span
                                     >
                                 {/if}
                             </div>
@@ -3402,14 +3418,16 @@
                                     <span>Toko</span>
                                 </a>
                             {/if}
-                            <button
-                                type="button"
-                                onclick={openChat}
-                                class="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                            >
-                                <i class="ti ti-message text-sm"></i>
-                                <span>Chat</span>
-                            </button>
+                            {#if !isSellerEnabled}
+                                <button
+                                    type="button"
+                                    onclick={openChat}
+                                    class="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                >
+                                    <i class="ti ti-message text-sm"></i>
+                                    <span>Chat</span>
+                                </button>
+                            {/if}
                             <button
                                 type="button"
                                 onclick={openWhatsApp}
@@ -3420,6 +3438,21 @@
                                     class="ti ti-brand-whatsapp text-sm text-emerald-600"
                                 ></i>
                                 <span>WhatsApp</span>
+                            </button>
+                            <!-- Desktop Share Button -->
+                            <button
+                                type="button"
+                                onclick={() => {
+                                    if (navigator.share) {
+                                        navigator.share({
+                                            title: product.name,
+                                            url: window.location.href,
+                                        });
+                                    }
+                                }}
+                                class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-500 transition shadow-sm"
+                            >
+                                <i class="ti ti-share text-sm"></i>
                             </button>
                         </div>
                     </div>
@@ -3437,14 +3470,16 @@
                                 Toko
                             </a>
                         {/if}
-                        <button
-                            type="button"
-                            onclick={openChat}
-                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition cursor-pointer shadow-sm"
-                        >
-                            <i class="ti ti-message text-sm"></i>
-                            Chat
-                        </button>
+                        {#if !isSellerEnabled}
+                            <button
+                                type="button"
+                                onclick={openChat}
+                                class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-xl transition cursor-pointer shadow-sm"
+                            >
+                                <i class="ti ti-message text-sm"></i>
+                                Chat
+                            </button>
+                        {/if}
                         <button
                             type="button"
                             onclick={openWhatsApp}
@@ -4743,14 +4778,14 @@
                     </div>
                 {/if}
 
-                <!-- Quantity Stepper -->
+                <!-- Stock Info & Quantity Stepper -->
                 <div
                     class="py-3 flex flex-col gap-2 border-t border-slate-100 mt-2 shrink-0"
                 >
                     <div class="flex items-center justify-between">
                         <div class="flex flex-col gap-0.5">
                             <span class="text-sm font-bold text-slate-700"
-                                >Jumlah</span
+                                >{isSellerEnabled ? 'Stok Produk' : 'Jumlah'}</span
                             >
                             <div class="flex items-center gap-1.5">
                                 {#if hasVariations && !fullySelected}
@@ -4773,7 +4808,7 @@
                                         >HABIS</span
                                     >
                                 {/if}
-                                {#if currentMinPurchase > 1}
+                                {#if !isSellerEnabled && currentMinPurchase > 1}
                                     <span
                                         class="text-[10px] text-slate-400 font-semibold"
                                         >(Min. {currentMinPurchase} pcs)</span
@@ -4781,41 +4816,44 @@
                                 {/if}
                             </div>
                         </div>
-                        <div
-                            class="flex items-center border border-slate-300 rounded-lg overflow-hidden shrink-0 bg-white"
-                        >
-                            <button
-                                type="button"
-                                aria-label="Kurangi jumlah"
-                                onclick={decQty}
-                                disabled={qty <= currentMinPurchase}
-                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                        {#if !isSellerEnabled}
+                            <div
+                                class="flex items-center border border-slate-300 rounded-lg overflow-hidden shrink-0 bg-white"
                             >
-                                <i class="ti ti-minus text-sm"></i>
-                            </button>
-                            <input
-                                type="number"
-                                value={qty}
-                                min={currentMinPurchase}
-                                max={currentIsUnlimited
-                                    ? undefined
-                                    : currentStock}
-                                class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                oninput={handleQtyInput}
-                                onblur={handleQtyBlur}
-                            />
-                            <button
-                                type="button"
-                                aria-label="Tambah jumlah"
-                                onclick={incQty}
-                                disabled={!currentIsUnlimited &&
-                                    qty >= currentStock}
-                                class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
-                            >
-                                <i class="ti ti-plus text-sm"></i>
-                            </button>
-                        </div>
+                                <button
+                                    type="button"
+                                    aria-label="Kurangi jumlah"
+                                    onclick={decQty}
+                                    disabled={qty <= currentMinPurchase}
+                                    class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                >
+                                    <i class="ti ti-minus text-sm"></i>
+                                </button>
+                                <input
+                                    type="number"
+                                    value={qty}
+                                    min={currentMinPurchase}
+                                    max={currentIsUnlimited
+                                        ? undefined
+                                        : currentStock}
+                                    class="w-12 text-center text-sm font-black text-slate-800 tabular-nums border-none outline-none focus:ring-0 focus:outline-none p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    oninput={handleQtyInput}
+                                    onblur={handleQtyBlur}
+                                />
+                                <button
+                                    type="button"
+                                    aria-label="Tambah jumlah"
+                                    onclick={incQty}
+                                    disabled={!currentIsUnlimited &&
+                                        qty >= currentStock}
+                                    class="w-9 h-9 flex items-center justify-center hover:bg-slate-100 transition text-slate-600 disabled:opacity-30"
+                                >
+                                    <i class="ti ti-plus text-sm"></i>
+                                </button>
+                            </div>
+                        {/if}
                     </div>
+                </div>
 
                     <!-- Total Price Live Calculation (quantity x harga = total) -->
                     {#if !hasVariations || fullySelected}
@@ -4846,7 +4884,6 @@
                         </div>
                     {/if}
                 </div>
-            </div>
 
             <!-- Sticky Bottom CTA Button inside Drawer -->
             <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
