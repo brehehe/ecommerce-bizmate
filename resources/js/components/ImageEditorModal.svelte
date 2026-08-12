@@ -56,9 +56,9 @@
             ];
         } else if (bannerType === 'hero_mobile') {
             return [
-                { w: 1500, h: 400, label: '1500 × 400 (Ideal Mobile 15:4)' },
-                { w: 1200, h: 320, label: '1200 × 320 (Alt Medium)' },
-                { w: 900, h: 240, label: '900 × 240 (Alt Kompak)' },
+                { w: 1500, h: 600, label: '1500 × 600 (Ideal Mobile 2.5:1)' },
+                { w: 1200, h: 480, label: '1200 × 480 (Alt Medium)' },
+                { w: 900, h: 360, label: '900 × 360 (Alt Kompak)' },
             ];
         } else if (bannerType === 'side') {
             return [
@@ -113,7 +113,7 @@
                 editorHeight = 400;
             } else if (bannerType === 'hero_mobile') {
                 editorWidth = 1500;
-                editorHeight = 400;
+                editorHeight = 600;
             } else if (bannerType === 'side') {
                 editorWidth = 750;
                 editorHeight = 300;
@@ -603,7 +603,7 @@
 
         <!-- Modal Content -->
         <div
-            class="bg-white rounded-3xl shadow-2xl {bannerType === 'hero' ? 'max-w-5xl' : 'max-w-4xl'} w-full max-h-[92vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all font-sans"
+            class="bg-white rounded-3xl shadow-2xl {bannerType === 'hero' || bannerType === 'hero_mobile' || bannerType === 'middle_wide' ? 'max-w-5xl' : 'max-w-4xl'} w-full max-h-[92vh] flex flex-col overflow-hidden relative z-10 border border-slate-100 transition-all font-sans"
         >
             <!-- Header -->
             <div
@@ -646,7 +646,7 @@
             </div>
 
             <!-- Body Grid (Split Left Preview & Right Controls) -->
-            <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 {bannerType === 'hero' ? 'lg:grid-cols-[1fr_360px]' : 'lg:grid-cols-2'} gap-8">
+            <div class="p-6 overflow-y-auto flex-grow grid grid-cols-1 {bannerType === 'hero' || bannerType === 'hero_mobile' || bannerType === 'middle_wide' ? 'lg:grid-cols-[1fr_360px]' : 'lg:grid-cols-2'} gap-8">
                 <!-- Left: Studio Preview Area -->
                 <div class="flex flex-col items-center justify-center bg-slate-50/50 rounded-2xl p-4 border border-slate-100 min-h-[300px]">
                     <!-- Crop Toggle Button -->
@@ -740,8 +740,17 @@
                                 <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
                                     <i class="ti ti-device-mobile text-emerald-500 text-sm shrink-0"></i>
                                     <div>
-                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1500 × 400 px</span>
-                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 15:4 · Ukuran ideal mobile banner</p>
+                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1500 × 600 px</span>
+                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 2.5:1 · Ukuran ideal mobile banner</p>
+                                    </div>
+                                </div>
+                            {:else if bannerType === 'middle_wide'}
+                                <!-- Locked size indicator for middle wide banner -->
+                                <div class="flex items-center gap-2 p-3 bg-purple-50 border border-purple-100 rounded-xl">
+                                    <i class="ti ti-lock text-purple-500 text-sm shrink-0"></i>
+                                    <div>
+                                        <span class="text-xs font-black text-purple-700">Ukuran Output Terkunci: 1800 × 600 px</span>
+                                        <p class="text-[10px] text-purple-400 font-medium mt-0.5">Rasio 3:1 · Ukuran ideal Banner Lebar Tengah</p>
                                     </div>
                                 </div>
                             {:else}

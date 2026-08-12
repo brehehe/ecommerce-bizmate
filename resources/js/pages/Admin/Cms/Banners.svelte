@@ -14,7 +14,7 @@
     } = $props();
 
     let showGuide = $state(true);
-    let showSideBanners = $state(true);
+    let showSideBanners = $state(false);
     let showHeroBanners = $state(true);
     let showMiddleWideBanner = $state(true);
 
@@ -26,9 +26,9 @@
     // Image Editor State
     let editorOpen = $state(false);
     let editorImageSrc = $state('');
-    let editorBannerType = $state<'hero' | 'hero_mobile' | 'side' | 'middle_wide' | 'popup'>(
-        'hero',
-    );
+    let editorBannerType = $state<
+        'hero' | 'hero_mobile' | 'side' | 'middle_wide' | 'popup'
+    >('hero');
     let editorTargetIndex = $state<number | null>(null);
 
     function openImageEditor(
@@ -47,7 +47,10 @@
         if (editorBannerType === 'hero' && editorTargetIndex !== null) {
             form.hero_files[editorTargetIndex] = file;
             form.hero_banners[editorTargetIndex].image = previewUrl;
-        } else if (editorBannerType === 'hero_mobile' && editorTargetIndex !== null) {
+        } else if (
+            editorBannerType === 'hero_mobile' &&
+            editorTargetIndex !== null
+        ) {
             form.hero_mobile_files[editorTargetIndex] = file;
             form.hero_banners[editorTargetIndex].mobile_image = previewUrl;
         } else if (editorBannerType === 'side' && editorTargetIndex !== null) {
@@ -148,7 +151,8 @@
         for (const key in form.hero_mobile_files) {
             const k = Number(key);
             if (k < index) newMobileFiles[k] = form.hero_mobile_files[k];
-            else if (k > index) newMobileFiles[k - 1] = form.hero_mobile_files[k];
+            else if (k > index)
+                newMobileFiles[k - 1] = form.hero_mobile_files[k];
         }
         form.hero_files = newFiles;
         form.hero_mobile_files = newMobileFiles;
@@ -172,8 +176,10 @@
         }
         for (const key in form.hero_mobile_files) {
             const k = Number(key);
-            if (k === index) newMobileFiles[targetIndex] = form.hero_mobile_files[k];
-            else if (k === targetIndex) newMobileFiles[index] = form.hero_mobile_files[k];
+            if (k === index)
+                newMobileFiles[targetIndex] = form.hero_mobile_files[k];
+            else if (k === targetIndex)
+                newMobileFiles[index] = form.hero_mobile_files[k];
             else newMobileFiles[k] = form.hero_mobile_files[k];
         }
         form.hero_files = newFiles;
@@ -456,7 +462,7 @@
                 {#if showGuide}
                     <div
                         transition:slide
-                        class="mt-4 pt-4 border-t border-blue-200/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+                        class="mt-4 pt-4 border-t border-blue-200/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
                     >
                         <!-- Item 1: Hero Banner -->
                         <div
@@ -486,42 +492,14 @@
                             </div> -->
                         </div>
 
-                        <!-- Item 2: Side Banners -->
-                        <div
-                            class="bg-white border border-emerald-100/80 rounded-xl p-3.5 space-y-1.5 shadow-2xs hover:border-emerald-300 transition"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span
-                                    class="text-[10px] font-black text-emerald-600 uppercase tracking-wider"
-                                    >2. Side Banners (Samping)</span
-                                >
-                                <span
-                                    class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded"
-                                    >Rasio 2.5 : 1</span
-                                >
-                            </div>
-                            <div
-                                class="text-sm font-black text-slate-800 font-outfit"
-                            >
-                                750 × 300 px
-                            </div>
-                            <p class="text-[11px] text-slate-500 leading-snug">
-                                Alt: 720 × 288 px / 600 × 240 px
-                            </p>
-                            <!-- <div class="text-[10px] text-slate-600 pt-1.5 border-t border-slate-100 flex items-start gap-1">
-                                <i class="ti ti-bulb text-amber-500 text-xs shrink-0 mt-0.5"></i>
-                                <span>Untuk Gratis Ongkir, Voucher & Kategori.</span>
-                            </div> -->
-                        </div>
-
-                        <!-- Item 3: Middle Wide Banner -->
+                        <!-- Item 2: Middle Wide Banner -->
                         <div
                             class="bg-white border border-amber-100/80 rounded-xl p-3.5 space-y-1.5 shadow-2xs hover:border-amber-300 transition"
                         >
                             <div class="flex items-center justify-between">
                                 <span
                                     class="text-[10px] font-black text-amber-600 uppercase tracking-wider"
-                                    >3. Lebar Tengah (Wide)</span
+                                    >2. Lebar Tengah (Wide)</span
                                 >
                                 <span
                                     class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded"
@@ -542,14 +520,14 @@
                             </div> -->
                         </div>
 
-                        <!-- Item 4: Popup Banner -->
+                        <!-- Item 3: Popup Banner -->
                         <div
                             class="bg-white border border-purple-100/80 rounded-xl p-3.5 space-y-1.5 shadow-2xs hover:border-purple-300 transition"
                         >
                             <div class="flex items-center justify-between">
                                 <span
                                     class="text-[10px] font-black text-purple-600 uppercase tracking-wider"
-                                    >4. Popup Promo Modal</span
+                                    >3. Popup Promo Modal</span
                                 >
                                 <span
                                     class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200/80 px-1.5 py-0.5 rounded"
@@ -616,650 +594,356 @@
                                 </button>
                                 <button
                                     type="button"
-                                    onclick={() => (showHeroBanners = !showHeroBanners)}
+                                    onclick={() =>
+                                        (showHeroBanners = !showHeroBanners)}
                                     class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition shrink-0"
-                                    title={showHeroBanners ? 'Sembunyikan' : 'Tampilkan'}
+                                    title={showHeroBanners
+                                        ? 'Sembunyikan'
+                                        : 'Tampilkan'}
                                 >
-                                    <i class="ti {showHeroBanners ? 'ti-chevron-up' : 'ti-chevron-down'} text-sm"></i>
+                                    <i
+                                        class="ti {showHeroBanners
+                                            ? 'ti-chevron-up'
+                                            : 'ti-chevron-down'} text-sm"
+                                    ></i>
                                 </button>
                             </div>
                         </div>
                         {#if showHeroBanners}
-                        <div class="p-5 space-y-4" transition:slide>
-                            {#each form.hero_banners as banner, index}
-                                <div
-                                    class="p-4 bg-slate-50 rounded-xl border border-slate-200/60 relative group"
-                                >
-                                    <button
-                                        type="button"
-                                        onclick={() => removeHeroBanner(index)}
-                                        class="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-rose-600 transition z-10 opacity-0 group-hover:opacity-100"
-                                        title="Hapus Banner"
-                                    >
-                                        <i class="ti ti-x text-[10px]"></i>
-                                    </button>
+                            <div class="p-5 space-y-4" transition:slide>
+                                {#each form.hero_banners as banner, index}
                                     <div
-                                        class="flex items-center justify-between mb-3"
+                                        class="p-4 bg-slate-50 rounded-xl border border-slate-200/60 relative group"
                                     >
-                                        <span
-                                            class="text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider font-outfit"
-                                            >Banner #{index + 1}</span
+                                        <button
+                                            type="button"
+                                            onclick={() =>
+                                                removeHeroBanner(index)}
+                                            class="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-rose-600 transition z-10 opacity-0 group-hover:opacity-100"
+                                            title="Hapus Banner"
                                         >
+                                            <i class="ti ti-x text-[10px]"></i>
+                                        </button>
                                         <div
-                                            class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm"
+                                            class="flex items-center justify-between mb-3"
                                         >
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    moveHeroBanner(index, 'up')}
-                                                disabled={index === 0}
-                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 transition flex items-center gap-1"
-                                                title="Pindahkan Ke Atas"
+                                            <span
+                                                class="text-[10px] font-black text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md uppercase tracking-wider font-outfit"
+                                                >Banner #{index + 1}</span
                                             >
-                                                <i
-                                                    class="ti ti-arrow-up text-[10px]"
-                                                ></i>
-                                                <span
-                                                    class="text-[9px] font-bold"
-                                                    >Atas</span
-                                                >
-                                            </button>
                                             <div
-                                                class="w-[1px] h-3 bg-slate-200"
-                                            ></div>
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    moveHeroBanner(
-                                                        index,
-                                                        'down',
-                                                    )}
-                                                disabled={index ===
-                                                    form.hero_banners.length -
-                                                        1}
-                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 transition flex items-center gap-1"
-                                                title="Pindahkan Ke Bawah"
+                                                class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm"
                                             >
-                                                <i
-                                                    class="ti ti-arrow-down text-[10px]"
-                                                ></i>
-                                                <span
-                                                    class="text-[9px] font-bold"
-                                                    >Bawah</span
-                                                >
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start"
-                                    >
-                                        <!-- Desktop Image -->
-                                        <div class="sm:col-span-4">
-                                            <p class="text-[9px] font-black text-blue-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i class="ti ti-device-desktop text-[10px]"></i> Desktop (1500×400)</p>
-                                            {#if banner.image}
-                                                <div
-                                                    class="relative rounded-xl overflow-hidden aspect-[16/9] border border-slate-200 shadow-sm bg-white group/preview"
-                                                >
-                                                    <img
-                                                        src={banner.image}
-                                                        alt="Preview Desktop"
-                                                        class="w-full h-full object-cover"
-                                                    />
-                                                    <label
-                                                        class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
-                                                    >
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            class="hidden"
-                                                            onchange={(e) =>
-                                                                handleHeroFileChange(
-                                                                    index,
-                                                                    e,
-                                                                )}
-                                                        />
-                                                        <i
-                                                            class="ti ti-camera text-xl"
-                                                        ></i>
-                                                        <span
-                                                            class="text-[10px] font-bold"
-                                                            >Ganti</span
-                                                        >
-                                                    </label>
-                                                </div>
                                                 <button
                                                     type="button"
                                                     onclick={() =>
-                                                        openImageEditor(
-                                                            banner.image,
-                                                            'hero',
+                                                        moveHeroBanner(
                                                             index,
+                                                            'up',
                                                         )}
-                                                    class="mt-1.5 w-full py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold rounded-lg border border-blue-200 transition flex items-center justify-center gap-1 cursor-pointer"
+                                                    disabled={index === 0}
+                                                    class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 transition flex items-center gap-1"
+                                                    title="Pindahkan Ke Atas"
                                                 >
-                                                    <i class="ti ti-photo-edit text-xs"></i>
-                                                    Edit Studio
+                                                    <i
+                                                        class="ti ti-arrow-up text-[10px]"
+                                                    ></i>
+                                                    <span
+                                                        class="text-[9px] font-bold"
+                                                        >Atas</span
+                                                    >
                                                 </button>
-                                            {:else}
-                                                <label
-                                                    class="rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white aspect-[16/9] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-blue-50/30"
-                                                >
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        class="hidden"
-                                                        onchange={(e) =>
-                                                            handleHeroFileChange(
-                                                                index,
-                                                                e,
-                                                            )}
-                                                    />
-                                                    <i
-                                                        class="ti ti-photo-up text-xl text-slate-300 group-hover/drop:text-blue-400 transition mb-1"
-                                                    ></i>
-                                                    <span
-                                                        class="text-[9px] font-bold text-slate-400 group-hover/drop:text-blue-500"
-                                                        >Upload</span
-                                                    >
-                                                </label>
-                                            {/if}
-                                            {#if uploadErrors[`hero_${index}`] || form.errors[`hero_files.${index}`]}
                                                 <div
-                                                    class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
-                                                >
-                                                    <i
-                                                        class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
-                                                    ></i>
-                                                    <span
-                                                        >{uploadErrors[
-                                                            `hero_${index}`
-                                                        ] ||
-                                                            form.errors[
-                                                                `hero_files.${index}`
-                                                            ]}</span
-                                                    >
-                                                </div>
-                                            {/if}
-                                        </div>
-
-                                        <!-- Mobile Image -->
-                                        <div class="sm:col-span-3">
-                                            <p class="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><i class="ti ti-device-mobile text-[10px]"></i> Mobile (1500×400)</p>
-                                            {#if banner.mobile_image}
-                                                <div
-                                                    class="relative rounded-xl overflow-hidden aspect-[16/9] border border-emerald-200 shadow-sm bg-white group/preview"
-                                                >
-                                                    <img
-                                                        src={banner.mobile_image}
-                                                        alt="Preview Mobile"
-                                                        class="w-full h-full object-cover"
-                                                    />
-                                                    <label
-                                                        class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
-                                                    >
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            class="hidden"
-                                                            onchange={(e) =>
-                                                                handleHeroMobileFileChange(
-                                                                    index,
-                                                                    e,
-                                                                )}
-                                                        />
-                                                        <i
-                                                            class="ti ti-camera text-xl"
-                                                        ></i>
-                                                        <span
-                                                            class="text-[10px] font-bold"
-                                                            >Ganti</span
-                                                        >
-                                                    </label>
-                                                </div>
+                                                    class="w-[1px] h-3 bg-slate-200"
+                                                ></div>
                                                 <button
                                                     type="button"
                                                     onclick={() =>
-                                                        openImageEditor(
-                                                            banner.mobile_image,
-                                                            'hero_mobile',
+                                                        moveHeroBanner(
                                                             index,
+                                                            'down',
                                                         )}
-                                                    class="mt-1.5 w-full py-1 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200 transition flex items-center justify-center gap-1 cursor-pointer"
+                                                    disabled={index ===
+                                                        form.hero_banners
+                                                            .length -
+                                                            1}
+                                                    class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded disabled:opacity-30 transition flex items-center gap-1"
+                                                    title="Pindahkan Ke Bawah"
                                                 >
-                                                    <i class="ti ti-photo-edit text-xs"></i>
-                                                    Edit Studio
-                                                </button>
-                                            {:else}
-                                                <label
-                                                    class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[16/9] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30"
-                                                >
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        class="hidden"
-                                                        onchange={(e) =>
-                                                            handleHeroMobileFileChange(
-                                                                index,
-                                                                e,
-                                                            )}
-                                                    />
                                                     <i
-                                                        class="ti ti-device-mobile text-xl text-slate-300 group-hover/drop:text-emerald-400 transition mb-1"
+                                                        class="ti ti-arrow-down text-[10px]"
                                                     ></i>
                                                     <span
-                                                        class="text-[9px] font-bold text-slate-400 group-hover/drop:text-emerald-500"
-                                                        >Upload</span
+                                                        class="text-[9px] font-bold"
+                                                        >Bawah</span
                                                     >
-                                                </label>
-                                            {/if}
-                                            {#if uploadErrors[`hero_mobile_${index}`]}
-                                                <div
-                                                    class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
-                                                >
-                                                    <i
-                                                        class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
-                                                    ></i>
-                                                    <span>{uploadErrors[`hero_mobile_${index}`]}</span>
-                                                </div>
-                                            {/if}
-                                        </div>
-                                        <div class="sm:col-span-5 space-y-3">
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                    >Alt Text</label
-                                                >
-                                                <input
-                                                    type="text"
-                                                    bind:value={banner.alt}
-                                                    placeholder="Contoh: Promo Spesial Elektronik 80%"
-                                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
-                                                />
+                                                </button>
                                             </div>
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                    >Tautan URL</label
-                                                >
-                                                <div class="relative">
-                                                    <i
-                                                        class="ti ti-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"
-                                                    ></i>
+                                        </div>
+                                        <div
+                                            class="grid grid-cols-1 sm:grid-cols-12 gap-5 items-start"
+                                        >
+                                            <!-- Left Column: Desktop & Mobile Stacked Vertically -->
+                                            <div
+                                                class="sm:col-span-6 space-y-4"
+                                            >
+                                                <!-- Desktop Image (Atas) -->
+                                                <div>
+                                                    <p
+                                                        class="text-[9px] font-black text-blue-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"
+                                                    >
+                                                        <i
+                                                            class="ti ti-device-desktop text-[10px]"
+                                                        ></i> Desktop (1500×400)
+                                                    </p>
+                                                    {#if banner.image}
+                                                        <div
+                                                            class="relative rounded-xl overflow-hidden aspect-[15/4] border border-slate-200 shadow-sm bg-white group/preview"
+                                                        >
+                                                            <img
+                                                                src={banner.image}
+                                                                alt="Preview Desktop"
+                                                                class="w-full h-full object-cover"
+                                                            />
+                                                            <label
+                                                                class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
+                                                            >
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    class="hidden"
+                                                                    onchange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        handleHeroFileChange(
+                                                                            index,
+                                                                            e,
+                                                                        )}
+                                                                />
+                                                                <i
+                                                                    class="ti ti-camera text-xl"
+                                                                ></i>
+                                                                <span
+                                                                    class="text-[10px] font-bold"
+                                                                    >Ganti</span
+                                                                >
+                                                            </label>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onclick={() =>
+                                                                openImageEditor(
+                                                                    banner.image,
+                                                                    'hero',
+                                                                    index,
+                                                                )}
+                                                            class="mt-1.5 w-full py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                                        >
+                                                            <i
+                                                                class="ti ti-photo-edit text-sm"
+                                                            ></i>
+                                                            Edit Studio Gambar Desktop
+                                                        </button>
+                                                    {:else}
+                                                        <label
+                                                            class="rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-white aspect-[15/4] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-blue-50/30 py-3"
+                                                        >
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                class="hidden"
+                                                                onchange={(e) =>
+                                                                    handleHeroFileChange(
+                                                                        index,
+                                                                        e,
+                                                                    )}
+                                                            />
+                                                            <i
+                                                                class="ti ti-photo-up text-xl text-slate-300 group-hover/drop:text-blue-400 transition mb-1"
+                                                            ></i>
+                                                            <span
+                                                                class="text-[10px] font-bold text-slate-400 group-hover/drop:text-blue-500"
+                                                                >Upload Desktop
+                                                                (1500×400)</span
+                                                            >
+                                                        </label>
+                                                    {/if}
+                                                    {#if uploadErrors[`hero_${index}`] || form.errors[`hero_files.${index}`]}
+                                                        <div
+                                                            class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
+                                                        >
+                                                            <i
+                                                                class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                                            ></i>
+                                                            <span
+                                                                >{uploadErrors[
+                                                                    `hero_${index}`
+                                                                ] ||
+                                                                    form.errors[
+                                                                        `hero_files.${index}`
+                                                                    ]}</span
+                                                            >
+                                                        </div>
+                                                    {/if}
+                                                </div>
+
+                                                <!-- Mobile Image (Bawah) -->
+                                                <div>
+                                                    <p
+                                                        class="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"
+                                                    >
+                                                        <i
+                                                            class="ti ti-device-mobile text-[10px]"
+                                                        ></i> Mobile (1500×600)
+                                                    </p>
+                                                    {#if banner.mobile_image}
+                                                        <div
+                                                            class="relative rounded-xl overflow-hidden aspect-[2.5/1] border border-emerald-200 shadow-sm bg-white group/preview"
+                                                        >
+                                                            <img
+                                                                src={banner.mobile_image}
+                                                                alt="Preview Mobile"
+                                                                class="w-full h-full object-cover"
+                                                            />
+                                                            <label
+                                                                class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
+                                                            >
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    class="hidden"
+                                                                    onchange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        handleHeroMobileFileChange(
+                                                                            index,
+                                                                            e,
+                                                                        )}
+                                                                />
+                                                                <i
+                                                                    class="ti ti-camera text-xl"
+                                                                ></i>
+                                                                <span
+                                                                    class="text-[10px] font-bold"
+                                                                    >Ganti</span
+                                                                >
+                                                            </label>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onclick={() =>
+                                                                openImageEditor(
+                                                                    banner.mobile_image,
+                                                                    'hero_mobile',
+                                                                    index,
+                                                                )}
+                                                            class="mt-1.5 w-full py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                                        >
+                                                            <i
+                                                                class="ti ti-photo-edit text-sm"
+                                                            ></i>
+                                                            Edit Studio Gambar Mobile
+                                                        </button>
+                                                    {:else}
+                                                        <label
+                                                            class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[2.5/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30 py-3"
+                                                        >
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                class="hidden"
+                                                                onchange={(e) =>
+                                                                    handleHeroMobileFileChange(
+                                                                        index,
+                                                                        e,
+                                                                    )}
+                                                            />
+                                                            <i
+                                                                class="ti ti-device-mobile text-xl text-slate-300 group-hover/drop:text-emerald-400 transition mb-1"
+                                                            ></i>
+                                                            <span
+                                                                class="text-[10px] font-bold text-slate-400 group-hover/drop:text-emerald-500"
+                                                                >Upload Mobile
+                                                                (1500×600)</span
+                                                            >
+                                                        </label>
+                                                    {/if}
+                                                    {#if uploadErrors[`hero_mobile_${index}`]}
+                                                        <div
+                                                            class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
+                                                        >
+                                                            <i
+                                                                class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                                            ></i>
+                                                            <span
+                                                                >{uploadErrors[
+                                                                    `hero_mobile_${index}`
+                                                                ]}</span
+                                                            >
+                                                        </div>
+                                                    {/if}
+                                                </div>
+                                            </div>
+
+                                            <!-- Right Column: Form Inputs -->
+                                            <div
+                                                class="sm:col-span-6 space-y-3"
+                                            >
+                                                <div>
+                                                    <label
+                                                        class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
+                                                        >Alt Text</label
+                                                    >
                                                     <input
                                                         type="text"
-                                                        bind:value={banner.link}
-                                                        placeholder="/search?category=elektronik"
-                                                        class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                                                        bind:value={banner.alt}
+                                                        placeholder="Contoh: Promo Spesial Elektronik 80%"
+                                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
                                                     />
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                    >Tampilan Gambar (Fit Mode)</label
-                                                >
-                                                <div
-                                                    class="grid grid-cols-2 gap-2"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        onclick={() =>
-                                                            (banner.fit =
-                                                                'contain')}
-                                                        class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {!banner.fit ||
-                                                        banner.fit === 'contain'
-                                                            ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs'
-                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                                                    >
-                                                        <i
-                                                            class="ti ti-aspect-ratio text-sm"
-                                                        ></i>
-                                                        Utuh (100% Asli)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onclick={() =>
-                                                            (banner.fit =
-                                                                'cover')}
-                                                        class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {banner.fit ===
-                                                        'cover'
-                                                            ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs'
-                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                                                    >
-                                                        <i
-                                                            class="ti ti-maximize text-sm"
-                                                        ></i>
-                                                        Penuh Box (Crop)
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            {/each}
-                            {#if form.hero_banners.length === 0}
-                                <div
-                                    class="py-10 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2"
-                                >
-                                    <i
-                                        class="ti ti-photo text-3xl text-slate-300"
-                                    ></i>
-                                    <p
-                                        class="text-sm font-semibold text-slate-400"
-                                    >
-                                        Belum ada banner utama
-                                    </p>
-                                    <button
-                                        onclick={addHeroBanner}
-                                        class="text-xs text-blue-500 font-bold hover:underline"
-                                        >+ Tambah sekarang</button
-                                    >
-                                </div>
-                            {/if}
-                        </div>
-                        {/if}
-                    </div>
-
-                    <!-- Side Banners -->
-                    <div
-                        class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
-                    >
-                        <div
-                            class="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-teal-50/30 flex items-center justify-between"
-                        >
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shrink-0"
-                                >
-                                    <i
-                                        class="ti ti-layout-sidebar text-white text-sm"
-                                    ></i>
-                                </div>
-                                <div>
-                                    <h3
-                                        class="font-outfit font-black text-slate-800 text-sm"
-                                    >
-                                        Side Promo Banners
-                                    </h3>
-                                    <p
-                                        class="text-[11px] text-slate-400 font-medium"
-                                    >
-                                        Landscape: 750 × 300 px (2.5:1) · Alt:
-                                        720 × 288 / 600 × 240 px
-                                        <br />
-                                        Persegi (Utuh): 600 × 600 px (1:1)
-                                    </p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onclick={addSideBanner}
-                                    class="px-3 py-1.5 bg-white hover:bg-emerald-50 text-emerald-600 text-xs font-bold rounded-xl border border-emerald-200 transition flex items-center gap-1.5 shadow-sm shrink-0"
-                                >
-                                    <i class="ti ti-plus"></i> Tambah
-                                </button>
-                                <button
-                                    type="button"
-                                    onclick={() => (showSideBanners = !showSideBanners)}
-                                    class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition shrink-0"
-                                    title={showSideBanners ? 'Sembunyikan' : 'Tampilkan'}
-                                >
-                                    <i class="ti {showSideBanners ? 'ti-chevron-up' : 'ti-chevron-down'} text-sm"></i>
-                                </button>
-                            </div>
-                        </div>
-                        {#if showSideBanners}
-                        <div class="p-5 space-y-4" transition:slide>
-                            {#each form.side_banners as banner, index}
-                                <div
-                                    class="p-4 bg-slate-50 rounded-xl border border-slate-200/60 relative group"
-                                >
-                                    <button
-                                        type="button"
-                                        onclick={() => removeSideBanner(index)}
-                                        class="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-rose-600 transition z-10 opacity-0 group-hover:opacity-100"
-                                        title="Hapus Banner"
-                                    >
-                                        <i class="ti ti-x text-[10px]"></i>
-                                    </button>
-                                    <div
-                                        class="flex items-center justify-between mb-3"
-                                    >
-                                        <span
-                                            class="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md uppercase tracking-wider font-outfit"
-                                            >Side #{index + 1}</span
-                                        >
-                                        <div
-                                            class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-sm"
-                                        >
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    moveSideBanner(index, 'up')}
-                                                disabled={index === 0}
-                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded disabled:opacity-30 transition flex items-center gap-1"
-                                                title="Pindahkan Ke Atas"
-                                            >
-                                                <i
-                                                    class="ti ti-arrow-up text-[10px]"
-                                                ></i>
-                                                <span
-                                                    class="text-[9px] font-bold"
-                                                    >Atas</span
-                                                >
-                                            </button>
-                                            <div
-                                                class="w-[1px] h-3 bg-slate-200"
-                                            ></div>
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    moveSideBanner(
-                                                        index,
-                                                        'down',
-                                                    )}
-                                                disabled={index ===
-                                                    form.side_banners.length -
-                                                        1}
-                                                class="px-1.5 py-0.5 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded disabled:opacity-30 transition flex items-center gap-1"
-                                                title="Pindahkan Ke Bawah"
-                                            >
-                                                <i
-                                                    class="ti ti-arrow-down text-[10px]"
-                                                ></i>
-                                                <span
-                                                    class="text-[9px] font-bold"
-                                                    >Bawah</span
-                                                >
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start"
-                                    >
-                                        <div class="sm:col-span-4">
-                                            {#if banner.image}
-                                                <div
-                                                    class="relative rounded-xl overflow-hidden aspect-[2.5/1] border border-slate-200 shadow-sm bg-white group/preview max-w-[140px]"
-                                                >
-                                                    <img
-                                                        src={banner.image}
-                                                        alt="Preview"
-                                                        class="w-full h-full {banner.fit === 'contain' ? 'object-contain' : 'object-cover'}"
-                                                    />
+                                                <div>
                                                     <label
-                                                        class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
+                                                        class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
+                                                        >Tautan URL</label
                                                     >
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            class="hidden"
-                                                            onchange={(e) =>
-                                                                handleSideFileChange(
-                                                                    index,
-                                                                    e,
-                                                                )}
-                                                        />
+                                                    <div class="relative">
                                                         <i
-                                                            class="ti ti-camera text-base"
+                                                            class="ti ti-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"
                                                         ></i>
-                                                        <span
-                                                            class="text-[9px] font-bold"
-                                                            >Ganti</span
-                                                        >
-                                                    </label>
+                                                        <input
+                                                            type="text"
+                                                            bind:value={
+                                                                banner.link
+                                                            }
+                                                            placeholder="/search?category=elektronik"
+                                                            class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onclick={() =>
-                                                        openImageEditor(
-                                                            banner.image,
-                                                            'side',
-                                                            index,
-                                                        )}
-                                                    class="mt-2 w-full py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-lg border border-emerald-200 transition flex items-center justify-center gap-1 shadow-2xs max-w-[100px] cursor-pointer"
-                                                >
-                                                    <i
-                                                        class="ti ti-photo-edit text-sm"
-                                                    ></i>
-                                                    Edit Studio
-                                                </button>
-                                            {:else}
-                                                <label
-                                                    class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[2.5/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30 max-w-[140px]"
-                                                >
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        class="hidden"
-                                                        onchange={(e) =>
-                                                            handleSideFileChange(
-                                                                index,
-                                                                e,
-                                                            )}
-                                                    />
-                                                    <i
-                                                        class="ti ti-photo-up text-lg text-slate-300 group-hover/drop:text-emerald-400 transition mb-1"
-                                                    ></i>
-                                                    <span
-                                                        class="text-[9px] font-bold text-slate-400 group-hover/drop:text-emerald-500 text-center leading-tight"
-                                                        >Upload<br />(750 × 300
-                                                        px)</span
-                                                    >
-                                                </label>
-                                            {/if}
-                                            {#if uploadErrors[`side_${index}`] || form.errors[`side_files.${index}`]}
-                                                <div
-                                                    class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
-                                                >
-                                                    <i
-                                                        class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
-                                                    ></i>
-                                                    <span
-                                                        >{uploadErrors[
-                                                            `side_${index}`
-                                                        ] ||
-                                                            form.errors[
-                                                                `side_files.${index}`
-                                                            ]}</span
-                                                    >
-                                                </div>
-                                            {/if}
-                                        </div>
-                                        <div class="sm:col-span-8 space-y-3">
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                    >Alt Text</label
-                                                >
-                                                <input
-                                                    type="text"
-                                                    bind:value={banner.alt}
-                                                    placeholder="Contoh: Gratis Ongkir Semua Produk"
-                                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                    >Tautan URL</label
-                                                >
-                                                <div class="relative">
-                                                    <i
-                                                        class="ti ti-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"
-                                                    ></i>
-                                                    <input
-                                                        type="text"
-                                                        bind:value={banner.link}
-                                                        placeholder="/flash-sale atau #"
-                                                        class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label
-                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                    >Tampilan Gambar (Fit Mode)</label
-                                                >
-                                                <div class="grid grid-cols-2 gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onclick={() => (banner.fit = 'contain')}
-                                                        class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {banner.fit === 'contain'
-                                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-2xs'
-                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                                                    >
-                                                        <i class="ti ti-aspect-ratio text-sm"></i>
-                                                        Utuh (100% Asli)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onclick={() => (banner.fit = 'cover')}
-                                                        class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {!banner.fit || banner.fit === 'cover'
-                                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-2xs'
-                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                                                    >
-                                                        <i class="ti ti-maximize text-sm"></i>
-                                                        Penuh Box (Crop)
-                                                    </button>
-                                                </div>
-                                                {#if banner.fit === 'contain'}
-                                                    <p class="mt-1.5 text-[10px] text-indigo-500 font-semibold flex items-center gap-1">
-                                                        <i class="ti ti-info-circle"></i>
-                                                        Gunakan gambar persegi: <strong>600 × 600 px</strong> (1:1)
-                                                    </p>
-                                                {:else}
-                                                    <p class="mt-1.5 text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                                                        <i class="ti ti-info-circle"></i>
-                                                        Gunakan gambar landscape: <strong>750 × 300 px</strong> (2.5:1)
-                                                    </p>
-                                                {/if}
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            {/each}
-                            {#if form.side_banners.length === 0}
-                                <div
-                                    class="py-10 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2"
-                                >
-                                    <i
-                                        class="ti ti-layout-sidebar text-3xl text-slate-300"
-                                    ></i>
-                                    <p
-                                        class="text-sm font-semibold text-slate-400"
+                                {/each}
+                                {#if form.hero_banners.length === 0}
+                                    <div
+                                        class="py-10 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2"
                                     >
-                                        Belum ada banner samping
-                                    </p>
-                                    <button
-                                        onclick={addSideBanner}
-                                        class="text-xs text-emerald-500 font-bold hover:underline"
-                                        >+ Tambah sekarang</button
-                                    >
-                                </div>
-                            {/if}
-                        </div>
+                                        <i
+                                            class="ti ti-photo text-3xl text-slate-300"
+                                        ></i>
+                                        <p
+                                            class="text-sm font-semibold text-slate-400"
+                                        >
+                                            Belum ada banner utama
+                                        </p>
+                                        <button
+                                            onclick={addHeroBanner}
+                                            class="text-xs text-blue-500 font-bold hover:underline"
+                                            >+ Tambah sekarang</button
+                                        >
+                                    </div>
+                                {/if}
+                            </div>
                         {/if}
                     </div>
 
@@ -1309,7 +993,8 @@
                                         <input
                                             type="checkbox"
                                             bind:checked={
-                                                form.middle_wide_banner.is_active
+                                                form.middle_wide_banner
+                                                    .is_active
                                             }
                                             class="sr-only peer"
                                         />
@@ -1320,35 +1005,79 @@
                                 </label>
                                 <button
                                     type="button"
-                                    onclick={() => (showMiddleWideBanner = !showMiddleWideBanner)}
+                                    onclick={() =>
+                                        (showMiddleWideBanner =
+                                            !showMiddleWideBanner)}
                                     class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition shrink-0"
-                                    title={showMiddleWideBanner ? 'Sembunyikan' : 'Tampilkan'}
+                                    title={showMiddleWideBanner
+                                        ? 'Sembunyikan'
+                                        : 'Tampilkan'}
                                 >
-                                    <i class="ti {showMiddleWideBanner ? 'ti-chevron-up' : 'ti-chevron-down'} text-sm"></i>
+                                    <i
+                                        class="ti {showMiddleWideBanner
+                                            ? 'ti-chevron-up'
+                                            : 'ti-chevron-down'} text-sm"
+                                    ></i>
                                 </button>
                             </div>
                         </div>
                         {#if showMiddleWideBanner}
-                        <div class="p-5" transition:slide>
-                            <div
-                                class="p-4 bg-slate-50 rounded-xl border border-slate-200/60"
-                            >
+                            <div class="p-5" transition:slide>
                                 <div
-                                    class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start"
+                                    class="p-4 bg-slate-50 rounded-xl border border-slate-200/60"
                                 >
-                                    <div class="sm:col-span-5">
-                                        {#if form.middle_wide_banner.image}
-                                            <div
-                                                class="relative rounded-xl overflow-hidden aspect-[4/1] border border-slate-200 shadow-sm bg-white group/preview"
-                                            >
-                                                <img
-                                                    src={form.middle_wide_banner
-                                                        .image}
-                                                    alt="Preview"
-                                                    class="w-full h-full object-cover"
-                                                />
+                                    <div
+                                        class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start"
+                                    >
+                                        <div class="sm:col-span-5">
+                                            {#if form.middle_wide_banner.image}
+                                                <div
+                                                    class="relative rounded-xl overflow-hidden aspect-[4/1] border border-slate-200 shadow-sm bg-white group/preview"
+                                                >
+                                                    <img
+                                                        src={form
+                                                            .middle_wide_banner
+                                                            .image}
+                                                        alt="Preview"
+                                                        class="w-full h-full object-cover"
+                                                    />
+                                                    <label
+                                                        class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
+                                                    >
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            class="hidden"
+                                                            onchange={handleMiddleWideFileChange}
+                                                        />
+                                                        <i
+                                                            class="ti ti-camera text-xl"
+                                                        ></i>
+                                                        <span
+                                                            class="text-[10px] font-bold"
+                                                            >Ganti Gambar</span
+                                                        >
+                                                    </label>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onclick={() =>
+                                                        openImageEditor(
+                                                            form
+                                                                .middle_wide_banner
+                                                                .image,
+                                                            'middle_wide',
+                                                        )}
+                                                    class="mt-2 w-full py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-lg border border-amber-200 transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                                                >
+                                                    <i
+                                                        class="ti ti-photo-edit text-sm"
+                                                    ></i>
+                                                    Edit Studio Gambar
+                                                </button>
+                                            {:else}
                                                 <label
-                                                    class="absolute inset-0 bg-black/50 opacity-0 group-hover/preview:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-white gap-1"
+                                                    class="rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 bg-white aspect-[4/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-amber-50/30"
                                                 >
                                                     <input
                                                         type="file"
@@ -1357,145 +1086,78 @@
                                                         onchange={handleMiddleWideFileChange}
                                                     />
                                                     <i
-                                                        class="ti ti-camera text-xl"
+                                                        class="ti ti-photo-up text-2xl text-slate-300 group-hover/drop:text-amber-400 transition mb-1"
                                                     ></i>
                                                     <span
-                                                        class="text-[10px] font-bold"
-                                                        >Ganti Gambar</span
+                                                        class="text-[10px] font-bold text-slate-400 group-hover/drop:text-amber-500"
+                                                        >Klik untuk Upload</span
+                                                    >
+                                                    <span
+                                                        class="text-[9px] text-slate-400 font-bold mt-0.5"
+                                                        >Rekomendasi: 1800 × 600
+                                                        px</span
                                                     >
                                                 </label>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    openImageEditor(
-                                                        form.middle_wide_banner
-                                                            .image,
-                                                        'middle_wide',
-                                                    )}
-                                                class="mt-2 w-full py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-lg border border-amber-200 transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                                            >
-                                                <i
-                                                    class="ti ti-photo-edit text-sm"
-                                                ></i>
-                                                Edit Studio Gambar
-                                            </button>
-                                        {:else}
-                                            <label
-                                                class="rounded-xl border-2 border-dashed border-slate-300 hover:border-amber-400 bg-white aspect-[4/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-amber-50/30"
-                                            >
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    class="hidden"
-                                                    onchange={handleMiddleWideFileChange}
-                                                />
-                                                <i
-                                                    class="ti ti-photo-up text-2xl text-slate-300 group-hover/drop:text-amber-400 transition mb-1"
-                                                ></i>
-                                                <span
-                                                    class="text-[10px] font-bold text-slate-400 group-hover/drop:text-amber-500"
-                                                    >Klik untuk Upload</span
+                                            {/if}
+                                            {#if uploadErrors['middle_wide'] || form.errors['middle_wide_file']}
+                                                <div
+                                                    class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
                                                 >
-                                                <span
-                                                    class="text-[9px] text-slate-400 font-bold mt-0.5"
-                                                    >Rekomendasi: 1800 × 600 px</span
-                                                >
-                                            </label>
-                                        {/if}
-                                        {#if uploadErrors['middle_wide'] || form.errors['middle_wide_file']}
-                                            <div
-                                                class="mt-1.5 text-[10px] font-bold text-rose-600 flex items-start gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg"
-                                            >
-                                                <i
-                                                    class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
-                                                ></i>
-                                                <span
-                                                    >{uploadErrors[
-                                                        'middle_wide'
-                                                    ] ||
-                                                        form.errors[
-                                                            'middle_wide_file'
-                                                        ]}</span
-                                                >
-                                            </div>
-                                        {/if}
-                                    </div>
-                                    <div class="sm:col-span-7 space-y-3">
-                                        <div>
-                                            <label
-                                                class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                >Alt Text</label
-                                            >
-                                            <input
-                                                type="text"
-                                                bind:value={
-                                                    form.middle_wide_banner.alt
-                                                }
-                                                placeholder="Contoh: Flash Sale Diskon Gila-gilaan"
-                                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 transition"
-                                            />
+                                                    <i
+                                                        class="ti ti-alert-circle text-xs shrink-0 mt-0.5"
+                                                    ></i>
+                                                    <span
+                                                        >{uploadErrors[
+                                                            'middle_wide'
+                                                        ] ||
+                                                            form.errors[
+                                                                'middle_wide_file'
+                                                            ]}</span
+                                                    >
+                                                </div>
+                                            {/if}
                                         </div>
-                                        <div>
-                                            <label
-                                                class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                >Tautan URL</label
-                                            >
-                                            <div class="relative">
-                                                <i
-                                                    class="ti ti-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"
-                                                ></i>
+                                        <div class="sm:col-span-7 space-y-3">
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
+                                                    >Alt Text</label
+                                                >
                                                 <input
                                                     type="text"
                                                     bind:value={
                                                         form.middle_wide_banner
-                                                            .link
+                                                            .alt
                                                     }
-                                                    placeholder="/flash-sale atau #"
-                                                    class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 transition"
+                                                    placeholder="Contoh: Flash Sale Diskon Gila-gilaan"
+                                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 transition"
                                                 />
                                             </div>
-                                        </div>
-                                        <div>
-                                            <label
-                                                class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
-                                                >Tampilan Gambar (Fit Mode)</label
-                                            >
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <button
-                                                    type="button"
-                                                    onclick={() =>
-                                                        (form.middle_wide_banner.fit =
-                                                            'contain')}
-                                                    class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.middle_wide_banner.fit === 'contain'
-                                                        ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs'
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                                            <div>
+                                                <label
+                                                    class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1"
+                                                    >Tautan URL</label
                                                 >
+                                                <div class="relative">
                                                     <i
-                                                        class="ti ti-aspect-ratio text-sm"
+                                                        class="ti ti-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm"
                                                     ></i>
-                                                    Utuh (100% Asli)
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onclick={() =>
-                                                        (form.middle_wide_banner.fit =
-                                                            'cover')}
-                                                    class="px-2 py-1.5 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {!form.middle_wide_banner.fit || form.middle_wide_banner.fit === 'cover'
-                                                        ? 'bg-amber-50 border-amber-300 text-amber-700 shadow-2xs'
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                                                >
-                                                    <i
-                                                        class="ti ti-maximize text-sm"
-                                                    ></i>
-                                                    Penuh Box (Crop)
-                                                </button>
+                                                    <input
+                                                        type="text"
+                                                        bind:value={
+                                                            form
+                                                                .middle_wide_banner
+                                                                .link
+                                                        }
+                                                        placeholder="/flash-sale atau #"
+                                                        class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 transition"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
                         {/if}
                     </div>
 
