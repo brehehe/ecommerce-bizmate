@@ -3439,21 +3439,7 @@
                                 ></i>
                                 <span>WhatsApp</span>
                             </button>
-                            <!-- Desktop Share Button -->
-                            <button
-                                type="button"
-                                onclick={() => {
-                                    if (navigator.share) {
-                                        navigator.share({
-                                            title: product.name,
-                                            url: window.location.href,
-                                        });
-                                    }
-                                }}
-                                class="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-500 transition shadow-sm"
-                            >
-                                <i class="ti ti-share text-sm"></i>
-                            </button>
+
                         </div>
                     </div>
 
