@@ -290,6 +290,14 @@
         openImageEditor(previewUrl, 'hero_mobile', index);
     }
 
+    function copyDesktopToMobile(index: number) {
+        if (!form.hero_banners[index]?.image) return;
+        form.hero_banners[index].mobile_image = form.hero_banners[index].image;
+        if (form.hero_files[index]) {
+            form.hero_mobile_files[index] = form.hero_files[index];
+        }
+    }
+
     async function handleSideFileChange(index: number, e: Event) {
         const target = e.target as HTMLInputElement;
         const file = target.files?.[0];
@@ -789,13 +797,25 @@
 
                                                 <!-- Mobile Image (Bawah) -->
                                                 <div>
-                                                    <p
-                                                        class="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"
-                                                    >
-                                                        <i
-                                                            class="ti ti-device-mobile text-[10px]"
-                                                        ></i> Mobile (1500×600)
-                                                    </p>
+                                                    <div class="flex items-center justify-between mb-1.5">
+                                                        <p
+                                                            class="text-[9px] font-black text-emerald-500 uppercase tracking-wider flex items-center gap-1"
+                                                        >
+                                                            <i
+                                                                class="ti ti-device-mobile text-[10px]"
+                                                            ></i> Mobile (1500×600)
+                                                        </p>
+                                                        {#if banner.image}
+                                                            <button
+                                                                type="button"
+                                                                onclick={() => copyDesktopToMobile(index)}
+                                                                class="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+                                                                title="Salin gambar desktop ke mobile"
+                                                            >
+                                                                <i class="ti ti-copy text-[11px]"></i> Samakan dgn Desktop
+                                                            </button>
+                                                        {/if}
+                                                    </div>
                                                     {#if banner.mobile_image}
                                                         <div
                                                             class="relative rounded-xl overflow-hidden aspect-[2.5/1] border border-emerald-200 shadow-sm bg-white group/preview"
