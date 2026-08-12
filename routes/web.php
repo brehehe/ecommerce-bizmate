@@ -441,5 +441,5 @@ Route::redirect('/kurir', '/kurir/dashboard');
 
 // Seller store public page — must be last to avoid conflicting with other routes
 Route::get('/{slug}', [StorefrontController::class, 'sellerStore'])
-    ->where('slug', '[a-z0-9\-]+')
+    ->where('slug', '[a-zA-Z0-9\-]+')
     ->name('seller.store');

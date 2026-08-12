@@ -2029,9 +2029,9 @@ class ProductController extends Controller
             $storeSlug = $existingUser->store_slug;
             if (empty($storeSlug)) {
                 $rawSlug = Str::slug($name);
-                $storeSlug = $rawSlug.'-'.Str::random(4);
+                $storeSlug = $rawSlug.'-'.Str::lower(Str::random(4));
                 while (User::where('store_slug', $storeSlug)->where('id', '!=', $existingUser->id)->exists()) {
-                    $storeSlug = $rawSlug.'-'.Str::random(4);
+                    $storeSlug = $rawSlug.'-'.Str::lower(Str::random(4));
                 }
             }
 
@@ -2049,9 +2049,9 @@ class ProductController extends Controller
                 : ('seller_'.time().'_'.Str::random(4).'@bizmate.local');
 
             $rawSlug = Str::slug($name);
-            $storeSlug = $rawSlug.'-'.Str::random(4);
+            $storeSlug = $rawSlug.'-'.Str::lower(Str::random(4));
             while (User::where('store_slug', $storeSlug)->exists()) {
-                $storeSlug = $rawSlug.'-'.Str::random(4);
+                $storeSlug = $rawSlug.'-'.Str::lower(Str::random(4));
             }
 
             $newUser = User::create([
