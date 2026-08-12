@@ -420,30 +420,7 @@ class ProductController extends Controller
         $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
 
         if ($isAdmin && ! empty($request->input('new_seller.name'))) {
-            $newSellerData = $request->input('new_seller');
-            $sellerEmail = ! empty($newSellerData['email'])
-                ? $newSellerData['email']
-                : ('seller_'.time().'_'.Str::random(4).'@bizmate.local');
-
-            $newUser = User::create([
-                'name' => $newSellerData['name'],
-                'email' => $sellerEmail,
-                'password' => bcrypt(Str::random(16)),
-                'phone_number' => $newSellerData['phone_number'] ?? null,
-                'is_seller' => true,
-                'is_active' => true,
-                'store_name' => $newSellerData['name'],
-            ]);
-
-            if (! empty($newSellerData['address'])) {
-                $newUser->customerAddresses()->create([
-                    'label' => 'Utama',
-                    'receiver_name' => $newUser->name,
-                    'phone_number' => $newUser->phone_number ?? '',
-                    'full_address' => $newSellerData['address'],
-                    'is_primary' => true,
-                ]);
-            }
+            $newUser = $this->findOrCreateSeller($request->input('new_seller'));
             $productData['user_id'] = $newUser->id;
             if (empty($productData['contact_name'])) {
                 $productData['contact_name'] = $newUser->name;
@@ -648,7 +625,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        return redirect()->route('products.edit', $product);
+        return redirect()->route('admin.products.edit', $product);
     }
 
     public function edit(Request $request, Product $product)
@@ -854,30 +831,7 @@ class ProductController extends Controller
 
         if ($isAdmin) {
             if (! empty($request->input('new_seller.name'))) {
-                $newSellerData = $request->input('new_seller');
-                $sellerEmail = ! empty($newSellerData['email'])
-                    ? $newSellerData['email']
-                    : ('seller_'.time().'_'.Str::random(4).'@bizmate.local');
-
-                $newUser = User::create([
-                    'name' => $newSellerData['name'],
-                    'email' => $sellerEmail,
-                    'password' => bcrypt('password'),
-                    'phone_number' => $newSellerData['phone_number'] ?? null,
-                    'is_seller' => true,
-                    'is_active' => true,
-                    'store_name' => $newSellerData['name'],
-                ]);
-
-                if (! empty($newSellerData['address'])) {
-                    $newUser->customerAddresses()->create([
-                        'label' => 'Utama',
-                        'receiver_name' => $newUser->name,
-                        'phone_number' => $newUser->phone_number ?? '',
-                        'full_address' => $newSellerData['address'],
-                        'is_primary' => true,
-                    ]);
-                }
+                $newUser = $this->findOrCreateSeller($request->input('new_seller'));
                 $productData['user_id'] = $newUser->id;
                 if (empty($productData['contact_name'])) {
                     $productData['contact_name'] = $newUser->name;
@@ -2048,6 +2002,88 @@ class ProductController extends Controller
         }
 
         return back()->with('success', 'Urutan produk berhasil diperbarui.');
+    }
+
+    /**
+     * Find existing seller by phone/email or create a new seller user safely without collisions.
+     */
+    private function findOrCreateSeller(array $newSellerData): User
+    {
+        $existingUser = null;
+        $phone = trim($newSellerData['phone_number'] ?? '');
+        $email = trim($newSellerData['email'] ?? '');
+        $name = trim($newSellerData['name'] ?? 'Seller');
+
+        if (! empty($phone)) {
+            $cleanPhone = preg_replace('/\D/', '', $phone);
+            $existingUser = User::where('phone_number', $phone)
+                ->when($cleanPhone, fn ($q) => $q->orWhere('phone_number', $cleanPhone))
+                ->first();
+        }
+
+        if (! $existingUser && ! empty($email)) {
+            $existingUser = User::where('email', $email)->first();
+        }
+
+        if ($existingUser) {
+            $storeSlug = $existingUser->store_slug;
+            if (empty($storeSlug)) {
+                $rawSlug = Str::slug($name);
+                $storeSlug = $rawSlug.'-'.Str::random(4);
+                while (User::where('store_slug', $storeSlug)->where('id', '!=', $existingUser->id)->exists()) {
+                    $storeSlug = $rawSlug.'-'.Str::random(4);
+                }
+            }
+
+            $existingUser->update([
+                'is_seller' => true,
+                'is_active' => true,
+                'store_name' => $existingUser->store_name ?: $name,
+                'store_slug' => $storeSlug,
+            ]);
+
+            $newUser = $existingUser;
+        } else {
+            $sellerEmail = ! empty($email)
+                ? $email
+                : ('seller_'.time().'_'.Str::random(4).'@bizmate.local');
+
+            $rawSlug = Str::slug($name);
+            $storeSlug = $rawSlug.'-'.Str::random(4);
+            while (User::where('store_slug', $storeSlug)->exists()) {
+                $storeSlug = $rawSlug.'-'.Str::random(4);
+            }
+
+            $newUser = User::create([
+                'name' => $name,
+                'email' => $sellerEmail,
+                'password' => bcrypt('password'),
+                'phone_number' => $phone ?: null,
+                'is_seller' => true,
+                'is_active' => true,
+                'store_name' => $name,
+                'store_slug' => $storeSlug,
+            ]);
+        }
+
+        if (! empty($newSellerData['address'])) {
+            $addr = $newUser->customerAddresses()->where('is_primary', true)->first()
+                ?? $newUser->customerAddresses()->first();
+
+            if ($addr) {
+                $addr->update(['full_address' => $newSellerData['address']]);
+            } else {
+                $newUser->customerAddresses()->create([
+                    'label' => 'Utama',
+                    'receiver_name' => $newUser->name,
+                    'phone_number' => $newUser->phone_number ?? '',
+                    'full_address' => $newSellerData['address'],
+                    'is_primary' => true,
+                ]);
+            }
+        }
+
+        return $newUser;
     }
 
     /**

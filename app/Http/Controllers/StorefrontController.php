@@ -89,7 +89,7 @@ class StorefrontController extends Controller
      */
     public function sellerStore(Request $request, string $slug): Response
     {
-        $seller = User::where('seller_slug', $slug)
+        $seller = User::where('store_slug', $slug)
             ->where('is_seller', true)
             ->firstOrFail();
 
