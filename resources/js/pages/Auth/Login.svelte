@@ -275,7 +275,7 @@
                         for="email"
                         class="block text-sm font-bold text-slate-700 mb-2 transition-colors group-focus-within:text-slate-900"
                     >
-                        Alamat Email
+                        Alamat Email / No. HP
                     </label>
                     <div class="relative">
                         <div
@@ -287,12 +287,12 @@
                         </div>
                         <input
                             id="email"
-                            type="email"
+                            type="text"
                             bind:value={form.email}
                             required
                             class="block w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:outline-none transition-all bg-slate-50 focus:bg-white hover:border-slate-300"
                             style="--tw-ring-color: {primaryColor}30; focus-border-color: {primaryColor};"
-                            placeholder="admin@email.com"
+                            placeholder="admin@email.com atau 08123456789"
                         />
                     </div>
                 </div>

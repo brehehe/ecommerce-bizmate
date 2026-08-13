@@ -3008,17 +3008,17 @@
                                 <p
                                     class="block text-xs font-bold text-slate-600 mb-1.5"
                                 >
-                                    Email
+                                    Email / No. HP
                                 </p>
                                 <div class="relative">
                                     <i
                                         class="ti ti-mail absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                                     ></i>
                                     <input
-                                        type="email"
+                                        type="text"
                                         bind:value={loginEmail}
                                         required
-                                        placeholder="email@contoh.com"
+                                        placeholder="email@contoh.com atau 08123456789"
                                         class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
