@@ -1156,28 +1156,34 @@
 
     onMount(() => {
         // Initialize dark mode from localStorage or admin default or system preference
-        const stored = localStorage.getItem('sf_theme');
-        if (stored === 'dark') {
-            isDark = true;
-        } else if (stored === 'light') {
+        // If user is a seller, always force light mode
+        if (isSellerMode) {
             isDark = false;
+            applyDarkMode(false);
         } else {
-            // No user preference stored — use admin-configured default
-            const adminDefault =
-                (page.props.settings as any)?.storefront_default_theme ??
-                'light';
-            if (adminDefault === 'dark') {
+            const stored = localStorage.getItem('sf_theme');
+            if (stored === 'dark') {
                 isDark = true;
-            } else if (adminDefault === 'system') {
-                isDark = window.matchMedia(
-                    '(prefers-color-scheme: dark)',
-                ).matches;
-            } else {
-                // 'light' (or anything else) → always start light
+            } else if (stored === 'light') {
                 isDark = false;
+            } else {
+                // No user preference stored — use admin-configured default
+                const adminDefault =
+                    (page.props.settings as any)?.storefront_default_theme ??
+                    'light';
+                if (adminDefault === 'dark') {
+                    isDark = true;
+                } else if (adminDefault === 'system') {
+                    isDark = window.matchMedia(
+                        '(prefers-color-scheme: dark)',
+                    ).matches;
+                } else {
+                    // 'light' (or anything else) → always start light
+                    isDark = false;
+                }
             }
+            applyDarkMode(isDark);
         }
-        applyDarkMode(isDark);
 
         const handleOpenLogin = () => openLogin();
         const handleToggleDropdown = () => (profileDropOpen = !profileDropOpen);
@@ -2362,6 +2368,7 @@
                                                 >
                                             </button>
                                         {/if}
+                                        {#if !isSellerMode}
                                         <button
                                             onclick={toggleDarkMode}
                                             class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
@@ -2376,6 +2383,7 @@
                                                 ></i> Mode Gelap
                                             {/if}
                                         </button>
+                                        {/if}
                                     </div>
                                     <div class="p-1 border-t border-slate-100">
                                         {#if isSuperAdmin}
@@ -2937,6 +2945,7 @@
                         >
                     </button>
                 {/if}
+                {#if !isSellerMode}
                 <button
                     onclick={() => {
                         profileDropOpen = false;
@@ -2950,6 +2959,7 @@
                         <i class="ti ti-moon text-lg text-indigo-500"></i> Mode Gelap
                     {/if}
                 </button>
+                {/if}
 
                 <button
                     onclick={logout}

@@ -38,6 +38,10 @@
     } = $props();
 
     let enable3dModels = $derived(page.props.settings?.enable_3d_models ?? true);
+    let enableDigitalProducts = $derived(page.props.settings?.enable_digital_products ?? true);
+    let isSuperAdminOrAdmin = $derived(
+        page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin' || r.name === 'Admin') ?? false
+    );
     let membershipEnabled = $derived(page.props.settings?.membership_enabled ?? true);
 
     // Catalog Builder state & handler
@@ -125,7 +129,7 @@
 
     const form = useForm({
         name: '',
-        sku: '',
+        sku: suggestedSku,
         category_ids: [],
         brand_ids: [],
         specifications: {},
@@ -183,12 +187,6 @@
         // Seller Listing Duration
         listing_duration_type: '15_days',
         custom_days: 1,
-    });
-
-    $effect(() => {
-        if (!form.sku && suggestedSku) {
-            form.sku = suggestedSku;
-        }
     });
 
     let uploadedPhotos = $state([]);
@@ -3937,96 +3935,96 @@
                     {/if}
                 </div>
 
+                {#if isSuperAdminOrAdmin}
                 <!-- Card: Informasi Penjual & Kontak Person -->
-                {#if isSellerMode}
-                    <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs mb-6">
-                        <h3 class="text-base font-semibold text-slate-900 border-b border-slate-150 pb-3 mb-4 flex items-center gap-2">
-                            <i class="ti ti-user-check text-emerald-600 text-lg"></i>
-                            Informasi Penjual & Kontak Person
-                        </h3>
+                <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs mb-6">
+                    <h3 class="text-base font-semibold text-slate-900 border-b border-slate-150 pb-3 mb-4 flex items-center gap-2">
+                        <i class="ti ti-user-check text-emerald-600 text-lg"></i>
+                        Informasi Penjual & Kontak Person
+                    </h3>
 
-                        {#if isAdmin}
-                            <div class="mb-5 space-y-2">
-                                <label class="block text-xs font-semibold text-slate-700">Pilih Seller / Owner Produk</label>
-                                <select
-                                    bind:value={form.user_id}
-                                    onchange={(e) => {
-                                        const val = e.target.value;
-                                        if (val && val !== '__NEW__') {
-                                            const s = sellers.find(item => String(item.id) === String(val));
-                                            if (s) {
-                                                if (!form.contact_name) form.contact_name = s.name;
-                                                if (!form.contact_phone) form.contact_phone = s.phone_number || '';
-                                            }
+                    {#if isAdmin}
+                        <div class="mb-5 space-y-2">
+                            <label class="block text-xs font-semibold text-slate-700">Pilih Seller / Owner Produk</label>
+                            <select
+                                bind:value={form.user_id}
+                                onchange={(e) => {
+                                    const val = e.target.value;
+                                    if (val && val !== '__NEW__') {
+                                        const s = sellers.find(item => String(item.id) === String(val));
+                                        if (s) {
+                                            if (!form.contact_name) form.contact_name = s.name;
+                                            if (!form.contact_phone) form.contact_phone = s.phone_number || '';
                                         }
-                                    }}
-                                    class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
-                                >
-                                    <option value="">-- Gunakan Akun Login Sekarang --</option>
-                                    {#each sellers as s}
-                                        <option value={s.id}>
-                                            {s.name} {s.phone_number ? `(${s.phone_number})` : ''} {s.is_seller ? '• Seller' : '• Customer'}
-                                        </option>
-                                    {/each}
-                                    <option value="__NEW__" class="font-bold text-emerald-600">+ Tambah Customer / Seller Baru (Inline Form)</option>
-                                </select>
-                            </div>
-
-                            {#if form.user_id === '__NEW__'}
-                                <div class="mb-5 p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-4">
-                                    <div class="flex items-center gap-2 text-emerald-900 font-bold text-xs">
-                                        <i class="ti ti-user-plus text-base text-emerald-600"></i>
-                                        Form Data Seller / Customer Baru
-                                    </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input
-                                            bind:value={form.new_seller.name}
-                                            id="new_seller_name"
-                                            label="Nama Lengkap / Toko *"
-                                            placeholder="Cth: Budi Toko"
-                                            required={true}
-                                        />
-                                        <Input
-                                            bind:value={form.new_seller.phone_number}
-                                            id="new_seller_phone"
-                                            label="No. Telepon / WhatsApp *"
-                                            placeholder="Cth: 08123456789"
-                                            required={true}
-                                        />
-                                        <Input
-                                            bind:value={form.new_seller.email}
-                                            id="new_seller_email"
-                                            label="Email (Opsional)"
-                                            placeholder="Cth: seller@email.com"
-                                        />
-                                        <Input
-                                            bind:value={form.new_seller.address}
-                                            id="new_seller_address"
-                                            label="Alamat Toko / Seller"
-                                            placeholder="Cth: Jl. Sudirman No. 123, Jakarta"
-                                        />
-                                    </div>
-                                </div>
-                            {/if}
-                        {/if}
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Input
-                                bind:value={form.contact_name}
-                                id="contact_name"
-                                label="Nama Kontak Person"
-                                placeholder="Cth: Pak Budi (Pemilik)"
-                                error={form.errors.contact_name}
-                            />
-                            <Input
-                                bind:value={form.contact_phone}
-                                id="contact_phone"
-                                label="No. HP / WhatsApp Kontak Person"
-                                placeholder="Cth: 081234567890"
-                                error={form.errors.contact_phone}
-                            />
+                                    }
+                                }}
+                                class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition"
+                            >
+                                <option value="">-- Gunakan Akun Login Sekarang --</option>
+                                {#each sellers as s}
+                                    <option value={s.id}>
+                                        {s.name} {s.phone_number ? `(${s.phone_number})` : ''} {s.is_seller ? '• Seller' : '• Customer'}
+                                    </option>
+                                {/each}
+                                <option value="__NEW__" class="font-bold text-emerald-600">+ Tambah Customer / Seller Baru (Inline Form)</option>
+                            </select>
                         </div>
+
+                        {#if form.user_id === '__NEW__'}
+                            <div class="mb-5 p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-4">
+                                <div class="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                                    <i class="ti ti-user-plus text-base text-emerald-600"></i>
+                                    Form Data Seller / Customer Baru
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        bind:value={form.new_seller.name}
+                                        id="new_seller_name"
+                                        label="Nama Lengkap / Toko *"
+                                        placeholder="Cth: Budi Toko"
+                                        required={true}
+                                    />
+                                    <Input
+                                        bind:value={form.new_seller.phone_number}
+                                        id="new_seller_phone"
+                                        label="No. Telepon / WhatsApp *"
+                                        placeholder="Cth: 08123456789"
+                                        required={true}
+                                    />
+                                    <Input
+                                        bind:value={form.new_seller.email}
+                                        id="new_seller_email"
+                                        label="Email (Opsional)"
+                                        placeholder="Cth: seller@email.com"
+                                    />
+                                    <Input
+                                        bind:value={form.new_seller.address}
+                                        id="new_seller_address"
+                                        label="Alamat Toko / Seller"
+                                        placeholder="Cth: Jl. Sudirman No. 123, Jakarta"
+                                    />
+                                </div>
+                            </div>
+                        {/if}
+                    {/if}
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Input
+                            bind:value={form.contact_name}
+                            id="contact_name"
+                            label="Nama Kontak Person"
+                            placeholder="Cth: Pak Budi (Pemilik)"
+                            error={form.errors.contact_name}
+                        />
+                        <Input
+                            bind:value={form.contact_phone}
+                            id="contact_phone"
+                            label="No. HP / WhatsApp Kontak Person"
+                            placeholder="Cth: 081234567890"
+                            error={form.errors.contact_phone}
+                        />
                     </div>
+                </div>
                 {/if}
 
                 <!-- Card: Informasi Dasar -->
@@ -4350,26 +4348,52 @@
                                         {/if}
                                     </div>
                                     <div class="mt-3">
-                                        {#if pkg.original_price && Number(pkg.original_price) > Number(pkg.price)}
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="text-xs text-slate-400 line-through font-medium">{fmt(pkg.original_price)}</span>
-                                                <span class="text-sm font-black text-emerald-600">{fmt(pkg.price)}</span>
-                                            </div>
-                                        {:else}
-                                            <p class="text-sm font-black text-blue-700">{fmt(pkg.price)}</p>
-                                        {/if}
-                                        {#if pkg.promo_name}
-                                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md mt-1">
-                                                <i class="ti ti-discount-2 text-[11px]"></i>
-                                                {pkg.promo_name}
-                                            </span>
-                                        {:else}
-                                            <p class="text-[10px] text-slate-500">Paket {pkg.days} Hari Masa Aktif</p>
-                                        {/if}
+                                        <p class="text-sm font-black text-blue-700">{fmt(pkg.price)}</p>
+                                        <p class="text-[10px] text-slate-500">Paket {pkg.days} Hari Masa Aktif</p>
                                     </div>
                                 </button>
                             {/each}
+
+                            <!-- Custom Days Option -->
+                            <button
+                                type="button"
+                                onclick={() => form.listing_duration_type = 'custom'}
+                                class="p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer
+                                       {form.listing_duration_type === 'custom' ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
+                            >
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-black text-slate-800">Custom (Max {listingPricing.max_custom_days} Hari)</span>
+                                    {#if form.listing_duration_type === 'custom'}
+                                        <i class="ti ti-circle-check-filled text-blue-600 text-base"></i>
+                                    {/if}
+                                </div>
+                                <div class="mt-3">
+                                    <p class="text-sm font-black text-blue-700">
+                                        {fmt(form.custom_days * listingPricing.custom_daily_rate)}
+                                    </p>
+                                    <p class="text-[10px] text-slate-500">({form.custom_days} hari x {fmt(listingPricing.custom_daily_rate)}/hari)</p>
+                                </div>
+                            </button>
                         </div>
+
+                        {#if form.listing_duration_type === 'custom'}
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-700 block">Jumlah Hari Custom:</label>
+                                    <p class="text-[10px] text-slate-500">Maksimal {listingPricing.max_custom_days} hari</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={listingPricing.max_custom_days}
+                                        bind:value={form.custom_days}
+                                        class="w-20 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    />
+                                    <span class="text-xs font-bold text-slate-600">Hari</span>
+                                </div>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
 
@@ -4392,6 +4416,7 @@
                             required={true}
                             error={form.errors.price}
                         />
+                        {#if !isSellerMode}
                         <InputCurrency
                             bind:value={form.cost}
                             id="cost"
@@ -4399,6 +4424,7 @@
                             prefix="Rp"
                             error={form.errors.cost}
                         />
+                        {/if}
                     </div>
 
                     <!-- Tipe Harga (NET / NEGO) -->
@@ -4428,6 +4454,7 @@
                         </div>
                     </div>
 
+                    {#if !isSellerMode}
                     <!-- Wholesale Prices Section (Master) -->
                     <div class="mb-6 border-t border-slate-100 pt-5">
                         <div class="flex items-center justify-between mb-4">
@@ -4502,6 +4529,7 @@
                             </div>
                         {/if}
                     </div>
+                    {/if}
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <Input
@@ -4514,6 +4542,7 @@
                             readonly={form.is_unlimited}
                             error={form.errors.stock}
                         />
+                        {#if !isSellerMode}
                         <Input
                             bind:value={form.min_stock}
                             type="number"
@@ -4530,9 +4559,11 @@
                             label="Min Pembelian"
                             error={form.errors.min_purchase}
                         />
+                        {/if}
                     </div>
 
                     <div class="flex items-center gap-4">
+                        {#if !isSellerMode}
                         <div class="flex-1">
                             <Toggle
                                 bind:checked={form.is_unlimited}
@@ -4541,6 +4572,7 @@
                                 icon="ti-infinity"
                             />
                         </div>
+                        {/if}
                         {#if globalTaxEnabled}
                             <div
                                 class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl"
@@ -4710,327 +4742,7 @@
                         </div>
                     </div>
                 {/if}
-
-                <!-- Card: Spesifikasi Produk -->
-                <div
-                    class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
-                >
-                    <div
-                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-slate-150 pb-3"
-                    >
-                        <div>
-                            <h3
-                                class="text-base font-semibold text-slate-900"
-                            >
-                                Spesifikasi Produk
-                            </h3>
-                            <p
-                                class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
-                            >
-                                Tambahkan detail spesifikasi produk (misal:
-                                Bahan, Warna, Garansi)
-                            </p>
-                        </div>
-                        <div class="self-start sm:self-center shrink-0">
-                            <button
-                                type="button"
-                                onclick={addSpecification}
-                                class="px-3 py-1.5 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
-                            >
-                                <i class="ti ti-plus text-xs"></i> Tambah Spesifikasi
-                            </button>
-                        </div>
-                    </div>
-
-                    {#if specifications.length === 0}
-                        <div
-                            class="text-center py-10 border border-dashed border-slate-200 rounded-2xl bg-slate-50/30 flex flex-col items-center justify-center"
-                        >
-                            <div
-                                class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2"
-                            >
-                                <i class="ti ti-list text-lg"></i>
-                            </div>
-                            <p class="text-xs text-slate-500 font-medium">
-                                Belum ada spesifikasi produk yang ditambahkan.
-                            </p>
-                            <button
-                                type="button"
-                                onclick={addSpecification}
-                                class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition mt-3 cursor-pointer"
-                            >
-                                Tambah Pertama
-                            </button>
-                        </div>
-                    {:else}
-                        <div class="space-y-4">
-                            {#each specifications as spec, idx (idx)}
-                                <div
-                                    class="flex items-center gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative group animate-in fade-in zoom-in-95 duration-150"
-                                >
-                                    <div
-                                        class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-4"
-                                    >
-                                        <Input
-                                            type="text"
-                                            bind:value={spec.label}
-                                            id={`spec-label-${idx}`}
-                                            label="Nama Spesifikasi"
-                                            placeholder="Contoh: Bahan, Warna, Garansi"
-                                            required={true}
-                                        />
-                                        <Input
-                                            type="text"
-                                            bind:value={spec.value}
-                                            id={`spec-val-${idx}`}
-                                            label="Nilai / Value"
-                                            placeholder="Contoh: Kayu Jati, Putih, 1 Tahun"
-                                            required={true}
-                                        />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onclick={() => removeSpecification(idx)}
-                                        class="w-9 h-9 rounded-xl border border-slate-250 hover:bg-rose-50 hover:text-rose-600 text-slate-500 flex items-center justify-center transition shrink-0 self-end mb-1 cursor-pointer"
-                                        title="Hapus Spesifikasi"
-                                    >
-                                        <i class="ti ti-trash text-sm"></i>
-                                    </button>
-                                </div>
-                            {/each}
-                        </div>
-                    {/if}
-                </div>
-
-                <!-- Card: Panduan Ukuran & Rekomendasi (Size Guide) -->
-                <div
-                    class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
-                >
-                    <div
-                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-slate-150 pb-3"
-                    >
-                        <div>
-                            <h3
-                                class="text-base font-semibold text-slate-900"
-                            >
-                                Panduan Ukuran & Kalkulator Rekomendasi
-                            </h3>
-                            <p
-                                class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
-                            >
-                                Aktifkan untuk menampilkan tabel panduan ukuran
-                                pakaian dan kalkulator rekomendasi tinggi/berat
-                                badan otomatis
-                            </p>
-                        </div>
-                        <div class="self-start sm:self-center shrink-0">
-                            <Toggle
-                                bind:checked={showSizeChart}
-                                label="Aktifkan Panduan Ukuran"
-                            />
-                        </div>
-                    </div>
-
-                    {#if showSizeChart}
-                        <div class="space-y-6">
-                            <!-- Kolom / Headers Builder -->
-                            <div
-                                class="bg-slate-50/50 p-4 rounded-2xl border border-slate-100"
-                            >
-                                <div
-                                    class="flex items-center justify-between mb-3"
-                                >
-                                    <span
-                                        class="text-xs font-bold text-slate-600 uppercase tracking-wider"
-                                    >
-                                        Kolom Tabel Ukuran
-                                    </span>
-                                    <button
-                                        type="button"
-                                        onclick={addSizeChartHeader}
-                                        class="px-2.5 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-black rounded-lg uppercase tracking-wider transition"
-                                    >
-                                        + Tambah Kolom
-                                    </button>
-                                </div>
-                                <div class="flex flex-wrap gap-2">
-                                    {#each sizeChartHeaders as header, hIdx}
-                                        <div
-                                            class="flex items-center bg-white border border-slate-200 rounded-lg p-1 text-xs pl-2.5 shadow-sm"
-                                        >
-                                            {#if hIdx === 0}
-                                                <span
-                                                    class="font-bold text-slate-600 pr-2"
-                                                    >{header}</span
-                                                >
-                                            {:else}
-                                                <input
-                                                    type="text"
-                                                    bind:value={
-                                                        sizeChartHeaders[hIdx]
-                                                    }
-                                                    class="w-28 focus:outline-none font-bold text-slate-700 bg-transparent"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onclick={() =>
-                                                        removeSizeChartHeader(
-                                                            hIdx,
-                                                        )}
-                                                    class="text-slate-400 hover:text-rose-500 pl-1.5 pr-0.5"
-                                                    title="Hapus Kolom"
-                                                >
-                                                    <i class="ti ti-x text-xs"
-                                                    ></i>
-                                                </button>
-                                            {/if}
-                                        </div>
-                                    {/each}
-                                </div>
-                            </div>
-
-                            <!-- Baris / Rows Builder -->
-                            <div
-                                class="overflow-x-auto border border-slate-100 rounded-2xl"
-                            >
-                                <table
-                                    class="w-full text-left text-xs border-collapse"
-                                >
-                                    <thead>
-                                        <tr
-                                            class="bg-slate-50 border-b border-slate-100"
-                                        >
-                                            <th
-                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-16"
-                                                >Opsi</th
-                                            >
-                                            <th
-                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-24 text-center"
-                                                >{sizeChartHeaders[0]}</th
-                                            >
-                                            {#each sizeChartHeaders.slice(1) as header}
-                                                <th
-                                                    class="p-3 font-bold text-slate-500 uppercase tracking-wider min-w-[80px] text-center"
-                                                    >{header}</th
-                                                >
-                                            {/each}
-                                            <th
-                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center"
-                                                >Tinggi (cm)</th
-                                            >
-                                            <th
-                                                class="p-3 font-bold text-slate-500 uppercase tracking-wider w-40 text-center"
-                                                >Berat (kg)</th
-                                            >
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        {#each sizeChartRows as row, rIdx}
-                                            <tr class="hover:bg-slate-50/30">
-                                                <td class="p-2 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onclick={() =>
-                                                            removeSizeChartRow(
-                                                                rIdx,
-                                                            )}
-                                                        class="w-6 h-6 rounded-md hover:bg-rose-50 hover:text-rose-600 text-slate-400 flex items-center justify-center transition mx-auto cursor-pointer"
-                                                        title="Hapus Baris"
-                                                    >
-                                                        <i class="ti ti-trash"
-                                                        ></i>
-                                                    </button>
-                                                </td>
-                                                <td class="p-2">
-                                                    <input
-                                                        type="text"
-                                                        bind:value={row.size}
-                                                        class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal/20 focus:outline-none font-bold text-slate-700 text-center"
-                                                        placeholder="S/M/L"
-                                                    />
-                                                </td>
-                                                {#each sizeChartHeaders.slice(1) as _, hIdx}
-                                                    <td class="p-2">
-                                                        <input
-                                                            type="text"
-                                                            bind:value={
-                                                                row.values[hIdx]
-                                                            }
-                                                            class="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:border-brand-blueRoyal focus:ring-1 focus:ring-brand-blueRoyal/20 focus:outline-none text-slate-600 text-center font-medium"
-                                                            placeholder="Cth: 50"
-                                                        />
-                                                    </td>
-                                                {/each}
-                                                <!-- Tinggi range -->
-                                                <td class="p-2">
-                                                    <div
-                                                        class="flex items-center gap-1.5 justify-center"
-                                                    >
-                                                        <input
-                                                            type="number"
-                                                            bind:value={
-                                                                row.min_height
-                                                            }
-                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
-                                                            placeholder="Min"
-                                                        />
-                                                        <span
-                                                            class="text-slate-400"
-                                                            >-</span
-                                                        >
-                                                        <input
-                                                            type="number"
-                                                            bind:value={
-                                                                row.max_height
-                                                            }
-                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
-                                                            placeholder="Max"
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <!-- Berat range -->
-                                                <td class="p-2">
-                                                    <div
-                                                        class="flex items-center gap-1.5 justify-center"
-                                                    >
-                                                        <input
-                                                            type="number"
-                                                            bind:value={
-                                                                row.min_weight
-                                                            }
-                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
-                                                            placeholder="Min"
-                                                        />
-                                                        <span
-                                                            class="text-slate-400"
-                                                            >-</span
-                                                        >
-                                                        <input
-                                                            type="number"
-                                                            bind:value={
-                                                                row.max_weight
-                                                            }
-                                                            class="w-16 bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 text-center focus:outline-none"
-                                                            placeholder="Max"
-                                                        />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        {/each}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <button
-                                type="button"
-                                onclick={addSizeChartRow}
-                                class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition w-full"
-                            >
-                                <i class="ti ti-plus text-xs"></i> Tambah Baris Ukuran
-                            </button>
-                        </div>
-                    {/if}
-                </div>                {#if !isSellerMode}
+                {#if !isSellerMode}
                     <!-- Card: Media Interaktif (Video & 3D Augmented Reality) -->
                     <div
                         class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
@@ -5328,880 +5040,6 @@
                         </div>
                     </div>
                 {/if}
-
-                <!-- Card: Variasi -->
-                <div
-                    class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs"
-                >
-                    <div
-                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-slate-150 pb-3"
-                    >
-                        <div>
-                            <h3
-                                class="text-base font-semibold text-slate-900"
-                            >
-                                Variasi Produk
-                            </h3>
-                            <p
-                                class="text-xs text-slate-500 font-normal mt-0.5 leading-relaxed"
-                            >
-                                Aktifkan jika produk memiliki pilihan warna, ukuran, atau variasi lainnya.
-                            </p>
-                        </div>
-                        <div class="self-start sm:self-center shrink-0">
-                            <Toggle
-                                bind:checked={enableVariants}
-                                label="Gunakan Variasi"
-                            />
-                        </div>
-                    </div>
-
-                    {#if enableVariants}
-                        <div class="space-y-6">
-                            {#each variations as v, vIndex}
-                                <div
-                                    class="bg-slate-50 border border-slate-200 rounded-xl p-5 sm:p-6 space-y-5"
-                                >
-                                    <div
-                                        class="flex justify-between items-center border-b border-slate-200 pb-3"
-                                    >
-                                        <div
-                                            class="flex items-center gap-2 font-bold text-sm text-slate-800"
-                                        >
-                                            <span
-                                                >Tipe Variasi {vIndex + 1}</span
-                                            >
-                                            <div
-                                                class="flex items-center gap-0.5 ml-2"
-                                            >
-                                                {#if vIndex > 0}
-                                                    <button
-                                                        type="button"
-                                                        onclick={() =>
-                                                            moveVariation(
-                                                                vIndex,
-                                                                -1,
-                                                            )}
-                                                        class="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition"
-                                                        title="Pindahkan ke Atas"
-                                                    >
-                                                        <i
-                                                            class="ti ti-arrow-up text-xs"
-                                                        ></i>
-                                                    </button>
-                                                {/if}
-                                                {#if vIndex < variations.length - 1}
-                                                    <button
-                                                        type="button"
-                                                        onclick={() =>
-                                                            moveVariation(
-                                                                vIndex,
-                                                                1,
-                                                            )}
-                                                        class="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition"
-                                                        title="Pindahkan ke Bawah"
-                                                    >
-                                                        <i
-                                                            class="ti ti-arrow-down text-xs"
-                                                        ></i>
-                                                    </button>
-                                                {/if}
-                                            </div>
-                                        </div>
-                                        <div class="flex items-center gap-4">
-                                            <label
-                                                class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-600 hover:text-brand-blueRoyal bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm transition"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    bind:checked={v.use_images}
-                                                    class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal w-4 h-4"
-                                                />
-                                                <span>Tambah Gambar</span>
-                                            </label>
-                                            <div
-                                                class="w-px h-4 bg-slate-300"
-                                            ></div>
-                                            <button
-                                                type="button"
-                                                onclick={() =>
-                                                    removeVariation(vIndex)}
-                                                class="flex items-center gap-1 text-rose-500 text-xs font-bold hover:text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition"
-                                                ><i class="ti ti-trash"></i> Hapus</button
-                                            >
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <Input
-                                            bind:value={v.name}
-                                            placeholder="Misal: Warna"
-                                        />
-                                    </div>
-
-                                    <div
-                                        class="grid grid-cols-2 md:grid-cols-3 gap-3 pt-1"
-                                    >
-                                        {#each v.options as opt, oIndex}
-                                            <div
-                                                class="flex items-center bg-white border rounded-xl overflow-hidden p-1"
-                                            >
-                                                {#if v.use_images}
-                                                    <!-- svelte-ignore a11y_no_static_element_interactions -->
-                                                    <!-- svelte-ignore a11y_click_events_have_key_events -->
-                                                    <div
-                                                        class="relative w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 cursor-pointer group mr-1.5"
-                                                        onclick={() =>
-                                                            document
-                                                                .getElementById(
-                                                                    `opt-img-${vIndex}-${oIndex}`,
-                                                                )
-                                                                .click()}
-                                                    >
-                                                        {#if opt.image}
-                                                            <img
-                                                                src={opt.image.startsWith(
-                                                                    'data:',
-                                                                ) ||
-                                                                opt.image.startsWith(
-                                                                    'http',
-                                                                ) ||
-                                                                opt.image.startsWith(
-                                                                    '/',
-                                                                )
-                                                                    ? opt.image
-                                                                    : '/' +
-                                                                      opt.image}
-                                                                alt="var"
-                                                                class="w-full h-full object-cover"
-                                                            />
-                                                        {:else}
-                                                            <div
-                                                                class="w-full h-full flex items-center justify-center text-slate-400 group-hover:text-brand-blueRoyal"
-                                                            >
-                                                                <i
-                                                                    class="ti ti-photo text-lg"
-                                                                ></i>
-                                                            </div>
-                                                        {/if}
-                                                        <input
-                                                            type="file"
-                                                            id={`opt-img-${vIndex}-${oIndex}`}
-                                                            class="hidden"
-                                                            accept="image/*"
-                                                            onchange={(e) =>
-                                                                uploadOptionImage(
-                                                                    e,
-                                                                    vIndex,
-                                                                    oIndex,
-                                                                )}
-                                                        />
-                                                    </div>
-                                                {/if}
-                                                <input
-                                                    type="text"
-                                                    bind:value={opt.name}
-                                                    oninput={generateCombinations}
-                                                    class="flex-grow px-3 py-2 text-sm focus:outline-none"
-                                                    placeholder="Opsi"
-                                                />
-                                                <div
-                                                    class="flex items-center gap-0.5 border-r border-slate-100 pr-1 flex-shrink-0"
-                                                >
-                                                    {#if oIndex > 0}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() =>
-                                                                moveOption(
-                                                                    vIndex,
-                                                                    oIndex,
-                                                                    -1,
-                                                                )}
-                                                            class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
-                                                            title="Geser Kiri"
-                                                        >
-                                                            <i
-                                                                class="ti ti-chevron-left text-xs"
-                                                            ></i>
-                                                        </button>
-                                                    {/if}
-                                                    {#if oIndex < v.options.length - 1}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() =>
-                                                                moveOption(
-                                                                    vIndex,
-                                                                    oIndex,
-                                                                    1,
-                                                                )}
-                                                            class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
-                                                            title="Geser Kanan"
-                                                        >
-                                                            <i
-                                                                class="ti ti-chevron-right text-xs"
-                                                            ></i>
-                                                        </button>
-                                                    {/if}
-                                                </div>
-                                                <button
-                                                    aria-label="Hapus opsi"
-                                                    type="button"
-                                                    onclick={() =>
-                                                        removeOption(
-                                                            vIndex,
-                                                            oIndex,
-                                                        )}
-                                                    class="px-2 text-slate-400 hover:text-rose-500 flex-shrink-0"
-                                                    ><i class="ti ti-trash"
-                                                    ></i></button
-                                                >
-                                            </div>
-                                        {/each}
-                                        <div
-                                            class="flex items-center border border-dashed border-brand-blueRoyal rounded-xl overflow-hidden bg-white p-1"
-                                        >
-                                            <input
-                                                type="text"
-                                                id={`new-opt-name-${vIndex}`}
-                                                class="flex-grow px-3 py-2 text-sm focus:outline-none"
-                                                placeholder="Tambah opsi baru... (Tekan Enter)"
-                                                onkeydown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        addOption(vIndex);
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                aria-label="Hapus varian"
-                                                type="button"
-                                                onclick={() =>
-                                                    addOption(vIndex)}
-                                                class="px-4 bg-brand-blueLight hover:bg-brand-blueRoyal hover:text-white text-brand-blueRoyal font-bold transition flex items-center justify-center"
-                                                ><i class="ti ti-plus"
-                                                ></i></button
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-                            {/each}
-
-                            {#if variations.length < 2}
-                                <button
-                                    type="button"
-                                    onclick={addVariation}
-                                    class="w-full py-3 bg-slate-50 border border-dashed border-slate-300 text-slate-600 font-bold rounded-xl text-sm transition hover:bg-slate-100"
-                                >
-                                    + Tambah Tipe Variasi
-                                </button>
-                            {/if}
-
-                            {#if variations.length > 0 && variations[0].options.length > 0}
-                                <div
-                                    class="mt-6 p-5 border border-slate-200 rounded-xl bg-slate-50/50 space-y-4"
-                                >
-                                    <div class="flex flex-col">
-                                        <h4
-                                            class="font-outfit font-bold text-sm text-slate-800"
-                                        >
-                                            Pengaturan Khusus Varian
-                                        </h4>
-                                        <p
-                                            class="text-[11px] text-slate-400 font-medium leading-none"
-                                        >
-                                            Aktifkan untuk mengatur harga, stok,
-                                            atau dimensi yang berbeda antar
-                                            varian
-                                        </p>
-                                    </div>
-                                    <div
-                                        class="grid grid-cols-1 sm:grid-cols-3 gap-4"
-                                    >
-                                        <div
-                                            class="p-3 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm"
-                                        >
-                                            <Toggle
-                                                bind:checked={globalCustomPrice}
-                                                label="Harga Berbeda"
-                                                description="Atur harga per varian"
-                                            />
-                                        </div>
-                                        <div
-                                            class="p-3 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm"
-                                        >
-                                            <Toggle
-                                                bind:checked={globalCustomStock}
-                                                label="Stok Berbeda"
-                                                description="Atur stok per varian"
-                                            />
-                                        </div>
-                                        <div
-                                            class="p-3 bg-white border border-slate-200 rounded-2xl flex items-center shadow-sm"
-                                        >
-                                            <Toggle
-                                                bind:checked={
-                                                    globalCustomWeight
-                                                }
-                                                label="Dimensi Berbeda"
-                                                description="Atur berat per varian"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            {/if}
-
-                            {#if variants.length > 0}
-                                <div class="mt-6 space-y-4">
-                                    {#each variants as variant, idx (variant.id ? `${variant.id}-${idx}` : idx)}
-                                        <div
-                                            class="bg-white border {variant.active
-                                                ? 'border-brand-blueRoyal ring-1 ring-brand-blueRoyal/20 shadow-sm'
-                                                : 'border-slate-200 opacity-60'} rounded-2xl p-5 transition-all"
-                                        >
-                                            <div
-                                                class="flex items-center justify-between mb-4"
-                                            >
-                                                <div
-                                                    class="flex items-center gap-3"
-                                                >
-                                                    <div
-                                                        class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden"
-                                                    >
-                                                        {#if variant.image}
-                                                            <img
-                                                                src={variant.image.startsWith(
-                                                                    'data:',
-                                                                ) ||
-                                                                variant.image.startsWith(
-                                                                    'http',
-                                                                ) ||
-                                                                variant.image.startsWith(
-                                                                    '/',
-                                                                )
-                                                                    ? variant.image
-                                                                    : '/' +
-                                                                      variant.image}
-                                                                alt="var"
-                                                                class="w-full h-full object-cover"
-                                                            />
-                                                        {:else}
-                                                            <i
-                                                                class="ti ti-box text-slate-400 text-xl"
-                                                            ></i>
-                                                        {/if}
-                                                    </div>
-                                                    <div>
-                                                        <h4
-                                                            class="font-bold text-slate-800 text-base"
-                                                        >
-                                                            {variant.name}
-                                                        </h4>
-                                                        <div class="mt-1">
-                                                            <Input
-                                                                bind:value={
-                                                                    variant.sku
-                                                                }
-                                                                id={`sku-${variant.id}`}
-                                                                placeholder="SKU Varian (Opsional)"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div
-                                                    class="flex items-center gap-6"
-                                                >
-                                                    <Toggle
-                                                        bind:checked={
-                                                            variant.active
-                                                        }
-                                                        label={variant.active
-                                                            ? 'Varian Aktif'
-                                                            : 'Varian Nonaktif'}
-                                                    />
-
-                                                    {#if variant.active && (globalCustomPrice || globalCustomStock || globalCustomWeight)}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() =>
-                                                                (variant.expanded =
-                                                                    !variant.expanded)}
-                                                            class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 flex items-center justify-center transition"
-                                                            title={variant.expanded ===
-                                                            true
-                                                                ? 'Tutup Detail'
-                                                                : 'Buka Detail'}
-                                                        >
-                                                            <i
-                                                                class="ti {variant.expanded ===
-                                                                true
-                                                                    ? 'ti-chevron-up'
-                                                                    : 'ti-chevron-down'} text-base"
-                                                            ></i>
-                                                        </button>
-                                                    {/if}
-                                                </div>
-                                            </div>
-
-                                            {#if variant.active && (globalCustomPrice || globalCustomStock || globalCustomWeight) && variant.expanded === true}
-                                                <div
-                                                    class="mt-6 pt-6 border-t border-slate-100"
-                                                >
-                                                    {#if globalCustomPrice}
-                                                        <!-- Harga Section -->
-                                                        <div
-                                                            class="mb-6 p-5 border border-slate-100 rounded-2xl bg-white shadow-sm"
-                                                        >
-                                                            <h4
-                                                                class="font-bold text-xs text-slate-500 uppercase tracking-wider mb-4"
-                                                            >
-                                                                Detail Harga
-                                                            </h4>
-                                                            <div
-                                                                class="grid grid-cols-1 md:grid-cols-2 gap-4"
-                                                            >
-                                                                <InputCurrency
-                                                                    bind:value={
-                                                                        variant.price
-                                                                    }
-                                                                    id={`price-${variant.id}`}
-                                                                    label="Harga Jual *"
-                                                                    prefix="Rp"
-                                                                />
-                                                                <InputCurrency
-                                                                    bind:value={
-                                                                        variant.cost
-                                                                    }
-                                                                    id={`cost-${variant.id}`}
-                                                                    label="Harga Modal (HPP)"
-                                                                    prefix="Rp"
-                                                                />
-                                                            </div>
-
-                                                            {#if globalTaxEnabled && variant.price > 0}
-                                                                {#if form.tax_enabled}
-                                                                    <div
-                                                                        class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 font-medium space-y-1"
-                                                                    >
-                                                                        <div
-                                                                            class="flex justify-between"
-                                                                        >
-                                                                            <span
-                                                                                >Harga
-                                                                                Asli
-                                                                                (DPP):</span
-                                                                            >
-                                                                            <span
-                                                                                class="font-bold text-slate-800"
-                                                                                >Rp
-                                                                                {Number(
-                                                                                    variant.price,
-                                                                                ).toLocaleString(
-                                                                                    'id-ID',
-                                                                                )}</span
-                                                                            >
-                                                                        </div>
-                                                                        <div
-                                                                            class="flex justify-between text-rose-500"
-                                                                        >
-                                                                            <span
-                                                                                >Pajak
-                                                                                PPN
-                                                                                ({globalTaxPercentage}%):</span
-                                                                            >
-                                                                            <span
-                                                                                >+
-                                                                                Rp
-                                                                                {Math.round(
-                                                                                    (Number(
-                                                                                        variant.price,
-                                                                                    ) *
-                                                                                        globalTaxPercentage) /
-                                                                                        100,
-                                                                                ).toLocaleString(
-                                                                                    'id-ID',
-                                                                                )}</span
-                                                                            >
-                                                                        </div>
-                                                                        <div
-                                                                            class="flex justify-between text-slate-800 font-black pt-1 border-t border-dashed border-slate-200"
-                                                                        >
-                                                                            <span
-                                                                                >Total
-                                                                                Pembeli
-                                                                                Bayar:</span
-                                                                            >
-                                                                            <span
-                                                                                class="text-brand-blueRoyal text-sm font-black"
-                                                                                >Rp
-                                                                                {Math.round(
-                                                                                    Number(
-                                                                                        variant.price,
-                                                                                    ) *
-                                                                                        (1 +
-                                                                                            globalTaxPercentage /
-                                                                                                100),
-                                                                                ).toLocaleString(
-                                                                                    'id-ID',
-                                                                                )}</span
-                                                                            >
-                                                                        </div>
-                                                                    </div>
-                                                                {:else}
-                                                                    <div
-                                                                        class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-600 font-medium space-y-1"
-                                                                    >
-                                                                        <div
-                                                                            class="flex justify-between"
-                                                                        >
-                                                                            <span
-                                                                                >Total
-                                                                                Pembeli
-                                                                                Bayar:</span
-                                                                            >
-                                                                            <span
-                                                                                class="font-bold text-slate-800"
-                                                                                >Rp
-                                                                                {Number(
-                                                                                    variant.price,
-                                                                                ).toLocaleString(
-                                                                                    'id-ID',
-                                                                                )}</span
-                                                                            >
-                                                                        </div>
-                                                                        <div
-                                                                            class="flex justify-between text-slate-500"
-                                                                        >
-                                                                            <span
-                                                                                >Harga
-                                                                                Asli
-                                                                                (DPP):</span
-                                                                            >
-                                                                            <span
-                                                                                >Rp
-                                                                                {Math.round(
-                                                                                    Number(
-                                                                                        variant.price,
-                                                                                    ) /
-                                                                                        (1 +
-                                                                                            globalTaxPercentage /
-                                                                                                100),
-                                                                                ).toLocaleString(
-                                                                                    'id-ID',
-                                                                                )}</span
-                                                                            >
-                                                                        </div>
-                                                                        <div
-                                                                            class="flex justify-between text-rose-500"
-                                                                        >
-                                                                            <span
-                                                                                >Pajak
-                                                                                PPN
-                                                                                ({globalTaxPercentage}%
-                                                                                di
-                                                                                dalam):</span
-                                                                            >
-                                                                            <span
-                                                                                >Rp
-                                                                                {Math.round(
-                                                                                    Number(
-                                                                                        variant.price,
-                                                                                    ) -
-                                                                                        Number(
-                                                                                            variant.price,
-                                                                                        ) /
-                                                                                            (1 +
-                                                                                                globalTaxPercentage /
-                                                                                                    100),
-                                                                                ).toLocaleString(
-                                                                                    'id-ID',
-                                                                                )}</span
-                                                                            >
-                                                                        </div>
-                                                                    </div>
-                                                                {/if}
-                                                            {/if}
-
-                                                            <!-- Variant Wholesale Section -->
-                                                            <div
-                                                                class="mt-4 border-t border-slate-100 pt-4"
-                                                            >
-                                                                <div
-                                                                    class="flex items-center justify-between mb-3"
-                                                                >
-                                                                    <span
-                                                                        class="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider"
-                                                                    >
-                                                                        <i
-                                                                            class="ti ti-tags text-sm text-slate-400"
-                                                                        ></i>
-                                                                        Harga Grosir
-                                                                        ({variant.name})
-                                                                    </span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onclick={() => {
-                                                                            if (
-                                                                                !variant.tier_prices
-                                                                            )
-                                                                                variant.tier_prices =
-                                                                                    [];
-                                                                            variant.tier_prices.push(
-                                                                                {
-                                                                                    min_qty: 2,
-                                                                                    price: '',
-                                                                                },
-                                                                            );
-                                                                        }}
-                                                                        class="px-2.5 py-1 bg-brand-blueRoyal/5 hover:bg-brand-blueRoyal/10 text-brand-blueRoyal text-[10px] font-bold rounded-lg flex items-center gap-1 transition"
-                                                                    >
-                                                                        <i
-                                                                            class="ti ti-plus text-xs"
-                                                                        ></i> Tambah
-                                                                        Grosir
-                                                                    </button>
-                                                                </div>
-
-                                                                {#if !variant.tier_prices || variant.tier_prices.length === 0}
-                                                                    <p
-                                                                        class="text-[11px] text-slate-400 italic"
-                                                                    >
-                                                                        Belum
-                                                                        ada
-                                                                        harga
-                                                                        grosir
-                                                                        untuk
-                                                                        varian
-                                                                        ini.
-                                                                    </p>
-                                                                {:else}
-                                                                    <div
-                                                                        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"
-                                                                    >
-                                                                        {#each variant.tier_prices as tier, idx (idx)}
-                                                                            <div
-                                                                                class="flex items-center gap-3 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 relative group"
-                                                                            >
-                                                                                <div
-                                                                                    class="w-24 shrink-0"
-                                                                                >
-                                                                                    <Input
-                                                                                        type="number"
-                                                                                        min="2"
-                                                                                        bind:value={
-                                                                                            tier.min_qty
-                                                                                        }
-                                                                                        id={`v-tier-min-qty-${variant.id}-${idx}`}
-                                                                                        label="Min. Qty"
-                                                                                        placeholder="2"
-                                                                                    />
-                                                                                </div>
-                                                                                <div
-                                                                                    class="flex-grow"
-                                                                                >
-                                                                                    <InputCurrency
-                                                                                        bind:value={
-                                                                                            tier.price
-                                                                                        }
-                                                                                        id={`v-tier-price-${variant.id}-${idx}`}
-                                                                                        label="Harga Satuan"
-                                                                                        prefix="Rp"
-                                                                                        placeholder="0"
-                                                                                    />
-                                                                                </div>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onclick={() => {
-                                                                                        variant.tier_prices =
-                                                                                            variant.tier_prices.filter(
-                                                                                                (
-                                                                                                    _,
-                                                                                                    i,
-                                                                                                ) =>
-                                                                                                    i !==
-                                                                                                    idx,
-                                                                                            );
-                                                                                    }}
-                                                                                    class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-rose-600 cursor-pointer z-10"
-                                                                                    title="Hapus Grosir"
-                                                                                >
-                                                                                    <i
-                                                                                        class="ti ti-x"
-
-                                                                                    ></i>
-                                                                                </button>
-                                                                            </div>
-                                                                        {/each}
-                                                                    </div>
-                                                                {/if}
-                                                            </div>
-                                                        </div>
-                                                    {/if}
-
-                                                    {#if globalCustomStock}
-                                                        <!-- Stok Section -->
-                                                        <div
-                                                            class="mb-6 p-5 border border-slate-100 rounded-2xl bg-white shadow-sm"
-                                                        >
-                                                            <h4
-                                                                class="font-bold text-xs text-slate-500 uppercase tracking-wider mb-4"
-                                                            >
-                                                                Detail Stok
-                                                            </h4>
-                                                            <div
-                                                                class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
-                                                            >
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.stock
-                                                                    }
-                                                                    type="number"
-                                                                    min="0"
-                                                                    id={`stock-${variant.id}`}
-                                                                    label="Stok Saat Ini"
-                                                                    placeholder={form.stock !==
-                                                                    ''
-                                                                        ? `${form.stock} (Ikut Stok Utama)`
-                                                                        : 'Ikut Stok Utama'}
-                                                                    readonly={variant.is_unlimited}
-                                                                />
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.min_stock
-                                                                    }
-                                                                    type="number"
-                                                                    min="0"
-                                                                    id={`min_stock-${variant.id}`}
-                                                                    label="Batas Minimum (Alert)"
-                                                                    placeholder="0"
-                                                                />
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.min_purchase
-                                                                    }
-                                                                    type="number"
-                                                                    min="1"
-                                                                    id={`min_purchase-${variant.id}`}
-                                                                    label="Min Pembelian"
-                                                                    placeholder="1"
-                                                                />
-                                                            </div>
-                                                            <div
-                                                                class="text-[11px] text-slate-400 font-medium mb-4 flex items-center gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200"
-                                                            >
-                                                                <i
-                                                                    class="ti ti-info-circle text-slate-500 text-sm"
-                                                                ></i>
-                                                                <span
-                                                                    >Jika kolom
-                                                                    stok
-                                                                    dikosongkan,
-                                                                    varian ini
-                                                                    akan
-                                                                    menggunakan
-                                                                    stok utama
-                                                                    produk (<strong
-                                                                        >{form.stock ||
-                                                                            0}</strong
-                                                                    >).</span
-                                                                >
-                                                            </div>
-                                                            <div
-                                                                class="p-3 border border-slate-200 rounded-xl bg-slate-50 inline-block w-full"
-                                                            >
-                                                                <Toggle
-                                                                    bind:checked={
-                                                                        variant.is_unlimited
-                                                                    }
-                                                                    label="Stok Tidak Terbatas"
-                                                                    description="Pilih jika varian ini selalu diproduksi/tersedia"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    {/if}
-
-                                                    {#if globalCustomWeight}
-                                                        <!-- Dimensi Section -->
-                                                        <div
-                                                            class="mb-4 p-5 border border-slate-100 rounded-2xl bg-white shadow-sm"
-                                                        >
-                                                            <h4
-                                                                class="font-bold text-xs text-slate-500 uppercase tracking-wider mb-4"
-                                                            >
-                                                                Detail
-                                                                Pengiriman &
-                                                                Dimensi
-                                                            </h4>
-                                                            <div
-                                                                class="grid grid-cols-1 md:grid-cols-4 gap-4"
-                                                            >
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.weight
-                                                                    }
-                                                                    type="number"
-                                                                    min="0"
-                                                                    id={`weight-${variant.id}`}
-                                                                    label="Berat"
-                                                                    prefix="Gram"
-                                                                    placeholder={form.weight !==
-                                                                    ''
-                                                                        ? form.weight
-                                                                        : 'Ikut Utama'}
-                                                                />
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.length
-                                                                    }
-                                                                    type="number"
-                                                                    min="0"
-                                                                    id={`length-${variant.id}`}
-                                                                    label="Panjang"
-                                                                    prefix="Cm"
-                                                                    placeholder={form.length !==
-                                                                    ''
-                                                                        ? form.length
-                                                                        : 'Ikut Utama'}
-                                                                />
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.width
-                                                                    }
-                                                                    type="number"
-                                                                    min="0"
-                                                                    id={`width-${variant.id}`}
-                                                                    label="Lebar"
-                                                                    prefix="Cm"
-                                                                    placeholder={form.width !==
-                                                                    ''
-                                                                        ? form.width
-                                                                        : 'Ikut Utama'}
-                                                                />
-                                                                <Input
-                                                                    bind:value={
-                                                                        variant.height
-                                                                    }
-                                                                    type="number"
-                                                                    min="0"
-                                                                    id={`height-${variant.id}`}
-                                                                    label="Tinggi"
-                                                                    prefix="Cm"
-                                                                    placeholder={form.height !==
-                                                                    ''
-                                                                        ? form.height
-                                                                        : 'Ikut Utama'}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    {/if}
-                                                </div>
-                                            {/if}
-                                        </div>
-                                    {/each}
-                                </div>
-                            {/if}
-                        </div>
-                    {/if}
-                </div>
 
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center sm:justify-end gap-3 pt-4 border-t border-slate-200">
                     <button
