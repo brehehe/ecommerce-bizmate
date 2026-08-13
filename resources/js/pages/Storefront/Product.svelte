@@ -3526,7 +3526,7 @@
                                 <i
                                     class="ti ti-building-store text-sm text-blue-600"
                                 ></i>
-                                Toko
+                                Produk
                             </a>
                         {/if}
                         {#if !isSellerEnabled}
