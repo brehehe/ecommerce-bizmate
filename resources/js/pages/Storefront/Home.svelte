@@ -728,7 +728,7 @@
                     role="presentation"
                     ontouchstart={handleTouchStart}
                     ontouchend={handleTouchEnd}
-                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer aspect-[3.5/1]"
+                    class="sm:hidden relative w-full overflow-hidden bg-slate-100 group cursor-pointer aspect-[2.8/1]"
                 >
                     {#each heroBanners as banner, i}
                         <button
