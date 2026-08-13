@@ -492,7 +492,7 @@
                                 1750 × 500 px
                             </div>
                             <p class="text-[11px] text-slate-500 leading-snug">
-                                Desktop: 1750 × 500 px · Mobile: 1400 × 400 px (Sama 3.5:1)
+                                Desktop: 1750 × 500 px (3.5:1) · Mobile: 1400 × 500 px (2.8:1)
                             </p>
                             <!-- <div class="text-[10px] text-slate-600 pt-1.5 border-t border-slate-100 flex items-start gap-1">
                                 <i class="ti ti-bulb text-amber-500 text-xs shrink-0 mt-0.5"></i>
@@ -803,7 +803,7 @@
                                                         >
                                                             <i
                                                                 class="ti ti-device-mobile text-[10px]"
-                                                            ></i> Mobile (1400×400)
+                                                            ></i> Mobile (1400×500)
                                                         </p>
                                                         {#if banner.image}
                                                             <button
@@ -818,7 +818,7 @@
                                                     </div>
                                                     {#if banner.mobile_image}
                                                         <div
-                                                            class="relative rounded-xl overflow-hidden aspect-[3.5/1] border border-emerald-200 shadow-sm bg-white group/preview"
+                                                            class="relative rounded-xl overflow-hidden aspect-[2.8/1] border border-emerald-200 shadow-sm bg-white group/preview"
                                                         >
                                                             <img
                                                                 src={banner.mobile_image}
@@ -866,7 +866,7 @@
                                                         </button>
                                                     {:else}
                                                         <label
-                                                            class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[3.5/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30 py-3"
+                                                            class="rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white aspect-[2.8/1] flex flex-col items-center justify-center cursor-pointer transition group/drop hover:bg-emerald-50/30 py-3"
                                                         >
                                                             <input
                                                                 type="file"
@@ -884,7 +884,7 @@
                                                             <span
                                                                 class="text-[10px] font-bold text-slate-400 group-hover/drop:text-emerald-500"
                                                                 >Upload Mobile
-                                                                (1400×400)</span
+                                                                (1400×500)</span
                                                             >
                                                         </label>
                                                     {/if}

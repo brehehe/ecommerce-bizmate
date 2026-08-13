@@ -55,9 +55,9 @@
             ];
         } else if (bannerType === 'hero_mobile') {
             return [
-                { w: 1400, h: 400, label: '1400 × 400 (Ideal Mobile 3.5:1)' },
-                { w: 1750, h: 500, label: '1750 × 500 (Rasio 3.5:1)' },
-                { w: 1050, h: 300, label: '1050 × 300 (Alt Kompak)' },
+                { w: 1400, h: 500, label: '1400 × 500 (Ideal Mobile 2.8:1)' },
+                { w: 1750, h: 625, label: '1750 × 625 (Rasio 2.8:1)' },
+                { w: 1050, h: 375, label: '1050 × 375 (Alt Kompak)' },
             ];
         } else if (bannerType === 'side') {
             return [
@@ -112,7 +112,7 @@
                 editorHeight = 500;
             } else if (bannerType === 'hero_mobile') {
                 editorWidth = 1400;
-                editorHeight = 400;
+                editorHeight = 500;
             } else if (bannerType === 'side') {
                 editorWidth = 750;
                 editorHeight = 300;
@@ -739,8 +739,8 @@
                                 <div class="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
                                     <i class="ti ti-device-mobile text-emerald-500 text-sm shrink-0"></i>
                                     <div>
-                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1400 × 400 px</span>
-                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 3.5:1 (Sama dengan Desktop 3.5:1)</p>
+                                        <span class="text-xs font-black text-emerald-700">Ukuran Output Terkunci: 1400 × 500 px</span>
+                                        <p class="text-[10px] text-emerald-400 font-medium mt-0.5">Mobile · Rasio 2.8:1</p>
                                     </div>
                                 </div>
                             {:else if bannerType === 'middle_wide'}
