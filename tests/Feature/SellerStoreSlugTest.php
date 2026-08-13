@@ -34,6 +34,29 @@ test('storefront seller store page returns 404 for unknown slug', function () {
     $this->get('/toko-yang-tidak-ada')->assertNotFound();
 });
 
+test('storefront resolves legacy store-{name}-{uuid} fallback links', function () {
+    $seller = User::factory()->create([
+        'name' => 'Kokoh Yanuar',
+        'is_seller' => true,
+        'is_active' => true,
+        'store_slug' => null,
+    ]);
+
+    $this->get('/store-kokoh-yanuar-'.$seller->id)
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('Storefront/SellerStore'));
+});
+
+test('storefront legacy fallback link returns 404 when uuid does not belong to a seller', function () {
+    $customer = User::factory()->create([
+        'name' => 'Kokoh Yanuar',
+        'is_seller' => false,
+        'store_slug' => null,
+    ]);
+
+    $this->get('/store-kokoh-yanuar-'.$customer->id)->assertNotFound();
+});
+
 test('storefront seller store page lists the seller products', function () {
     $category = Category::create(['name' => 'Sepatu', 'slug' => 'sepatu']);
 
