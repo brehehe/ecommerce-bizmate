@@ -293,9 +293,9 @@
                             </div>
 
                             <!-- Product Info -->
-                            <div class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between">
+                            <div class="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <p class="text-xs sm:text-sm font-medium text-slate-800 line-clamp-2 leading-snug mb-1.5">
+                                    <p class="text-xs sm:text-sm font-medium text-slate-800 line-clamp-2 leading-snug mb-1">
                                         {product.name}
                                     </p>
                                     {#if product.avg_rating}
@@ -310,7 +310,7 @@
                                         </div>
                                     {/if}
                                 </div>
-                                <div class="mt-1">
+                                <div class="mt-0.5">
                                     <p
                                         class="text-sm font-black"
                                         style="color: {primary};"

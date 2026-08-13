@@ -1040,11 +1040,11 @@
                                         </div>
                                     </div>
                                     <div
-                                        class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
+                                        class="p-2 sm:p-2.5 flex-1 flex flex-col justify-between"
                                     >
                                         <div>
                                             <div
-                                                class="flex items-center justify-between gap-1 mb-1"
+                                                class="flex items-center justify-between gap-1 mb-0.5"
                                             >
                                                 <!-- <p
                                                     class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider truncate"
@@ -1070,7 +1070,7 @@
                                                 {/if}
                                             </div>
                                             <div
-                                                class="h-[2.5rem] overflow-hidden mb-1"
+                                                class="h-[2rem] overflow-hidden mb-0.5"
                                             >
                                                 <p
                                                     class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
@@ -1079,8 +1079,8 @@
                                                     {product.name}
                                                 </p>
                                             </div>
-                                            <hr class="border-slate-100 my-2" />
-                                            <div class="mb-1">
+                                            <hr class="border-slate-100 my-1" />
+                                            <div class="mb-0.5">
                                                 <p
                                                     class="text-sm sm:text-base font-black leading-tight"
                                                     style="color: {secondary};"

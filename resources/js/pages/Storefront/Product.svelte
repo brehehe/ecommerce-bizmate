@@ -4222,7 +4222,7 @@
                                         {rp.category?.name || 'PRODUK'}
                                     </p> -->
                                     <div
-                                        class="h-[2.5rem] overflow-hidden mb-1"
+                                        class="h-[2rem] overflow-hidden mb-0.5"
                                     >
                                         <p
                                             class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
@@ -4231,7 +4231,7 @@
                                             {rp.name}
                                         </p>
                                     </div>
-                                    <hr class="border-slate-100 my-2" />
+                                    <hr class="border-slate-100 my-1" />
                                     <div class="mb-3">
                                         {#if price > 0}
                                             <p

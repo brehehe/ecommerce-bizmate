@@ -1481,7 +1481,7 @@
                                             {product.category?.name || 'PRODUK'}
                                         </p>
                                         <div
-                                            class="h-[2.5rem] overflow-hidden mb-1"
+                                            class="h-[2rem] overflow-hidden mb-0.5"
                                         >
                                             <p
                                                 class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
@@ -1509,7 +1509,7 @@
                                                 >
                                             {/if}
                                         </div>
-                                        <hr class="border-slate-100 my-2" />
+                                        <hr class="border-slate-100 my-1" />
                                         <div class="mb-0">
                                             <p
                                                 class="text-sm sm:text-base font-black leading-tight"
@@ -1804,7 +1804,7 @@
                                                     'PRODUK'}
                                             </p> -->
                                             <div
-                                                class="h-[2.5rem] overflow-hidden mb-1"
+                                                class="h-[2rem] overflow-hidden mb-0.5"
                                             >
                                                 <p
                                                     class="text-xs sm:text-sm font-black leading-tight line-clamp-2"
@@ -1813,8 +1813,8 @@
                                                     {product.name}
                                                 </p>
                                             </div>
-                                            <hr class="border-slate-100 my-2" />
-                                            <div class="mb-1">
+                                            <hr class="border-slate-100 my-1" />
+                                            <div class="mb-0.5">
                                                 <p
                                                     class="text-sm sm:text-base font-black leading-tight"
                                                     style="color: {secondary};"
