@@ -47,6 +47,27 @@
     );
     const activePath = $derived((page.url || '').split('?')[0] || '/');
 
+    const adminWaNumber = $derived(
+        (page.props as any).settings?.store_whatsapp || (page.props as any).settings?.store_phone || ''
+    );
+
+    function openAdminWhatsApp(e?: Event) {
+        if (e) e.preventDefault();
+        const rawPhone = adminWaNumber || '';
+        if (!rawPhone) {
+            alert('Nomor kontak WhatsApp Admin belum diatur di Pengaturan Toko.');
+            return;
+        }
+        let cleanPhone = String(rawPhone).replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) {
+            cleanPhone = '62' + cleanPhone.slice(1);
+        } else if (!cleanPhone.startsWith('62') && cleanPhone.length > 5) {
+            cleanPhone = '62' + cleanPhone;
+        }
+        const text = encodeURIComponent('Halo Admin, saya ingin bertanya.');
+        window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+    }
+
     const flash = $derived((page.props as any).flash);
 
     $effect(() => {
@@ -5140,16 +5161,16 @@
                     </div>
                 </Link>
 
-                <!-- 4. Pesan -->
-                <Link
-                    href="/chats"
-                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                <!-- 4. Pesan (WhatsApp Admin Kontak) -->
+                <button
+                    type="button"
+                    onclick={openAdminWhatsApp}
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative cursor-pointer"
                 >
                     <div class="relative flex flex-col items-center">
                         <div class="relative">
                             <i
-                                class="ti ti-message-dots text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/chats') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                                style={activePath.startsWith('/chats') ? `color: ${primary}` : ''}
+                                class="ti ti-message-dots text-xl transition-transform duration-200 group-active:scale-90 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
                             ></i>
                             {#if chatUnreadCount > 0}
                                 <span class="absolute -top-1 -right-2 px-1 py-0.2 min-w-[14px] h-[14px] bg-red-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 animate-pulse">
@@ -5158,16 +5179,12 @@
                             {/if}
                         </div>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/chats') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/chats') ? `color: ${primary}` : ''}
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
                         >
                             Pesan
                         </span>
-                        {#if activePath.startsWith('/chats')}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
-                        {/if}
                     </div>
-                </Link>
+                </button>
 
                 <!-- 5. Profile -->
                 <Link
