@@ -1911,7 +1911,7 @@
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
                     <!-- Dark Mode Toggle (Desktop) - Only show for guests in header -->
-                    {#if !auth}
+                    {#if !auth && !isSellerMode}
                         <button
                             onclick={toggleDarkMode}
                             class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
@@ -2680,7 +2680,7 @@
                 <!-- Mobile right icons -->
                 <div class="flex items-center gap-1.5 shrink-0">
                     <!-- Dark Mode Toggle (Mobile) - Only show for guests in header -->
-                    {#if !auth}
+                    {#if !auth && !isSellerMode}
                         <button
                             onclick={toggleDarkMode}
                             class="w-8 h-8 flex items-center justify-center text-white shrink-0 hover:bg-white/10 rounded-xl transition"
@@ -5463,7 +5463,7 @@
                                 : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
                             style={isStoreActive ? `color: ${primary}` : ''}
                         >
-                            Produk
+                            Produk Saya
                         </span>
                         {#if isStoreActive}
                             <span
@@ -5526,7 +5526,7 @@
                         <span
                             class="text-[10px] font-bold mt-0.5 transition-colors duration-200 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
                         >
-                            Pesan
+                            Kontak Kami
                         </span>
                     </div>
                 </button>
