@@ -1062,10 +1062,10 @@
                                             </div>
                                         </div>
                                         <div
-                                            class="p-2 sm:p-2.5 flex-1 flex flex-col justify-between"
+                                            class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
                                         >
                                             <div>
-                                                <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                <div class="flex items-center justify-between gap-1 mb-1">
                                                     {#if product.seller?.store_name}
                                                         <span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 max-w-[50%] truncate">
                                                             <i class="ti ti-building-store text-blue-600 text-[11px]"></i>
@@ -1084,9 +1084,9 @@
                                                     </p>
                                                 </div>
                                                 <hr
-                                                    class="border-slate-100 my-1"
+                                                    class="border-slate-100 my-1.5"
                                                 />
-                                                <div class="mb-0.5">
+                                                <div class="mb-1">
                                                     <p
                                                         class="text-sm sm:text-base font-black leading-tight"
                                                         style="color: {secondary};"

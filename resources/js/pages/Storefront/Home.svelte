@@ -1509,7 +1509,7 @@
                                                 >
                                             {/if}
                                         </div>
-                                        <hr class="border-slate-100 my-1" />
+                                        <hr class="border-slate-100 my-1.5" />
                                         <div class="mb-0">
                                             <p
                                                 class="text-sm sm:text-base font-black leading-tight"
@@ -1813,8 +1813,8 @@
                                                     {product.name}
                                                 </p>
                                             </div>
-                                            <hr class="border-slate-100 my-1" />
-                                            <div class="mb-0.5">
+                                            <hr class="border-slate-100 my-1.5" />
+                                            <div class="mb-1">
                                                 <p
                                                     class="text-sm sm:text-base font-black leading-tight"
                                                     style="color: {secondary};"

@@ -1048,7 +1048,7 @@
                                             </div>
                                         </div>
                                         <div
-                                            class="p-2 sm:p-2.5 flex-1 flex flex-col justify-between"
+                                            class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
                                         >
                                             <div>
                                                 <p
@@ -1069,9 +1069,9 @@
                                                     </p>
                                                 </div>
                                                 <hr
-                                                    class="border-slate-100 my-1"
+                                                    class="border-slate-100 my-1.5"
                                                 />
-                                                <div class="mb-0.5">
+                                                <div class="mb-1">
                                                     <p
                                                         class="text-sm sm:text-base font-black leading-tight"
                                                         style="color: {secondary};"

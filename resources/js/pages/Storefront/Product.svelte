@@ -4231,7 +4231,7 @@
                                             {rp.name}
                                         </p>
                                     </div>
-                                    <hr class="border-slate-100 my-1" />
+                                    <hr class="border-slate-100 my-1.5" />
                                     <div class="mb-3">
                                         {#if price > 0}
                                             <p
