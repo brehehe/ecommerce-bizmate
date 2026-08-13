@@ -48,6 +48,7 @@ class SettingController extends Controller
         $settings['midtrans_enabled'] = (bool) config('app.midtrans_enabled', true);
         $settings['logistic_enabled'] = (bool) config('app.logistic_enabled', true);
         $settings['enable_3d_models'] = (bool) config('app.enable_3d_models', true);
+        $settings['show_brands'] = ($settings['show_brands'] ?? '1') !== '0';
 
         if ($isSeller) {
             $settings['store_name'] = $user->store_name ?: $user->name;

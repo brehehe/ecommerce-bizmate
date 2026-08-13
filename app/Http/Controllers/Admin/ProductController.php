@@ -437,7 +437,7 @@ class ProductController extends Controller
         $isSellerMode = (bool) config('app.is_seller', false);
         if ($isSellerMode && $request->user()?->is_seller) {
             $config = $this->getListingPricingConfig();
-            $calc = $this->calculateListingFeeAndDays($request, $config);
+            $calc = $this->calculateListingFeeAndDays($request, $config, $request->user());
 
             $productData['listing_expires_at'] = now()->addDays($calc['days']);
             $productData['listing_fee'] = $calc['fee'];
@@ -2184,14 +2184,55 @@ class ProductController extends Controller
         }
 
         $config = $this->getListingPricingConfig();
-        $calc = $this->calculateListingFeeAndDays($request, $config);
+        $user = $request->user();
+        $calc = $this->calculateListingFeeAndDays($request, $config, $user);
 
         $days = $calc['days'];
         $fee = (int) round($calc['fee']);
-        $user = $request->user();
+        $originalFee = (float) $calc['original_fee'];
+        $promoName = $calc['promo_name'] ?? null;
+
+        $orderId = 'LISTING-'.strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 12));
+
+        // If fee is 0 (100% Free Promo), skip QRIS charge & auto-activate immediately
+        if ($fee == 0) {
+            $baseDate = ($product->listing_expires_at && $product->listing_expires_at->isFuture())
+                ? $product->listing_expires_at
+                : now();
+            $newExpiresAt = (clone $baseDate)->addDays($days);
+
+            $product->update([
+                'listing_expires_at' => $newExpiresAt,
+                'listing_fee' => (float) $product->listing_fee + 0,
+                'listing_days' => (int) $product->listing_days + $days,
+                'active' => true,
+            ]);
+
+            $freePayment = ProductListingPayment::create([
+                'order_id' => $orderId,
+                'product_id' => $product->id,
+                'user_id' => $product->user_id ?: $user->id,
+                'amount' => 0,
+                'original_amount' => $originalFee,
+                'promo_name' => $promoName ?? 'Promo Listing Gratis',
+                'days' => $days,
+                'payment_method' => 'promo_free',
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
+
+            event(new ListingPaymentConfirmed($freePayment));
+
+            return response()->json([
+                'success' => true,
+                'free_auto_activated' => true,
+                'message' => 'Produk berhasil diaktifkan secara GRATIS ('.($promoName ?? 'Promo Gratis').')!',
+                'status' => 'paid',
+                'payment' => $freePayment,
+            ]);
+        }
 
         $serverKey = Setting::where('key', 'midtrans_server_key')->value('value');
-        $orderId = 'LISTING-'.strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 12));
 
         $qrImage = null;
         $qrString = null;
@@ -2234,6 +2275,8 @@ class ProductController extends Controller
                 'product_id' => $product->id,
                 'user_id' => $product->user_id ?: $user->id,
                 'amount' => $fee,
+                'original_amount' => $originalFee,
+                'promo_name' => $promoName,
                 'days' => $days,
                 'payment_method' => 'qris',
                 'status' => 'pending',
@@ -2247,6 +2290,8 @@ class ProductController extends Controller
                 'order_id' => $orderId,
                 'product_id' => $product->id,
                 'fee' => $fee,
+                'original_fee' => $originalFee,
+                'promo_name' => $promoName,
                 'days' => $days,
                 'qr_image' => $qrImage,
                 'qr_string' => $qrString,
@@ -2657,9 +2702,30 @@ class ProductController extends Controller
     /**
      * Get complete listing pricing configuration including dynamic packages.
      */
-    private function getListingPricingConfig(): array
+    private function getListingPricingConfig(?User $user = null): array
     {
-        $rawPackages = Setting::where('key', 'product_listing_packages')->value('value');
+        if ($user === null && auth()->check()) {
+            $user = auth()->user();
+        }
+
+        $keys = [
+            'product_listing_daily_rate',
+            'product_listing_max_custom_days',
+            'product_listing_custom_daily_rate',
+            'product_listing_fee_enabled',
+            'product_listing_packages',
+            'product_listing_first_upload_free',
+            'product_listing_date_promo_enabled',
+            'product_listing_date_promo_name',
+            'product_listing_date_promo_start',
+            'product_listing_date_promo_end',
+            'product_listing_date_promo_type',
+            'product_listing_date_promo_value',
+        ];
+
+        $settings = Setting::whereIn('key', $keys)->pluck('value', 'key');
+
+        $rawPackages = $settings['product_listing_packages'] ?? null;
         $packages = $rawPackages ? (json_decode($rawPackages, true) ?? []) : [];
         if (empty($packages)) {
             $packages = [
@@ -2668,19 +2734,92 @@ class ProductController extends Controller
             ];
         }
 
+        $firstUploadFree = (bool) ($settings['product_listing_first_upload_free'] ?? false);
+        $datePromoEnabled = (bool) ($settings['product_listing_date_promo_enabled'] ?? false);
+
+        $isFirstUploadEligible = false;
+        if ($firstUploadFree && $user) {
+            $existingProductCount = Product::where('user_id', $user->id)->count();
+            if ($existingProductCount === 0) {
+                $isFirstUploadEligible = true;
+            }
+        }
+
+        $isDatePromoEligible = false;
+        if ($datePromoEnabled) {
+            $now = now();
+            $start = ! empty($settings['product_listing_date_promo_start']) ? Carbon::parse($settings['product_listing_date_promo_start']) : null;
+            $end = ! empty($settings['product_listing_date_promo_end']) ? Carbon::parse($settings['product_listing_date_promo_end']) : null;
+
+            $isDatePromoEligible = true;
+            if ($start && $now->lt($start)) {
+                $isDatePromoEligible = false;
+            }
+            if ($end && $now->gt($end)) {
+                $isDatePromoEligible = false;
+            }
+        }
+
+        $processedPackages = [];
+        foreach ($packages as $pkg) {
+            $origPrice = (float) ($pkg['price'] ?? 0);
+            $finalPrice = $origPrice;
+            $isDiscounted = false;
+            $promoName = null;
+
+            if ($isFirstUploadEligible) {
+                $finalPrice = 0;
+                $isDiscounted = true;
+                $promoName = 'Promo Upload Pertama (Gratis)';
+            } elseif ($isDatePromoEligible) {
+                $promoType = $settings['product_listing_date_promo_type'] ?? 'free';
+                $promoVal = (float) ($settings['product_listing_date_promo_value'] ?? 0);
+                $pName = ! empty($settings['product_listing_date_promo_name']) ? $settings['product_listing_date_promo_name'] : 'Promo Listing';
+
+                if ($promoType === 'free') {
+                    $finalPrice = 0;
+                    $isDiscounted = true;
+                    $promoName = $pName.' (Gratis 100%)';
+                } elseif ($promoType === 'percentage') {
+                    $discAmount = $origPrice * ($promoVal / 100);
+                    $finalPrice = max(0, $origPrice - $discAmount);
+                    $isDiscounted = true;
+                    $promoName = $pName.' (Diskon '.$promoVal.'%)';
+                } elseif ($promoType === 'fixed_price') {
+                    $finalPrice = max(0, $promoVal);
+                    $isDiscounted = true;
+                    $promoName = $pName;
+                }
+            }
+
+            $processedPackages[] = array_merge($pkg, [
+                'original_price' => $origPrice,
+                'price' => $finalPrice,
+                'is_discounted' => $isDiscounted,
+                'promo_name' => $promoName,
+            ]);
+        }
+
         return [
-            'daily_rate' => (float) (Setting::where('key', 'product_listing_daily_rate')->value('value') ?? 1000),
-            'max_custom_days' => (int) (Setting::where('key', 'product_listing_max_custom_days')->value('value') ?? 365),
-            'custom_daily_rate' => (float) (Setting::where('key', 'product_listing_custom_daily_rate')->value('value') ?? 1000),
-            'fee_enabled' => (bool) (Setting::where('key', 'product_listing_fee_enabled')->value('value') ?? true),
-            'packages' => $packages,
+            'daily_rate' => (float) ($settings['product_listing_daily_rate'] ?? 1000),
+            'max_custom_days' => (int) ($settings['product_listing_max_custom_days'] ?? 365),
+            'custom_daily_rate' => (float) ($settings['product_listing_custom_daily_rate'] ?? 1000),
+            'fee_enabled' => (bool) (isset($settings['product_listing_fee_enabled']) ? (bool) $settings['product_listing_fee_enabled'] : true),
+            'packages' => $processedPackages,
+            'first_upload_free' => $firstUploadFree,
+            'date_promo_enabled' => $datePromoEnabled,
+            'date_promo_name' => (string) ($settings['product_listing_date_promo_name'] ?? 'Promo Spesial Listing'),
+            'date_promo_start' => (string) ($settings['product_listing_date_promo_start'] ?? ''),
+            'date_promo_end' => (string) ($settings['product_listing_date_promo_end'] ?? ''),
+            'date_promo_type' => (string) ($settings['product_listing_date_promo_type'] ?? 'free'),
+            'date_promo_value' => (float) ($settings['product_listing_date_promo_value'] ?? 0),
         ];
     }
 
     /**
      * Calculate days and fee based on request selection and config.
      */
-    private function calculateListingFeeAndDays(Request $request, array $config): array
+    private function calculateListingFeeAndDays(Request $request, array $config, ?User $user = null): array
     {
         $type = $request->input('listing_duration_type');
         $packages = $config['packages'] ?? [];
@@ -2700,18 +2839,71 @@ class ProductController extends Controller
         }
 
         if ($matched) {
-            return [
-                'days' => (int) $matched['days'],
-                'fee' => (float) $matched['price'],
-            ];
+            $days = (int) $matched['days'];
+            $originalFee = (float) $matched['price'];
+        } else {
+            $days = min(max(1, (int) $request->input('custom_days', 1)), $config['max_custom_days']);
+            $originalFee = $days * $config['custom_daily_rate'];
         }
 
-        $days = min(max(1, (int) $request->input('custom_days', 1)), $config['max_custom_days']);
-        $fee = $days * $config['custom_daily_rate'];
+        $finalFee = $originalFee;
+        $isDiscounted = false;
+        $promoName = null;
+
+        // 1. Check First Product Upload Promo
+        if (! empty($config['first_upload_free']) && $user) {
+            $existingProductCount = Product::where('user_id', $user->id)->count();
+            $targetProductId = $request->route('product')?->id ?? $request->input('product_id');
+            if ($existingProductCount === 0 || ($targetProductId && $existingProductCount === 1 && Product::where('user_id', $user->id)->where('id', $targetProductId)->exists())) {
+                $finalFee = 0;
+                $isDiscounted = true;
+                $promoName = 'Promo Upload Pertama (Gratis)';
+            }
+        }
+
+        // 2. Check Date Range Promo (if First Upload Promo did not apply)
+        if (! $isDiscounted && ! empty($config['date_promo_enabled'])) {
+            $now = now();
+            $start = ! empty($config['date_promo_start']) ? Carbon::parse($config['date_promo_start']) : null;
+            $end = ! empty($config['date_promo_end']) ? Carbon::parse($config['date_promo_end']) : null;
+
+            $isDateValid = true;
+            if ($start && $now->lt($start)) {
+                $isDateValid = false;
+            }
+            if ($end && $now->gt($end)) {
+                $isDateValid = false;
+            }
+
+            if ($isDateValid) {
+                $promoType = $config['date_promo_type'] ?? 'free';
+                $promoVal = (float) ($config['date_promo_value'] ?? 0);
+                $pName = ! empty($config['date_promo_name']) ? $config['date_promo_name'] : 'Promo Listing';
+
+                if ($promoType === 'free') {
+                    $finalFee = 0;
+                    $isDiscounted = true;
+                    $promoName = $pName.' (Gratis 100%)';
+                } elseif ($promoType === 'percentage') {
+                    $discAmount = $originalFee * ($promoVal / 100);
+                    $finalFee = max(0, $originalFee - $discAmount);
+                    $isDiscounted = true;
+                    $promoName = $pName.' (Diskon '.$promoVal.'%)';
+                } elseif ($promoType === 'fixed_price') {
+                    $finalFee = max(0, $promoVal);
+                    $isDiscounted = true;
+                    $promoName = $pName;
+                }
+            }
+        }
 
         return [
             'days' => $days,
-            'fee' => $fee,
+            'original_fee' => $originalFee,
+            'fee' => $finalFee,
+            'is_discounted' => $isDiscounted,
+            'promo_name' => $promoName,
+            'is_free' => ($finalFee == 0),
         ];
     }
 }

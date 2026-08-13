@@ -723,6 +723,7 @@
                         </div>
                     </div>
 
+                    {#if brands && brands.length > 0}
                     <hr class="border-slate-100" />
 
                     <!-- Brand Filter -->
@@ -764,6 +765,7 @@
                             {/each}
                         </div>
                     </div>
+                    {/if}
 
                     <hr class="border-slate-100" />
 
@@ -1233,6 +1235,7 @@
                             </div>
                         </div>
 
+                        {#if brands && brands.length > 0}
                         <hr class="border-slate-100 my-5" />
 
                         <!-- Brand Filter -->
@@ -1276,6 +1279,7 @@
                                 {/each}
                             </div>
                         </div>
+                        {/if}
 
                         <hr class="border-slate-100 my-5" />
 

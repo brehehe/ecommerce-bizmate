@@ -16,6 +16,8 @@ class ProductListingPayment extends Model
         'product_id',
         'user_id',
         'amount',
+        'original_amount',
+        'promo_name',
         'days',
         'payment_method',
         'gateway_transaction_id',
@@ -26,6 +28,7 @@ class ProductListingPayment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'original_amount' => 'decimal:2',
         'days' => 'integer',
         'paid_at' => 'datetime',
         'gateway_response' => 'array',

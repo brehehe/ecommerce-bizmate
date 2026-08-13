@@ -473,6 +473,11 @@
     let submittingRenew = $state(false);
     let qrisModalData = $state(null);
 
+    const selectedRenewPackage = $derived(
+        (listingPricing.packages || []).find((p) => (p.id || p.days) === renewDurationType || String(p.days) === String(renewDurationType)) || (listingPricing.packages || [])[0]
+    );
+    const isRenewSelectedFree = $derived(selectedRenewPackage ? Number(selectedRenewPackage.price) === 0 : false);
+
     // History Modal State
     let isHistoryModalOpen = $state(false);
     let loadingHistory = $state(false);
@@ -688,13 +693,18 @@
             });
 
             const data = await res.json();
-            if (data.success && data.qris_payment) {
+            if (data.success && data.free_auto_activated) {
+                isRenewModalOpen = false;
+                productToRenew = null;
+                showToast(data.message || 'Produk berhasil diaktifkan secara GRATIS!', 'success');
+                router.reload({ only: ['products'] });
+            } else if (data.success && data.qris_payment) {
                 qrisModalData = data.qris_payment;
                 isRenewModalOpen = false;
                 // Start polling for payment confirmation
                 startQrisPolling(data.qris_payment.order_id);
             } else {
-                showToast('Gagal memuat pembayaran QRIS', 'error');
+                showToast(data.message || 'Gagal memuat pembayaran QRIS', 'error');
             }
         } catch (err) {
             showToast('Terjadi kesalahan koneksi', 'error');
@@ -3796,48 +3806,28 @@
                                 class="w-full p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer
                                        {renewDurationType === pkgKey ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
                             >
-                                <div>
-                                    <span class="text-xs font-bold text-slate-800 block">{pkg.name}</span>
-                                    <span class="text-[10px] text-slate-500">Aktif {pkg.days} Hari</span>
+                                <div class="space-y-0.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold text-slate-800">{pkg.name}</span>
+                                        {#if pkg.promo_name}
+                                            <span class="px-1.5 py-0.5 rounded-md bg-amber-50 text-[10px] font-extrabold text-amber-800 border border-amber-200">
+                                                {pkg.promo_name}
+                                            </span>
+                                        {/if}
+                                    </div>
+                                    <span class="text-[10px] text-slate-500 block">Aktif {pkg.days} Hari</span>
                                 </div>
-                                <span class="text-xs font-black text-blue-700">{fmt(pkg.price)}</span>
+                                <div class="text-right">
+                                    {#if pkg.original_price && Number(pkg.original_price) > Number(pkg.price)}
+                                        <span class="text-[10px] text-slate-400 line-through font-medium block">{fmt(pkg.original_price)}</span>
+                                        <span class="text-xs font-black text-emerald-600">{fmt(pkg.price)}</span>
+                                    {:else}
+                                        <span class="text-xs font-black text-blue-700">{fmt(pkg.price)}</span>
+                                    {/if}
+                                </div>
                             </button>
                         {/each}
-
-                        <button
-                            type="button"
-                            onclick={() => renewDurationType = 'custom'}
-                            class="w-full p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer
-                                   {renewDurationType === 'custom' ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
-                        >
-                            <div>
-                                <span class="text-xs font-bold text-slate-800 block">Custom (Max {listingPricing.max_custom_days} Hari)</span>
-                                <span class="text-[10px] text-slate-500">{renewCustomDays} hari x {fmt(listingPricing.custom_daily_rate)}</span>
-                            </div>
-                            <span class="text-xs font-black text-blue-700">{fmt(renewCustomDays * listingPricing.custom_daily_rate)}</span>
-                        </button>
                     </div>
-
-                    {#if renewDurationType === 'custom'}
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
-                            <div class="flex flex-col">
-                                <span class="text-xs font-bold text-slate-700">Jumlah Hari:</span>
-                                <span class="text-[10px] text-slate-400">Batas maksimal: {listingPricing.max_custom_days} hari</span>
-                            </div>
-                            <input
-                                type="number"
-                                min="1"
-                                max={listingPricing.max_custom_days}
-                                bind:value={renewCustomDays}
-                                oninput={() => {
-                                    const maxVal = listingPricing.max_custom_days || 365;
-                                    if (renewCustomDays > maxVal) renewCustomDays = maxVal;
-                                    if (renewCustomDays < 1) renewCustomDays = 1;
-                                }}
-                                class="w-24 px-3 py-1 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none"
-                            />
-                        </div>
-                    {/if}
 
                 </div>
 
@@ -3853,11 +3843,15 @@
                         type="button"
                         onclick={submitRenewListing}
                         disabled={submittingRenew}
-                        class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md shadow-blue-600/20"
+                        class="px-5 py-2.5 rounded-xl font-bold text-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md
+                               {isRenewSelectedFree ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'}"
                     >
                         {#if submittingRenew}
                             <i class="ti ti-loader animate-spin text-sm"></i>
                             <span>Memproses...</span>
+                        {:else if isRenewSelectedFree}
+                            <i class="ti ti-circle-check text-sm"></i>
+                            <span>Aktifkan Produk (Gratis)</span>
                         {:else}
                             <i class="ti ti-qrcode text-sm"></i>
                             <span>Bayar via QRIS</span>

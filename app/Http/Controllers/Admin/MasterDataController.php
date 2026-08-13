@@ -1439,6 +1439,13 @@ class MasterDataController extends Controller
             'product_listing_custom_daily_rate',
             'product_listing_fee_enabled',
             'product_listing_packages',
+            'product_listing_first_upload_free',
+            'product_listing_date_promo_enabled',
+            'product_listing_date_promo_name',
+            'product_listing_date_promo_start',
+            'product_listing_date_promo_end',
+            'product_listing_date_promo_type',
+            'product_listing_date_promo_value',
         ];
 
         $settings = Setting::whereIn('key', $keys)->pluck('value', 'key');
@@ -1464,6 +1471,13 @@ class MasterDataController extends Controller
                 'product_listing_custom_daily_rate' => (float) ($settings['product_listing_custom_daily_rate'] ?? 1000),
                 'product_listing_fee_enabled' => (bool) (isset($settings['product_listing_fee_enabled']) ? (bool) $settings['product_listing_fee_enabled'] : true),
                 'product_listing_packages' => $packages,
+                'product_listing_first_upload_free' => (bool) ($settings['product_listing_first_upload_free'] ?? false),
+                'product_listing_date_promo_enabled' => (bool) ($settings['product_listing_date_promo_enabled'] ?? false),
+                'product_listing_date_promo_name' => (string) ($settings['product_listing_date_promo_name'] ?? 'Promo Spesial Listing'),
+                'product_listing_date_promo_start' => (string) ($settings['product_listing_date_promo_start'] ?? ''),
+                'product_listing_date_promo_end' => (string) ($settings['product_listing_date_promo_end'] ?? ''),
+                'product_listing_date_promo_type' => (string) ($settings['product_listing_date_promo_type'] ?? 'free'),
+                'product_listing_date_promo_value' => (float) ($settings['product_listing_date_promo_value'] ?? 0),
             ],
             'isSellerMode' => (bool) config('app.is_seller', false),
         ]);
@@ -1477,9 +1491,9 @@ class MasterDataController extends Controller
         $this->authorizeAdminOnly($request);
 
         $validated = $request->validate([
-            'product_listing_daily_rate' => 'required|numeric|min:0',
-            'product_listing_max_custom_days' => 'required|integer|min:1|max:365',
-            'product_listing_custom_daily_rate' => 'required|numeric|min:0',
+            'product_listing_daily_rate' => 'nullable|numeric|min:0',
+            'product_listing_max_custom_days' => 'nullable|integer|min:1|max:365',
+            'product_listing_custom_daily_rate' => 'nullable|numeric|min:0',
             'product_listing_fee_enabled' => 'required|boolean',
             'product_listing_packages' => 'nullable|array',
             'product_listing_packages.*.id' => 'nullable|string',
@@ -1487,6 +1501,13 @@ class MasterDataController extends Controller
             'product_listing_packages.*.days' => 'required|integer|min:1',
             'product_listing_packages.*.price' => 'required|numeric|min:0',
             'product_listing_packages.*.is_popular' => 'nullable|boolean',
+            'product_listing_first_upload_free' => 'required|boolean',
+            'product_listing_date_promo_enabled' => 'required|boolean',
+            'product_listing_date_promo_name' => 'nullable|string',
+            'product_listing_date_promo_start' => 'nullable|string',
+            'product_listing_date_promo_end' => 'nullable|string',
+            'product_listing_date_promo_type' => 'nullable|string|in:free,percentage,fixed_price',
+            'product_listing_date_promo_value' => 'nullable|numeric|min:0',
         ]);
 
         foreach ($validated as $key => $value) {
@@ -1498,7 +1519,7 @@ class MasterDataController extends Controller
             } else {
                 Setting::updateOrCreate(
                     ['key' => $key],
-                    ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value]
+                    ['value' => is_bool($value) ? ($value ? '1' : '0') : (string) ($value ?? '')]
                 );
             }
         }

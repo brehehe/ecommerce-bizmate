@@ -456,7 +456,24 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap" data-label="Nominal">
-                                        <p class="text-sm font-semibold text-slate-800">{fmt(item.amount)}</p>
+                                        {#if item.promo_name || (item.original_amount && Number(item.original_amount) > Number(item.amount))}
+                                            <div class="flex flex-col">
+                                                <div class="flex items-center gap-1.5">
+                                                    {#if item.original_amount && Number(item.original_amount) > Number(item.amount)}
+                                                        <span class="text-xs text-slate-400 line-through font-medium">{fmt(item.original_amount)}</span>
+                                                    {/if}
+                                                    <span class="text-sm font-bold text-emerald-600">{fmt(item.amount)}</span>
+                                                </div>
+                                                {#if item.promo_name}
+                                                    <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md mt-0.5 w-fit">
+                                                        <i class="ti ti-discount-2 text-[11px]"></i>
+                                                        {item.promo_name}
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                        {:else}
+                                            <p class="text-sm font-semibold text-slate-800">{fmt(item.amount)}</p>
+                                        {/if}
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap" data-label="Metode">
                                         <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-100">

@@ -4350,52 +4350,26 @@
                                         {/if}
                                     </div>
                                     <div class="mt-3">
-                                        <p class="text-sm font-black text-blue-700">{fmt(pkg.price)}</p>
-                                        <p class="text-[10px] text-slate-500">Paket {pkg.days} Hari Masa Aktif</p>
+                                        {#if pkg.original_price && Number(pkg.original_price) > Number(pkg.price)}
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-xs text-slate-400 line-through font-medium">{fmt(pkg.original_price)}</span>
+                                                <span class="text-sm font-black text-emerald-600">{fmt(pkg.price)}</span>
+                                            </div>
+                                        {:else}
+                                            <p class="text-sm font-black text-blue-700">{fmt(pkg.price)}</p>
+                                        {/if}
+                                        {#if pkg.promo_name}
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md mt-1">
+                                                <i class="ti ti-discount-2 text-[11px]"></i>
+                                                {pkg.promo_name}
+                                            </span>
+                                        {:else}
+                                            <p class="text-[10px] text-slate-500">Paket {pkg.days} Hari Masa Aktif</p>
+                                        {/if}
                                     </div>
                                 </button>
                             {/each}
-
-                            <!-- Custom Days Option -->
-                            <button
-                                type="button"
-                                onclick={() => form.listing_duration_type = 'custom'}
-                                class="p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer
-                                       {form.listing_duration_type === 'custom' ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
-                            >
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xs font-black text-slate-800">Custom (Max {listingPricing.max_custom_days} Hari)</span>
-                                    {#if form.listing_duration_type === 'custom'}
-                                        <i class="ti ti-circle-check-filled text-blue-600 text-base"></i>
-                                    {/if}
-                                </div>
-                                <div class="mt-3">
-                                    <p class="text-sm font-black text-blue-700">
-                                        {fmt(form.custom_days * listingPricing.custom_daily_rate)}
-                                    </p>
-                                    <p class="text-[10px] text-slate-500">({form.custom_days} hari x {fmt(listingPricing.custom_daily_rate)}/hari)</p>
-                                </div>
-                            </button>
                         </div>
-
-                        {#if form.listing_duration_type === 'custom'}
-                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-4">
-                                <div>
-                                    <label class="text-xs font-bold text-slate-700 block">Jumlah Hari Custom:</label>
-                                    <p class="text-[10px] text-slate-500">Maksimal {listingPricing.max_custom_days} hari</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max={listingPricing.max_custom_days}
-                                        bind:value={form.custom_days}
-                                        class="w-20 px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                    />
-                                    <span class="text-xs font-bold text-slate-600">Hari</span>
-                                </div>
-                            </div>
-                        {/if}
                     </div>
                 {/if}
 

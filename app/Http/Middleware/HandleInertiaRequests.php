@@ -62,6 +62,7 @@ class HandleInertiaRequests extends Middleware
         $cartButtonStyle = 'button';
         $showIntroAnimation = true;
         $storefrontDefaultTheme = 'light';
+        $showBrands = true;
 
         $coinsEnabled = false;
         $coinConversionRate = 1;
@@ -148,6 +149,7 @@ class HandleInertiaRequests extends Middleware
                 $cartButtonStyle = $settings['storefront_cart_button_style'] ?? 'button';
                 $showIntroAnimation = ($settings['show_intro_animation'] ?? '1') !== '0';
                 $storefrontDefaultTheme = $settings['storefront_default_theme'] ?? 'light';
+                $showBrands = ($settings['show_brands'] ?? '1') !== '0';
 
                 $coinsEnabled = ($settings['coins_enabled'] ?? null) === '1';
                 $coinConversionRate = (float) ($settings['coin_conversion_rate'] ?? 1);
@@ -339,6 +341,7 @@ class HandleInertiaRequests extends Middleware
                 'storefront_cart_button_style' => $cartButtonStyle,
                 'show_intro_animation' => $showIntroAnimation,
                 'storefront_default_theme' => $storefrontDefaultTheme,
+                'show_brands' => $showBrands,
 
                 'coins_enabled' => $coinsEnabled,
                 'coin_conversion_rate' => $coinConversionRate,

@@ -117,6 +117,9 @@
         show_intro_animation:
             settings.show_intro_animation !== '0' &&
             settings.show_intro_animation !== false,
+        show_brands:
+            settings.show_brands !== '0' &&
+            settings.show_brands !== false,
         storefront_default_theme: settings.storefront_default_theme || 'light',
         enable_cod:
             settings.enable_cod === 'true' ||
@@ -2340,6 +2343,23 @@
                                 <Toggle
                                     id="toggle-show-intro-animation"
                                     bind:checked={form.show_intro_animation}
+                                />
+                            </div>
+
+                            <div class="h-px bg-slate-100"></div>
+
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <span class="text-xs font-black text-slate-700 uppercase tracking-tight block">
+                                        Section Brand Pilihan (Home Page)
+                                    </span>
+                                    <p class="text-[11px] text-slate-400 font-bold mt-1">
+                                        Tampilkan atau sembunyikan section baris "Brand Pilihan" di halaman utama (Home) toko Anda.
+                                    </p>
+                                </div>
+                                <Toggle
+                                    id="toggle-show-brands"
+                                    bind:checked={form.show_brands}
                                 />
                             </div>
 

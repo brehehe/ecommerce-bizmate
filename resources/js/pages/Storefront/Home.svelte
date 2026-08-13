@@ -34,6 +34,9 @@
     const cartButtonStyle = $derived(
         (page.props.settings as any)?.storefront_cart_button_style || 'button',
     );
+    const showBrands = $derived(
+        ((page.props.settings as any)?.show_brands ?? true) !== false,
+    );
     const isSellerEnabled = $derived(
         Boolean(
             (page.props as any).app_config?.is_seller_enabled ??
@@ -1557,9 +1560,7 @@
         </section>
     {/if}
 
-    <!-- ═══════════════════════════════════════════════════
-     SECTION 8: OFFICIAL BRAND STORE (Bar Brand E-commerce Premium)
-    ═══════════════════════════════════════════════════ -->
+    {#if showBrands && availableBrands && availableBrands.length > 0}
     <!-- ═══════════════════════════════════════════════════
      SECTION 8: BRAND PILIHAN (Official Store - Sleek Cards Like Categories)
     ═══════════════════════════════════════════════════ -->
@@ -1578,38 +1579,40 @@
                         style="color: {primary}; background-color: {primary}12; border-color: {primary}30;"
                     >
                         <i class="ti ti-circle-check-filled text-xs" style="color: {primary};"></i>
-                        <span>Official Store</span>
+                        <span>Official</span>
                     </div>
                 </div>
-                <Link
+                <a
                     href="/brands"
-                    prefetch
-                    class="text-[11px] sm:text-xs font-bold flex items-center gap-0.5 transition hover:opacity-80 cursor-pointer"
+                    class="text-xs font-bold transition-opacity hover:opacity-80 flex items-center gap-1"
                     style="color: {primary};"
                 >
-                    Lihat Semua <i class="ti ti-chevron-right text-[10px]"></i>
-                </Link>
+                    Lihat Semua
+                    <i class="ti ti-chevron-right text-xs"></i>
+                </a>
             </div>
 
             <!-- Brand Icon Cards Scroll Row (Styled like Categories) -->
-            <div class="overflow-x-auto no-scrollbar py-1">
-                <div class="flex gap-3 sm:gap-4 w-max sm:w-auto items-center">
+            <div class="relative group/brandrow">
+                <div
+                    class="flex items-center gap-3.5 sm:gap-4 overflow-x-auto no-scrollbar py-2 px-1 scroll-smooth"
+                >
                     <!-- First Card: Semua Brand -->
                     <button
                         type="button"
                         onclick={() => (selectedBrandId = null)}
-                        class="flex flex-col items-center gap-1.5 group cursor-pointer w-[72px] sm:w-[80px] shrink-0 text-center"
+                        class="flex flex-col items-center gap-1.5 shrink-0 group cursor-pointer"
                     >
                         <div
                             class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden shadow-2xs {selectedBrandId === null
-                                ? 'shadow-md scale-105'
-                                : 'bg-white border-slate-200/90 group-hover:border-slate-300'}"
+                                ? 'shadow-md border-transparent'
+                                : 'bg-white border-slate-200/80 hover:border-slate-300'}"
                             style={selectedBrandId === null ? `background-color: ${primary}; border-color: ${primary}; color: #ffffff;` : `color: ${primary};`}
                         >
-                            <i class="ti ti-building-store text-xl sm:text-2xl" style={selectedBrandId === null ? 'color: #ffffff;' : `color: ${primary};`}></i>
+                            <i class="ti ti-building-store text-xl sm:text-2xl" style={selectedBrandId === null ? 'color: #ffffff;' : `color: {primary};`}></i>
                         </div>
                         <span
-                            class="text-[11px] sm:text-xs font-semibold text-center leading-tight max-w-[76px] line-clamp-2 transition {selectedBrandId === null ? 'font-bold text-slate-900' : 'text-slate-700 group-hover:text-slate-900'}"
+                            class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[76px] line-clamp-2 group-hover:text-slate-900 transition {selectedBrandId === null ? 'font-bold text-slate-900' : ''}"
                         >
                             Semua Brand
                         </span>
@@ -1621,25 +1624,26 @@
                             <button
                                 type="button"
                                 onclick={() => (selectedBrandId = isSelected ? null : (brand.id || brand.name))}
-                                class="flex flex-col items-center gap-1.5 group cursor-pointer w-[72px] sm:w-[80px] shrink-0 text-center"
+                                class="flex flex-col items-center gap-1.5 shrink-0 group cursor-pointer"
                             >
                                 <div
-                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden shadow-2xs {isSelected
-                                        ? 'shadow-md scale-105'
-                                        : 'bg-white border-slate-200/90 group-hover:border-slate-300'}"
-                                    style={isSelected ? `background-color: ${primary}; border-color: ${primary}; color: #ffffff;` : ''}
+                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden bg-white shadow-2xs {isSelected ? 'ring-2 ring-offset-2 border-transparent' : 'border-slate-200/80 hover:border-slate-300'}"
+                                    style={isSelected ? `box-shadow: 0 0 0 2px ${primary};` : ''}
                                 >
-                                    <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black uppercase transition-colors {isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-800'}" style={!isSelected ? `color: ${primary};` : ''}>
-                                        {brand.name.charAt(0)}
-                                    </span>
-                                    {#if isSelected}
-                                        <div class="absolute top-1 right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center shadow-xs">
-                                            <i class="ti ti-check text-[10px] font-bold" style="color: {secondary};"></i>
+                                    {#if brand.logo || brand.image}
+                                        <img
+                                            src={brand.logo || brand.image}
+                                            alt={brand.name}
+                                            class="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                                        />
+                                    {:else}
+                                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm uppercase">
+                                            {brand.name.charAt(0)}
                                         </div>
                                     {/if}
                                 </div>
                                 <span
-                                    class="text-[11px] sm:text-xs font-semibold text-center leading-tight max-w-[76px] line-clamp-2 transition {isSelected ? 'font-bold text-slate-900' : 'text-slate-700 group-hover:text-slate-900'}"
+                                    class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[76px] line-clamp-2 group-hover:text-slate-900 transition"
                                 >
                                     {brand.name}
                                 </span>
@@ -1650,6 +1654,7 @@
             </div>
         </div>
     </section>
+    {/if}
 
     <!-- ═══════════════════════════════════════════════════
      SECTION 10: REKOMENDASI PRODUK (Urutan Tetap & Konsisten)

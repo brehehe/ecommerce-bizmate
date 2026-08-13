@@ -27,6 +27,13 @@
                 { id: 'pkg_15', name: 'Paket 15 Hari', days: 15, price: 15000, is_popular: false },
                 { id: 'pkg_30', name: 'Paket 30 Hari', days: 30, price: 30000, is_popular: true },
             ],
+        product_listing_first_upload_free: Boolean(settings.product_listing_first_upload_free ?? false),
+        product_listing_date_promo_enabled: Boolean(settings.product_listing_date_promo_enabled ?? false),
+        product_listing_date_promo_name: String(settings.product_listing_date_promo_name || 'Promo Spesial Listing'),
+        product_listing_date_promo_start: String(settings.product_listing_date_promo_start || ''),
+        product_listing_date_promo_end: String(settings.product_listing_date_promo_end || ''),
+        product_listing_date_promo_type: String(settings.product_listing_date_promo_type || 'free'),
+        product_listing_date_promo_value: Number(settings.product_listing_date_promo_value || 0),
     });
 
     function addPackageRow() {
@@ -222,43 +229,129 @@
                         {/each}
                     </div>
 
-                    <div class="border-t border-slate-100 pt-5">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                            Pengaturan Durasi Custom (Max Hari)
-                        </h3>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- Custom Duration Rate -->
-                            <div class="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 space-y-2">
-                                <span class="text-xs font-bold text-slate-700 block">Tarif Per Hari Untuk Durasi Custom</span>
-                                <InputCurrency
-                                    bind:value={form.product_listing_custom_daily_rate}
-                                    placeholder="1000"
-                                    prefix="Rp"
-                                    label=""
-                                />
-                                <p class="text-[11px] text-slate-500">
-                                    Biaya dihitung perkalian hari (misal 5 hari x {fmt(form.product_listing_custom_daily_rate)} = {fmt(5 * form.product_listing_custom_daily_rate)}).
-                                </p>
-                            </div>
 
-                            <!-- Max Custom Days -->
-                            <div class="rounded-2xl bg-slate-50 p-4 border border-slate-200/80 space-y-2">
-                                <span class="text-xs font-bold text-slate-700 block">Batas Maksimal Hari Custom</span>
-                                <Input
-                                    type="number"
-                                    min="1"
-                                    max="365"
-                                    bind:value={form.product_listing_max_custom_days}
-                                    placeholder="15"
-                                />
-                                <p class="text-[11px] text-slate-500">
-                                    Seller tidak bisa memilih durasi custom melebihi <strong>{form.product_listing_max_custom_days} hari</strong>.
-                                </p>
+                </div>
+            </div>
+
+            <!-- Promo & Discount Configuration Card -->
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                <div class="border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="ti ti-discount-2 text-amber-500 text-base"></i>
+                            <span>Pengaturan Diskon & Promo Upload Produk</span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Atur promo upload produk pertama gratis atau diskon khusus berdasarkan periode tanggal.</p>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-6">
+                    <!-- Rule 1: First Upload Promo -->
+                    <div class="rounded-2xl bg-amber-50/50 p-4 border border-amber-200/80 flex items-center justify-between gap-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-amber-900">Promo Upload Produk Pertama (Gratis 100%)</span>
+                                <span class="px-2 py-0.5 rounded-md bg-amber-100 text-[10px] font-extrabold text-amber-800 border border-amber-300">
+                                    Rekomendasi
+                                </span>
                             </div>
+                            <p class="text-[11px] text-amber-700">
+                                Jika diaktifkan, produk pertama yang diunggah oleh setiap seller baru akan secara otomatis mendapat potongan 100% (Gratis Rp 0) dan diaktifkan tanpa meminta pembayaran QRIS.
+                            </p>
                         </div>
+                        <Toggle
+                            bind:checked={form.product_listing_first_upload_free}
+                            label=""
+                        />
                     </div>
 
+                    <!-- Rule 2: Date Range Promo -->
+                    <div class="rounded-2xl bg-slate-50 p-4 border border-slate-200 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-slate-800 block">Promo Berdasarkan Periode / Rentang Tanggal</span>
+                                <p class="text-[11px] text-slate-500">
+                                    Aktifkan promo potongan biaya listing untuk seluruh seller pada periode waktu tertentu.
+                                </p>
+                            </div>
+                            <Toggle
+                                bind:checked={form.product_listing_date_promo_enabled}
+                                label=""
+                            />
+                        </div>
+
+                        {#if form.product_listing_date_promo_enabled}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-200/80">
+                                <div class="md:col-span-2">
+                                    <label class="text-[11px] font-bold text-slate-600 mb-1 block">Nama Promo:</label>
+                                    <input
+                                        type="text"
+                                        bind:value={form.product_listing_date_promo_name}
+                                        placeholder="Contoh: Promo Independence Day 50% Off"
+                                        class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 mb-1 block">Tanggal & Jam Mulai:</label>
+                                    <input
+                                        type="datetime-local"
+                                        bind:value={form.product_listing_date_promo_start}
+                                        class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 mb-1 block">Tanggal & Jam Selesai:</label>
+                                    <input
+                                        type="datetime-local"
+                                        bind:value={form.product_listing_date_promo_end}
+                                        class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 mb-1 block">Tipe Diskon Promo:</label>
+                                    <select
+                                        bind:value={form.product_listing_date_promo_type}
+                                        class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="free">Gratis 100% (Rp 0)</option>
+                                        <option value="percentage">Diskon Persentase (%)</option>
+                                        <option value="fixed_price">Harga Khusus Promo (Nominal Rp)</option>
+                                    </select>
+                                </div>
+
+                                {#if form.product_listing_date_promo_type === 'percentage'}
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-600 mb-1 block">Nilai Diskon (%):</label>
+                                        <div class="flex items-center gap-1">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="100"
+                                                bind:value={form.product_listing_date_promo_value}
+                                                placeholder="50"
+                                                class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                            />
+                                            <span class="text-xs font-bold text-slate-500">%</span>
+                                        </div>
+                                    </div>
+                                {:else if form.product_listing_date_promo_type === 'fixed_price'}
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-600 mb-1 block">Harga Promo Khusus:</label>
+                                        <InputCurrency
+                                            bind:value={form.product_listing_date_promo_value}
+                                            placeholder="5000"
+                                            prefix="Rp"
+                                            label=""
+                                        />
+                                    </div>
+                                {/if}
+                            </div>
+                        {/if}
+                    </div>
                 </div>
 
                 <div class="border-t border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center justify-between">

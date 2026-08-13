@@ -1018,6 +1018,11 @@
     }
 
     function openWhatsApp() {
+        if (!user) {
+            router.get('/login');
+            return;
+        }
+
         const sellerObj = product.seller || product.user;
         const settings = (page.props.settings as any) || {};
 
@@ -3302,14 +3307,7 @@
                                     ></span
                                 >
                             {/if}
-                            {#if product.price_type}
-                                <span
-                                    >Status Harga: <b class="text-slate-700 font-bold uppercase"
-                                        >{product.price_type === 'nego' ? 'Bisa Nego' : 'NET (Pas)'}</b
-                                    ></span
-                                >
-                            {/if}
-                            {#if product.weight}
+                            {#if product.weight}    
                                 <span
                                     >Berat: <b class="text-slate-600"
                                         >{product.weight} g</b
@@ -3387,7 +3385,7 @@
                                         /{sellerObj.store_slug}
                                     </p>
                                 {/if}
-                                {#if product.contact_name || product.contact_phone}
+                                {#if user && (product.contact_name || product.contact_phone)}
                                     <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
                                         {#if product.contact_name}
                                             <span class="flex items-center gap-1 text-slate-600 font-medium">
@@ -3428,17 +3426,19 @@
                                     <span>Chat</span>
                                 </button>
                             {/if}
-                            <button
-                                type="button"
-                                onclick={openWhatsApp}
-                                class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                                title="Tanya via WhatsApp"
-                            >
-                                <i
-                                    class="ti ti-brand-whatsapp text-sm text-emerald-600"
-                                ></i>
-                                <span>WhatsApp</span>
-                            </button>
+                            {#if user}
+                                <button
+                                    type="button"
+                                    onclick={openWhatsApp}
+                                    class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                    title="Tanya via WhatsApp"
+                                >
+                                    <i
+                                        class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                                    ></i>
+                                    <span>WhatsApp</span>
+                                </button>
+                            {/if}
 
                         </div>
                     </div>
@@ -3466,48 +3466,20 @@
                                 Chat
                             </button>
                         {/if}
-                        <button
-                            type="button"
-                            onclick={openWhatsApp}
-                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
-                            title="Tanya via WhatsApp"
-                        >
-                            <i
-                                class="ti ti-brand-whatsapp text-sm text-emerald-600"
-                            ></i>
-                            WhatsApp
-                        </button>
+                        {#if user}
+                            <button
+                                type="button"
+                                onclick={openWhatsApp}
+                                class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
+                                title="Tanya via WhatsApp"
+                            >
+                                <i
+                                    class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                                ></i>
+                                WhatsApp
+                            </button>
+                        {/if}
                     </div>
-
-                    {#if sellerAddress}
-                        {@const fullAddressText = [
-                            sellerAddress.full_address,
-                            sellerAddress.district_name,
-                            sellerAddress.regency_name,
-                            sellerAddress.province_name,
-                            sellerAddress.postal_code,
-                        ]
-                            .filter(Boolean)
-                            .join(', ')}
-                        <div
-                            class="flex items-start gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100"
-                        >
-                            <i
-                                class="ti ti-map-pin text-rose-500 text-sm mt-0.5 shrink-0"
-                            ></i>
-                            <div class="min-w-0 flex-1">
-                                <span
-                                    class="font-bold text-slate-700 text-xs block"
-                                    >Alamat Pengiriman Toko:</span
-                                >
-                                <p
-                                    class="text-xs text-slate-500 mt-0.5 leading-relaxed"
-                                >
-                                    {fullAddressText}
-                                </p>
-                            </div>
-                        </div>
-                    {/if}
                 </div>
             </div>
         {/if}

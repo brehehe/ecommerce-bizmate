@@ -5074,7 +5074,7 @@
     >
         <div class="max-w-md mx-auto px-2 h-16 flex items-center justify-around relative">
             {#if isSellerMode}
-                <!-- CONCEPT 1: IS_SELLER = TRUE (OLX / FB MARKETPLACE STYLE) -->
+                <!-- CONCEPT 1: IS_SELLER = TRUE (ORDER: Beranda, Toko Saya, Jual (Center), Pesan, Profile) -->
                 <!-- 1. Beranda -->
                 <Link
                     href="/"
@@ -5097,54 +5097,7 @@
                     </div>
                 </Link>
 
-                <!-- 2. Jual (+) -->
-                <Link
-                    href={auth ? (auth.is_seller || isSuperAdmin ? '/admin/products/create' : '/profile') : '/login'}
-                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
-                >
-                    <div class="relative flex flex-col items-center">
-                        <i
-                            class="ti ti-circle-plus text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/admin/products/create') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/admin/products/create') ? `color: ${primary}` : ''}
-                        ></i>
-                        <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/admin/products/create') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/admin/products/create') ? `color: ${primary}` : ''}
-                        >
-                            Jual
-                        </span>
-                        {#if activePath.startsWith('/admin/products/create')}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
-                        {/if}
-                    </div>
-                </Link>
-
-                <!-- 3. CENTER BUTTON: Pesan (Prominent floating button) -->
-                <Link
-                    href="/chats"
-                    class="flex flex-col items-center justify-center w-full h-full group relative"
-                >
-                    <div class="absolute -top-5 flex flex-col items-center">
-                        <div class="relative">
-                            <div
-                                class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
-                                style="background: linear-gradient(135deg, {primary}, {secondary});"
-                            >
-                                <i class="ti ti-message-dots text-2xl text-white font-black"></i>
-                            </div>
-                            {#if chatUnreadCount > 0}
-                                <span class="absolute -top-1 -right-1 px-1 py-0.2 min-w-[16px] h-[16px] bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 animate-pulse">
-                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
-                                </span>
-                            {/if}
-                        </div>
-                        <span class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary">
-                            Pesan
-                        </span>
-                    </div>
-                </Link>
-
-                <!-- 4. Toko Saya -->
+                <!-- 2. Toko Saya -->
                 {@const isStoreActive = activePath.startsWith('/admin') || activePath.startsWith('/seller') || (Boolean(auth?.store_slug) && activePath === '/' + auth.store_slug)}
                 <Link
                     href={auth ? (auth.store_slug ? `/${auth.store_slug}` : '/admin/dashboard') : '/login'}
@@ -5167,7 +5120,56 @@
                     </div>
                 </Link>
 
-                <!-- 5. Akun -->
+                <!-- 3. CENTER BUTTON: Jual (Prominent floating button) -->
+                <Link
+                    href={auth ? (auth.is_seller || isSuperAdmin ? '/admin/products/create' : '/profile') : '/login'}
+                    class="flex flex-col items-center justify-center w-full h-full group relative"
+                >
+                    <div class="absolute -top-5 flex flex-col items-center">
+                        <div class="relative">
+                            <div
+                                class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
+                                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                            >
+                                <i class="ti ti-plus text-2xl text-white font-black"></i>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary">
+                            Jual
+                        </span>
+                    </div>
+                </Link>
+
+                <!-- 4. Pesan -->
+                <Link
+                    href="/chats"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <div class="relative">
+                            <i
+                                class="ti ti-message-dots text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/chats') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                                style={activePath.startsWith('/chats') ? `color: ${primary}` : ''}
+                            ></i>
+                            {#if chatUnreadCount > 0}
+                                <span class="absolute -top-1 -right-2 px-1 py-0.2 min-w-[14px] h-[14px] bg-red-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 animate-pulse">
+                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                                </span>
+                            {/if}
+                        </div>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/chats') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/chats') ? `color: ${primary}` : ''}
+                        >
+                            Pesan
+                        </span>
+                        {#if activePath.startsWith('/chats')}
+                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 5. Profile -->
                 <Link
                     href="/profile"
                     class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
@@ -5181,7 +5183,7 @@
                             class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/profile') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
                             style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
                         >
-                            Akun
+                            Profile
                         </span>
                         {#if activePath.startsWith('/profile')}
                             <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
