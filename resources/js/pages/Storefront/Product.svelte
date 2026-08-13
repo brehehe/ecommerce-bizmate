@@ -1019,7 +1019,7 @@
 
     function openWhatsApp() {
         if (!user) {
-            router.get('/login');
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
             return;
         }
 
@@ -1301,6 +1301,11 @@
     );
 
     function openWhatsapp(action: 'chat' | 'buy' | 'cart' = 'buy') {
+        if (!user) {
+            window.dispatchEvent(new CustomEvent('open-login-modal'));
+            return;
+        }
+
         const parts: string[] = [];
         (product.variations ?? []).forEach((v: any) => {
             const label = getSelectedLabel(v);
@@ -3426,19 +3431,17 @@
                                     <span>Chat</span>
                                 </button>
                             {/if}
-                            {#if user}
-                                <button
-                                    type="button"
-                                    onclick={openWhatsApp}
-                                    class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                                    title="Tanya via WhatsApp"
-                                >
-                                    <i
-                                        class="ti ti-brand-whatsapp text-sm text-emerald-600"
-                                    ></i>
-                                    <span>WhatsApp</span>
-                                </button>
-                            {/if}
+                            <button
+                                type="button"
+                                onclick={openWhatsApp}
+                                class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                title="Tanya via WhatsApp"
+                            >
+                                <i
+                                    class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                                ></i>
+                                <span>WhatsApp</span>
+                            </button>
 
                         </div>
                     </div>
@@ -3466,19 +3469,17 @@
                                 Chat
                             </button>
                         {/if}
-                        {#if user}
-                            <button
-                                type="button"
-                                onclick={openWhatsApp}
-                                class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
-                                title="Tanya via WhatsApp"
-                            >
-                                <i
-                                    class="ti ti-brand-whatsapp text-sm text-emerald-600"
-                                ></i>
-                                WhatsApp
-                            </button>
-                        {/if}
+                        <button
+                            type="button"
+                            onclick={openWhatsApp}
+                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
+                            title="Tanya via WhatsApp"
+                        >
+                            <i
+                                class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                            ></i>
+                            WhatsApp
+                        </button>
                     </div>
                 </div>
             </div>
