@@ -18,6 +18,7 @@ use App\Services\MidtransService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -259,13 +260,7 @@ class ProductController extends Controller
         $listingPricing = $this->getListingPricingConfig();
 
         $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
-        $sellers = [];
-        if ($isAdmin) {
-            $sellers = User::select('id', 'name', 'email', 'phone_number', 'store_name', 'is_seller')
-                ->with('customerAddresses')
-                ->orderBy('name')
-                ->get();
-        }
+        $sellers = $isAdmin ? $this->sellerOptions() : [];
 
         $prefix = 'PRD-'.date('Ymd').'-';
         $count = 1;
@@ -636,13 +631,7 @@ class ProductController extends Controller
         $brands = Brand::orderBy('name')->get();
 
         $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
-        $sellers = [];
-        if ($isAdmin) {
-            $sellers = User::select('id', 'name', 'email', 'phone_number', 'store_name', 'is_seller')
-                ->with('customerAddresses')
-                ->orderBy('name')
-                ->get();
-        }
+        $sellers = $isAdmin ? $this->sellerOptions($product->user_id) : [];
 
         $product->load([
             'images',
@@ -2005,6 +1994,117 @@ class ProductController extends Controller
     }
 
     /**
+     * Build a deduplicated list of candidate seller/owner accounts for the
+     * "Pilih / Ganti Seller Owner Produk" dropdown. Accounts sharing the same
+     * normalized phone number or email collapse into a single option.
+     */
+    private function sellerOptions(?string $mustIncludeUserId = null): Collection
+    {
+        $users = User::withCount('products')
+            ->with('customerAddresses')
+            ->get()
+            ->keyBy('id');
+
+        $mustInclude = null;
+        if ($mustIncludeUserId && $users->has($mustIncludeUserId)) {
+            $mustInclude = $users->get($mustIncludeUserId);
+        }
+
+        $best = [];
+        foreach ($users as $user) {
+            $key = $this->sellerDedupeKey($user);
+
+            if (! isset($best[$key])) {
+                $best[$key] = $user;
+
+                continue;
+            }
+
+            if ($this->isBetterSellerCandidate($user, $best[$key])) {
+                $best[$key] = $user;
+            }
+        }
+
+        $options = collect(array_values($best));
+
+        if ($mustInclude && $options->doesntContain('id', $mustInclude->id)) {
+            $options->push($mustInclude);
+        }
+
+        return $options->sortBy(function (User $user) {
+            return [$user->is_seller ? 0 : 1, strtolower((string) $user->name)];
+        })->values();
+    }
+
+    private function sellerDedupeKey(User $user): string
+    {
+        $phone = $this->canonicalPhone((string) $user->phone_number);
+        if (! empty($phone)) {
+            return 'phone:'.$phone;
+        }
+
+        $email = strtolower(trim((string) $user->email));
+        if (! empty($email) && ! str_contains($email, '@bizmate.local')) {
+            return 'email:'.$email;
+        }
+
+        return 'id:'.$user->id;
+    }
+
+    private function canonicalPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+
+        if (str_starts_with($digits, '0')) {
+            return '62'.substr($digits, 1);
+        }
+
+        if (str_starts_with($digits, '8')) {
+            return '62'.$digits;
+        }
+
+        return $digits;
+    }
+
+    private function isBetterSellerCandidate(User $candidate, User $current): bool
+    {
+        if ((bool) $candidate->is_seller !== (bool) $current->is_seller) {
+            return (bool) $candidate->is_seller;
+        }
+
+        $candidateProducts = (int) ($candidate->products_count ?? 0);
+        $currentProducts = (int) ($current->products_count ?? 0);
+        if ($candidateProducts !== $currentProducts) {
+            return $candidateProducts > $currentProducts;
+        }
+
+        return ($candidate->created_at?->getTimestamp() ?? 0) > ($current->created_at?->getTimestamp() ?? 0);
+    }
+
+    private function findUserByPhoneVariations(string $phone): ?User
+    {
+        $digits = preg_replace('/\D/', '', $phone);
+        if (empty($digits)) {
+            return null;
+        }
+
+        $variations = array_filter(array_unique([
+            trim($phone),
+            $digits,
+            $this->canonicalPhone($digits),
+            str_starts_with($digits, '0') ? '62'.substr($digits, 1) : null,
+            str_starts_with($digits, '62') ? '0'.substr($digits, 2) : null,
+            str_starts_with($digits, '8') ? '08'.substr($digits, 1) : null,
+            str_starts_with($digits, '8') ? '628'.substr($digits, 1) : null,
+        ]));
+
+        return User::whereIn('phone_number', $variations)
+            ->orderByDesc('is_seller')
+            ->orderByDesc('created_at')
+            ->first();
+    }
+
+    /**
      * Find existing seller by phone/email or create a new seller user safely without collisions.
      */
     private function findOrCreateSeller(array $newSellerData): User
@@ -2015,14 +2115,11 @@ class ProductController extends Controller
         $name = trim($newSellerData['name'] ?? 'Seller');
 
         if (! empty($phone)) {
-            $cleanPhone = preg_replace('/\D/', '', $phone);
-            $existingUser = User::where('phone_number', $phone)
-                ->when($cleanPhone, fn ($q) => $q->orWhere('phone_number', $cleanPhone))
-                ->first();
+            $existingUser = $this->findUserByPhoneVariations($phone);
         }
 
         if (! $existingUser && ! empty($email)) {
-            $existingUser = User::where('email', $email)->first();
+            $existingUser = User::where('email', $email)->orderByDesc('is_seller')->orderByDesc('created_at')->first();
         }
 
         if ($existingUser) {

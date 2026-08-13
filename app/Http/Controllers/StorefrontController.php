@@ -99,7 +99,15 @@ class StorefrontController extends Controller
     {
         $seller = User::whereRaw('LOWER(store_slug) = ?', [Str::lower($slug)])
             ->where('is_seller', true)
-            ->firstOrFail();
+            ->first();
+
+        if (! $seller) {
+            $seller = $this->resolveLegacyStoreSlug($slug);
+        }
+
+        if (! $seller) {
+            abort(404);
+        }
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
@@ -186,5 +194,20 @@ class StorefrontController extends Controller
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
         ]);
+    }
+
+    /**
+     * Resolve legacy storefront links shaped `store-{name}-{uuid}` that were
+     * generated as a frontend fallback before a seller had a real store_slug.
+     */
+    private function resolveLegacyStoreSlug(string $slug): ?User
+    {
+        if (! preg_match('/^store-.+?\-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i', $slug, $matches)) {
+            return null;
+        }
+
+        return User::where('id', $matches[1])
+            ->where('is_seller', true)
+            ->first();
     }
 }
