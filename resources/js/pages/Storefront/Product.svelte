@@ -49,7 +49,10 @@
 
     const page = usePage();
     const isSellerEnabled = $derived(
-        ((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false,
+        (page.props as any).app_config?.is_seller_enabled ??
+            (page.props as any).settings?.is_seller_enabled ??
+            (page.props as any).is_seller_enabled ??
+            false,
     );
     const enable3dModels = $derived(
         (page.props as any).settings?.enable_3d_models ?? true,
@@ -164,7 +167,7 @@
     } | null>(null);
 
     // Report review
-    let showReportModal = $state(false);    
+    let showReportModal = $state(false);
     let reportingReview = $state<any>(null);
     let reportReason = $state('');
     let submittingReport = $state(false);
@@ -1284,7 +1287,11 @@
         if (isNaN(val) || val < currentMinPurchase) {
             qty = currentMinPurchase;
             target.value = String(currentMinPurchase);
-        } else if (!currentIsUnlimited && currentStock > 0 && val > currentStock) {
+        } else if (
+            !currentIsUnlimited &&
+            currentStock > 0 &&
+            val > currentStock
+        ) {
             qty = currentStock;
             target.value = String(currentStock);
         } else {
@@ -1553,7 +1560,11 @@
 
 <svelte:window bind:scrollY />
 
-<StorefrontLayout hideMobileHeader={true} hideMobileFooter={true} hideMobileBottomNav={true}>
+<StorefrontLayout
+    hideMobileHeader={true}
+    hideMobileFooter={true}
+    hideMobileBottomNav={true}
+>
     <!-- MOBILE NAVBAR (Always visible, matching Image 3) -->
     <div
         class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-xs py-2.5 px-3"
@@ -1820,11 +1831,20 @@
                                                 class="w-full h-full block text-left cursor-zoom-in focus:outline-none"
                                                 onclick={() => {
                                                     if (slide.src) {
-                                                        if (slide.type === 'gallery') {
-                                                            activeIdx = slide.galleryIdx;
-                                                            variantOverride = null;
-                                                        } else if (slide.type === 'variant') {
-                                                            variantOverride = slide.src;
+                                                        if (
+                                                            slide.type ===
+                                                            'gallery'
+                                                        ) {
+                                                            activeIdx =
+                                                                slide.galleryIdx;
+                                                            variantOverride =
+                                                                null;
+                                                        } else if (
+                                                            slide.type ===
+                                                            'variant'
+                                                        ) {
+                                                            variantOverride =
+                                                                slide.src;
                                                         }
                                                         isZoomed = false;
                                                         lightboxOpen = true;
@@ -2019,8 +2039,15 @@
                                 >
                                     {fmt(activeUnitPrice)}
                                 </span>
-                                <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
-                                    {product.price_type === 'nego' ? 'NEGO' : 'NET'}
+                                <span
+                                    class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type ===
+                                    'nego'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                        : 'bg-slate-100 text-slate-700 border-slate-200'}"
+                                >
+                                    {product.price_type === 'nego'
+                                        ? 'NEGO'
+                                        : 'NET'}
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
@@ -2050,8 +2077,15 @@
                                     >
                                         {fmt(activeUnitPrice)}
                                     </span>
-                                    <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
-                                        {product.price_type === 'nego' ? 'NEGO' : 'NET'}
+                                    <span
+                                        class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type ===
+                                        'nego'
+                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                            : 'bg-slate-100 text-slate-700 border-slate-200'}"
+                                    >
+                                        {product.price_type === 'nego'
+                                            ? 'NEGO'
+                                            : 'NET'}
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
@@ -2374,7 +2408,8 @@
                                 class="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer shrink-0 shadow-2xs active:scale-95"
                                 title="Bagikan Produk"
                             >
-                                <i class="ti ti-share text-base text-slate-500"></i>
+                                <i class="ti ti-share text-base text-slate-500"
+                                ></i>
                                 <span>Bagikan</span>
                             </button>
                         </div>
@@ -2404,24 +2439,24 @@
                                 </span>
                             {/if}
                             {#if !isSellerEnabled}
-                            <span class="border-r border-slate-200 pr-3"
-                                >{product.sold_count != null &&
-                                product.sold_count > 0
-                                    ? (product.sold_count >= 1000
-                                          ? (product.sold_count / 1000)
-                                                .toFixed(1)
-                                                .replace('.0', '') + 'rb'
-                                          : product.sold_count) + ' Terjual'
-                                    : '0 Terjual'}</span
-                            >
-                            {#if product.sku}
-                            <span
-                                    >SKU: <b class="border-r text-slate-600"
-                                        >{product.sku}</b
-                                    ></span
+                                <span class="border-r border-slate-200 pr-3"
+                                    >{product.sold_count != null &&
+                                    product.sold_count > 0
+                                        ? (product.sold_count >= 1000
+                                              ? (product.sold_count / 1000)
+                                                    .toFixed(1)
+                                                    .replace('.0', '') + 'rb'
+                                              : product.sold_count) + ' Terjual'
+                                        : '0 Terjual'}</span
                                 >
+                                {#if product.sku}
+                                    <span
+                                        >SKU: <b class="border-r text-slate-600"
+                                            >{product.sku}</b
+                                        ></span
+                                    >
                                 {/if}
-                                {/if}
+                            {/if}
                             {#if isSellerEnabled && product.created_at}
                                 <span
                                     >Tanggal Upload: <b class="text-slate-600"
@@ -2495,8 +2530,15 @@
                                 >
                                     {fmt(activeUnitPrice)}
                                 </span>
-                                <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
-                                    {product.price_type === 'nego' ? 'NEGO' : 'NET'}
+                                <span
+                                    class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type ===
+                                    'nego'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                        : 'bg-slate-100 text-slate-700 border-slate-200'}"
+                                >
+                                    {product.price_type === 'nego'
+                                        ? 'NEGO'
+                                        : 'NET'}
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
@@ -2524,8 +2566,15 @@
                                     >
                                         {fmt(activeUnitPrice)}
                                     </span>
-                                    <span class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type === 'nego' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-slate-100 text-slate-700 border-slate-200'}">
-                                        {product.price_type === 'nego' ? 'NEGO' : 'NET'}
+                                    <span
+                                        class="text-xs font-black px-2 py-0.5 rounded-md uppercase tracking-wider border {product.price_type ===
+                                        'nego'
+                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                            : 'bg-slate-100 text-slate-700 border-slate-200'}"
+                                    >
+                                        {product.price_type === 'nego'
+                                            ? 'NEGO'
+                                            : 'NET'}
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
@@ -3082,7 +3131,9 @@
                         <div class="py-4 flex items-center gap-5">
                             <span
                                 class="text-sm text-slate-500 w-28 shrink-0 font-medium"
-                                >{isSellerEnabled ? 'Stok Produk' : 'Kuantitas'}</span
+                                >{isSellerEnabled
+                                    ? 'Stok Produk'
+                                    : 'Kuantitas'}</span
                             >
                             <div class="flex items-center gap-3 flex-wrap">
                                 <!-- Stepper (Hidden when IS_SELLER=true) -->
@@ -3300,19 +3351,21 @@
                                 >Kondisi: <b class="text-slate-600"
                                     >{product.condition === 'rent'
                                         ? 'Rent'
-                                        : product.condition === 'used' || product.condition === 'second'
+                                        : product.condition === 'used' ||
+                                            product.condition === 'second'
                                           ? 'Second'
                                           : 'New'}</b
                                 ></span
                             >
                             {#if product.usage_period}
                                 <span
-                                    >Pemakaian: <b class="text-slate-700 font-bold"
+                                    >Pemakaian: <b
+                                        class="text-slate-700 font-bold"
                                         >{product.usage_period}</b
                                     ></span
                                 >
                             {/if}
-                            {#if product.weight}    
+                            {#if product.weight}
                                 <span
                                     >Berat: <b class="text-slate-600"
                                         >{product.weight} g</b
@@ -3391,17 +3444,35 @@
                                     </p>
                                 {/if}
                                 {#if user && (product.contact_name || product.contact_phone)}
-                                    <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
+                                    <div
+                                        class="mt-1 flex flex-wrap items-center gap-3 text-xs"
+                                    >
                                         {#if product.contact_name}
-                                            <span class="flex items-center gap-1 text-slate-600 font-medium">
-                                                <i class="ti ti-user text-emerald-600 text-sm"></i>
-                                                Kontak: <strong class="text-slate-800 font-bold">{product.contact_name}</strong>
+                                            <span
+                                                class="flex items-center gap-1 text-slate-600 font-medium"
+                                            >
+                                                <i
+                                                    class="ti ti-user text-emerald-600 text-sm"
+                                                ></i>
+                                                Kontak:
+                                                <strong
+                                                    class="text-slate-800 font-bold"
+                                                    >{product.contact_name}</strong
+                                                >
                                             </span>
                                         {/if}
                                         {#if product.contact_phone}
-                                            <span class="flex items-center gap-1 text-slate-600 font-medium">
-                                                <i class="ti ti-phone text-blue-600 text-sm"></i>
-                                                No. HP/WA: <strong class="text-slate-800 font-bold">{product.contact_phone}</strong>
+                                            <span
+                                                class="flex items-center gap-1 text-slate-600 font-medium"
+                                            >
+                                                <i
+                                                    class="ti ti-phone text-blue-600 text-sm"
+                                                ></i>
+                                                No. HP/WA:
+                                                <strong
+                                                    class="text-slate-800 font-bold"
+                                                    >{product.contact_phone}</strong
+                                                >
                                             </span>
                                         {/if}
                                     </div>
@@ -3418,7 +3489,7 @@
                                     <i
                                         class="ti ti-building-store text-sm text-blue-600"
                                     ></i>
-                                    <span>Toko</span>
+                                    <span>Produk</span>
                                 </a>
                             {/if}
                             {#if !isSellerEnabled}
@@ -3442,7 +3513,6 @@
                                 ></i>
                                 <span>WhatsApp</span>
                             </button>
-
                         </div>
                     </div>
 
@@ -4105,12 +4175,19 @@
                                         class="w-full h-full object-cover"
                                     />
                                 {/if}
-                                <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
+                                <div
+                                    class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
+                                >
                                     {#if isSellerEnabled}
                                         <span
-                                            class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {rp.condition === 'used' ? 'bg-amber-600' : 'bg-emerald-600'}"
+                                            class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {rp.condition ===
+                                            'used'
+                                                ? 'bg-amber-600'
+                                                : 'bg-emerald-600'}"
                                         >
-                                            {rp.condition === 'used' ? 'Bekas' : 'Baru'}
+                                            {rp.condition === 'used'
+                                                ? 'Bekas'
+                                                : 'Baru'}
                                         </span>
                                     {/if}
                                     {#if isPromo && discountPercentage > 0}
@@ -4283,19 +4360,33 @@
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
             <div
                 class="fixed inset-0 z-[200] flex flex-col items-center justify-between bg-black/95 backdrop-blur-md p-4 sm:p-6 select-none"
-                onclick={() => { lightboxOpen = false; isZoomed = false; }}
+                onclick={() => {
+                    lightboxOpen = false;
+                    isZoomed = false;
+                }}
                 role="dialog"
                 aria-label="Tampilan Foto Produk"
                 tabindex="-1"
                 onkeydown={(e) => {
-                    if (e.key === 'Escape') { lightboxOpen = false; isZoomed = false; }
-                    if (e.key === 'ArrowRight' && gallery.length > 1) { isZoomed = false; lightboxNext(); }
-                    if (e.key === 'ArrowLeft' && gallery.length > 1) { isZoomed = false; lightboxPrev(); }
+                    if (e.key === 'Escape') {
+                        lightboxOpen = false;
+                        isZoomed = false;
+                    }
+                    if (e.key === 'ArrowRight' && gallery.length > 1) {
+                        isZoomed = false;
+                        lightboxNext();
+                    }
+                    if (e.key === 'ArrowLeft' && gallery.length > 1) {
+                        isZoomed = false;
+                        lightboxPrev();
+                    }
                 }}
             >
                 <!-- Header -->
                 <div class="w-full flex items-center justify-between z-50">
-                    <span class="text-xs font-bold text-slate-300 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                    <span
+                        class="text-xs font-bold text-slate-300 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm"
+                    >
                         {activeIdx + 1} / {gallery.length || 1}
                     </span>
                     <div class="flex items-center gap-2">
@@ -4308,12 +4399,19 @@
                             }}
                             class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20 active:scale-95 cursor-pointer"
                         >
-                            <i class="ti {isZoomed ? 'ti-zoom-out' : 'ti-zoom-in'} text-lg"></i>
+                            <i
+                                class="ti {isZoomed
+                                    ? 'ti-zoom-out'
+                                    : 'ti-zoom-in'} text-lg"
+                            ></i>
                         </button>
                         <button
                             type="button"
                             aria-label="Tutup"
-                            onclick={() => { lightboxOpen = false; isZoomed = false; }}
+                            onclick={() => {
+                                lightboxOpen = false;
+                                isZoomed = false;
+                            }}
                             class="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition border border-white/20 active:scale-95 cursor-pointer"
                         >
                             <i class="ti ti-x text-lg"></i>
@@ -4324,7 +4422,9 @@
                 <!-- Main Image Preview Container (With Touch Swipe & Zoom Pan) -->
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <div
-                    class="relative max-w-5xl max-h-[78vh] flex items-center justify-center my-auto w-full transition-all duration-200 {isZoomed ? 'overflow-auto cursor-zoom-out' : 'overflow-hidden cursor-zoom-in'}"
+                    class="relative max-w-5xl max-h-[78vh] flex items-center justify-center my-auto w-full transition-all duration-200 {isZoomed
+                        ? 'overflow-auto cursor-zoom-out'
+                        : 'overflow-hidden cursor-zoom-in'}"
                     role="presentation"
                     onclick={(e) => e.stopPropagation()}
                     ontouchstart={handleTouchStart}
@@ -4361,7 +4461,9 @@
                         src={displayImage}
                         alt={product.name}
                         onclick={() => (isZoomed = !isZoomed)}
-                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition-transform duration-300 select-none {isZoomed ? 'scale-[2] my-16' : 'scale-100'}"
+                        class="max-w-full max-h-[72vh] object-contain rounded-2xl shadow-2xl transition-transform duration-300 select-none {isZoomed
+                            ? 'scale-[2] my-16'
+                            : 'scale-100'}"
                         onerror={(e) => {
                             (e.currentTarget as HTMLImageElement).src =
                                 '/noimage/image.png';
@@ -4384,9 +4486,16 @@
                                     variantOverride = null;
                                     isZoomed = false;
                                 }}
-                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 cursor-pointer active:scale-95 {activeIdx === i && !variantOverride ? 'border-white scale-105 shadow-md' : 'border-transparent opacity-50 hover:opacity-100'}"
+                                class="w-12 h-12 rounded-xl overflow-hidden border-2 transition shrink-0 cursor-pointer active:scale-95 {activeIdx ===
+                                    i && !variantOverride
+                                    ? 'border-white scale-105 shadow-md'
+                                    : 'border-transparent opacity-50 hover:opacity-100'}"
                             >
-                                <img src={imgUrl} alt="Thumbnail {i + 1}" class="w-full h-full object-cover" />
+                                <img
+                                    src={imgUrl}
+                                    alt="Thumbnail {i + 1}"
+                                    class="w-full h-full object-cover"
+                                />
                             </button>
                         {/each}
                     </div>
@@ -4744,7 +4853,9 @@
                     <div class="flex items-center justify-between">
                         <div class="flex flex-col gap-0.5">
                             <span class="text-sm font-bold text-slate-700"
-                                >{isSellerEnabled ? 'Stok Produk' : 'Jumlah'}</span
+                                >{isSellerEnabled
+                                    ? 'Stok Produk'
+                                    : 'Jumlah'}</span
                             >
                             <div class="flex items-center gap-1.5">
                                 {#if hasVariations && !fullySelected}
@@ -4814,35 +4925,35 @@
                     </div>
                 </div>
 
-                    <!-- Total Price Live Calculation (quantity x harga = total) -->
-                    {#if !hasVariations || fullySelected}
-                        <div
-                            class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs mt-1"
+                <!-- Total Price Live Calculation (quantity x harga = total) -->
+                {#if !hasVariations || fullySelected}
+                    <div
+                        class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs mt-1"
+                    >
+                        <span class="text-slate-500 font-medium"
+                            >Subtotal Pemesanan</span
                         >
-                            <span class="text-slate-500 font-medium"
-                                >Subtotal Pemesanan</span
-                            >
-                            <span
-                                class="font-extrabold text-sm text-brand-blueRoyal"
-                                >{fmt(totalPrice)}</span
-                            >
-                        </div>
-                    {/if}
+                        <span
+                            class="font-extrabold text-sm text-brand-blueRoyal"
+                            >{fmt(totalPrice)}</span
+                        >
+                    </div>
+                {/if}
 
-                    <!-- Minimum Purchase Info Alert (If set) -->
-                    {#if currentMinPurchase > 1}
-                        <div
-                            class="mt-1 p-3 bg-blue-50/40 rounded-xl border border-blue-100/60 flex items-start gap-2 text-[11px] text-blue-700 font-medium"
-                        >
-                            <i
-                                class="ti ti-info-circle text-blue-500 text-sm mt-0.5 shrink-0"
-                            ></i>
-                            <span>
-                                Minimum pembelian {currentMinPurchase} pcs
-                            </span>
-                        </div>
-                    {/if}
-                </div>
+                <!-- Minimum Purchase Info Alert (If set) -->
+                {#if currentMinPurchase > 1}
+                    <div
+                        class="mt-1 p-3 bg-blue-50/40 rounded-xl border border-blue-100/60 flex items-start gap-2 text-[11px] text-blue-700 font-medium"
+                    >
+                        <i
+                            class="ti ti-info-circle text-blue-500 text-sm mt-0.5 shrink-0"
+                        ></i>
+                        <span>
+                            Minimum pembelian {currentMinPurchase} pcs
+                        </span>
+                    </div>
+                {/if}
+            </div>
 
             <!-- Sticky Bottom CTA Button inside Drawer -->
             <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
