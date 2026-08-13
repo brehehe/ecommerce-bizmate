@@ -1834,7 +1834,7 @@
                                                 <img
                                                     src={slide.src}
                                                     alt="{product.name} {i + 1}"
-                                                    class="w-full h-full object-cover transition-opacity duration-300 {slide.type ===
+                                                    class="w-full h-full object-cover object-top transition-opacity duration-300 {slide.type ===
                                                         'variant' &&
                                                     !slide.available
                                                         ? 'opacity-40'
@@ -1950,7 +1950,7 @@
                             <img
                                 src="/noimage/image.png"
                                 alt="Tidak ada gambar"
-                                class="w-full h-full object-cover"
+                                class="w-full h-full object-cover object-top"
                             />
                         {/if}
                     </div>
@@ -2198,7 +2198,7 @@
                                 <img
                                     src={variantOverride}
                                     alt={product.name}
-                                    class="w-full h-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                                    class="w-full h-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
                                 />
                             {:else if desktopSlides[activeDesktopSlideIdx] && desktopSlides[activeDesktopSlideIdx].type === 'video'}
                                 <div
@@ -2279,7 +2279,7 @@
                                     <img
                                         src={displayImage}
                                         alt={product.name}
-                                        class="w-full h-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                                        class="w-full h-full object-cover object-top transition duration-500 group-hover:scale-[1.03]"
                                         onerror={() => {
                                             mainImageHasError = true;
                                         }}
@@ -2288,7 +2288,7 @@
                                     <img
                                         src="/noimage/image.png"
                                         alt="Tidak ada gambar"
-                                        class="w-full h-full object-cover"
+                                        class="w-full h-full object-cover object-top"
                                     />
                                 {/if}
 

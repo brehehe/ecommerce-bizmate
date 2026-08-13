@@ -40,22 +40,35 @@
     // Theme from settings
     const primary = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondary = $derived(page.props.theme?.secondary_color || '#fa7315');
-    const isMembershipEnabled = $derived(((page.props as any).app_config?.membership_enabled ?? (page.props as any).settings?.membership_enabled) ?? true);
-    const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false);
+    const isMembershipEnabled = $derived(
+        (page.props as any).app_config?.membership_enabled ??
+            (page.props as any).settings?.membership_enabled ??
+            true,
+    );
+    const isSellerEnabled = $derived(
+        (page.props as any).app_config?.is_seller_enabled ??
+            (page.props as any).settings?.is_seller_enabled ??
+            (page.props as any).is_seller_enabled ??
+            false,
+    );
     const isSellerMode = $derived(
-        isSellerEnabled || Boolean((page.props as any).auth?.user?.is_seller)
+        isSellerEnabled || Boolean((page.props as any).auth?.user?.is_seller),
     );
     const activePath = $derived((page.url || '').split('?')[0] || '/');
 
     const adminWaNumber = $derived(
-        (page.props as any).settings?.store_whatsapp || (page.props as any).settings?.store_phone || ''
+        (page.props as any).settings?.store_whatsapp ||
+            (page.props as any).settings?.store_phone ||
+            '',
     );
 
     function openAdminWhatsApp(e?: Event) {
         if (e) e.preventDefault();
         const rawPhone = adminWaNumber || '';
         if (!rawPhone) {
-            alert('Nomor kontak WhatsApp Admin belum diatur di Pengaturan Toko.');
+            alert(
+                'Nomor kontak WhatsApp Admin belum diatur di Pengaturan Toko.',
+            );
             return;
         }
         let cleanPhone = String(rawPhone).replace(/\D/g, '');
@@ -72,7 +85,12 @@
 
     $effect(() => {
         const currentFlash = flash;
-        if (!currentFlash || !currentFlash.id || shownFlashIds.has(currentFlash.id)) return;
+        if (
+            !currentFlash ||
+            !currentFlash.id ||
+            shownFlashIds.has(currentFlash.id)
+        )
+            return;
 
         let showed = false;
         if (currentFlash.success) {
@@ -141,7 +159,11 @@
     let searchQuery = $state('');
 
     // Search autocomplete suggestions
-    let searchSuggestions = $state<{ brands: any[]; categories: any[]; products: any[] }>({ brands: [], categories: [], products: [] });
+    let searchSuggestions = $state<{
+        brands: any[];
+        categories: any[];
+        products: any[];
+    }>({ brands: [], categories: [], products: [] });
     let showSuggestions = $state(false);
     let suggestionsLoading = $state(false);
     let suggestDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -160,7 +182,9 @@
         suggestionsLoading = true;
         showSuggestions = true;
         try {
-            const res = await fetch(`/search/suggest?q=${encodeURIComponent(q)}`);
+            const res = await fetch(
+                `/search/suggest?q=${encodeURIComponent(q)}`,
+            );
             const data = await res.json();
             searchSuggestions = data;
         } catch {
@@ -222,8 +246,8 @@
 
     const hasSuggestions = $derived(
         searchSuggestions.brands.length > 0 ||
-        searchSuggestions.categories.length > 0 ||
-        searchSuggestions.products.length > 0
+            searchSuggestions.categories.length > 0 ||
+            searchSuggestions.products.length > 0,
     );
 
     // Close suggestions dropdown when clicking outside
@@ -237,7 +261,6 @@
         document.addEventListener('click', handleClickOutside);
         return () => document.removeEventListener('click', handleClickOutside);
     });
-
 
     // Mobile menu
     let mobileMenuOpen = $state(false);
@@ -268,7 +291,10 @@
             _cartCountFromServer = true;
         } else if (!_cartCountFromServer) {
             // No server value yet — use localStorage as fallback (e.g. back navigation)
-            const cached = parseInt(localStorage.getItem('cart_count') || '0', 10);
+            const cached = parseInt(
+                localStorage.getItem('cart_count') || '0',
+                10,
+            );
             localCartCount = cached;
         }
     });
@@ -298,58 +324,60 @@
 
     $effect(() => {
         if (auth && (window as any).Echo) {
-            const channel = (window as any).Echo.private(
-                `user.${auth.id}`,
-            ).listen('.notification.updated', (event: any) => {
-                const data = event.data || {};
-                let unreadChanged = false;
-                if (data.chatUnreadCount !== undefined) {
-                    if (
-                        (page.props as any).chatUnreadCount !==
-                        data.chatUnreadCount
-                    ) {
-                        unreadChanged = true;
+            const channel = (window as any).Echo.private(`user.${auth.id}`)
+                .listen('.notification.updated', (event: any) => {
+                    const data = event.data || {};
+                    let unreadChanged = false;
+                    if (data.chatUnreadCount !== undefined) {
+                        if (
+                            (page.props as any).chatUnreadCount !==
+                            data.chatUnreadCount
+                        ) {
+                            unreadChanged = true;
+                        }
+                        (page.props as any).chatUnreadCount =
+                            data.chatUnreadCount;
                     }
-                    (page.props as any).chatUnreadCount = data.chatUnreadCount;
-                }
-                if (data.cartCount !== undefined) {
-                    (page.props as any).cartCount = data.cartCount;
-                    localCartCount = data.cartCount;
-                }
-                if (data.customerNotifications !== undefined) {
-                    (page.props as any).customerNotifications =
-                        data.customerNotifications;
-                }
+                    if (data.cartCount !== undefined) {
+                        (page.props as any).cartCount = data.cartCount;
+                        localCartCount = data.cartCount;
+                    }
+                    if (data.customerNotifications !== undefined) {
+                        (page.props as any).customerNotifications =
+                            data.customerNotifications;
+                    }
 
-                if (unreadChanged && desktopChatOpen) {
-                    fetchChatList(true);
-                }
-            })
-            .listen('.transaction.updated', (event: any) => {
-                const pathname = window.location.pathname;
-                if (pathname.startsWith('/transactions') || pathname === '/') {
-                    router.reload();
-                }
-            })
-            .listen('.refund.updated', (event: any) => {
-                const pathname = window.location.pathname;
-                if (pathname.startsWith('/refunds')) {
-                    router.reload();
-                }
-            })
-            .listen('.return.updated', (event: any) => {
-                const pathname = window.location.pathname;
-                if (pathname.startsWith('/returns')) {
-                    router.reload();
-                }
-            });
+                    if (unreadChanged && desktopChatOpen) {
+                        fetchChatList(true);
+                    }
+                })
+                .listen('.transaction.updated', (event: any) => {
+                    const pathname = window.location.pathname;
+                    if (
+                        pathname.startsWith('/transactions') ||
+                        pathname === '/'
+                    ) {
+                        router.reload();
+                    }
+                })
+                .listen('.refund.updated', (event: any) => {
+                    const pathname = window.location.pathname;
+                    if (pathname.startsWith('/refunds')) {
+                        router.reload();
+                    }
+                })
+                .listen('.return.updated', (event: any) => {
+                    const pathname = window.location.pathname;
+                    if (pathname.startsWith('/returns')) {
+                        router.reload();
+                    }
+                });
 
             return () => {
                 (window as any).Echo.leave(`user.${auth.id}`);
             };
         }
     });
-
 
     async function toggleDesktopChat() {
         if (!auth) {
@@ -451,7 +479,9 @@
                 .listen('.message.sent', (event: any) => {
                     const newMsg = event.messageData;
                     if (newMsg) {
-                        const existingIds = new Set(chatMessages.map((m) => m.id));
+                        const existingIds = new Set(
+                            chatMessages.map((m) => m.id),
+                        );
                         if (existingIds.has(newMsg.id)) {
                             return;
                         }
@@ -462,7 +492,8 @@
                                 m.sender_type === newMsg.sender_type &&
                                 m.sender_id === newMsg.sender_id &&
                                 (m.body === newMsg.body ||
-                                    m.attachment_type === newMsg.attachment_type),
+                                    m.attachment_type ===
+                                        newMsg.attachment_type),
                         );
 
                         if (optimisticIndex !== -1) {
@@ -943,15 +974,24 @@
 
     async function sendChatMessage() {
         const text = chatInput.trim();
-        if ((!text && !attachedImage && !attachedProduct) || !activeChatId) return;
+        if ((!text && !attachedImage && !attachedProduct) || !activeChatId)
+            return;
 
         // Optimistic update
         const tempId = -Date.now();
         const optimisticMsg = {
             id: tempId,
             body: text || null,
-            attachment_type: attachedProduct ? 'product' : (attachedImage ? 'image' : null),
-            attachment_data: attachedProduct ? attachedProduct : (attachedImage ? { url: attachedImageUrl } : null),
+            attachment_type: attachedProduct
+                ? 'product'
+                : attachedImage
+                  ? 'image'
+                  : null,
+            attachment_data: attachedProduct
+                ? attachedProduct
+                : attachedImage
+                  ? { url: attachedImageUrl }
+                  : null,
             sender_type: 'user',
             sender_id: auth?.id,
             time: new Date().toLocaleTimeString('id-ID', {
@@ -1123,11 +1163,15 @@
             isDark = false;
         } else {
             // No user preference stored — use admin-configured default
-            const adminDefault = (page.props.settings as any)?.storefront_default_theme ?? 'light';
+            const adminDefault =
+                (page.props.settings as any)?.storefront_default_theme ??
+                'light';
             if (adminDefault === 'dark') {
                 isDark = true;
             } else if (adminDefault === 'system') {
-                isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                isDark = window.matchMedia(
+                    '(prefers-color-scheme: dark)',
+                ).matches;
             } else {
                 // 'light' (or anything else) → always start light
                 isDark = false;
@@ -1137,7 +1181,7 @@
 
         const handleOpenLogin = () => openLogin();
         const handleToggleDropdown = () => (profileDropOpen = !profileDropOpen);
-        
+
         const unsubscribe = router.on('navigate', (event: any) => {
             profileDropOpen = false;
             isNotifOpen = false;
@@ -1148,8 +1192,13 @@
                 localStorage.setItem('cart_count', String(navProps.cartCount));
             } else {
                 // Back navigation may not carry cartCount — restore from localStorage
-                const cached = parseInt(localStorage.getItem('cart_count') || '0', 10);
-                if (cached > 0) { localCartCount = cached; }
+                const cached = parseInt(
+                    localStorage.getItem('cart_count') || '0',
+                    10,
+                );
+                if (cached > 0) {
+                    localCartCount = cached;
+                }
             }
         });
 
@@ -1162,7 +1211,8 @@
         });
 
         const handleOpenDesktopChat = async (e: any) => {
-            const { productId, productName, productImage, productPrice } = e.detail;
+            const { productId, productName, productImage, productPrice } =
+                e.detail;
             desktopChatOpen = true;
             if (productId && productName) {
                 attachedProduct = {
@@ -1213,7 +1263,10 @@
         // Sync when page becomes visible again (e.g. browser back button)
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                const cached = parseInt(localStorage.getItem('cart_count') || '0', 10);
+                const cached = parseInt(
+                    localStorage.getItem('cart_count') || '0',
+                    10,
+                );
                 if (cached > localCartCount) {
                     localCartCount = cached;
                 }
@@ -1242,7 +1295,10 @@
                 handleOpenDesktopChat,
             );
             window.removeEventListener('cart-updated', handleCartUpdated);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
         };
     });
 
@@ -1602,7 +1658,9 @@
 </script>
 
 <div
-    class="min-h-screen flex flex-col {isDark ? 'sf-dark bg-slate-900' : 'bg-slate-50'} font-sans transition-colors duration-300"
+    class="min-h-screen flex flex-col {isDark
+        ? 'sf-dark bg-slate-900'
+        : 'bg-slate-50'} font-sans transition-colors duration-300"
     style="--primary: {primary}; --secondary: {secondary};"
 >
     <!-- ====== NAVBAR ====== -->
@@ -1647,7 +1705,6 @@
                     </Link>
                 </div>
 
-
                 <!-- Search bar (desktop) -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
@@ -1656,13 +1713,18 @@
                     data-search-container="true"
                 >
                     <form onsubmit={handleSearch}>
-                        <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
+                        <div
+                            class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs"
+                        >
                             <input
                                 type="text"
                                 bind:value={searchQuery}
                                 placeholder="Cari produk, brand, kategori..."
                                 oninput={handleSearchInput}
-                                onfocus={() => { if (searchQuery.length >= 2) showSuggestions = true; }}
+                                onfocus={() => {
+                                    if (searchQuery.length >= 2)
+                                        showSuggestions = true;
+                                }}
                                 class="w-full pl-4 pr-10 py-2 text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
                                 autocomplete="off"
                             />
@@ -1686,33 +1748,59 @@
                             {#if suggestionsLoading}
                                 <div class="p-3 space-y-2">
                                     {#each Array(3) as _}
-                                        <div class="flex items-center gap-3 animate-pulse">
-                                            <div class="w-9 h-9 bg-slate-100 rounded shrink-0"></div>
+                                        <div
+                                            class="flex items-center gap-3 animate-pulse"
+                                        >
+                                            <div
+                                                class="w-9 h-9 bg-slate-100 rounded shrink-0"
+                                            ></div>
                                             <div class="flex-1 space-y-1">
-                                                <div class="h-3.5 bg-slate-100 rounded w-2/3"></div>
-                                                <div class="h-2.5 bg-slate-100 rounded w-1/3"></div>
+                                                <div
+                                                    class="h-3.5 bg-slate-100 rounded w-2/3"
+                                                ></div>
+                                                <div
+                                                    class="h-2.5 bg-slate-100 rounded w-1/3"
+                                                ></div>
                                             </div>
                                         </div>
                                     {/each}
                                 </div>
                             {:else if !hasSuggestions}
-                                <div class="px-4 py-5 text-center text-xs text-slate-500">
-                                    Tidak ada hasil untuk "<span class="font-semibold text-slate-700">{searchQuery}</span>"
+                                <div
+                                    class="px-4 py-5 text-center text-xs text-slate-500"
+                                >
+                                    Tidak ada hasil untuk "<span
+                                        class="font-semibold text-slate-700"
+                                        >{searchQuery}</span
+                                    >"
                                 </div>
                             {:else}
-                                <div class="max-h-[400px] overflow-y-auto divide-y divide-slate-100">
+                                <div
+                                    class="max-h-[400px] overflow-y-auto divide-y divide-slate-100"
+                                >
                                     <!-- Brand suggestions -->
                                     {#if searchSuggestions.brands.length > 0}
                                         <div class="py-1">
-                                            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400">Brand</div>
+                                            <div
+                                                class="px-3 py-1 text-[11px] font-semibold text-slate-400"
+                                            >
+                                                Brand
+                                            </div>
                                             {#each searchSuggestions.brands as brand}
                                                 <button
                                                     type="button"
-                                                    onclick={() => goToBrand(brand.slug)}
+                                                    onclick={() =>
+                                                        goToBrand(brand.slug)}
                                                     class="w-full flex items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition"
                                                 >
-                                                    <span class="font-medium text-slate-800">{brand.name}</span>
-                                                    <span class="text-[11px] text-slate-400">Brand</span>
+                                                    <span
+                                                        class="font-medium text-slate-800"
+                                                        >{brand.name}</span
+                                                    >
+                                                    <span
+                                                        class="text-[11px] text-slate-400"
+                                                        >Brand</span
+                                                    >
                                                 </button>
                                             {/each}
                                         </div>
@@ -1721,15 +1809,26 @@
                                     <!-- Category suggestions -->
                                     {#if searchSuggestions.categories.length > 0}
                                         <div class="py-1">
-                                            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400">Kategori</div>
+                                            <div
+                                                class="px-3 py-1 text-[11px] font-semibold text-slate-400"
+                                            >
+                                                Kategori
+                                            </div>
                                             {#each searchSuggestions.categories as cat}
                                                 <button
                                                     type="button"
-                                                    onclick={() => goToCategory(cat.slug)}
+                                                    onclick={() =>
+                                                        goToCategory(cat.slug)}
                                                     class="w-full flex items-center justify-between px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition"
                                                 >
-                                                    <span class="font-medium text-slate-800">{cat.name}</span>
-                                                    <span class="text-[11px] text-slate-400">Kategori</span>
+                                                    <span
+                                                        class="font-medium text-slate-800"
+                                                        >{cat.name}</span
+                                                    >
+                                                    <span
+                                                        class="text-[11px] text-slate-400"
+                                                        >Kategori</span
+                                                    >
                                                 </button>
                                             {/each}
                                         </div>
@@ -1738,22 +1837,44 @@
                                     <!-- Product suggestions -->
                                     {#if searchSuggestions.products.length > 0}
                                         <div class="py-1">
-                                            <div class="px-3 py-1 text-[11px] font-semibold text-slate-400">Produk</div>
+                                            <div
+                                                class="px-3 py-1 text-[11px] font-semibold text-slate-400"
+                                            >
+                                                Produk
+                                            </div>
                                             {#each searchSuggestions.products as product}
                                                 <button
                                                     type="button"
-                                                    onclick={() => goToProduct(product.slug)}
+                                                    onclick={() =>
+                                                        goToProduct(
+                                                            product.slug,
+                                                        )}
                                                     class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-slate-50 transition group"
                                                 >
                                                     <img
                                                         src={product.image}
                                                         alt={product.name}
                                                         class="w-9 h-9 rounded border border-slate-200/80 object-cover shrink-0"
-                                                        onerror={(e) => { (e.currentTarget as HTMLImageElement).src = '/noimage/image.png'; }}
+                                                        onerror={(e) => {
+                                                            (
+                                                                e.currentTarget as HTMLImageElement
+                                                            ).src =
+                                                                '/noimage/image.png';
+                                                        }}
                                                     />
                                                     <div class="flex-1 min-w-0">
-                                                        <p class="text-sm text-slate-800 font-medium truncate group-hover:text-blue-600 transition">{product.name}</p>
-                                                        <p class="text-xs font-semibold text-rose-600 mt-0.5">{formatPrice(product.price)}</p>
+                                                        <p
+                                                            class="text-sm text-slate-800 font-medium truncate group-hover:text-blue-600 transition"
+                                                        >
+                                                            {product.name}
+                                                        </p>
+                                                        <p
+                                                            class="text-xs font-semibold text-rose-600 mt-0.5"
+                                                        >
+                                                            {formatPrice(
+                                                                product.price,
+                                                            )}
+                                                        </p>
                                                     </div>
                                                 </button>
                                             {/each}
@@ -1767,34 +1888,49 @@
                                     onclick={goToSearchAll}
                                     class="w-full flex items-center gap-2 px-3 py-2.5 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 border-t border-slate-100 transition text-left"
                                 >
-                                    <i class="ti ti-search text-slate-400 text-sm"></i>
-                                    <span>Cari "<strong class="text-slate-900">{searchQuery}</strong>"</span>
+                                    <i
+                                        class="ti ti-search text-slate-400 text-sm"
+                                    ></i>
+                                    <span
+                                        >Cari "<strong class="text-slate-900"
+                                            >{searchQuery}</strong
+                                        >"</span
+                                    >
                                 </button>
                             {/if}
                         </div>
                     {/if}
                 </div>
 
-
                 <!-- Right actions (desktop) -->
                 <div class="flex items-center gap-2.5 lg:gap-3.5 shrink-0">
-
                     <!-- Dark Mode Toggle (Desktop) - Only show for guests in header -->
                     {#if !auth}
                         <button
                             onclick={toggleDarkMode}
                             class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                            aria-label={isDark
+                                ? 'Switch to light mode'
+                                : 'Switch to dark mode'}
                             title={isDark ? 'Mode Terang' : 'Mode Gelap'}
                         >
-                            <div class="w-6 h-6 flex items-center justify-center">
+                            <div
+                                class="w-6 h-6 flex items-center justify-center"
+                            >
                                 {#if isDark}
-                                    <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
+                                    <i
+                                        class="ti ti-sun text-xl light-toggle-icon-enter"
+                                    ></i>
                                 {:else}
-                                    <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
+                                    <i
+                                        class="ti ti-moon text-xl dark-toggle-icon-enter"
+                                    ></i>
                                 {/if}
                             </div>
-                            <span class="text-[9px] font-bold text-white/80 mt-0.5">{isDark ? 'Terang' : 'Gelap'}</span>
+                            <span
+                                class="text-[9px] font-bold text-white/80 mt-0.5"
+                                >{isDark ? 'Terang' : 'Gelap'}</span
+                            >
                         </button>
                         <!-- Poin Saya (Desktop) - Only show for guests in header -->
                         {#if (page.props as any).settings?.coins_enabled}
@@ -1803,10 +1939,15 @@
                                 class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                                 aria-label="Poin Saya"
                             >
-                                <div class="w-6 h-6 flex items-center justify-center">
+                                <div
+                                    class="w-6 h-6 flex items-center justify-center"
+                                >
                                     <i class="ti ti-coins text-xl"></i>
                                 </div>
-                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Poin</span>
+                                <span
+                                    class="text-[9px] font-bold text-white/80 mt-0.5"
+                                    >Poin</span
+                                >
                             </button>
                         {/if}
                     {/if}
@@ -1819,7 +1960,9 @@
                                 class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                                 aria-label="Keranjang"
                             >
-                                <div class="w-6 h-6 flex items-center justify-center relative">
+                                <div
+                                    class="w-6 h-6 flex items-center justify-center relative"
+                                >
                                     <i class="ti ti-shopping-cart text-xl"></i>
                                     {#if localCartCount > 0}
                                         <span
@@ -1830,7 +1973,10 @@
                                         </span>
                                     {/if}
                                 </div>
-                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Keranjang</span>
+                                <span
+                                    class="text-[9px] font-bold text-white/80 mt-0.5"
+                                    >Keranjang</span
+                                >
                             </button>
                         </div>
                     {/if}
@@ -1843,7 +1989,9 @@
                                 class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
                                 aria-label="Notifikasi"
                             >
-                                <div class="w-6 h-6 flex items-center justify-center relative">
+                                <div
+                                    class="w-6 h-6 flex items-center justify-center relative"
+                                >
                                     <i class="ti ti-bell text-xl"></i>
                                     {#if unreadNotifCount > 0}
                                         <span
@@ -1854,7 +2002,10 @@
                                         </span>
                                     {/if}
                                 </div>
-                                <span class="text-[9px] font-bold text-white/80 mt-0.5">Notifikasi</span>
+                                <span
+                                    class="text-[9px] font-bold text-white/80 mt-0.5"
+                                    >Notifikasi</span
+                                >
                             </button>
 
                             {#if isNotifOpen}
@@ -2033,30 +2184,46 @@
                                     transition:fade={{ duration: 150 }}
                                     class="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50"
                                 >
-                                    <div class="p-3.5 border-b border-slate-100 bg-slate-50/50">
+                                    <div
+                                        class="p-3.5 border-b border-slate-100 bg-slate-50/50"
+                                    >
                                         <p
                                             class="text-sm font-bold text-slate-800 truncate"
                                         >
                                             {auth.name}
                                         </p>
-                                        <p class="text-xs text-slate-400 font-medium truncate">
+                                        <p
+                                            class="text-xs text-slate-400 font-medium truncate"
+                                        >
                                             {auth.email}
                                         </p>
                                         {#if auth.is_seller && isSellerEnabled}
-                                            {@const storeName = auth.store_name || `Toko ${auth.name}`}
+                                            {@const storeName =
+                                                auth.store_name ||
+                                                `Toko ${auth.name}`}
                                             <a
                                                 href="/{auth.store_slug || ''}"
                                                 class="mt-2.5 flex flex-col gap-1.5 p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100/80 transition border border-blue-100/90 group"
                                             >
-                                                <div class="flex items-center gap-1.5 min-w-0">
-                                                    <i class="ti ti-building-store text-blue-600 text-sm shrink-0"></i>
-                                                    <span class="text-xs font-bold text-blue-950 group-hover:text-blue-700 truncate transition">
+                                                <div
+                                                    class="flex items-center gap-1.5 min-w-0"
+                                                >
+                                                    <i
+                                                        class="ti ti-building-store text-blue-600 text-sm shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        class="text-xs font-bold text-blue-950 group-hover:text-blue-700 truncate transition"
+                                                    >
                                                         {storeName}
                                                     </span>
                                                 </div>
                                                 {#if auth.store_slug}
-                                                    <div class="flex items-center">
-                                                        <span class="text-[10px] font-mono font-medium text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200/80 truncate shadow-2xs">
+                                                    <div
+                                                        class="flex items-center"
+                                                    >
+                                                        <span
+                                                            class="text-[10px] font-mono font-medium text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200/80 truncate shadow-2xs"
+                                                        >
                                                             /{auth.store_slug}
                                                         </span>
                                                     </div>
@@ -2071,14 +2238,18 @@
                                                     href="/admin/dashboard"
                                                     class="flex items-center gap-2.5 px-3 py-2 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition mb-1"
                                                 >
-                                                    <i class="ti ti-dashboard text-base"></i> Dashboard Penjual
+                                                    <i
+                                                        class="ti ti-dashboard text-base"
+                                                    ></i> Dashboard Penjual
                                                 </a>
                                                 {#if auth.store_slug}
                                                     <a
                                                         href="/{auth.store_slug}"
                                                         class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                                     >
-                                                        <i class="ti ti-building-store text-base text-blue-600"></i> Halaman Toko Saya
+                                                        <i
+                                                            class="ti ti-building-store text-base text-blue-600"
+                                                        ></i> Halaman Toko Saya
                                                     </a>
                                                 {/if}
                                             {:else}
@@ -2087,7 +2258,9 @@
                                                     prefetch
                                                     class="flex items-center gap-2.5 px-3 py-2 text-sm font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-xl transition"
                                                 >
-                                                    <i class="ti ti-tags text-base"></i> Mulai Jual Barang
+                                                    <i
+                                                        class="ti ti-tags text-base"
+                                                    ></i> Mulai Jual Barang
                                                 </Link>
                                             {/if}
                                         {/if}
@@ -2095,7 +2268,8 @@
                                             href="/profile"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                            onclick={() => (profileDropOpen = false)}
+                                            onclick={() =>
+                                                (profileDropOpen = false)}
                                         >
                                             <i class="ti ti-user text-base"></i> Profil
                                             Saya
@@ -2104,9 +2278,12 @@
                                             href="/about"
                                             prefetch
                                             class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                            onclick={() => (profileDropOpen = false)}
+                                            onclick={() =>
+                                                (profileDropOpen = false)}
                                         >
-                                            <i class="ti ti-info-circle text-base text-sky-600"></i> Tentang Kami
+                                            <i
+                                                class="ti ti-info-circle text-base text-sky-600"
+                                            ></i> Tentang Kami
                                         </Link>
                                         {#if isMembershipEnabled}
                                             <Link
@@ -2114,8 +2291,8 @@
                                                 prefetch
                                                 class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                             >
-                                                <i class="ti ti-id text-base"></i> Membership
-                                                Saya
+                                                <i class="ti ti-id text-base"
+                                                ></i> Membership Saya
                                             </Link>
                                         {/if}
                                         {#if !isSellerEnabled}
@@ -2124,7 +2301,8 @@
                                                 prefetch
                                                 class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                             >
-                                                <i class="ti ti-map-pin text-base"
+                                                <i
+                                                    class="ti ti-map-pin text-base"
                                                 ></i> Alamat Pengiriman
                                             </Link>
                                             <Link
@@ -2132,7 +2310,8 @@
                                                 prefetch
                                                 class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
                                             >
-                                                <i class="ti ti-package text-base"
+                                                <i
+                                                    class="ti ti-package text-base"
                                                 ></i> Pesanan
                                             </Link>
                                             <Link
@@ -2171,7 +2350,16 @@
                                                 }}
                                                 class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
                                             >
-                                                <i class="ti ti-coins text-base text-amber-500"></i> Poin Saya: <span class="font-bold text-slate-900 ml-1">{formatNumber(auth.coins_balance || 0)}</span>
+                                                <i
+                                                    class="ti ti-coins text-base text-amber-500"
+                                                ></i>
+                                                Poin Saya:
+                                                <span
+                                                    class="font-bold text-slate-900 ml-1"
+                                                    >{formatNumber(
+                                                        auth.coins_balance || 0,
+                                                    )}</span
+                                                >
                                             </button>
                                         {/if}
                                         <button
@@ -2179,9 +2367,13 @@
                                             class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
                                         >
                                             {#if isDark}
-                                                <i class="ti ti-sun text-base text-amber-500 animate-pulse"></i> Mode Terang
+                                                <i
+                                                    class="ti ti-sun text-base text-amber-500 animate-pulse"
+                                                ></i> Mode Terang
                                             {:else}
-                                                <i class="ti ti-moon text-base text-indigo-500"></i> Mode Gelap
+                                                <i
+                                                    class="ti ti-moon text-base text-indigo-500"
+                                                ></i> Mode Gelap
                                             {/if}
                                         </button>
                                     </div>
@@ -2191,7 +2383,9 @@
                                                 href="/admin/dashboard"
                                                 class="flex items-center gap-2.5 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-xl transition font-semibold"
                                             >
-                                                <i class="ti ti-shield-check text-base"></i> Panel Admin
+                                                <i
+                                                    class="ti ti-shield-check text-base"
+                                                ></i> Panel Admin
                                             </a>
                                         {/if}
                                         <button
@@ -2257,9 +2451,12 @@
                 <!-- Back / Home Button (Mobile) -->
                 {#if page.url.split('?')[0] !== '/'}
                     {@const currentPath = page.url.split('?')[0]}
-                    {@const isAccountPage = [
-                        '/profile', '/membership', '/chats', '/about',
-                    ].some(p => currentPath === p || currentPath.startsWith(p + '/')) ||
+                    {@const isAccountPage =
+                        ['/profile', '/membership', '/chats', '/about'].some(
+                            (p) =>
+                                currentPath === p ||
+                                currentPath.startsWith(p + '/'),
+                        ) ||
                         currentPath.startsWith('/transactions') ||
                         currentPath.startsWith('/returns') ||
                         currentPath.startsWith('/refunds')}
@@ -2281,7 +2478,7 @@
                         </Link>
                     {/if}
                 {/if}
-                
+
                 <!-- Mobile search bar -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
@@ -2290,13 +2487,18 @@
                     data-search-container="true"
                 >
                     <form onsubmit={handleSearch}>
-                        <div class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs">
+                        <div
+                            class="relative flex items-center bg-white/20 hover:bg-white/25 focus-within:bg-white/25 border border-white/30 rounded-xl transition shadow-xs"
+                        >
                             <input
                                 type="text"
                                 bind:value={searchQuery}
                                 placeholder="Cari produk, brand..."
                                 oninput={handleSearchInput}
-                                onfocus={() => { if (searchQuery.length >= 2) showSuggestions = true; }}
+                                onfocus={() => {
+                                    if (searchQuery.length >= 2)
+                                        showSuggestions = true;
+                                }}
                                 class="w-full pl-3.5 pr-9 py-1.5 text-xs sm:text-sm bg-transparent text-white placeholder-white/70 focus:outline-none"
                                 autocomplete="off"
                             />
@@ -2320,31 +2522,55 @@
                             {#if suggestionsLoading}
                                 <div class="p-3 space-y-2">
                                     {#each Array(3) as _}
-                                        <div class="flex items-center gap-3 animate-pulse">
-                                            <div class="w-8 h-8 bg-slate-100 rounded shrink-0"></div>
+                                        <div
+                                            class="flex items-center gap-3 animate-pulse"
+                                        >
+                                            <div
+                                                class="w-8 h-8 bg-slate-100 rounded shrink-0"
+                                            ></div>
                                             <div class="flex-1 space-y-1">
-                                                <div class="h-3 bg-slate-100 rounded w-2/3"></div>
+                                                <div
+                                                    class="h-3 bg-slate-100 rounded w-2/3"
+                                                ></div>
                                             </div>
                                         </div>
                                     {/each}
                                 </div>
                             {:else if !hasSuggestions}
-                                <div class="px-4 py-4 text-center text-xs text-slate-500">
-                                    Tidak ada hasil untuk "<span class="font-semibold text-slate-700">{searchQuery}</span>"
+                                <div
+                                    class="px-4 py-4 text-center text-xs text-slate-500"
+                                >
+                                    Tidak ada hasil untuk "<span
+                                        class="font-semibold text-slate-700"
+                                        >{searchQuery}</span
+                                    >"
                                 </div>
                             {:else}
-                                <div class="max-h-[60dvh] overflow-y-auto divide-y divide-slate-100">
+                                <div
+                                    class="max-h-[60dvh] overflow-y-auto divide-y divide-slate-100"
+                                >
                                     {#if searchSuggestions.brands.length > 0}
                                         <div class="py-1">
-                                            <div class="px-3 py-1 text-[10px] font-semibold text-slate-400">Brand</div>
+                                            <div
+                                                class="px-3 py-1 text-[10px] font-semibold text-slate-400"
+                                            >
+                                                Brand
+                                            </div>
                                             {#each searchSuggestions.brands as brand}
                                                 <button
                                                     type="button"
-                                                    onclick={() => goToBrand(brand.slug)}
+                                                    onclick={() =>
+                                                        goToBrand(brand.slug)}
                                                     class="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 transition"
                                                 >
-                                                    <span class="font-medium text-slate-800 truncate">{brand.name}</span>
-                                                    <span class="text-[10px] text-slate-400 shrink-0">Brand</span>
+                                                    <span
+                                                        class="font-medium text-slate-800 truncate"
+                                                        >{brand.name}</span
+                                                    >
+                                                    <span
+                                                        class="text-[10px] text-slate-400 shrink-0"
+                                                        >Brand</span
+                                                    >
                                                 </button>
                                             {/each}
                                         </div>
@@ -2352,15 +2578,26 @@
 
                                     {#if searchSuggestions.categories.length > 0}
                                         <div class="py-1">
-                                            <div class="px-3 py-1 text-[10px] font-semibold text-slate-400">Kategori</div>
+                                            <div
+                                                class="px-3 py-1 text-[10px] font-semibold text-slate-400"
+                                            >
+                                                Kategori
+                                            </div>
                                             {#each searchSuggestions.categories as cat}
                                                 <button
                                                     type="button"
-                                                    onclick={() => goToCategory(cat.slug)}
+                                                    onclick={() =>
+                                                        goToCategory(cat.slug)}
                                                     class="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 transition"
                                                 >
-                                                    <span class="font-medium text-slate-800 truncate">{cat.name}</span>
-                                                    <span class="text-[10px] text-slate-400 shrink-0">Kategori</span>
+                                                    <span
+                                                        class="font-medium text-slate-800 truncate"
+                                                        >{cat.name}</span
+                                                    >
+                                                    <span
+                                                        class="text-[10px] text-slate-400 shrink-0"
+                                                        >Kategori</span
+                                                    >
                                                 </button>
                                             {/each}
                                         </div>
@@ -2368,22 +2605,44 @@
 
                                     {#if searchSuggestions.products.length > 0}
                                         <div class="py-1">
-                                            <div class="px-3 py-1 text-[10px] font-semibold text-slate-400">Produk</div>
+                                            <div
+                                                class="px-3 py-1 text-[10px] font-semibold text-slate-400"
+                                            >
+                                                Produk
+                                            </div>
                                             {#each searchSuggestions.products as product}
                                                 <button
                                                     type="button"
-                                                    onclick={() => goToProduct(product.slug)}
+                                                    onclick={() =>
+                                                        goToProduct(
+                                                            product.slug,
+                                                        )}
                                                     class="w-full flex items-center gap-2.5 px-3 py-1.5 text-left hover:bg-slate-50 transition group"
                                                 >
                                                     <img
                                                         src={product.image}
                                                         alt={product.name}
                                                         class="w-8 h-8 rounded border border-slate-200/80 object-cover shrink-0"
-                                                        onerror={(e) => { (e.currentTarget as HTMLImageElement).src = '/noimage/image.png'; }}
+                                                        onerror={(e) => {
+                                                            (
+                                                                e.currentTarget as HTMLImageElement
+                                                            ).src =
+                                                                '/noimage/image.png';
+                                                        }}
                                                     />
                                                     <div class="flex-1 min-w-0">
-                                                        <p class="text-xs text-slate-800 font-medium truncate group-hover:text-blue-600 transition">{product.name}</p>
-                                                        <p class="text-[11px] font-semibold text-rose-600">{formatPrice(product.price)}</p>
+                                                        <p
+                                                            class="text-xs text-slate-800 font-medium truncate group-hover:text-blue-600 transition"
+                                                        >
+                                                            {product.name}
+                                                        </p>
+                                                        <p
+                                                            class="text-[11px] font-semibold text-rose-600"
+                                                        >
+                                                            {formatPrice(
+                                                                product.price,
+                                                            )}
+                                                        </p>
                                                     </div>
                                                 </button>
                                             {/each}
@@ -2396,8 +2655,14 @@
                                     onclick={goToSearchAll}
                                     class="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 border-t border-slate-100 transition text-left"
                                 >
-                                    <i class="ti ti-search text-slate-400 text-xs"></i>
-                                    <span>Cari "<strong class="text-slate-900">{searchQuery}</strong>"</span>
+                                    <i
+                                        class="ti ti-search text-slate-400 text-xs"
+                                    ></i>
+                                    <span
+                                        >Cari "<strong class="text-slate-900"
+                                            >{searchQuery}</strong
+                                        >"</span
+                                    >
                                 </button>
                             {/if}
                         </div>
@@ -2406,7 +2671,6 @@
 
                 <!-- Mobile right icons -->
                 <div class="flex items-center gap-1.5 shrink-0">
-
                     <!-- Dark Mode Toggle (Mobile) - Only show for guests in header -->
                     {#if !auth}
                         <button
@@ -2415,9 +2679,13 @@
                             aria-label={isDark ? 'Mode Terang' : 'Mode Gelap'}
                         >
                             {#if isDark}
-                                <i class="ti ti-sun text-xl light-toggle-icon-enter"></i>
+                                <i
+                                    class="ti ti-sun text-xl light-toggle-icon-enter"
+                                ></i>
                             {:else}
-                                <i class="ti ti-moon text-xl dark-toggle-icon-enter"></i>
+                                <i
+                                    class="ti ti-moon text-xl dark-toggle-icon-enter"
+                                ></i>
                             {/if}
                         </button>
                         <!-- Coin Saya (mobile) - Only show for guests in header -->
@@ -2540,17 +2808,22 @@
                     </p>
                     <p class="text-xs text-slate-400 truncate">{auth.email}</p>
                     {#if auth.is_seller && isSellerEnabled}
-                        {@const storeName = auth.store_name || `Toko ${auth.name}`}
+                        {@const storeName =
+                            auth.store_name || `Toko ${auth.name}`}
                         <a
                             href="/{auth.store_slug || ''}"
                             class="mt-1.5 flex flex-col gap-0.5 p-1.5 rounded-lg bg-blue-50/80 border border-blue-100/90 text-xs font-bold text-blue-900 hover:bg-blue-100 transition max-w-full"
                         >
                             <div class="flex items-center gap-1 min-w-0">
-                                <i class="ti ti-building-store text-xs text-blue-600 shrink-0"></i>
+                                <i
+                                    class="ti ti-building-store text-xs text-blue-600 shrink-0"
+                                ></i>
                                 <span class="truncate">{storeName}</span>
                             </div>
                             {#if auth.store_slug}
-                                <span class="font-mono text-[10px] text-blue-700 bg-white px-1.5 py-0.5 rounded border border-blue-200/80 self-start truncate">
+                                <span
+                                    class="font-mono text-[10px] text-blue-700 bg-white px-1.5 py-0.5 rounded border border-blue-200/80 self-start truncate"
+                                >
                                     /{auth.store_slug}
                                 </span>
                             {/if}
@@ -2572,7 +2845,9 @@
                                 href="/{auth.store_slug}"
                                 class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition mb-1"
                             >
-                                <i class="ti ti-building-store text-lg text-blue-600"></i> Halaman Toko Saya
+                                <i
+                                    class="ti ti-building-store text-lg text-blue-600"
+                                ></i> Halaman Toko Saya
                             </a>
                         {/if}
                     {:else}
@@ -2643,7 +2918,7 @@
                     href="/about"
                     prefetch
                     class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                    onclick={() => profileDropOpen = false}
+                    onclick={() => (profileDropOpen = false)}
                 >
                     <i class="ti ti-info-circle text-lg"></i> Tentang Kami
                 </Link>
@@ -2655,7 +2930,11 @@
                         }}
                         class="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition text-left font-medium"
                     >
-                        <i class="ti ti-coins text-lg text-amber-500"></i> Poin Saya: <span class="font-bold text-slate-900 ml-1">{formatNumber(auth.coins_balance || 0)}</span>
+                        <i class="ti ti-coins text-lg text-amber-500"></i> Poin
+                        Saya:
+                        <span class="font-bold text-slate-900 ml-1"
+                            >{formatNumber(auth.coins_balance || 0)}</span
+                        >
                     </button>
                 {/if}
                 <button
@@ -2788,7 +3067,11 @@
     {/if}
 
     <!-- ====== MAIN CONTENT ====== -->
-    <main class="flex-grow flex flex-col transition-all duration-300 {!hideMobileBottomNav ? 'pb-16 md:pb-0' : ''}">
+    <main
+        class="flex-grow flex flex-col transition-all duration-300 {!hideMobileBottomNav
+            ? 'pb-16 md:pb-0'
+            : ''}"
+    >
         {@render children()}
     </main>
 
@@ -2816,16 +3099,20 @@
                             class="w-8 h-8 rounded-xl flex items-center justify-center bg-white shadow-sm"
                             style="color: {primary};"
                         >
-                            <i class="ti ti-shopping-bag text-lg animate-pulse"></i>
+                            <i class="ti ti-shopping-bag text-lg animate-pulse"
+                            ></i>
                         </div>
                     {/if}
-                    <span class="font-outfit font-black text-xl text-white tracking-tight"
+                    <span
+                        class="font-outfit font-black text-xl text-white tracking-tight"
                         >{storeName}</span
                     >
                 </div>
 
                 <!-- Copyright -->
-                <p class="text-xs text-white/80 text-center sm:text-left leading-relaxed">
+                <p
+                    class="text-xs text-white/80 text-center sm:text-left leading-relaxed"
+                >
                     © {new Date().getFullYear()}
                     <a
                         href="https://aplikasitokoonline.id/"
@@ -3774,7 +4061,9 @@
                         >
                             <div class="flex items-center gap-2 min-w-0">
                                 <img
-                                    src={formatMiniChatImagePath(attachedProduct.image)}
+                                    src={formatMiniChatImagePath(
+                                        attachedProduct.image,
+                                    )}
                                     alt={attachedProduct.name}
                                     class="w-9 h-9 rounded-lg object-cover bg-white border border-slate-200 shrink-0"
                                     onerror={(e: any) => {
@@ -3782,11 +4071,17 @@
                                     }}
                                 />
                                 <div class="min-w-0">
-                                    <p class="text-[11px] font-bold text-slate-800 truncate">
+                                    <p
+                                        class="text-[11px] font-bold text-slate-800 truncate"
+                                    >
                                         {attachedProduct.name}
                                     </p>
-                                    <p class="text-[10px] font-black text-orange-500">
-                                        Rp{Number(attachedProduct.price ?? 0).toLocaleString('id-ID')}
+                                    <p
+                                        class="text-[10px] font-black text-orange-500"
+                                    >
+                                        Rp{Number(
+                                            attachedProduct.price ?? 0,
+                                        ).toLocaleString('id-ID')}
                                     </p>
                                 </div>
                             </div>
@@ -5086,14 +5381,14 @@
     </div>
 {/if}
 
-
-
 <!-- ====== MOBILE BOTTOM NAVIGATION BAR ====== -->
 {#if !hideMobileBottomNav}
     <nav
         class="md:hidden fixed bottom-0 left-0 right-0 z-[990] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] pb-safe transition-all duration-300"
     >
-        <div class="max-w-md mx-auto px-2 h-16 flex items-center justify-around relative">
+        <div
+            class="max-w-md mx-auto px-2 h-16 flex items-center justify-around relative"
+        >
             {#if isSellerMode}
                 <!-- CONCEPT 1: IS_SELLER = TRUE (ORDER: Beranda, Toko Saya, Jual (Center), Pesan, Profile) -->
                 <!-- 1. Beranda -->
@@ -5103,47 +5398,79 @@
                 >
                     <div class="relative flex flex-col items-center">
                         <i
-                            class="ti ti-home-2 text-xl transition-transform duration-200 group-active:scale-90 {activePath === '/' ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath === '/' ? `color: ${primary}` : ''}
+                            class="ti ti-home-2 text-xl transition-transform duration-200 group-active:scale-90 {activePath ===
+                            '/'
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/'
+                                ? `color: ${primary}`
+                                : ''}
                         ></i>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath === '/' ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath === '/' ? `color: ${primary}` : ''}
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath ===
+                            '/'
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/'
+                                ? `color: ${primary}`
+                                : ''}
                         >
                             Beranda
                         </span>
                         {#if activePath === '/'}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
                         {/if}
                     </div>
                 </Link>
 
                 <!-- 2. Toko Saya -->
-                {@const isStoreActive = activePath.startsWith('/admin') || activePath.startsWith('/seller') || (Boolean(auth?.store_slug) && activePath === '/' + auth.store_slug)}
+                {@const isStoreActive =
+                    activePath.startsWith('/admin') ||
+                    activePath.startsWith('/seller') ||
+                    (Boolean(auth?.store_slug) &&
+                        activePath === '/' + auth.store_slug)}
                 <Link
-                    href={auth ? (auth.store_slug ? `/${auth.store_slug}` : '/admin/dashboard') : '/login'}
+                    href={auth
+                        ? auth.store_slug
+                            ? `/${auth.store_slug}`
+                            : '/admin/dashboard'
+                        : '/login'}
                     class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
                 >
                     <div class="relative flex flex-col items-center">
                         <i
-                            class="ti ti-building-store text-xl transition-transform duration-200 group-active:scale-90 {isStoreActive ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            class="ti ti-building-store text-xl transition-transform duration-200 group-active:scale-90 {isStoreActive
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
                             style={isStoreActive ? `color: ${primary}` : ''}
                         ></i>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {isStoreActive ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {isStoreActive
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
                             style={isStoreActive ? `color: ${primary}` : ''}
                         >
-                            Toko Saya
+                            Produk
                         </span>
                         {#if isStoreActive}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
                         {/if}
                     </div>
                 </Link>
 
                 <!-- 3. CENTER BUTTON: Jual (Prominent floating button) -->
                 <Link
-                    href={auth ? (auth.is_seller || isSuperAdmin ? '/admin/products/create' : '/profile') : '/login'}
+                    href={auth
+                        ? auth.is_seller || isSuperAdmin
+                            ? '/admin/products/create'
+                            : '/profile'
+                        : '/login'}
                     class="flex flex-col items-center justify-center w-full h-full group relative"
                 >
                     <div class="absolute -top-5 flex flex-col items-center">
@@ -5152,10 +5479,14 @@
                                 class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
                                 style="background: linear-gradient(135deg, {primary}, {secondary});"
                             >
-                                <i class="ti ti-plus text-2xl text-white font-black"></i>
+                                <i
+                                    class="ti ti-plus text-2xl text-white font-black"
+                                ></i>
                             </div>
                         </div>
-                        <span class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary">
+                        <span
+                            class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary"
+                        >
                             Jual
                         </span>
                     </div>
@@ -5173,8 +5504,12 @@
                                 class="ti ti-message-dots text-xl transition-transform duration-200 group-active:scale-90 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
                             ></i>
                             {#if chatUnreadCount > 0}
-                                <span class="absolute -top-1 -right-2 px-1 py-0.2 min-w-[14px] h-[14px] bg-red-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 animate-pulse">
-                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                                <span
+                                    class="absolute -top-1 -right-2 px-1 py-0.2 min-w-[14px] h-[14px] bg-red-500 text-white font-black text-[8px] rounded-full flex items-center justify-center border border-white dark:border-slate-900 animate-pulse"
+                                >
+                                    {chatUnreadCount > 99
+                                        ? '99+'
+                                        : chatUnreadCount}
                                 </span>
                             {/if}
                         </div>
@@ -5193,21 +5528,35 @@
                 >
                     <div class="relative flex flex-col items-center">
                         <i
-                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/profile') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith(
+                                '/profile',
+                            )
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile')
+                                ? `color: ${primary}`
+                                : ''}
                         ></i>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/profile') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith(
+                                '/profile',
+                            )
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile')
+                                ? `color: ${primary}`
+                                : ''}
                         >
                             Profile
                         </span>
                         {#if activePath.startsWith('/profile')}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
                         {/if}
                     </div>
                 </Link>
-
             {:else}
                 <!-- CONCEPT 2: IS_SELLER = FALSE (SHOPEE PURE E-COMMERCE CONCEPT) -->
                 <!-- 1. Beranda -->
@@ -5217,17 +5566,30 @@
                 >
                     <div class="relative flex flex-col items-center">
                         <i
-                            class="ti ti-home-2 text-xl transition-transform duration-200 group-active:scale-90 {activePath === '/' ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath === '/' ? `color: ${primary}` : ''}
+                            class="ti ti-home-2 text-xl transition-transform duration-200 group-active:scale-90 {activePath ===
+                            '/'
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/'
+                                ? `color: ${primary}`
+                                : ''}
                         ></i>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath === '/' ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath === '/' ? `color: ${primary}` : ''}
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath ===
+                            '/'
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/'
+                                ? `color: ${primary}`
+                                : ''}
                         >
                             Beranda
                         </span>
                         {#if activePath === '/'}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
                         {/if}
                     </div>
                 </Link>
@@ -5239,17 +5601,34 @@
                 >
                     <div class="relative flex flex-col items-center">
                         <i
-                            class="ti ti-category text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? `color: ${primary}` : ''}
+                            class="ti ti-category text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith(
+                                '/category',
+                            ) || activePath.startsWith('/produk-terlaris')
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/category') ||
+                            activePath.startsWith('/produk-terlaris')
+                                ? `color: ${primary}`
+                                : ''}
                         ></i>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris') ? `color: ${primary}` : ''}
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith(
+                                '/category',
+                            ) || activePath.startsWith('/produk-terlaris')
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/category') ||
+                            activePath.startsWith('/produk-terlaris')
+                                ? `color: ${primary}`
+                                : ''}
                         >
                             Kategori
                         </span>
                         {#if activePath.startsWith('/category') || activePath.startsWith('/produk-terlaris')}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
                         {/if}
                     </div>
                 </Link>
@@ -5265,15 +5644,23 @@
                                 class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
                                 style="background: linear-gradient(135deg, {primary}, {secondary});"
                             >
-                                <i class="ti ti-message-dots text-2xl text-white font-black"></i>
+                                <i
+                                    class="ti ti-message-dots text-2xl text-white font-black"
+                                ></i>
                             </div>
                             {#if chatUnreadCount > 0}
-                                <span class="absolute -top-1 -right-1 px-1 py-0.2 min-w-[16px] h-[16px] bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 animate-pulse">
-                                    {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                                <span
+                                    class="absolute -top-1 -right-1 px-1 py-0.2 min-w-[16px] h-[16px] bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 animate-pulse"
+                                >
+                                    {chatUnreadCount > 99
+                                        ? '99+'
+                                        : chatUnreadCount}
                                 </span>
                             {/if}
                         </div>
-                        <span class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary">
+                        <span
+                            class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary"
+                        >
                             Pesan
                         </span>
                     </div>
@@ -5287,23 +5674,40 @@
                     >
                         <div class="relative flex flex-col items-center">
                             <i
-                                class="ti ti-receipt text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/transaction') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                                style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
+                                class="ti ti-receipt text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith(
+                                    '/transaction',
+                                )
+                                    ? 'scale-110 font-bold'
+                                    : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                                style={activePath.startsWith('/transaction')
+                                    ? `color: ${primary}`
+                                    : ''}
                             ></i>
                             <span
-                                class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/transaction') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                                style={activePath.startsWith('/transaction') ? `color: ${primary}` : ''}
+                                class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith(
+                                    '/transaction',
+                                )
+                                    ? ''
+                                    : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                                style={activePath.startsWith('/transaction')
+                                    ? `color: ${primary}`
+                                    : ''}
                             >
                                 Transaksi
                             </span>
                             {#if activePath.startsWith('/transaction')}
-                                <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                                <span
+                                    class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                    style="background-color: {primary};"
+                                ></span>
                             {/if}
                         </div>
                     </Link>
                 {:else if auth?.user?.is_seller || isSellerEnabled}
                     <a
-                        href={auth?.user?.store_slug ? `/${auth.user.store_slug}` : '/profile'}
+                        href={auth?.user?.store_slug
+                            ? `/${auth.user.store_slug}`
+                            : '/profile'}
                         class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
                     >
                         <div class="relative flex flex-col items-center">
@@ -5313,7 +5717,7 @@
                             <span
                                 class="text-[10px] font-bold mt-0.5 transition-colors duration-200 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
                             >
-                                Toko Saya
+                                Produk
                             </span>
                         </div>
                     </a>
@@ -5326,17 +5730,32 @@
                 >
                     <div class="relative flex flex-col items-center">
                         <i
-                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith('/profile') ? 'scale-110 font-bold' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith(
+                                '/profile',
+                            )
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile')
+                                ? `color: ${primary}`
+                                : ''}
                         ></i>
                         <span
-                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith('/profile') ? '' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
-                            style={activePath.startsWith('/profile') ? `color: ${primary}` : ''}
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith(
+                                '/profile',
+                            )
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile')
+                                ? `color: ${primary}`
+                                : ''}
                         >
                             Akun
                         </span>
                         {#if activePath.startsWith('/profile')}
-                            <span class="absolute -bottom-1.5 w-1 h-1 rounded-full" style="background-color: {primary};"></span>
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
                         {/if}
                     </div>
                 </Link>

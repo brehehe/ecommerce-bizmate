@@ -22,9 +22,9 @@
     const isSellerEnabled = $derived(
         Boolean(
             (page.props as any).app_config?.is_seller_enabled ??
-                (page.props as any).settings?.is_seller_enabled ??
-                (page.props as any).isSellerMode ??
-                false,
+            (page.props as any).settings?.is_seller_enabled ??
+            (page.props as any).isSellerMode ??
+            false,
         ),
     );
     const isMembershipEnabled = $derived(
@@ -290,7 +290,11 @@
             totalNewTransactions,
         )}
         {#if !isSellerEnabled && !isSeller}
-            {@render NavItem('/admin/refunds', 'ti-cash-banknote-off', 'Refund')}
+            {@render NavItem(
+                '/admin/refunds',
+                'ti-cash-banknote-off',
+                'Refund',
+            )}
             {@render NavItem('/admin/returns', 'ti-arrow-back-up', 'Retur')}
         {/if}
         {@render NavItem(
@@ -516,17 +520,20 @@
                         )}
                     {/if}
                     {#if !isSeller}
-                    {@render SubNavItem('/admin/master-data/couriers', 'Kurir')}
-                    {#if isLogisticEnabled}
                         {@render SubNavItem(
-                            '/admin/master-data/logistic-api',
-                            'Logistik API',
+                            '/admin/master-data/couriers',
+                            'Kurir',
                         )}
-                    {/if}
-                    {@render SubNavItem(
-                        '/admin/master-data/payment-methods',
-                        'Metode Bayar',
-                    )}
+                        {#if isLogisticEnabled}
+                            {@render SubNavItem(
+                                '/admin/master-data/logistic-api',
+                                'Logistik API',
+                            )}
+                        {/if}
+                        {@render SubNavItem(
+                            '/admin/master-data/payment-methods',
+                            'Metode Bayar',
+                        )}
                     {/if}
                     {#if !isSeller}
                         {@render SubNavItem(
@@ -545,7 +552,7 @@
                         )}
                     {/if}
                     {#if !isSeller}
-                    {@render SubNavItem('/admin/master-data/cost', 'Biaya')}
+                        {@render SubNavItem('/admin/master-data/cost', 'Biaya')}
                     {/if}
                     {#if isSellerEnabled && !isSeller}
                         {@render SubNavItem(
@@ -624,7 +631,6 @@
         <!-- Storefront link -->
         <a
             href="/"
-            target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
         >
