@@ -2,7 +2,7 @@
     import { adjustColorOpacity } from '@/utils/color';
 
     import { onMount } from 'svelte';
-    import { page, router, Link, Deferred } from '@inertiajs/svelte';
+    import { page, router, Link, Deferred, usePoll } from '@inertiajs/svelte';
     const primaryColor = $derived(page.props.theme?.primary_color || '#0c4cb4');
     const secondaryColor = $derived(
         page.props.theme?.secondary_color || '#fa7315',
@@ -22,6 +22,15 @@
     let {
         isSeller = false,
         stats,
+        visitorStats = {
+            onlineVisitors: 0,
+            uniqueVisitors: 0,
+            uniqueVisitorsChange: { type: 'neutral', value: '0%' },
+            pageviewsCount: 0,
+            pageviewsChange: { type: 'neutral', value: '0%' },
+            devices: { mobile: 0, desktop: 0, tablet: 0, mobileCount: 0, desktopCount: 0 },
+        },
+        topVisitedPages = [],
         orderStats = { unpaidCount: 0, pendingCount: 0, newCount: 0, readyCount: 0, shippingCount: 0 },
         recentOrders = [],
         topProducts = [],
@@ -38,6 +47,9 @@
         recentRefunds = [],
         recentReturns = [],
     } = $props();
+
+    // Auto-refresh real-time online visitor counter every 15 seconds
+    usePoll(15000, { only: ['visitorStats', 'topVisitedPages'] });
 
     // svelte-ignore state_referenced_locally
     let selectedFilter = $state(initialFilter);
@@ -354,11 +366,11 @@
             </div>
         </div>
 
-        <!-- KPI stat cards (6 grid columns) -->
-        <Deferred data={['stats', 'refundStats', 'returnStats']}>
+        <!-- KPI stat cards -->
+        <Deferred data={['stats', 'refundStats', 'returnStats', 'visitorStats']}>
             {#snippet fallback()}
-                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 animate-pulse">
-                    {#each Array(6) as _}
+                <div class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 animate-pulse">
+                    {#each Array(7) as _}
                         <div class="rounded-xl border border-slate-200 bg-white p-4 h-24 flex items-center justify-between">
                             <div class="space-y-2 w-full">
                                 <div class="h-3 w-16 bg-slate-100 rounded-md"></div>
@@ -369,7 +381,7 @@
                 </div>
             {/snippet}
 
-            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <div class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
 
                 <!-- Revenue -->
                 {@render StatCard({
@@ -389,6 +401,48 @@
                     label: 'Total Transaksi',
                     value: stats.ordersCount,
                     change: stats.ordersChange,
+                })}
+
+                <!-- Live Online Visitors -->
+                <div class="group relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/50 via-white to-white p-4 shadow-xs transition-all hover:shadow-md hover:border-emerald-300">
+                    <div class="flex items-start justify-between">
+                        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-base shadow-xs">
+                            <i class="ti ti-broadcast"></i>
+                        </div>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 px-2 py-0.5 text-[10px] font-bold text-emerald-800 tracking-wide">
+                            <span class="relative flex h-2 w-2">
+                                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                            </span>
+                            LIVE
+                        </span>
+                    </div>
+                    <div class="mt-3">
+                        <p class="text-xl font-bold tracking-tight text-slate-900 truncate">
+                            {visitorStats.onlineVisitors} <span class="text-xs font-semibold text-emerald-600">Online</span>
+                        </p>
+                        <p class="mt-0.5 text-[11px] font-medium text-slate-500 truncate">Pengunjung Aktif (5 mnt)</p>
+                    </div>
+                </div>
+
+                <!-- Unique Visitors -->
+                {@render StatCard({
+                    icon: 'ti-users-group',
+                    iconBg: '#f0f9ff',
+                    iconColor: '#0284c7',
+                    label: 'Pengunjung Unik',
+                    value: visitorStats.uniqueVisitors,
+                    change: visitorStats.uniqueVisitorsChange,
+                })}
+
+                <!-- Total Pageviews -->
+                {@render StatCard({
+                    icon: 'ti-eye',
+                    iconBg: '#fdf4ff',
+                    iconColor: '#a855f7',
+                    label: 'Total Kunjungan',
+                    value: visitorStats.pageviewsCount,
+                    change: visitorStats.pageviewsChange,
                 })}
 
                 {#if !isSeller && !isSellerEnabled}
@@ -720,6 +774,129 @@
                         {/each}
                     </div>
                 </Deferred>
+            </div>
+        </div>
+
+        <!-- Traffic Analytics & Top Visited Pages -->
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <!-- Top Visited Pages (2 cols) -->
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
+                <Deferred data="topVisitedPages">
+                    {#snippet fallback()}
+                        <div class="p-6 h-[260px] animate-pulse space-y-3">
+                            <div class="h-4 bg-slate-200 rounded w-1/4"></div>
+                            <div class="h-10 bg-slate-100 rounded w-full"></div>
+                            <div class="h-10 bg-slate-100 rounded w-full"></div>
+                        </div>
+                    {/snippet}
+
+                    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">Halaman & Toko Paling Sering Dikunjungi</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Aktivitas trafik pengunjung pada periode ini</p>
+                        </div>
+                        <span class="inline-flex items-center gap-1 text-xs text-slate-500 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                            <i class="ti ti-chart-bar text-slate-400"></i>
+                            {visitorStats.pageviewsCount} Total Views
+                        </span>
+                    </div>
+                    <div class="p-5">
+                        {#if topVisitedPages && topVisitedPages.length > 0}
+                            <div class="space-y-3.5">
+                                {#each topVisitedPages as item}
+                                    <div class="space-y-1">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <div class="flex items-center gap-2 truncate max-w-[70%]">
+                                                <span class="font-semibold text-slate-800 truncate">{item.title}</span>
+                                                <span class="text-slate-400 font-mono text-[10px] truncate hidden sm:inline">{item.path}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0 text-slate-600 font-medium">
+                                                <span><strong class="text-slate-900">{item.views}</strong> views</span>
+                                                <span class="text-slate-400 text-[11px]">({item.unique_views} unik)</span>
+                                            </div>
+                                        </div>
+                                        <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                            <div
+                                                class="h-full rounded-full transition-all duration-500"
+                                                style="width: {item.percentage}%; background-color: {primaryColor};"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {:else}
+                            <div class="py-8 text-center text-xs text-slate-400">
+                                <i class="ti ti-eye-off text-2xl mb-1 text-slate-300 block"></i>
+                                Belum ada data kunjungan pada periode ini.
+                            </div>
+                        {/if}
+                    </div>
+                </Deferred>
+            </div>
+
+            <!-- Device Distribution (1 col) -->
+            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">Distribusi Perangkat</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Perangkat yang digunakan pengunjung</p>
+                    </div>
+                    <i class="ti ti-devices text-slate-400"></i>
+                </div>
+                <div class="p-5 flex flex-col justify-between h-[calc(100%-53px)] space-y-4">
+                    <div class="space-y-4">
+                        <!-- Mobile -->
+                        <div>
+                            <div class="flex items-center justify-between text-xs mb-1.5">
+                                <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                    <i class="ti ti-device-mobile text-slate-500"></i> Mobile Smartphone
+                                </span>
+                                <span class="font-bold text-slate-900">{visitorStats.devices?.mobile ?? 0}%</span>
+                            </div>
+                            <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full bg-blue-500" style="width: {visitorStats.devices?.mobile ?? 0}%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Desktop -->
+                        <div>
+                            <div class="flex items-center justify-between text-xs mb-1.5">
+                                <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                    <i class="ti ti-device-laptop text-slate-500"></i> Komputer / Laptop
+                                </span>
+                                <span class="font-bold text-slate-900">{visitorStats.devices?.desktop ?? 0}%</span>
+                            </div>
+                            <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full bg-indigo-500" style="width: {visitorStats.devices?.desktop ?? 0}%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Tablet -->
+                        <div>
+                            <div class="flex items-center justify-between text-xs mb-1.5">
+                                <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                    <i class="ti ti-device-tablet text-slate-500"></i> Tablet
+                                </span>
+                                <span class="font-bold text-slate-900">{visitorStats.devices?.tablet ?? 0}%</span>
+                            </div>
+                            <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                <div class="h-full rounded-full bg-amber-500" style="width: {visitorStats.devices?.tablet ?? 0}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live heartbeat footer -->
+                    <div class="rounded-lg bg-emerald-50/70 border border-emerald-100 p-3 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="relative flex h-2.5 w-2.5">
+                                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                                <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                            </span>
+                            <span class="text-xs font-semibold text-emerald-900">Live Traffic Polling</span>
+                        </div>
+                        <span class="text-[11px] text-emerald-700 font-medium">Update tiap 15s</span>
+                    </div>
+                </div>
             </div>
         </div>
 

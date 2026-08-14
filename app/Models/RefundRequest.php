@@ -56,15 +56,15 @@ class RefundRequest extends Model
      */
     public static function generateNumber(): string
     {
-        $prefix = 'RFD-' . now()->format('Ymd') . '-';
+        $prefix = 'RFD-'.now()->format('Ymd').'-';
         $operator = DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike';
-        $last = static::where('refund_number', $operator, $prefix . '%')
+        $last = static::where('refund_number', $operator, $prefix.'%')
             ->orderByDesc('refund_number')
             ->value('refund_number');
 
         $seq = $last ? (int) substr($last, -5) + 1 : 1;
 
-        return $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
 
     public function transaction(): BelongsTo

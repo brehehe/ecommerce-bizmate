@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureMembershipEnabled;
 use App\Http\Middleware\EnsureNotCustomer;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\IsKurir;
+use App\Http\Middleware\TrackVisitorActivity;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            TrackVisitorActivity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

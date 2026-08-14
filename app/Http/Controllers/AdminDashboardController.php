@@ -742,6 +742,106 @@ class AdminDashboardController extends Controller
             });
         };
 
+        $getVisitorStats = function () use ($filter, $dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $isSeller, $userId) {
+            return Cache::remember("dashboard_visitor_stats_v1_{$userId}_{$filter}", 15, function () use ($dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $isSeller, $userId) {
+                $fiveMinutesAgo = Carbon::now()->subMinutes(5);
+
+                // 1. Real-time online visitors (last 5 minutes)
+                $onlineQuery = DB::table('page_views')->where('created_at', '>=', $fiveMinutesAgo);
+                if ($isSeller) {
+                    $onlineQuery->where('seller_id', $userId);
+                }
+                $onlineVisitors = $onlineQuery->distinct('session_id')->count('session_id');
+
+                // 2. Current period pageviews & unique visitors
+                $currentQuery = DB::table('page_views')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                if ($isSeller) {
+                    $currentQuery->where('seller_id', $userId);
+                }
+                $currentPageviews = $currentQuery->count();
+                $currentUniqueVisitors = $currentQuery->distinct('session_id')->count('session_id');
+
+                // 3. Previous period pageviews & unique visitors
+                $prevQuery = DB::table('page_views')->whereBetween('created_at', [$prevDateFrom, $prevDateTo]);
+                if ($isSeller) {
+                    $prevQuery->where('seller_id', $userId);
+                }
+                $prevPageviews = $prevQuery->count();
+                $prevUniqueVisitors = $prevQuery->distinct('session_id')->count('session_id');
+
+                // 4. Device breakdown in current period
+                $deviceQuery = DB::table('page_views')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                if ($isSeller) {
+                    $deviceQuery->where('seller_id', $userId);
+                }
+                $devices = $deviceQuery->select('device', DB::raw('COUNT(*) as total'))
+                    ->groupBy('device')
+                    ->pluck('total', 'device')
+                    ->toArray();
+
+                $totalDeviceViews = array_sum($devices);
+                $mobilePct = $totalDeviceViews > 0 ? round((($devices['mobile'] ?? 0) / $totalDeviceViews) * 100, 1) : 0;
+                $desktopPct = $totalDeviceViews > 0 ? round((($devices['desktop'] ?? 0) / $totalDeviceViews) * 100, 1) : 0;
+                $tabletPct = $totalDeviceViews > 0 ? round((($devices['tablet'] ?? 0) / $totalDeviceViews) * 100, 1) : 0;
+
+                return [
+                    'onlineVisitors' => $onlineVisitors,
+                    'uniqueVisitors' => $currentUniqueVisitors,
+                    'uniqueVisitorsChange' => $this->getPercentageChange((float) $currentUniqueVisitors, (float) $prevUniqueVisitors),
+                    'pageviewsCount' => $currentPageviews,
+                    'pageviewsChange' => $this->getPercentageChange((float) $currentPageviews, (float) $prevPageviews),
+                    'devices' => [
+                        'mobile' => $mobilePct,
+                        'desktop' => $desktopPct,
+                        'tablet' => $tabletPct,
+                        'mobileCount' => (int) ($devices['mobile'] ?? 0),
+                        'desktopCount' => (int) ($devices['desktop'] ?? 0),
+                    ],
+                ];
+            });
+        };
+
+        $getTopVisitedPages = function () use ($filter, $dateFrom, $dateTo, $isSeller, $userId) {
+            return Cache::remember("dashboard_top_visited_pages_v1_{$userId}_{$filter}", 60, function () use ($dateFrom, $dateTo, $isSeller, $userId) {
+                $query = DB::table('page_views')
+                    ->whereBetween('created_at', [$dateFrom, $dateTo]);
+
+                if ($isSeller) {
+                    $query->where('seller_id', $userId);
+                }
+
+                $topPages = $query->select('path', DB::raw('COUNT(*) as views'), DB::raw('COUNT(DISTINCT session_id) as unique_views'))
+                    ->groupBy('path')
+                    ->orderBy('views', 'desc')
+                    ->limit(6)
+                    ->get();
+
+                $maxViews = $topPages->max('views') ?: 1;
+
+                return $topPages->map(function ($item) use ($maxViews) {
+                    $path = $item->path;
+                    $title = match (true) {
+                        $path === '/' => 'Beranda Utama (Home)',
+                        $path === '/search' => 'Pencarian Produk',
+                        $path === '/flash-sale' => 'Flash Sale',
+                        $path === '/produk-terlaris' => 'Produk Terlaris',
+                        str_starts_with($path, '/category') => 'Kategori: '.urldecode(substr($path, 10)),
+                        str_starts_with($path, '/brands') => 'Brand: '.urldecode(substr($path, 8)),
+                        str_starts_with($path, '/products/') => 'Detail Produk: '.urldecode(substr($path, 10)),
+                        default => $path,
+                    };
+
+                    return [
+                        'path' => $path,
+                        'title' => $title,
+                        'views' => (int) $item->views,
+                        'unique_views' => (int) $item->unique_views,
+                        'percentage' => round(($item->views / $maxViews) * 100, 1),
+                    ];
+                })->toArray();
+            });
+        };
+
         // Product Stock Overview
         $search = $request->input('search');
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -821,6 +921,8 @@ class AdminDashboardController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'isSeller' => $isSeller,
             'stats' => $getDeferred(fn () => $getKpis()['stats'], 'kpi_stats'),
+            'visitorStats' => $getDeferred(fn () => $getVisitorStats(), 'visitor_stats'),
+            'topVisitedPages' => $getDeferred(fn () => $getTopVisitedPages(), 'visitor_stats'),
             'orderStats' => $getDeferred(fn () => $getPipeline()['orderStats'], 'pipeline_stats'),
             'recentOrders' => $getDeferred(fn () => $getRecentOrders(), 'recent_orders'),
             'topProducts' => $getDeferred(fn () => $getTopProducts(), 'top_products'),
