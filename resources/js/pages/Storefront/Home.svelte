@@ -1219,7 +1219,7 @@
                                             {product.name}
                                         </p>
                                         <p
-                                            class="text-sm font-black"
+                                            class="text-base sm:text-lg font-black leading-tight tracking-tight"
                                             style="color: {primary};"
                                         >
                                             {formatPrice(price)}
@@ -1472,7 +1472,7 @@
                                         {/if}
                                     </div>
                                 </div>
-                                <div class="p-3 flex-1 flex flex-col">
+                                <div class="p-2.5 sm:p-3 flex-1 flex flex-col">
                                     <div>
                                         <p
                                             class="text-[9px] sm:text-[10px] font-black uppercase tracking-wider mb-1 line-clamp-1"
@@ -1509,10 +1509,10 @@
                                                 >
                                             {/if}
                                         </div>
-                                        <hr class="border-slate-100 my-1.5" />
+                                        <hr class="border-slate-100 my-1" />
                                         <div class="mb-0">
                                             <p
-                                                class="text-sm sm:text-base font-black leading-tight"
+                                                class="text-base sm:text-lg font-black leading-tight tracking-tight"
                                                 style="color: {secondary};"
                                             >
                                                 {formatPrice(price)}
@@ -1792,7 +1792,7 @@
                                     </div>
                                 </div>
                                 <div
-                                    class="p-3 flex-1 flex flex-col justify-between"
+                                    class="p-2.5 sm:p-3 flex-1 flex flex-col justify-between"
                                 >
                                     {#if isReal}
                                         <div>
@@ -1813,10 +1813,10 @@
                                                     {product.name}
                                                 </p>
                                             </div>
-                                            <hr class="border-slate-100 my-1.5" />
-                                            <div class="mb-1">
+                                            <hr class="border-slate-100 my-1" />
+                                            <div class="mb-0.5">
                                                 <p
-                                                    class="text-sm sm:text-base font-black leading-tight"
+                                                    class="text-base sm:text-lg font-black leading-tight tracking-tight"
                                                     style="color: {secondary};"
                                                 >
                                                     {formatPrice(price)}

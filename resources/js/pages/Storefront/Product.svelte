@@ -4231,11 +4231,11 @@
                                             {rp.name}
                                         </p>
                                     </div>
-                                    <hr class="border-slate-100 my-1.5" />
-                                    <div class="mb-3">
+                                    <hr class="border-slate-100 my-1" />
+                                    <div class="mb-0.5">
                                         {#if price > 0}
                                             <p
-                                                class="text-sm sm:text-base font-black leading-tight"
+                                                class="text-base sm:text-lg font-black leading-tight tracking-tight"
                                                 style="color: {secondary};"
                                             >
                                                 {fmt(price)}

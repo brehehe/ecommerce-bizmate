@@ -312,7 +312,7 @@
                                 </div>
                                 <div class="mt-0.5">
                                     <p
-                                        class="text-sm font-black"
+                                        class="text-base sm:text-lg font-black leading-tight tracking-tight"
                                         style="color: {primary};"
                                     >
                                         {formatPrice(price)}

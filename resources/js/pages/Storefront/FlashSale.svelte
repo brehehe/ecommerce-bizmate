@@ -1069,11 +1069,11 @@
                                                     </p>
                                                 </div>
                                                 <hr
-                                                    class="border-slate-100 my-1.5"
+                                                    class="border-slate-100 my-1"
                                                 />
-                                                <div class="mb-1">
+                                                <div class="mb-0.5">
                                                     <p
-                                                        class="text-sm sm:text-base font-black leading-tight"
+                                                        class="text-base sm:text-lg font-black leading-tight tracking-tight"
                                                         style="color: {secondary};"
                                                     >
                                                         {formatPrice(price)}
