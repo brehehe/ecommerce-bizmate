@@ -22,6 +22,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CheckoutController;
@@ -62,7 +63,8 @@ Route::post('/zozzuehmqewbobfo', [AppConfigController::class, 'update'])->name('
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
     Route::post('/login', [LoginController::class, 'authenticate']);
-    Route::post('/register', [StorefrontController::class, 'register'])->name('register');
+    Route::get('/register', [RegisterController::class, 'show'])->name('register');
+    Route::post('/register', [RegisterController::class, 'register']);
     Route::post('/email/resend-verification-guest', [EmailVerificationController::class, 'resendGuest'])->name('verification.resend.guest');
 });
 

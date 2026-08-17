@@ -114,6 +114,7 @@ test('registration auto verifies, logs in customer and redirects to home', funct
     $response = $this->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
+        'phone_number' => '081299998888',
         'password' => 'password123',
         'password_confirmation' => 'password123',
     ]);
@@ -122,6 +123,7 @@ test('registration auto verifies, logs in customer and redirects to home', funct
     $response->assertSessionHas('success', 'Pendaftaran berhasil! Selamat datang.');
     expect(Auth::check())->toBeTrue();
     expect(Auth::user()->email)->toBe('test@example.com');
+    expect(Auth::user()->phone_number)->toBe('081299998888');
     expect(Auth::user()->hasVerifiedEmail())->toBeTrue();
 });
 

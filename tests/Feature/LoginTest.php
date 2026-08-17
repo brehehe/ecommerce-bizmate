@@ -52,3 +52,28 @@ test('user can login with normalized phone number 62 format', function () {
 
     $this->assertAuthenticatedAs($user);
 });
+
+test('register screen can be rendered', function () {
+    $response = $this->get('/register');
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => $page->component('Auth/Register'));
+});
+
+test('user can register and is logged in immediately', function () {
+    $response = $this->post('/register', [
+        'name' => 'Budi Santoso',
+        'email' => 'budi@example.com',
+        'phone_number' => '081234567890',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ]);
+
+    $response->assertRedirect('/');
+    $this->assertAuthenticated();
+    $user = auth()->user();
+    expect($user->email)->toBe('budi@example.com')
+        ->and($user->phone_number)->toBe('081234567890')
+        ->and($user->hasRole('Customer'))->toBeTrue()
+        ->and($user->email_verified_at)->not->toBeNull();
+});

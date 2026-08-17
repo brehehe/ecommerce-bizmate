@@ -1141,6 +1141,7 @@
     // Register form
     let registerName = $state('');
     let registerEmail = $state('');
+    let registerPhoneNumber = $state('');
     let registerPassword = $state('');
     let showRegisterPassword = $state(false);
     let registerPasswordConfirmation = $state('');
@@ -1393,6 +1394,7 @@
         loginError = '';
         registerName = '';
         registerEmail = '';
+        registerPhoneNumber = '';
         registerPassword = '';
         showRegisterPassword = false;
         registerPasswordConfirmation = '';
@@ -1438,6 +1440,7 @@
             {
                 name: registerName,
                 email: registerEmail,
+                phone_number: registerPhoneNumber,
                 password: registerPassword,
                 password_confirmation: registerPasswordConfirmation,
             },
@@ -1445,6 +1448,7 @@
                 onError: (errors) => {
                     registerError =
                         errors.email ||
+                        errors.phone_number ||
                         errors.password ||
                         errors.name ||
                         'Pendaftaran gagal.';
@@ -3203,7 +3207,7 @@
 <!-- ====== AUTH MODAL ====== -->
 {#if authModalOpen}
     <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
         transition:fade={{ duration: 150 }}
     >
         <!-- Backdrop -->
@@ -3217,46 +3221,46 @@
 
         <!-- Modal Box -->
         <div
-            class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10 animate-in zoom-in-95 duration-200"
+            class="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md my-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)] flex flex-col overflow-hidden z-10 animate-in zoom-in-95 duration-200"
         >
             <!-- Colored top bar -->
             <div
-                class="h-2 w-full"
+                class="h-1.5 w-full shrink-0"
                 style="background: linear-gradient(90deg, {primary}, {secondary});"
             ></div>
 
-            <!-- Modal Header with Tabs -->
-            <div class="p-6 pb-0">
-                <div class="flex items-center justify-between mb-6">
-                    <div class="flex items-center gap-2">
+            <!-- Modal Header with Tabs (Sticky / Shrink-0) -->
+            <div class="px-5 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-3 shrink-0 border-b border-slate-100 bg-white">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2.5">
                         <div
-                            class="w-9 h-9 rounded-xl flex items-center justify-center text-white"
+                            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
                             style="background: linear-gradient(135deg, {primary}, {secondary});"
                         >
-                            <i class="ti ti-shopping-bag text-lg"></i>
+                            <i class="ti ti-shopping-bag text-base sm:text-lg"></i>
                         </div>
                         <span
-                            class="font-outfit font-black text-lg text-slate-800"
+                            class="font-outfit font-black text-base sm:text-lg text-slate-800 tracking-tight"
                             >{storeName}</span
                         >
                     </div>
                     <button
                         aria-label="Close"
                         onclick={closeAuthModal}
-                        class="text-slate-400 hover:text-slate-700 transition p-1"
+                        class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
                     >
-                        <i class="ti ti-x text-xl"></i>
+                        <i class="ti ti-x text-lg"></i>
                     </button>
                 </div>
 
                 <!-- Tab switcher -->
-                <div class="flex bg-slate-100 rounded-2xl p-1 gap-1">
+                <div class="flex bg-slate-100/90 rounded-xl p-1 gap-1">
                     <button
                         onclick={() => {
                             authTab = 'login';
                             loginError = '';
                         }}
-                        class="flex-1 py-2.5 text-sm font-bold rounded-xl transition {authTab ===
+                        class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition cursor-pointer {authTab ===
                         'login'
                             ? 'bg-white text-slate-800 shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'}"
@@ -3268,7 +3272,7 @@
                             authTab = 'register';
                             registerError = '';
                         }}
-                        class="flex-1 py-2.5 text-sm font-bold rounded-xl transition {authTab ===
+                        class="flex-1 py-2 text-xs sm:text-sm font-bold rounded-lg transition cursor-pointer {authTab ===
                         'register'
                             ? 'bg-white text-slate-800 shadow-sm'
                             : 'text-slate-500 hover:text-slate-700'}"
@@ -3278,58 +3282,59 @@
                 </div>
             </div>
 
-            <div class="p-6">
+            <!-- Scrollable Modal Body -->
+            <div class="p-4 sm:p-6 overflow-y-auto overscroll-contain flex-1">
                 <!-- LOGIN TAB -->
                 {#if authTab === 'login'}
                     <div transition:fade={{ duration: 150 }}>
                         <h2
-                            class="text-xl font-outfit font-black text-slate-800 mb-1"
+                            class="text-lg sm:text-xl font-outfit font-black text-slate-800 mb-0.5"
                         >
                             Selamat Datang Kembali!
                         </h2>
-                        <p class="text-sm text-slate-400 mb-5">
+                        <p class="text-xs sm:text-sm text-slate-400 mb-4">
                             Masuk untuk melanjutkan belanja Anda.
                         </p>
 
                         {#if loginError}
                             <div
-                                class="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl text-sm text-rose-600 font-medium flex items-center gap-2"
+                                class="mb-3 p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-xs sm:text-sm text-rose-600 font-medium flex items-center gap-2"
                             >
-                                <i class="ti ti-alert-circle text-base"></i>
-                                {loginError}
+                                <i class="ti ti-alert-circle text-base shrink-0"></i>
+                                <span>{loginError}</span>
                             </div>
                         {/if}
 
-                        <form onsubmit={submitLogin} class="space-y-4">
+                        <form onsubmit={submitLogin} class="space-y-3">
                             <div>
                                 <p
-                                    class="block text-xs font-bold text-slate-600 mb-1.5"
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
                                 >
                                     Email / No. HP
                                 </p>
                                 <div class="relative">
                                     <i
-                                        class="ti ti-mail absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                        class="ti ti-mail absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
                                     ></i>
                                     <input
                                         type="text"
                                         bind:value={loginEmail}
                                         required
                                         placeholder="email@contoh.com atau 08123456789"
-                                        class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-9 pr-3.5 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
                                 </div>
                             </div>
                             <div>
                                 <p
-                                    class="block text-xs font-bold text-slate-600 mb-1.5"
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
                                 >
                                     Kata Sandi
                                 </p>
                                 <div class="relative">
                                     <i
-                                        class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                        class="ti ti-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
                                     ></i>
                                     <input
                                         type={showLoginPassword
@@ -3338,7 +3343,7 @@
                                         bind:value={loginPassword}
                                         required
                                         placeholder="••••••••"
-                                        class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-9 pr-9 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
                                     <button
@@ -3346,7 +3351,7 @@
                                         onclick={() =>
                                             (showLoginPassword =
                                                 !showLoginPassword)}
-                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                                         aria-label={showLoginPassword
                                             ? 'Sembunyikan kata sandi'
                                             : 'Tampilkan kata sandi'}
@@ -3354,13 +3359,13 @@
                                         <i
                                             class="ti {showLoginPassword
                                                 ? 'ti-eye-off'
-                                                : 'ti-eye'} text-lg"
+                                                : 'ti-eye'} text-base"
                                         ></i>
                                     </button>
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-end">
+                            <div class="flex items-center justify-end pt-0.5">
                                 <Link
                                     href="/forgot-password"
                                     onclick={() => (authModalOpen = false)}
@@ -3373,10 +3378,10 @@
                             <button
                                 type="submit"
                                 disabled={loginLoading}
-                                class="w-full py-3 text-sm font-bold text-white rounded-xl transition shadow-lg disabled:opacity-70 flex items-center justify-center gap-2"
+                                class="w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white rounded-xl transition shadow-md hover:shadow-lg disabled:opacity-70 flex items-center justify-center gap-2 cursor-pointer mt-1"
                                 style="background: linear-gradient(135deg, {primary}, {withOpacity(
                                     primary,
-                                    0.8,
+                                    0.85,
                                 )});"
                             >
                                 {#if loginLoading}
@@ -3390,14 +3395,14 @@
                             </button>
                         </form>
 
-                        <p class="text-center text-sm text-slate-400 mt-5">
+                        <p class="text-center text-xs sm:text-sm text-slate-400 mt-4">
                             Belum punya akun?
                             <button
                                 onclick={() => {
                                     authTab = 'register';
                                     loginError = '';
                                 }}
-                                class="font-bold hover:underline"
+                                class="font-bold hover:underline ml-1 cursor-pointer"
                                 style="color: {secondary};"
                             >
                                 Daftar sekarang
@@ -3405,77 +3410,97 @@
                         </p>
                     </div>
 
-                    <!-- REGISTER TAB -->
+                <!-- REGISTER TAB -->
                 {:else}
                     <div transition:fade={{ duration: 150 }}>
                         <h2
-                            class="text-xl font-outfit font-black text-slate-800 mb-1"
+                            class="text-lg sm:text-xl font-outfit font-black text-slate-800 mb-0.5"
                         >
                             Buat Akun Baru
                         </h2>
-                        <p class="text-sm text-slate-400 mb-5">
+                        <p class="text-xs sm:text-sm text-slate-400 mb-3 sm:mb-4">
                             Gratis! Nikmati belanja yang mudah & hemat.
                         </p>
 
                         {#if registerError}
                             <div
-                                class="mb-4 p-3 bg-rose-50 border border-rose-100 rounded-xl text-sm text-rose-600 font-medium flex items-center gap-2"
+                                class="mb-3 p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-xs sm:text-sm text-rose-600 font-medium flex items-center gap-2"
                             >
-                                <i class="ti ti-alert-circle text-base"></i>
-                                {registerError}
+                                <i class="ti ti-alert-circle text-base shrink-0"></i>
+                                <span>{registerError}</span>
                             </div>
                         {/if}
 
-                        <form onsubmit={submitRegister} class="space-y-4">
+                        <form onsubmit={submitRegister} class="space-y-2.5 sm:space-y-3">
                             <div>
                                 <p
-                                    class="block text-xs font-bold text-slate-600 mb-1.5"
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
                                 >
                                     Nama Lengkap
                                 </p>
                                 <div class="relative">
                                     <i
-                                        class="ti ti-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                        class="ti ti-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
                                     ></i>
                                     <input
                                         type="text"
                                         bind:value={registerName}
                                         required
                                         placeholder="Nama Lengkap Anda"
-                                        class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
                                 </div>
                             </div>
                             <div>
                                 <p
-                                    class="block text-xs font-bold text-slate-600 mb-1.5"
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
                                 >
                                     Email
                                 </p>
                                 <div class="relative">
                                     <i
-                                        class="ti ti-mail absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                        class="ti ti-mail absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
                                     ></i>
                                     <input
                                         type="email"
                                         bind:value={registerEmail}
                                         required
                                         placeholder="email@contoh.com"
-                                        class="w-full pl-10 pr-4 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
                                 </div>
                             </div>
                             <div>
                                 <p
-                                    class="block text-xs font-bold text-slate-600 mb-1.5"
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
+                                >
+                                    Nomor Handphone (WhatsApp)
+                                </p>
+                                <div class="relative">
+                                    <i
+                                        class="ti ti-phone absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                                    ></i>
+                                    <input
+                                        type="tel"
+                                        bind:value={registerPhoneNumber}
+                                        required
+                                        placeholder="08123456789 atau 628123456789"
+                                        class="w-full pl-9 pr-3.5 py-2 sm:py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        style="--tw-ring-color: {primary}30;"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <p
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
                                 >
                                     Kata Sandi
                                 </p>
                                 <div class="relative">
                                     <i
-                                        class="ti ti-lock absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                        class="ti ti-lock absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
                                     ></i>
                                     <input
                                         type={showRegisterPassword
@@ -3483,8 +3508,9 @@
                                             : 'password'}
                                         bind:value={registerPassword}
                                         required
+                                        minlength="8"
                                         placeholder="Min. 8 karakter"
-                                        class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-9 pr-9 py-2 sm:py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
                                     <button
@@ -3492,7 +3518,7 @@
                                         onclick={() =>
                                             (showRegisterPassword =
                                                 !showRegisterPassword)}
-                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                                         aria-label={showRegisterPassword
                                             ? 'Sembunyikan kata sandi'
                                             : 'Tampilkan kata sandi'}
@@ -3500,20 +3526,20 @@
                                         <i
                                             class="ti {showRegisterPassword
                                                 ? 'ti-eye-off'
-                                                : 'ti-eye'} text-lg"
+                                                : 'ti-eye'} text-base"
                                         ></i>
                                     </button>
                                 </div>
                             </div>
                             <div>
                                 <p
-                                    class="block text-xs font-bold text-slate-600 mb-1.5"
+                                    class="block text-[11px] sm:text-xs font-bold text-slate-600 mb-1"
                                 >
                                     Konfirmasi Kata Sandi
                                 </p>
                                 <div class="relative">
                                     <i
-                                        class="ti ti-lock-check absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                                        class="ti ti-lock-check absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
                                     ></i>
                                     <input
                                         type={showRegisterPasswordConfirmation
@@ -3523,8 +3549,9 @@
                                             registerPasswordConfirmation
                                         }
                                         required
+                                        minlength="8"
                                         placeholder="Ulangi kata sandi"
-                                        class="w-full pl-10 pr-10 py-3 text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
+                                        class="w-full pl-9 pr-9 py-2 sm:py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition"
                                         style="--tw-ring-color: {primary}30;"
                                     />
                                     <button
@@ -3532,7 +3559,7 @@
                                         onclick={() =>
                                             (showRegisterPasswordConfirmation =
                                                 !showRegisterPasswordConfirmation)}
-                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer"
                                         aria-label={showRegisterPasswordConfirmation
                                             ? 'Sembunyikan kata sandi'
                                             : 'Tampilkan kata sandi'}
@@ -3540,7 +3567,7 @@
                                         <i
                                             class="ti {showRegisterPasswordConfirmation
                                                 ? 'ti-eye-off'
-                                                : 'ti-eye'} text-lg"
+                                                : 'ti-eye'} text-base"
                                         ></i>
                                     </button>
                                 </div>
@@ -3549,10 +3576,10 @@
                             <button
                                 type="submit"
                                 disabled={registerLoading}
-                                class="w-full py-3 text-sm font-bold text-white rounded-xl transition shadow-lg disabled:opacity-70 flex items-center justify-center gap-2"
-                                style="background: linear-gradient(135deg, {secondary}, {withOpacity(
-                                    secondary,
-                                    0.8,
+                                class="w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white rounded-xl transition shadow-md hover:shadow-lg disabled:opacity-70 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                                style="background: linear-gradient(135deg, {primary}, {withOpacity(
+                                    primary,
+                                    0.85,
                                 )});"
                             >
                                 {#if registerLoading}
@@ -3567,14 +3594,14 @@
                             </button>
                         </form>
 
-                        <p class="text-center text-sm text-slate-400 mt-5">
+                        <p class="text-center text-xs sm:text-sm text-slate-400 mt-3 sm:mt-4">
                             Sudah punya akun?
                             <button
                                 onclick={() => {
                                     authTab = 'login';
                                     registerError = '';
                                 }}
-                                class="font-bold hover:underline"
+                                class="font-bold hover:underline ml-1 cursor-pointer"
                                 style="color: {primary};"
                             >
                                 Masuk di sini
