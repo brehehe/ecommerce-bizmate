@@ -8,9 +8,9 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\ProductService;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -37,13 +37,15 @@ class StorefrontController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'is_active' => true,
+            'email_verified_at' => now(),
         ]);
 
         $user->assignRole('Customer');
 
-        event(new Registered($user));
+        Auth::login($user);
+        $request->session()->regenerate();
 
-        return redirect('/login')->with('success', 'Pendaftaran berhasil! Silakan periksa email Anda untuk memverifikasi akun sebelum masuk.');
+        return redirect('/')->with('success', 'Pendaftaran berhasil! Selamat datang.');
     }
 
     /**

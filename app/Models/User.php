@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Notifications\QueuedResetPassword;
 use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,9 +13,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date'])]
+#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, HasUuids, Notifiable;

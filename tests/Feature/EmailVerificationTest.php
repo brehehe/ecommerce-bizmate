@@ -2,7 +2,6 @@
 
 use App\Models\User;
 use App\Notifications\QueuedVerifyEmail;
-use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
@@ -111,9 +110,7 @@ test('email verification link can be resent', function () {
     Notification::assertSentTo($user, QueuedVerifyEmail::class);
 });
 
-test('registration triggers verification email notification and redirects to login', function () {
-    Event::fake();
-
+test('registration auto verifies, logs in customer and redirects to home', function () {
     $response = $this->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -121,15 +118,15 @@ test('registration triggers verification email notification and redirects to log
         'password_confirmation' => 'password123',
     ]);
 
-    $response->assertRedirect('/login');
-    $response->assertSessionHas('success', 'Pendaftaran berhasil! Silakan periksa email Anda untuk memverifikasi akun sebelum masuk.');
-
-    Event::assertDispatched(Registered::class);
+    $response->assertRedirect('/');
+    $response->assertSessionHas('success', 'Pendaftaran berhasil! Selamat datang.');
+    expect(Auth::check())->toBeTrue();
+    expect(Auth::user()->email)->toBe('test@example.com');
+    expect(Auth::user()->hasVerifiedEmail())->toBeTrue();
 });
 
-test('unverified user cannot log in and receives verification error', function () {
+test('customer can log in directly', function () {
     $user = User::factory()->create([
-        'email_verified_at' => null,
         'password' => Hash::make('password123'),
     ]);
     $user->assignRole('Customer');
@@ -139,8 +136,8 @@ test('unverified user cannot log in and receives verification error', function (
         'password' => 'password123',
     ]);
 
-    $response->assertSessionHasErrors(['email' => 'Akun Anda belum diverifikasi. Silakan periksa email Anda.']);
-    expect(Auth::check())->toBeFalse();
+    $response->assertRedirect('/');
+    expect(Auth::check())->toBeTrue();
 });
 
 test('guest can request email verification resend', function () {
