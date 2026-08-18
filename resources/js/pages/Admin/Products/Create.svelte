@@ -191,6 +191,12 @@
         custom_days: 1,
     });
 
+    $effect(() => {
+        if (suggestedSku && !form.sku) {
+            form.sku = suggestedSku;
+        }
+    });
+
     let uploadedPhotos = $state([]);
 
     function fmt(val) {
