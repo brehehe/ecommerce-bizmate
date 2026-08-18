@@ -129,7 +129,7 @@
 
     const form = useForm({
         name: '',
-        sku: suggestedSku,
+        sku: suggestedSku || '',
         category_ids: [],
         brand_ids: [],
         specifications: {},
