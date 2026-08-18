@@ -129,7 +129,7 @@
 
     const form = useForm({
         name: '',
-        sku: suggestedSku || '',
+        sku: '',
         category_ids: [],
         brand_ids: [],
         specifications: {},
@@ -168,6 +168,8 @@
             email: '',
             address: '',
         },
+        listing_duration_days: isSellerMode ? 30 : null,
+        listing_payment_method: 'midtrans',
         is_exclusive: false,
         exclusive_min_level_order: 0,
         is_early_access: false,
