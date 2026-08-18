@@ -66,6 +66,7 @@ class AdminDashboardController extends Controller
 
         $user = $request->user();
         $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+        $isAdminOrSuperAdmin = $user && $user->hasAnyRole(['Super Admin', 'Admin']);
         $userId = $user ? $user->id : 'guest';
 
         $sellerProductIds = $isSeller ? DB::table('products')->where('user_id', $userId)->pluck('id') : collect([]);
@@ -842,6 +843,166 @@ class AdminDashboardController extends Controller
             });
         };
 
+        $getVisitorIpLogs = function () use ($isAdminOrSuperAdmin) {
+            if (! $isAdminOrSuperAdmin) {
+                return null;
+            }
+
+            return Cache::remember('dashboard_visitor_ip_logs_v1', 15, function () {
+                $logs = DB::table('page_views')
+                    ->leftJoin('users', 'page_views.user_id', '=', 'users.id')
+                    ->select([
+                        'page_views.id',
+                        'page_views.session_id',
+                        'page_views.user_id',
+                        'page_views.ip_address',
+                        'page_views.url',
+                        'page_views.path',
+                        'page_views.route_name',
+                        'page_views.device',
+                        'page_views.referer',
+                        'page_views.user_agent',
+                        'page_views.created_at',
+                        'users.name as user_name',
+                        'users.email as user_email',
+                        'users.avatar as user_avatar',
+                    ])
+                    ->orderBy('page_views.created_at', 'desc')
+                    ->limit(20)
+                    ->get();
+
+                $fiveMinutesAgo = Carbon::now()->subMinutes(5);
+
+                return $logs->map(function ($log) use ($fiveMinutesAgo) {
+                    $createdAt = Carbon::parse($log->created_at);
+                    $path = $log->path;
+                    $title = match (true) {
+                        $path === '/' => 'Beranda Utama (Home)',
+                        $path === '/search' => 'Pencarian Produk',
+                        $path === '/flash-sale' => 'Flash Sale',
+                        $path === '/produk-terlaris' => 'Produk Terlaris',
+                        $path === '/cart' => 'Keranjang Belanja',
+                        $path === '/checkout' => 'Halaman Checkout',
+                        str_starts_with($path, '/category') => 'Kategori: '.urldecode(substr($path, 10)),
+                        str_starts_with($path, '/brands') => 'Brand: '.urldecode(substr($path, 8)),
+                        str_starts_with($path, '/products/') => 'Detail Produk: '.urldecode(substr($path, 10)),
+                        default => $path,
+                    };
+
+                    $browser = $this->parseBrowser($log->user_agent ?? '');
+                    $os = $this->parseOs($log->user_agent ?? '');
+                    $refererSource = $this->parseRefererSource($log->referer);
+
+                    return [
+                        'id' => $log->id,
+                        'ip_address' => $log->ip_address ?: '127.0.0.1',
+                        'session_id' => $log->session_id,
+                        'user_id' => $log->user_id,
+                        'user_name' => $log->user_name,
+                        'user_email' => $log->user_email,
+                        'user_avatar' => $log->user_avatar,
+                        'path' => $log->path,
+                        'title' => $title,
+                        'route_name' => $log->route_name,
+                        'device' => $log->device ?: 'desktop',
+                        'browser' => $browser,
+                        'os' => $os,
+                        'referer' => $log->referer,
+                        'referer_source' => $refererSource,
+                        'user_agent' => $log->user_agent,
+                        'created_at' => $createdAt->toISOString(),
+                        'time_ago' => $createdAt->diffForHumans(),
+                        'formatted_time' => $createdAt->timezone('Asia/Jakarta')->format('d M Y, H:i:s').' WIB',
+                        'is_online' => $createdAt->greaterThanOrEqualTo($fiveMinutesAgo),
+                    ];
+                })->toArray();
+            });
+        };
+
+        $getIpTrafficAnalytics = function () use ($isAdminOrSuperAdmin, $filter, $dateFrom, $dateTo) {
+            if (! $isAdminOrSuperAdmin) {
+                return null;
+            }
+
+            return Cache::remember("dashboard_ip_analytics_v1_{$filter}", 30, function () use ($dateFrom, $dateTo) {
+                $query = DB::table('page_views')->whereBetween('created_at', [$dateFrom, $dateTo]);
+
+                $totalUniqueIps = (clone $query)->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address');
+
+                $topIps = (clone $query)
+                    ->whereNotNull('ip_address')
+                    ->select(
+                        'ip_address',
+                        DB::raw('COUNT(*) as total_requests'),
+                        DB::raw('COUNT(DISTINCT path) as unique_paths'),
+                        DB::raw('MAX(created_at) as last_seen_at'),
+                        DB::raw('MAX(device) as device')
+                    )
+                    ->groupBy('ip_address')
+                    ->orderByDesc('total_requests')
+                    ->limit(8)
+                    ->get();
+
+                $fiveMinutesAgo = Carbon::now()->subMinutes(5);
+
+                $formattedTopIps = $topIps->map(function ($item) use ($fiveMinutesAgo) {
+                    $lastSeen = Carbon::parse($item->last_seen_at);
+
+                    return [
+                        'ip_address' => $item->ip_address,
+                        'total_requests' => (int) $item->total_requests,
+                        'unique_paths' => (int) $item->unique_paths,
+                        'device' => $item->device ?: 'desktop',
+                        'last_seen_ago' => $lastSeen->diffForHumans(),
+                        'is_online' => $lastSeen->greaterThanOrEqualTo($fiveMinutesAgo),
+                    ];
+                })->toArray();
+
+                // Referer Breakdown
+                $referers = (clone $query)->select('referer', DB::raw('COUNT(*) as total'))
+                    ->groupBy('referer')
+                    ->get();
+
+                $trafficSources = [
+                    'direct' => 0,
+                    'google' => 0,
+                    'social' => 0,
+                    'external' => 0,
+                ];
+
+                foreach ($referers as $ref) {
+                    $parsed = $this->parseRefererSource($ref->referer);
+                    $count = (int) $ref->total;
+                    if ($parsed['type'] === 'direct') {
+                        $trafficSources['direct'] += $count;
+                    } elseif ($parsed['type'] === 'search') {
+                        $trafficSources['google'] += $count;
+                    } elseif ($parsed['type'] === 'social') {
+                        $trafficSources['social'] += $count;
+                    } else {
+                        $trafficSources['external'] += $count;
+                    }
+                }
+
+                $totalSources = array_sum($trafficSources);
+
+                return [
+                    'total_unique_ips' => $totalUniqueIps,
+                    'top_ips' => $formattedTopIps,
+                    'traffic_sources' => [
+                        'direct' => $totalSources > 0 ? round(($trafficSources['direct'] / $totalSources) * 100, 1) : 0,
+                        'google' => $totalSources > 0 ? round(($trafficSources['google'] / $totalSources) * 100, 1) : 0,
+                        'social' => $totalSources > 0 ? round(($trafficSources['social'] / $totalSources) * 100, 1) : 0,
+                        'external' => $totalSources > 0 ? round(($trafficSources['external'] / $totalSources) * 100, 1) : 0,
+                        'direct_count' => $trafficSources['direct'],
+                        'google_count' => $trafficSources['google'],
+                        'social_count' => $trafficSources['social'],
+                        'external_count' => $trafficSources['external'],
+                    ],
+                ];
+            });
+        };
+
         // Product Stock Overview
         $search = $request->input('search');
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -938,6 +1099,8 @@ class AdminDashboardController extends Controller
             'returnPipeline' => $getDeferred(fn () => $getPipeline()['returnPipeline'], 'pipeline_stats'),
             'recentRefunds' => $getDeferred(fn () => $getRecentRefunds(), 'recent_refunds'),
             'recentReturns' => $getDeferred(fn () => $getRecentReturns(), 'recent_returns'),
+            'visitorIpLogs' => $isAdminOrSuperAdmin ? $getDeferred(fn () => $getVisitorIpLogs(), 'visitor_stats') : null,
+            'ipTrafficAnalytics' => $isAdminOrSuperAdmin ? $getDeferred(fn () => $getIpTrafficAnalytics(), 'visitor_stats') : null,
         ]);
     }
 
@@ -984,5 +1147,107 @@ class AdminDashboardController extends Controller
         }
 
         return ['value' => '0%', 'type' => 'neutral'];
+    }
+
+    /**
+     * Parse browser name from User Agent string.
+     */
+    private function parseBrowser(string $userAgent): string
+    {
+        if (preg_match('/edg/i', $userAgent)) {
+            return 'Microsoft Edge';
+        }
+        if (preg_match('/opr|opera/i', $userAgent)) {
+            return 'Opera';
+        }
+        if (preg_match('/chrome|crios/i', $userAgent)) {
+            return 'Google Chrome';
+        }
+        if (preg_match('/firefox|fxios/i', $userAgent)) {
+            return 'Mozilla Firefox';
+        }
+        if (preg_match('/safari/i', $userAgent)) {
+            return 'Apple Safari';
+        }
+        if (preg_match('/msie|trident/i', $userAgent)) {
+            return 'Internet Explorer';
+        }
+
+        return 'Browser Lainnya';
+    }
+
+    /**
+     * Parse Operating System name from User Agent string.
+     */
+    private function parseOs(string $userAgent): string
+    {
+        if (preg_match('/windows nt 10/i', $userAgent)) {
+            return 'Windows 10/11';
+        }
+        if (preg_match('/windows nt 6\.3/i', $userAgent)) {
+            return 'Windows 8.1';
+        }
+        if (preg_match('/windows nt 6\.1/i', $userAgent)) {
+            return 'Windows 7';
+        }
+        if (preg_match('/windows/i', $userAgent)) {
+            return 'Windows';
+        }
+        if (preg_match('/iphone/i', $userAgent)) {
+            return 'iOS (iPhone)';
+        }
+        if (preg_match('/ipad/i', $userAgent)) {
+            return 'iPadOS';
+        }
+        if (preg_match('/macintosh|mac os x/i', $userAgent)) {
+            return 'macOS';
+        }
+        if (preg_match('/android/i', $userAgent)) {
+            return 'Android';
+        }
+        if (preg_match('/linux/i', $userAgent)) {
+            return 'Linux';
+        }
+
+        return 'OS Lainnya';
+    }
+
+    /**
+     * Parse and format referer source.
+     *
+     * @return array{type: string, label: string, icon: string}
+     */
+    private function parseRefererSource(?string $referer): array
+    {
+        if (empty($referer)) {
+            return ['type' => 'direct', 'label' => 'Langsung (Direct URL)', 'icon' => 'ti-link'];
+        }
+
+        $host = parse_url($referer, PHP_URL_HOST);
+        $host = strtolower($host ?? '');
+
+        if (str_contains($host, 'google.')) {
+            return ['type' => 'search', 'label' => 'Google Search', 'icon' => 'ti-brand-google'];
+        }
+        if (str_contains($host, 'instagram.com')) {
+            return ['type' => 'social', 'label' => 'Instagram', 'icon' => 'ti-brand-instagram'];
+        }
+        if (str_contains($host, 'tiktok.com')) {
+            return ['type' => 'social', 'label' => 'TikTok', 'icon' => 'ti-brand-tiktok'];
+        }
+        if (str_contains($host, 'facebook.com') || str_contains($host, 'fb.me')) {
+            return ['type' => 'social', 'label' => 'Facebook', 'icon' => 'ti-brand-facebook'];
+        }
+        if (str_contains($host, 'youtube.com')) {
+            return ['type' => 'social', 'label' => 'YouTube', 'icon' => 'ti-brand-youtube'];
+        }
+        if (str_contains($host, 'twitter.com') || str_contains($host, 'x.com')) {
+            return ['type' => 'social', 'label' => 'X / Twitter', 'icon' => 'ti-brand-x'];
+        }
+        if (str_contains($host, 'whatsapp.com') || str_contains($host, 'wa.me')) {
+            return ['type' => 'social', 'label' => 'WhatsApp', 'icon' => 'ti-brand-whatsapp'];
+        }
+
+        return ['type' => 'external', 'label' => $host ?: 'Tautan Luar', 'icon' => 'ti-world'];
     }
 }

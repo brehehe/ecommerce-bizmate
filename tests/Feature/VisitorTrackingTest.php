@@ -69,7 +69,37 @@ test('admin dashboard loads visitor stats and online counters', function () {
         ->component('Admin/Dashboard')
         ->has('visitorStats')
         ->has('topVisitedPages')
+        ->has('visitorIpLogs')
+        ->has('ipTrafficAnalytics')
         ->where('visitorStats.onlineVisitors', 2)
         ->where('visitorStats.pageviewsCount', 2)
+        ->where('visitorIpLogs.0.ip_address', '127.0.0.1')
+        ->where('ipTrafficAnalytics.total_unique_ips', 1)
+    );
+});
+
+test('seller dashboard hides visitorIpLogs and ipTrafficAnalytics from Seller', function () {
+    $seller = User::factory()->create(['is_seller' => true]);
+    $seller->assignRole('Seller');
+
+    PageView::create([
+        'session_id' => 'sess_test_seller',
+        'seller_id' => $seller->id,
+        'ip_address' => '192.168.1.10',
+        'url' => 'http://localhost:8000/my-store',
+        'path' => '/my-store',
+        'route_name' => 'storefront.store',
+        'device' => 'mobile',
+        'created_at' => now(),
+    ]);
+
+    $response = $this->actingAs($seller)->get('/admin/dashboard');
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Admin/Dashboard')
+        ->where('isSeller', true)
+        ->where('visitorIpLogs', null)
+        ->where('ipTrafficAnalytics', null)
     );
 });

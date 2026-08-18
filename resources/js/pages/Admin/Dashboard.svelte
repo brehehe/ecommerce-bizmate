@@ -1,5 +1,6 @@
 <script lang="ts">
     import { adjustColorOpacity } from '@/utils/color';
+    import { showToast } from '@/utils/toast';
 
     import { onMount } from 'svelte';
     import { page, router, Link, Deferred, usePoll } from '@inertiajs/svelte';
@@ -31,6 +32,21 @@
             devices: { mobile: 0, desktop: 0, tablet: 0, mobileCount: 0, desktopCount: 0 },
         },
         topVisitedPages = [],
+        visitorIpLogs = [],
+        ipTrafficAnalytics = {
+            total_unique_ips: 0,
+            top_ips: [],
+            traffic_sources: {
+                direct: 0,
+                google: 0,
+                social: 0,
+                external: 0,
+                direct_count: 0,
+                google_count: 0,
+                social_count: 0,
+                external_count: 0,
+            },
+        },
         orderStats = { unpaidCount: 0, pendingCount: 0, newCount: 0, readyCount: 0, shippingCount: 0 },
         recentOrders = [],
         topProducts = [],
@@ -48,8 +64,8 @@
         recentReturns = [],
     } = $props();
 
-    // Auto-refresh real-time online visitor counter every 15 seconds
-    usePoll(15000, { only: ['visitorStats', 'topVisitedPages'] });
+    // Auto-refresh real-time online visitor counter and IP logs every 15 seconds
+    usePoll(15000, { only: ['visitorStats', 'topVisitedPages', 'visitorIpLogs', 'ipTrafficAnalytics'] });
 
     // svelte-ignore state_referenced_locally
     let selectedFilter = $state(initialFilter);
@@ -57,6 +73,24 @@
     let stockSearchInput = $state(initialSearch);
     let chartMetric = $state<'all' | 'revenue' | 'refund' | 'return'>('all');
     let activePipelineTab = $state<'transactions' | 'refunds' | 'returns'>('transactions');
+
+    // Visitor IP Tracking UI State
+    let activeVisitorTab = $state<'recent' | 'top_ips' | 'sources'>('recent');
+    let selectedVisitorLog = $state<any | null>(null);
+    let isVisitorDetailModalOpen = $state(false);
+    let copiedIp = $state<string | null>(null);
+
+    function copyIp(ip: string) {
+        if (!ip) return;
+        navigator.clipboard.writeText(ip);
+        copiedIp = ip;
+        showToast(`Alamat IP ${ip} berhasil disalin`, 'success');
+        setTimeout(() => {
+            if (copiedIp === ip) {
+                copiedIp = null;
+            }
+        }, 2000);
+    }
 
     let canvas = $state<HTMLCanvasElement>();
     let chartInstance: Chart | null = null;
@@ -899,6 +933,415 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── REAL-TIME VISITOR IP LOGS & TRAFFIC AUDIT (Super Admin & Admin Only) ── -->
+        {#if !isSeller && visitorIpLogs}
+            <div class="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
+                <!-- Header -->
+                <div class="border-b border-slate-100 bg-slate-50/50 p-4 sm:p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                <i class="ti ti-map-pin-2 text-brand-blueRoyal text-lg"></i>
+                                Log Aktivitas Pengunjung & IP Terkini
+                            </h3>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                <i class="ti ti-shield-lock text-xs"></i> Khusus Admin
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">Pantau alamat IP pengunjung, halaman yang diakses, perangkat, dan asal trafik secara real-time</p>
+                    </div>
+
+                    <!-- Right Controls / Stats summary -->
+                    <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs text-xs font-semibold text-slate-700">
+                            <i class="ti ti-fingerprint text-brand-blueRoyal text-sm"></i>
+                            <span>IP Unik: <strong class="text-slate-900">{ipTrafficAnalytics?.total_unique_ips ?? 0}</strong></span>
+                        </div>
+
+                        <!-- Tab Switcher -->
+                        <div class="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/70">
+                            <button
+                                onclick={() => (activeVisitorTab = 'recent')}
+                                class="px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 {activeVisitorTab === 'recent'
+                                    ? 'bg-white text-slate-900 shadow-2xs'
+                                    : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                <i class="ti ti-activity text-sm"></i>
+                                <span>Aktivitas Real-time</span>
+                            </button>
+                            <button
+                                onclick={() => (activeVisitorTab = 'top_ips')}
+                                class="px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 {activeVisitorTab === 'top_ips'
+                                    ? 'bg-white text-slate-900 shadow-2xs'
+                                    : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                <i class="ti ti-trophy text-sm"></i>
+                                <span>Top IP</span>
+                            </button>
+                            <button
+                                onclick={() => (activeVisitorTab = 'sources')}
+                                class="px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 {activeVisitorTab === 'sources'
+                                    ? 'bg-white text-slate-900 shadow-2xs'
+                                    : 'text-slate-500 hover:text-slate-800'}"
+                            >
+                                <i class="ti ti-world-share text-sm"></i>
+                                <span>Sumber Trafik</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 1: Real-time Visitor Stream -->
+                {#if activeVisitorTab === 'recent'}
+                    <div class="overflow-x-auto custom-scrollbar">
+                        {#if !visitorIpLogs || visitorIpLogs.length === 0}
+                            <div class="py-12 text-center text-xs text-slate-400">
+                                <i class="ti ti-radar text-3xl mb-1 text-slate-300 block"></i>
+                                Belum ada riwayat aktivitas pengunjung terkini.
+                            </div>
+                        {:else}
+                            <table class="w-full text-left text-xs border-collapse min-w-[760px]">
+                                <thead>
+                                    <tr class="border-b border-slate-150 bg-slate-50/60 text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+                                        <th class="py-3 px-4">Pengunjung / IP Address</th>
+                                        <th class="py-3 px-4">Akun / Identitas</th>
+                                        <th class="py-3 px-4">Halaman Diakses</th>
+                                        <th class="py-3 px-4">Perangkat & Browser</th>
+                                        <th class="py-3 px-4">Sumber (Referer)</th>
+                                        <th class="py-3 px-4">Waktu</th>
+                                        <th class="py-3 px-4 text-center">Detail</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-slate-700">
+                                    {#each visitorIpLogs as log (log.id)}
+                                        <tr class="hover:bg-slate-50/70 transition duration-150">
+                                            <!-- IP Address & Online Badge -->
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="relative flex h-2 w-2 shrink-0">
+                                                        {#if log.is_online}
+                                                            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                                                            <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                                                        {:else}
+                                                            <span class="relative inline-flex h-2 w-2 rounded-full bg-slate-300"></span>
+                                                        {/if}
+                                                    </span>
+                                                    <span class="font-mono font-bold text-slate-900 bg-slate-100/80 px-2 py-0.5 rounded-md border border-slate-200/60 select-all text-[11px]">
+                                                        {log.ip_address}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => copyIp(log.ip_address)}
+                                                        class="p-1 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
+                                                        title="Salin IP Address"
+                                                    >
+                                                        {#if copiedIp === log.ip_address}
+                                                            <i class="ti ti-check text-emerald-600"></i>
+                                                        {:else}
+                                                            <i class="ti ti-copy text-xs"></i>
+                                                        {/if}
+                                                    </button>
+                                                </div>
+                                            </td>
+
+                                            <!-- User Name or Guest -->
+                                            <td class="py-3 px-4">
+                                                {#if log.user_name}
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-6 h-6 rounded-full bg-brand-blueRoyal/10 text-brand-blueRoyal flex items-center justify-center font-bold text-[10px] shrink-0">
+                                                            {log.user_name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <p class="font-bold text-slate-800 truncate max-w-[130px]" title={log.user_name}>{log.user_name}</p>
+                                                            <p class="text-[10px] text-slate-400 truncate max-w-[130px]">{log.user_email}</p>
+                                                        </div>
+                                                    </div>
+                                                {:else}
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/50">
+                                                        <i class="ti ti-user-circle text-slate-400"></i> Tamu / Guest
+                                                    </span>
+                                                {/if}
+                                            </td>
+
+                                            <!-- Page / Path -->
+                                            <td class="py-3 px-4">
+                                                <div class="min-w-0 max-w-[200px]">
+                                                    <a
+                                                        href={log.path}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        class="font-semibold text-slate-800 hover:text-brand-blueRoyal transition truncate block"
+                                                        title={log.title}
+                                                    >
+                                                        {log.title}
+                                                    </a>
+                                                    <span class="font-mono text-[10px] text-slate-400 truncate block">{log.path}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Device, Browser & OS -->
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60">
+                                                        {#if log.device === 'mobile'}
+                                                            <i class="ti ti-device-mobile text-blue-500"></i>
+                                                        {:else if log.device === 'tablet'}
+                                                            <i class="ti ti-device-tablet text-amber-500"></i>
+                                                        {:else}
+                                                            <i class="ti ti-device-laptop text-indigo-500"></i>
+                                                        {/if}
+                                                        <span>{log.device}</span>
+                                                    </span>
+                                                    <span class="text-[10.5px] text-slate-600 font-medium truncate max-w-[110px]" title="{log.browser} • {log.os}">
+                                                        {log.browser} ({log.os})
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Referer -->
+                                            <td class="py-3 px-4">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-slate-100/80 text-slate-700 border border-slate-200/60 truncate max-w-[140px]" title={log.referer || 'Direct / Langsung'}>
+                                                    <i class="ti {log.referer_source?.icon ?? 'ti-world'} text-slate-500"></i>
+                                                    <span class="truncate">{log.referer_source?.label ?? 'Langsung'}</span>
+                                                </span>
+                                            </td>
+
+                                            <!-- Timestamp -->
+                                            <td class="py-3 px-4 whitespace-nowrap">
+                                                <p class="font-medium text-slate-800">{log.time_ago}</p>
+                                                <p class="text-[10px] text-slate-400">{log.formatted_time}</p>
+                                            </td>
+
+                                            <!-- Detail Button -->
+                                            <td class="py-3 px-4 text-center">
+                                                <button
+                                                    type="button"
+                                                    onclick={() => { selectedVisitorLog = log; isVisitorDetailModalOpen = true; }}
+                                                    class="p-1.5 rounded-lg text-slate-400 hover:text-brand-blueRoyal hover:bg-brand-blueRoyal/5 transition cursor-pointer"
+                                                    title="Lihat Detail Teknis"
+                                                >
+                                                    <i class="ti ti-info-circle text-base"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {/each}
+                                </tbody>
+                            </table>
+                        {/if}
+                    </div>
+                {/if}
+
+                <!-- Tab 2: Top Active IP Addresses -->
+                {#if activeVisitorTab === 'top_ips'}
+                    <div class="p-5">
+                        {#if !ipTrafficAnalytics?.top_ips || ipTrafficAnalytics.top_ips.length === 0}
+                            <div class="py-8 text-center text-xs text-slate-400">
+                                <i class="ti ti-shield-search text-3xl mb-1 text-slate-300 block"></i>
+                                Belum ada data IP teratas pada periode ini.
+                            </div>
+                        {:else}
+                            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3.5">
+                                {#each ipTrafficAnalytics.top_ips as ipItem, index}
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50/40 p-3.5 hover:bg-white hover:shadow-xs transition duration-200 flex flex-col justify-between space-y-3">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <span class="w-5 h-5 rounded-md bg-slate-200/80 text-slate-700 font-bold text-[10px] flex items-center justify-center">
+                                                    #{index + 1}
+                                                </span>
+                                                <span class="font-mono font-bold text-slate-900 text-xs select-all">
+                                                    {ipItem.ip_address}
+                                                </span>
+                                            </div>
+                                            {#if ipItem.is_online}
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+                                                </span>
+                                            {/if}
+                                        </div>
+
+                                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-150 text-xs">
+                                            <div>
+                                                <p class="text-[10px] text-slate-400 font-semibold uppercase">Total Hit</p>
+                                                <p class="font-extrabold text-slate-900 text-sm mt-0.5">{ipItem.total_requests} <span class="text-[10px] font-normal text-slate-500">req</span></p>
+                                            </div>
+                                            <div>
+                                                <p class="text-[10px] text-slate-400 font-semibold uppercase">Halaman Unik</p>
+                                                <p class="font-extrabold text-brand-blueRoyal text-sm mt-0.5">{ipItem.unique_paths} <span class="text-[10px] font-normal text-slate-500">page</span></p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center justify-between text-[10.5px] text-slate-500 pt-1">
+                                            <span class="flex items-center gap-1">
+                                                <i class="ti {ipItem.device === 'mobile' ? 'ti-device-mobile text-blue-500' : 'ti-device-laptop text-indigo-500'}"></i>
+                                                {ipItem.device}
+                                            </span>
+                                            <span class="font-medium text-slate-600">{ipItem.last_seen_ago}</span>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+
+                <!-- Tab 3: Sources & Referers -->
+                {#if activeVisitorTab === 'sources'}
+                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <!-- Referrer Source Breakdown -->
+                        <div class="rounded-xl border border-slate-200 p-4 space-y-3 bg-white">
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="ti ti-world text-brand-blueRoyal"></i>
+                                Komposisi Sumber Pengunjung (Traffic Source)
+                            </h4>
+                            <div class="space-y-3 pt-1">
+                                <!-- Direct -->
+                                <div>
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                            <i class="ti ti-link text-slate-500"></i> Langsung / Direct URL
+                                        </span>
+                                        <span class="font-bold text-slate-900">{ipTrafficAnalytics?.traffic_sources?.direct ?? 0}% ({ipTrafficAnalytics?.traffic_sources?.direct_count ?? 0})</span>
+                                    </div>
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full bg-blue-500" style="width: {ipTrafficAnalytics?.traffic_sources?.direct ?? 0}%;"></div>
+                                    </div>
+                                </div>
+                                <!-- Google Search -->
+                                <div>
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                            <i class="ti ti-brand-google text-red-500"></i> Google Search
+                                        </span>
+                                        <span class="font-bold text-slate-900">{ipTrafficAnalytics?.traffic_sources?.google ?? 0}% ({ipTrafficAnalytics?.traffic_sources?.google_count ?? 0})</span>
+                                    </div>
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full bg-emerald-500" style="width: {ipTrafficAnalytics?.traffic_sources?.google ?? 0}%;"></div>
+                                    </div>
+                                </div>
+                                <!-- Social Media -->
+                                <div>
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                            <i class="ti ti-brand-instagram text-pink-500"></i> Media Sosial (IG, TikTok, FB, WA)
+                                        </span>
+                                        <span class="font-bold text-slate-900">{ipTrafficAnalytics?.traffic_sources?.social ?? 0}% ({ipTrafficAnalytics?.traffic_sources?.social_count ?? 0})</span>
+                                    </div>
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full bg-purple-500" style="width: {ipTrafficAnalytics?.traffic_sources?.social ?? 0}%;"></div>
+                                    </div>
+                                </div>
+                                <!-- External Websites -->
+                                <div>
+                                    <div class="flex items-center justify-between text-xs mb-1">
+                                        <span class="flex items-center gap-1.5 text-slate-700 font-medium">
+                                            <i class="ti ti-external-link text-slate-500"></i> Tautan Eksternal Lainnya
+                                        </span>
+                                        <span class="font-bold text-slate-900">{ipTrafficAnalytics?.traffic_sources?.external ?? 0}% ({ipTrafficAnalytics?.traffic_sources?.external_count ?? 0})</span>
+                                    </div>
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div class="h-full rounded-full bg-amber-500" style="width: {ipTrafficAnalytics?.traffic_sources?.external ?? 0}%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info Tips & Insights -->
+                        <div class="rounded-xl border border-blue-200 bg-blue-50/40 p-4 space-y-3 flex flex-col justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <i class="ti ti-bulb text-blue-600"></i>
+                                    Keamanan & Privasi Trafik
+                                </h4>
+                                <p class="text-xs text-blue-800/80 leading-relaxed mt-2">
+                                    Sistem merekam IP dan aktivitas pengunjung secara otomatis untuk mendeteksi pola trafik, mencegah aktivitas bot mencurigakan, serta memonitor efektivitas kampanye promosi dan kunjungan toko.
+                                </p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-white border border-blue-100 flex items-center justify-between text-xs">
+                                <span class="font-medium text-slate-700">Interval Polling Data Realtime:</span>
+                                <span class="font-bold text-emerald-600 flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 15 Detik
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+            </div>
+        {/if}
+
+        <!-- Technical Detail Modal for Visitor Log -->
+        {#if isVisitorDetailModalOpen && selectedVisitorLog}
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+                <div class="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+                    <div class="px-5 py-4 border-b border-slate-150 flex items-center justify-between bg-slate-50/50">
+                        <div class="flex items-center gap-2">
+                            <i class="ti ti-device-analytics text-brand-blueRoyal text-lg"></i>
+                            <h4 class="font-bold text-slate-900 text-sm">Detail Informasi Pengunjung & IP</h4>
+                        </div>
+                        <button
+                            type="button"
+                            onclick={() => (isVisitorDetailModalOpen = false)}
+                            class="p-1 text-slate-400 hover:text-slate-700 rounded-lg transition cursor-pointer"
+                        >
+                            <i class="ti ti-x text-base"></i>
+                        </button>
+                    </div>
+                    <div class="p-5 space-y-3.5 text-xs">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-150">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Alamat IP</p>
+                                <p class="font-mono font-bold text-slate-900 text-sm mt-0.5 select-all">{selectedVisitorLog.ip_address}</p>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-150">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Status Pengguna</p>
+                                <p class="font-bold text-slate-900 text-sm mt-0.5">{selectedVisitorLog.user_name ? selectedVisitorLog.user_name : 'Tamu / Guest'}</p>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-150 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Halaman & URL Lengkap</p>
+                            <p class="font-semibold text-slate-800">{selectedVisitorLog.title}</p>
+                            <p class="font-mono text-[11px] text-brand-blueRoyal break-all">{selectedVisitorLog.path}</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-150">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Perangkat & OS</p>
+                                <p class="font-semibold text-slate-900 mt-0.5">{selectedVisitorLog.device} • {selectedVisitorLog.os}</p>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-150">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Browser</p>
+                                <p class="font-semibold text-slate-900 mt-0.5">{selectedVisitorLog.browser}</p>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-150 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Referer (Sumber Kunjungan)</p>
+                            <p class="font-mono text-[11px] text-slate-700 break-all">{selectedVisitorLog.referer || 'Direct / Langsung (Ketik URL atau Bookmark)'}</p>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-150 space-y-1">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">User-Agent Header</p>
+                            <p class="font-mono text-[10px] text-slate-600 leading-relaxed break-all bg-white p-2 rounded border border-slate-200">{selectedVisitorLog.user_agent || '-'}</p>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-150 flex items-center justify-between">
+                            <span class="text-slate-500 font-medium">Waktu Akses:</span>
+                            <span class="font-bold text-slate-800">{selectedVisitorLog.formatted_time} ({selectedVisitorLog.time_ago})</span>
+                        </div>
+                    </div>
+                    <div class="px-5 py-3 border-t border-slate-150 bg-slate-50/50 flex justify-end">
+                        <button
+                            type="button"
+                            onclick={() => (isVisitorDetailModalOpen = false)}
+                            class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs transition cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {/if}
 
         <!-- Grid Table 1: Recent Refunds + Recent Returs -->
         {#if !isSeller && !isSellerEnabled}
