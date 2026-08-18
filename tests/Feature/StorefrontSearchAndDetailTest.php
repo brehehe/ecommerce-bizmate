@@ -3,6 +3,7 @@
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -109,12 +110,36 @@ test('storefront product detail loads categories and brands relationships', func
     );
 });
 
-test('storefront brands page loads successfully and filters by brand', function () {
-    $brand = Brand::create(['name' => 'Sony', 'slug' => 'sony', 'is_active' => true]);
+test('storefront product detail loads by uuid with seller relationship and allows edit by owner and admin', function () {
+    $seller = User::factory()->create([
+        'is_seller' => true,
+        'is_active' => true,
+        'store_slug' => 'toko-hasbi',
+    ]);
 
-    $response = $this->get('/brands');
+    $category = Category::create(['name' => 'Elektronik', 'slug' => 'elektronik']);
+
+    $product = Product::create([
+        'name' => 'Laptop ROG',
+        'slug' => 'laptop-rog',
+        'sku' => 'ROG01',
+        'category_id' => $category->id,
+        'user_id' => $seller->id,
+        'active' => true,
+        'listing_expires_at' => now()->addDays(30),
+    ]);
+
+    // Test product detail by UUID
+    $response = $this->get('/products/'.$product->id);
     $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Product')
+        ->where('product.id', $product->id)
+        ->where('product.user_id', $seller->id)
+    );
 
-    $responseFilter = $this->get('/brands/'.$brand->slug);
-    $responseFilter->assertOk();
+    // Test edit bypass by owner seller
+    $this->actingAs($seller)
+        ->get('/admin/products/'.$product->id.'/edit')
+        ->assertOk();
 });

@@ -1340,6 +1340,24 @@
 
     const user = $derived((page.props as any).auth?.user);
 
+    const isAdmin = $derived.by(() => {
+        return (
+            user?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ) ?? false
+        );
+    });
+
+    const canEditProduct = $derived.by(() => {
+        if (!user) return false;
+        if (isAdmin) return true;
+        if (user.is_seller) {
+            const ownerId = product?.user_id || product?.seller?.id;
+            return Boolean(ownerId && ownerId === user.id);
+        }
+        return false;
+    });
+
     function addToCart() {
         if (!user) {
             window.dispatchEvent(new CustomEvent('open-login-modal'));
@@ -1638,6 +1656,18 @@
                     </button>
                 {/if}
 
+                <!-- Edit Product Shortcut (Mobile) -->
+                {#if canEditProduct}
+                    <Link
+                        href="/admin/products/{product.id}/edit"
+                        class="w-8 h-8 flex items-center justify-center text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-xl transition cursor-pointer active:scale-95 shrink-0 border border-amber-200/80"
+                        aria-label="Edit Produk"
+                        title="Edit Produk"
+                    >
+                        <i class="ti ti-pencil text-lg"></i>
+                    </Link>
+                {/if}
+
                 <!-- Menu Button -->
                 <button
                     onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
@@ -1665,6 +1695,15 @@
                 onclick={(e) => e.stopPropagation()}
                 role="presentation"
             >
+                {#if canEditProduct}
+                    <Link
+                        href="/admin/products/{product.id}/edit"
+                        class="flex items-center gap-2.5 px-4 py-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 transition border-b border-slate-100"
+                    >
+                        <i class="ti ti-pencil text-sm text-amber-600"></i>
+                        Edit Produk
+                    </Link>
+                {/if}
                 <Link
                     href="/"
                     prefetch
@@ -2403,15 +2442,26 @@
                             >
                                 {product.name}
                             </h1>
-                            <button
-                                onclick={shareProduct}
-                                class="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer shrink-0 shadow-2xs active:scale-95"
-                                title="Bagikan Produk"
-                            >
-                                <i class="ti ti-share text-base text-slate-500"
-                                ></i>
-                                <span>Bagikan</span>
-                            </button>
+                            <div class="hidden md:flex items-center gap-2 shrink-0">
+                                {#if canEditProduct}
+                                    <Link
+                                        href="/admin/products/{product.id}/edit"
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 rounded-xl transition cursor-pointer shadow-2xs active:scale-95"
+                                        title="Edit Produk di Admin / Seller Center"
+                                    >
+                                        <i class="ti ti-edit text-sm text-amber-600"></i>
+                                        <span>Edit Produk</span>
+                                    </Link>
+                                {/if}
+                                <button
+                                    onclick={shareProduct}
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer shadow-2xs active:scale-95"
+                                    title="Bagikan Produk"
+                                >
+                                    <i class="ti ti-share text-base text-slate-500"></i>
+                                    <span>Bagikan</span>
+                                </button>
+                            </div>
                         </div>
                         <!-- Rating / terjual row -->
                         <div
@@ -5725,6 +5775,30 @@
                 </div>
             </div>
         </div>
+    {/if}
+    <!-- ── FLOATING ACTION BUTTON: Edit Produk (Super Admin, Admin, & Owner Seller) ── -->
+    {#if canEditProduct}
+        <aside
+            aria-label="Aksi Cepat Pemilik Produk"
+            class="fixed z-40 flex items-center gap-2 bottom-20 right-4 md:bottom-24 md:right-6 transition-all duration-300 pointer-events-auto"
+        >
+            <Link
+                href="/admin/products/{product.id}/edit"
+                class="flex items-center gap-2.5 px-4 py-2.5 rounded-full text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 border-2 border-white/40 backdrop-blur-md cursor-pointer group"
+                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                title="Bypass Edit Produk Ini"
+            >
+                <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:rotate-12 transition-transform duration-300">
+                    <i class="ti ti-pencil text-sm text-white"></i>
+                </div>
+                <div class="flex flex-col text-left pr-1">
+                    <span class="text-xs font-black leading-tight tracking-tight">Edit Produk</span>
+                    <span class="text-[9px] text-white/80 font-semibold leading-none">
+                        {isAdmin ? 'Akses Admin' : 'Pemilik Toko'}
+                    </span>
+                </div>
+            </Link>
+        </aside>
     {/if}
 </StorefrontLayout>
 

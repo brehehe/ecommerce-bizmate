@@ -1,6 +1,6 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
-    import { page, router } from '@inertiajs/svelte';
+    import { Link, page, router } from '@inertiajs/svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
     import VariantSelectorModal from '@/components/Storefront/VariantSelectorModal.svelte';
     import { showToast } from '@/utils/toast';
@@ -23,6 +23,23 @@
             (page.props as any).settings?.is_seller_enabled ??
             false,
     );
+
+    const isAdmin = $derived.by(() => {
+        return (
+            auth?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ) ?? false
+        );
+    });
+
+    const canManageStore = $derived.by(() => {
+        if (!auth) return false;
+        if (isAdmin) return true;
+        if (auth.is_seller && seller) {
+            return auth.id === seller.id;
+        }
+        return false;
+    });
 
     let searchQ = $state('');
     let selectedSort = $state('latest');
@@ -139,14 +156,38 @@
 
                 <!-- Store Info -->
                 <div class="flex-1 min-w-0">
-                    <h1 class="font-outfit font-black text-xl sm:text-3xl text-slate-900 leading-tight">
-                        {seller?.store_name || seller?.name || 'Toko'}
-                    </h1>
-                    {#if seller?.store_slug}
-                        <p class="text-xs sm:text-sm text-slate-400 mt-0.5 font-mono">
-                            /{seller.store_slug}
-                        </p>
-                    {/if}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <h1 class="font-outfit font-black text-xl sm:text-3xl text-slate-900 leading-tight">
+                                {seller?.store_name || seller?.name || 'Toko'}
+                            </h1>
+                            {#if seller?.store_slug}
+                                <p class="text-xs sm:text-sm text-slate-400 mt-0.5 font-mono">
+                                    /{seller.store_slug}
+                                </p>
+                            {/if}
+                        </div>
+
+                        {#if canManageStore}
+                            <div class="flex items-center gap-2 flex-wrap shrink-0">
+                                <Link
+                                    href="/admin/products/create"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl text-white shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                                    style="background: linear-gradient(135deg, {primary}, {secondary});"
+                                >
+                                    <i class="ti ti-plus text-base font-bold"></i>
+                                    <span>Tambah Produk</span>
+                                </Link>
+                                <Link
+                                    href="/admin/products"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl text-slate-700 bg-white/90 hover:bg-white border border-slate-200/80 shadow-2xs hover:shadow-xs transition cursor-pointer"
+                                >
+                                    <i class="ti ti-packages text-base text-slate-600"></i>
+                                    <span>Kelola Produk</span>
+                                </Link>
+                            </div>
+                        {/if}
+                    </div>
                     {#if seller?.store_description}
                         <p class="text-sm text-slate-600 mt-2 line-clamp-2 max-w-xl">
                             {seller.store_description}
@@ -236,6 +277,17 @@
                     >
                         Hapus Filter
                     </button>
+                {:else if canManageStore}
+                    <div class="mt-5 flex items-center justify-center gap-3">
+                        <Link
+                            href="/admin/products/create"
+                            class="px-5 py-2.5 text-sm font-bold rounded-xl text-white shadow-md hover:shadow-lg transition-all hover:scale-105 active:scale-95 inline-flex items-center gap-2"
+                            style="background: linear-gradient(135deg, {primary}, {secondary});"
+                        >
+                            <i class="ti ti-plus text-base font-bold"></i>
+                            Tambah Produk Sekarang
+                        </Link>
+                    </div>
                 {/if}
             </div>
         {:else}
@@ -290,6 +342,20 @@
                                         </span>
                                     {/if}
                                 </div>
+
+                                {#if canManageStore}
+                                    <div class="absolute top-1.5 right-1.5 z-20">
+                                        <Link
+                                            href={`/admin/products/${product.id}/edit`}
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/95 hover:bg-white text-amber-700 hover:text-amber-800 text-[10px] font-bold shadow-xs border border-amber-200/80 transition active:scale-95"
+                                            title="Edit Produk Ini"
+                                            onclick={(e) => e.stopPropagation()}
+                                        >
+                                            <i class="ti ti-pencil text-[10px]"></i>
+                                            Edit
+                                        </Link>
+                                    </div>
+                                {/if}
                             </div>
 
                             <!-- Product Info -->
@@ -353,6 +419,31 @@
             />
         {/if}
     </div>
+
+    <!-- ── FLOATING ACTION BUTTON: Tambah Produk (Super Admin, Admin, & Store Owner) ── -->
+    {#if canManageStore}
+        <aside
+            aria-label="Aksi Cepat Kelola Toko"
+            class="fixed z-40 flex items-center gap-2 bottom-20 right-4 md:bottom-24 md:right-6 transition-all duration-300 pointer-events-auto"
+        >
+            <Link
+                href="/admin/products/create"
+                class="flex items-center gap-2.5 px-4 py-2.5 rounded-full text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 border-2 border-white/40 backdrop-blur-md cursor-pointer group"
+                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                title="Bypass Tambah Produk Baru"
+            >
+                <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:rotate-90 transition-transform duration-300">
+                    <i class="ti ti-plus text-sm text-white font-bold"></i>
+                </div>
+                <div class="flex flex-col text-left pr-1">
+                    <span class="text-xs font-black leading-tight tracking-tight">Tambah Produk</span>
+                    <span class="text-[9px] text-white/80 font-semibold leading-none">
+                        {isAdmin ? 'Akses Admin' : 'Seller Toko'}
+                    </span>
+                </div>
+            </Link>
+        </aside>
+    {/if}
 </StorefrontLayout>
 
 {#if showVariantModal && selectedVariantProduct}

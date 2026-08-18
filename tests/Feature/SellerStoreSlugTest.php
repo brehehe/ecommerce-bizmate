@@ -105,3 +105,23 @@ test('storefront seller store page lists the seller products', function () {
                 ->where('filters.sort', 'latest');
         });
 });
+
+test('storefront seller store page allows store owner to access product create', function () {
+    $seller = User::factory()->create([
+        'is_seller' => true,
+        'is_active' => true,
+        'store_slug' => 'hasbi-gkqy',
+    ]);
+
+    $this->get('/hasbi-gkqy')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Storefront/SellerStore')
+            ->where('seller.id', $seller->id)
+            ->where('seller.store_slug', 'hasbi-gkqy')
+        );
+
+    $this->actingAs($seller)
+        ->get('/admin/products/create')
+        ->assertOk();
+});
