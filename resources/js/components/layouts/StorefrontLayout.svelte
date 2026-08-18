@@ -5553,7 +5553,7 @@
                         <span
                             class="text-[10px] font-bold mt-0.5 transition-colors duration-200 text-slate-500 dark:text-slate-400 group-hover:text-slate-800"
                         >
-                            Kontak Kami
+                            Chat Admin
                         </span>
                     </div>
                 </button>
