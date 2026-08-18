@@ -422,19 +422,25 @@ html {
         display: none !important;
     }
     .responsive-table tbody {
-        display: block;
+        display: flex !important;
+        flex-direction: column;
+        gap: 12px;
         width: 100%;
+        padding: 10px !important;
+        background-color: #f8fafc;
     }
     .responsive-table tr {
         display: flex !important;
         flex-direction: column;
-        padding: 14px 16px !important;
-        gap: 8px;
-        border-bottom: 1px solid #f1f5f9 !important;
-        background: #fff;
+        padding: 14px 15px !important;
+        gap: 9px;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        background: #ffffff !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03) !important;
     }
     .responsive-table tr:last-child {
-        border-bottom: none !important;
+        border-bottom: 1px solid #e2e8f0 !important;
     }
     .responsive-table td {
         display: flex !important;
@@ -446,7 +452,7 @@ html {
     }
     .responsive-table td::before {
         content: attr(data-label);
-        font-size: 10px;
+        font-size: 10.5px;
         font-weight: 700;
         text-transform: uppercase;
         color: #94a3b8;
@@ -462,6 +468,15 @@ html {
     .responsive-table td:first-child {
         display: none !important;
     }
+    .responsive-table td[data-label="Pilih"] {
+        display: flex !important;
+        justify-content: space-between !important;
+        padding-bottom: 8px !important;
+        border-bottom: 1px dashed #f1f5f9 !important;
+    }
+    .responsive-table td[data-label="Pilih"]::before {
+        content: "Pilih Produk" !important;
+    }
 
     /* Custom overrides for Products Catalog stack view on mobile */
     .responsive-table td[data-label="Info Produk"]::before {
@@ -469,8 +484,9 @@ html {
     }
     .responsive-table td[data-label="Info Produk"] {
         justify-content: flex-start !important;
-        padding-top: 10px !important;
+        padding-top: 2px !important;
         padding-bottom: 10px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
     }
     .responsive-table td[data-label="Info Produk"] > * {
         text-align: left !important;
@@ -480,26 +496,32 @@ html {
         text-align: left !important;
     }
 
+    .responsive-table td[data-label="Aksi"] {
+        padding-top: 8px !important;
+        border-top: 1px dashed #f1f5f9 !important;
+    }
+
     /* Style variant row cards */
     .responsive-table tr.variant-row {
         background-color: #f8fafc !important;
-        border-left: 3px solid #cbd5e1 !important;
-        margin-left: 12px !important;
-        margin-right: 12px !important;
-        border-radius: 8px !important;
-        margin-top: 6px !important;
-        margin-bottom: 6px !important;
+        border-left: 3px solid #6366f1 !important;
+        margin-left: 6px !important;
+        margin-right: 6px !important;
+        border-radius: 10px !important;
+        margin-top: 2px !important;
+        margin-bottom: 4px !important;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-        border-bottom: none !important;
+        border-bottom: 1px solid #e2e8f0 !important;
         padding: 10px 12px !important;
         gap: 6px !important;
     }
     
     /* Hide empty variant cols on mobile */
-    .responsive-table tr.variant-row td:nth-child(3),
-    .responsive-table tr.variant-row td:nth-child(5),
-    .responsive-table tr.variant-row td:nth-child(6),
-    .responsive-table tr.variant-row td:nth-child(7) {
+    .responsive-table tr.variant-row td:nth-child(1),
+    .responsive-table tr.variant-row td:nth-child(2),
+    .responsive-table tr.variant-row td:nth-child(4),
+    .responsive-table tr.variant-row td:nth-child(7),
+    .responsive-table tr.variant-row td:nth-child(8) {
         display: none !important;
     }
 

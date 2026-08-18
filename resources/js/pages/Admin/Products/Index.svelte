@@ -1076,80 +1076,80 @@
 </svelte:head>
 
 <AdminLayout>
-    <main class="w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-5">
+    <main class="w-full max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
         <!-- Page Header -->
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h1 class="text-xl font-semibold tracking-tight text-slate-900">Katalog Produk</h1>
-                <p class="mt-0.5 text-sm text-slate-550">Kelola stok, harga, dan variasi produk Anda</p>
+                <h1 class="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">Katalog Produk</h1>
+                <p class="mt-0.5 text-xs sm:text-sm text-slate-500">Kelola stok, harga, dan variasi produk Anda</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar flex-nowrap sm:flex-wrap">
                 <button
                     onclick={() => (isImportModalOpen = true)}
-                    class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                    class="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-3 sm:px-4 text-xs sm:text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
                 >
-                    <i class="ti ti-file-import"></i> Import
+                    <i class="ti ti-file-import"></i> <span>Import</span>
                 </button>
                 <a
                     href={adminProductsExport.url()}
-                    class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                    class="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-3 sm:px-4 text-xs sm:text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
                 >
-                    <i class="ti ti-file-export"></i> Export
+                    <i class="ti ti-file-export"></i> <span>Export</span>
                 </a>
                 {#if isSellerMode}
                     <Link
                         href="/admin/listing-payments"
-                        class="h-9 rounded-lg border border-blue-200 bg-blue-50/80 px-4 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 flex items-center gap-2 cursor-pointer"
+                        class="h-9 shrink-0 rounded-lg border border-blue-200 bg-blue-50/80 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
                     >
-                        <i class="ti ti-history text-base"></i> Riwayat Pembayaran
+                        <i class="ti ti-history text-base"></i> <span>Riwayat Pembayaran</span>
                     </Link>
                 {/if}
                 <Link
                     href={adminProductsCreate.url()}
-                    class="h-9 rounded-lg px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 flex items-center gap-2 cursor-pointer"
+                    class="h-9 shrink-0 rounded-lg px-3.5 sm:px-4 text-xs sm:text-sm font-semibold text-white transition-opacity hover:opacity-90 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
                     style="background-color: {secondary};"
                 >
-                    <i class="ti ti-plus"></i> Tambah Baru
+                    <i class="ti ti-plus font-bold"></i> <span>Tambah Baru</span>
                 </Link>
             </div>
         </div>
 
         <!-- Metrics Overview -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-            <div class="border border-slate-200 bg-white rounded-xl p-4 shadow-xs">
-                <p class="text-xs font-semibold text-slate-500 mb-1">Semua Produk</p>
-                <p class="text-2xl font-semibold text-slate-900">{products.total}</p>
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
+            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
+                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Semua Produk</p>
+                <p class="text-xl sm:text-2xl font-bold text-slate-900">{products.total}</p>
             </div>
-            <div class="border border-slate-200 bg-white rounded-xl p-4 shadow-xs">
-                <p class="text-xs font-semibold text-slate-500 mb-1">Aktif &amp; Ditampilkan</p>
-                <p class="text-2xl font-semibold text-emerald-600">-</p>
+            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
+                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Aktif &amp; Ditampilkan</p>
+                <p class="text-xl sm:text-2xl font-bold text-emerald-600">-</p>
             </div>
-            <div class="border border-slate-200 bg-white rounded-xl p-4 shadow-xs">
-                <p class="text-xs font-semibold text-slate-500 mb-1">Status Draft</p>
-                <p class="text-2xl font-semibold text-amber-600">-</p>
+            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
+                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Status Draft</p>
+                <p class="text-xl sm:text-2xl font-bold text-amber-600">-</p>
             </div>
-            <div class="border border-slate-200 bg-white rounded-xl p-4 shadow-xs">
-                <p class="text-xs font-semibold text-slate-500 mb-1">Stok Habis</p>
-                <p class="text-2xl font-semibold text-rose-600">-</p>
+            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
+                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Stok Habis</p>
+                <p class="text-xl sm:text-2xl font-bold text-rose-600">-</p>
             </div>
         </div>
 
         <!-- Advanced Data Table -->
         <div class="border border-slate-200 bg-white rounded-xl flex flex-col overflow-hidden shadow-xs">
             <!-- Filters Bar -->
-            <div class="p-4 border-b border-slate-150 flex flex-col xl:flex-row xl:flex-wrap gap-3 justify-between items-stretch xl:items-center bg-slate-50/50">
-                <div class="flex-grow flex flex-col sm:flex-row gap-3 items-stretch sm:items-center flex-wrap">
-                    <div class="relative flex-1 min-w-[240px]">
+            <div class="p-3 sm:p-4 border-b border-slate-150 flex flex-col xl:flex-row xl:flex-wrap gap-2.5 sm:gap-3 justify-between items-stretch xl:items-center bg-slate-50/50">
+                <div class="flex-grow flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center flex-wrap">
+                    <div class="relative flex-1 min-w-[200px] w-full">
                         <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
                         <input
                             type="text"
                             bind:value={searchInput}
                             oninput={handleSearchInput}
                             placeholder="Cari nama produk, SKU..."
-                            class="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-0 transition-colors"
+                            class="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs sm:text-sm text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-0 transition-colors"
                         />
                     </div>
-                    <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 items-stretch sm:items-center">
+                    <div class="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap gap-2 sm:gap-2.5 items-stretch sm:items-center">
                         <div class="w-full sm:w-48">
                             <SelectSearchMultiple
                                 bind:value={filterCategories}
@@ -1166,11 +1166,11 @@
                                 onchange={applyFilters}
                             />
                         </div>
-                        <div class="w-full sm:w-40">
+                        <div class="w-full sm:w-36">
                             <select
                                 bind:value={filterStatus}
                                 onchange={applyFilters}
-                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs sm:text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
                             >
                                 <option value="all">Status: Semua</option>
                                 <option value="active">Status: Aktif</option>
@@ -1181,7 +1181,7 @@
                             <select
                                 bind:value={filterSort}
                                 onchange={applyFilters}
-                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs sm:text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
                             >
                                 <option value="order-asc">Urutan Kustom</option>
                                 <option value="name-asc">Nama: A - Z</option>
@@ -1194,11 +1194,11 @@
                                 <option value="oldest">Terlama</option>
                             </select>
                         </div>
-                        <div class="w-full sm:w-40">
+                        <div class="col-span-2 sm:col-span-1 w-full sm:w-36">
                             <select
                                 bind:value={filterPerPage}
                                 onchange={applyFilters}
-                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
+                                class="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 sm:px-3 text-xs sm:text-sm text-slate-700 focus:border-slate-400 focus:outline-none transition-colors cursor-pointer"
                             >
                                 <option value="10">10 per halaman</option>
                                 <option value="25">25 per halaman</option>
@@ -1211,10 +1211,10 @@
                 </div>
 
                 <!-- View Switcher -->
-                <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0 self-start xl:self-auto">
+                <div class="flex items-center justify-between sm:justify-start bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0 self-auto">
                     <button
                         onclick={() => (currentViewMode = 'list')}
-                        class="px-3 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 {currentViewMode === 'list'
+                        class="flex-1 sm:flex-initial px-3 py-1 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 {currentViewMode === 'list'
                             ? 'bg-white text-slate-800 shadow-xs border border-slate-200/50'
                             : 'text-slate-500 hover:text-slate-800'}"
                         aria-label="Tampilan Daftar"
@@ -1224,7 +1224,7 @@
                     </button>
                     <button
                         onclick={() => (currentViewMode = 'grid')}
-                        class="px-3 py-1 rounded-md text-xs font-semibold transition flex items-center gap-1.5 {currentViewMode === 'grid'
+                        class="flex-1 sm:flex-initial px-3 py-1 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 {currentViewMode === 'grid'
                             ? 'bg-white text-slate-800 shadow-xs border border-slate-200/50'
                             : 'text-slate-500 hover:text-slate-800'}"
                         aria-label="Tampilan Kartu"
@@ -1274,7 +1274,7 @@
                 >
                 {#key products.data}
                     <table
-                        class="w-full responsive-table table-fixed"
+                        class="w-full responsive-table sm:table-fixed"
                     >
                         <thead>
                             <tr class="bg-white">
@@ -1862,7 +1862,7 @@
 
                 <!-- Grid Card View Container -->
                 <div
-                    class="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/20 {currentViewMode ===
+                    class="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 bg-slate-50/20 {currentViewMode ===
                     'list'
                         ? 'hidden'
                         : ''}"
