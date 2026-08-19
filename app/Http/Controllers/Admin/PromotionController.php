@@ -12,8 +12,27 @@ use Inertia\Inertia;
 
 class PromotionController extends Controller
 {
+    /**
+     * Ensure only Admin and Super Admin can access promotion features.
+     */
+    protected function authorizeAdminOnly(Request $request): void
+    {
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAdminOrSuperAdmin = $user->hasAnyRole(['Super Admin', 'Admin']) || (! $user->is_seller && $user->roles()->count() === 0);
+
+        if (! $isAdminOrSuperAdmin) {
+            abort(403, 'Akses ini khusus untuk Admin dan Super Admin.');
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
 
         $query = Promotion::with([
@@ -86,8 +105,10 @@ class PromotionController extends Controller
         return redirect()->route('admin.promotions.index');
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $this->authorizeAdminOnly($request);
+
         $products = $this->getProductsForSelection();
 
         return Inertia::render('Admin/Promotions/Create', [
@@ -97,6 +118,8 @@ class PromotionController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
 
         $validated = $request->validate([
@@ -151,9 +174,11 @@ class PromotionController extends Controller
         return redirect()->route('admin.promotions.index')->with('success', 'Promosi berhasil ditambahkan.');
     }
 
-    public function edit(Promotion $promotion)
+    public function edit(Request $request, Promotion $promotion)
     {
-        $user = auth()->user();
+        $this->authorizeAdminOnly($request);
+
+        $user = $request->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
             if ($promotion->user_id && $promotion->user_id !== $user->id) {
                 abort(403, 'Anda tidak memiliki akses ke promosi ini.');
@@ -177,6 +202,8 @@ class PromotionController extends Controller
 
     public function update(Request $request, Promotion $promotion)
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
             if ($promotion->user_id && $promotion->user_id !== $user->id) {
@@ -234,9 +261,11 @@ class PromotionController extends Controller
         return redirect()->route('admin.promotions.index')->with('success', 'Promosi berhasil diperbarui.');
     }
 
-    public function destroy(Promotion $promotion)
+    public function destroy(Request $request, Promotion $promotion)
     {
-        $user = auth()->user();
+        $this->authorizeAdminOnly($request);
+
+        $user = $request->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
             if ($promotion->user_id && $promotion->user_id !== $user->id) {
                 abort(403, 'Anda tidak memiliki akses ke promosi ini.');
@@ -248,9 +277,11 @@ class PromotionController extends Controller
         return redirect()->back()->with('success', 'Promosi berhasil dihapus.');
     }
 
-    public function toggleActive(Promotion $promotion)
+    public function toggleActive(Request $request, Promotion $promotion)
     {
-        $user = auth()->user();
+        $this->authorizeAdminOnly($request);
+
+        $user = $request->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
             if ($promotion->user_id && $promotion->user_id !== $user->id) {
                 abort(403, 'Anda tidak memiliki akses ke promosi ini.');

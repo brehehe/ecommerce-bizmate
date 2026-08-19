@@ -350,6 +350,12 @@ trait AppliesProductPricing
                 } else {
                     $product->discount_percentage = 0;
                 }
+
+                // Override product price_type if defined in promo settings ('net' or 'nego')
+                $promoPriceType = $appliedPromo->settings['price_type'] ?? null;
+                if (! empty($promoPriceType) && in_array($promoPriceType, ['net', 'nego'])) {
+                    $product->price_type = $promoPriceType;
+                }
             } else {
                 $product->is_promo = false;
                 $product->promo_price = $basePrice;
@@ -493,6 +499,11 @@ trait AppliesProductPricing
                         } else {
                             $variant->discount_percentage = 0;
                         }
+
+                        $vPromoPriceType = $vAppliedPromo->settings['price_type'] ?? null;
+                        if (! empty($vPromoPriceType) && in_array($vPromoPriceType, ['net', 'nego'])) {
+                            $variant->promo_price_type = $vPromoPriceType;
+                        }
                     } else {
                         $variant->is_promo = false;
                         $variant->promo_price = $vPrice;
@@ -528,6 +539,9 @@ trait AppliesProductPricing
                 $product->discount_percentage = $cheapestPromoVariant->discount_percentage;
                 $product->promo_type = $cheapestPromoVariant->promo_type;
                 $product->promo_end_time = $cheapestPromoVariant->promo_end_time;
+                if (! empty($cheapestPromoVariant->promo_price_type)) {
+                    $product->price_type = $cheapestPromoVariant->promo_price_type;
+                }
             } elseif ($product->is_promo) {
                 // Keep base promo details
             } else {

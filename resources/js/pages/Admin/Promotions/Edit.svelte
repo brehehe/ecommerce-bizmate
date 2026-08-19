@@ -176,6 +176,7 @@
             settings: (() => {
                 let settings = promotion.settings || {};
                 settings.terms = settings.terms ?? '';
+                settings.price_type = settings.price_type ?? 'default';
                 settings.keep_tier_prices = settings.keep_tier_prices ?? false;
                 settings.max_uses_per_user = settings.max_uses_per_user ?? '';
                 settings.min_qty = settings.min_qty ?? 1;
@@ -1118,7 +1119,7 @@
                         </div>
                     {/if}
 
-                    <!-- Promo Produk Custom Settings (Min Qty) -->
+                    <!-- Promo Produk Custom Settings (Min Qty & Price Type Net/Nego) -->
                     {#if form.type === 'promo_produk'}
                         <div
                             class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-3 border-t border-slate-100"
@@ -1134,12 +1135,57 @@
                                     required={true}
                                     error={form.errors['settings.min_qty']}
                                 />
+                                <p class="text-[11px] text-slate-500 mt-1 font-medium">
+                                    Diskon berlaku jika pembeli menambahkan minimal jumlah produk ini di keranjang belanja.
+                                </p>
                             </div>
-                            <div class="flex items-center pt-6">
-                                <p class="text-xs text-slate-500 font-medium">
-                                    Diskon hanya akan berlaku jika pembeli
-                                    menambahkan minimal jumlah produk ini di
-                                    keranjang belanja.
+                            <div>
+                                <label
+                                    for="promo-price-type"
+                                    class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2"
+                                >
+                                    Status / Tipe Harga (Net / Nego)
+                                </label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button
+                                        type="button"
+                                        onclick={() => (form.settings.price_type = 'default')}
+                                        class="px-2.5 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.settings.price_type === 'default' || !form.settings.price_type
+                                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}"
+                                    >
+                                        <i class="ti ti-refresh text-sm"></i>
+                                        <span>Default</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => (form.settings.price_type = 'net')}
+                                        class="px-2.5 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.settings.price_type === 'net'
+                                            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}"
+                                    >
+                                        <i class="ti ti-lock text-sm"></i>
+                                        <span>Harga Net</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onclick={() => (form.settings.price_type = 'nego')}
+                                        class="px-2.5 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.settings.price_type === 'nego'
+                                            ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}"
+                                    >
+                                        <i class="ti ti-messages text-sm"></i>
+                                        <span>Bisa Nego</span>
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-1.5 font-medium">
+                                    {#if form.settings.price_type === 'nego'}
+                                        Status produk akan tampil <span class="font-bold text-amber-600">BISA NEGO</span> saat promo ini aktif.
+                                    {:else if form.settings.price_type === 'net'}
+                                        Status produk akan tampil <span class="font-bold text-slate-800">HARGA NET</span> saat promo ini aktif.
+                                    {:else}
+                                        Mengikuti status harga bawaan masing-masing produk (Net / Nego default).
+                                    {/if}
                                 </p>
                             </div>
                         </div>

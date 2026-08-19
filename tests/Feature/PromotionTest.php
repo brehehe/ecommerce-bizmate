@@ -202,31 +202,87 @@ test('admin can create promo_produk with min_qty', function () {
     expect($promo->settings['min_qty'])->toBe(3);
 });
 
-test('admin can create voucher_belanja with can_stack_with_promos setting', function () {
+test('regular seller without admin role cannot access promotions', function () {
+    $seller = User::factory()->create(['is_seller' => true]);
+
+    $response = $this->actingAs($seller)->get(route('admin.promotions.index'));
+    $response->assertForbidden();
+
+    $responseCreate = $this->actingAs($seller)->get(route('admin.promotions.create'));
+    $responseCreate->assertForbidden();
+});
+
+test('admin can create promo_produk with price_type setting', function () {
     $promoData = [
-        'name' => 'Voucher Non-Stackable 15%',
-        'type' => 'voucher_belanja',
-        'code' => 'NONSTACK15',
+        'name' => 'Promo Nego Khusus',
+        'type' => 'promo_produk',
         'discount_type' => 'percentage',
-        'discount_value' => 15,
-        'min_purchase' => 100000,
+        'discount_value' => 10,
         'start_time' => now()->toDateTimeString(),
         'end_time' => now()->addDays(5)->toDateTimeString(),
         'is_active' => true,
         'settings' => [
-            'can_stack_with_promos' => false,
+            'price_type' => 'nego',
+            'min_qty' => 1,
+        ],
+        'items' => [
+            [
+                'product_id' => $this->product->id,
+                'discount_type' => 'percentage',
+                'discount_value' => 10,
+                'promo_stock' => 10,
+            ],
         ],
     ];
 
     $response = $this->actingAs($this->user)->post(route('admin.promotions.store'), $promoData);
 
     $response->assertRedirect(route('admin.promotions.index'));
-    $this->assertDatabaseHas('promotions', [
-        'name' => 'Voucher Non-Stackable 15%',
-        'type' => 'voucher_belanja',
-        'code' => 'NONSTACK15',
+    $promo = Promotion::where('name', 'Promo Nego Khusus')->first();
+    expect($promo->settings['price_type'])->toBe('nego');
+});
+
+test('active promo overrides product price_type and falls back to product default when not set', function () {
+    $this->product->update(['price_type' => 'net']);
+    \App\Models\ProductPrice::create([
+        'product_id' => $this->product->id,
+        'price' => 100000,
     ]);
 
-    $promo = Promotion::where('code', 'NONSTACK15')->first();
-    expect($promo->settings['can_stack_with_promos'])->toBe(false);
+    // 1. When promo has price_type = 'nego', product price_type becomes 'nego'
+    $promo = Promotion::create([
+        'name' => 'Promo Nego Test',
+        'type' => 'promo_produk',
+        'discount_type' => 'fixed',
+        'discount_value' => 10000,
+        'start_time' => now()->subHour(),
+        'end_time' => now()->addDays(2),
+        'is_active' => true,
+        'settings' => ['price_type' => 'nego', 'min_qty' => 1],
+    ]);
+    \App\Models\PromotionItem::create([
+        'promotion_id' => $promo->id,
+        'product_id' => $this->product->id,
+        'discount_type' => 'fixed',
+        'discount_value' => 10000,
+    ]);
+
+    $response = $this->get(route('products.show', $this->product->slug));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Storefront/Product')
+        ->where('product.price_type', 'nego')
+        ->where('product.is_promo', true)
+    );
+
+    // 2. When promo has price_type = 'default', falls back to product price_type ('net')
+    $promo->update(['settings' => ['price_type' => 'default', 'min_qty' => 1]]);
+
+    $response2 = $this->get(route('products.show', $this->product->slug));
+    $response2->assertOk();
+    $response2->assertInertia(fn ($page) => $page
+        ->component('Storefront/Product')
+        ->where('product.price_type', 'net')
+        ->where('product.is_promo', true)
+    );
 });

@@ -617,6 +617,15 @@
                                                                 <i class="ti ti-store text-[10px]"></i> {promo.user.store_name || promo.user.name}
                                                             </span>
                                                         {/if}
+                                                        {#if promo.settings?.price_type === 'nego'}
+                                                            <span class="inline-flex items-center gap-0.5 text-[9px] font-black uppercase text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                                                <i class="ti ti-messages text-[10px]"></i> NEGO
+                                                            </span>
+                                                        {:else if promo.settings?.price_type === 'net'}
+                                                            <span class="inline-flex items-center gap-0.5 text-[9px] font-black uppercase text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                                                <i class="ti ti-lock text-[10px]"></i> NET
+                                                            </span>
+                                                        {/if}
                                                     </div>
                                                 </div>
                                             </div>

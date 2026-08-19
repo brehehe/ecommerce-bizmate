@@ -374,16 +374,11 @@
             'Toko & Stok',
         )}
         {#if !isSeller}
-            {@render NavItem(
-                '/admin/ads',
-                'ti-speakerphone',
-                'Iklan Produk',
-            )}
+            {@render NavItem('/admin/ads', 'ti-speakerphone', 'Iklan Produk')}
         {/if}
-        {#if !isSellerEnabled && !isSeller}
+        {#if !isSeller}
             {@render NavItem('/admin/promotions', 'ti-discount', 'Promosi')}
         {/if}
-
         <div class="my-3 h-px bg-slate-100"></div>
 
         <!-- Section: Laporan -->
