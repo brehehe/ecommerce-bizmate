@@ -2102,7 +2102,7 @@
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
-                                        class="text-sm text-red-600 line-through font-bold"
+                                        class="text-base text-red-600 line-through font-bold"
                                         >{fmt(originalPrice)}</span
                                     >
                                     <span
@@ -2140,7 +2140,7 @@
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
-                                            class="text-sm text-red-600 line-through font-bold"
+                                            class="text-base text-red-600 line-through font-bold"
                                         >
                                             {fmt(originalPrice)}
                                         </span>
@@ -2605,7 +2605,7 @@
                                 </span>
                                 {#if originalPrice && originalPrice > currentPrice}
                                     <span
-                                        class="text-base text-red-600 line-through font-bold"
+                                        class="text-lg text-red-600 line-through font-bold"
                                         >{fmt(originalPrice)}</span
                                     >
                                     <span
@@ -2641,7 +2641,7 @@
                                     </span>
                                     {#if originalPrice && originalPrice > currentPrice}
                                         <span
-                                            class="text-base sm:text-lg text-red-600 line-through font-bold"
+                                            class="text-lg sm:text-xl text-red-600 line-through font-bold"
                                         >
                                             {fmt(originalPrice)}
                                         </span>
@@ -3020,7 +3020,7 @@
                                                                     100%
                                                                 </span>
                                                                 <span
-                                                                    class="text-[11px] text-red-600 line-through font-bold font-mono"
+                                                                    class="text-xs text-red-600 line-through font-bold font-mono"
                                                                 >
                                                                     {fmt(
                                                                         gift.product_price,
@@ -3040,7 +3040,7 @@
                                                                     )}%
                                                                 </span>
                                                                 <span
-                                                                    class="text-[11px] text-red-600 line-through font-bold font-mono"
+                                                                    class="text-xs text-red-600 line-through font-bold font-mono"
                                                                 >
                                                                     {fmt(
                                                                         gift.product_price,
@@ -3063,7 +3063,7 @@
                                                                     POTONGAN
                                                                 </span>
                                                                 <span
-                                                                    class="text-[11px] text-red-600 line-through font-bold font-mono"
+                                                                    class="text-xs text-red-600 line-through font-bold font-mono"
                                                                 >
                                                                     {fmt(
                                                                         gift.product_price,
@@ -4305,7 +4305,7 @@
                                             </p>
                                             {#if isPromo && originalPrice > price}
                                                 <p
-                                                    class="text-xs sm:text-sm text-red-600 line-through font-bold mt-0.5"
+                                                    class="text-sm sm:text-base text-red-600 line-through font-bold mt-0.5"
                                                 >
                                                     {fmt(originalPrice)}
                                                 </p>

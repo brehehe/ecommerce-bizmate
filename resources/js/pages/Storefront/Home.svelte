@@ -1233,7 +1233,7 @@
                                         </p>
                                         {#if product.is_promo && ori > price}
                                             <p
-                                                class="text-xs text-red-600 line-through font-bold"
+                                                class="text-sm text-red-600 line-through font-bold"
                                             >
                                                 {formatPrice(ori)}
                                             </p>
@@ -1527,7 +1527,7 @@
                                             </p>
                                             {#if isPromo && originalPrice > price}
                                                 <p
-                                                    class="text-xs sm:text-sm text-red-600 line-through font-bold mt-0.5"
+                                                    class="text-sm sm:text-base text-red-600 line-through font-bold mt-0.5"
                                                 >
                                                     {formatPrice(originalPrice)}
                                                 </p>
@@ -1832,7 +1832,7 @@
                                                 </p>
                                                 {#if isPromo && originalPrice > price}
                                                     <p
-                                                        class="text-xs sm:text-sm text-red-600 line-through font-bold mt-0.5"
+                                                        class="text-sm sm:text-base text-red-600 line-through font-bold mt-0.5"
                                                     >
                                                         {formatPrice(
                                                             originalPrice,

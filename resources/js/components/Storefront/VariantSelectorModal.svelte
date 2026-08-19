@@ -373,7 +373,7 @@
                     {fmt(currentPrice)}
                 </p>
                 {#if originalPrice && originalPrice > currentPrice}
-                    <p class="text-sm text-red-600 line-through font-bold mt-0.5">
+                    <p class="text-base text-red-600 line-through font-bold mt-0.5">
                         {fmt(originalPrice)}
                     </p>
                 {/if}
