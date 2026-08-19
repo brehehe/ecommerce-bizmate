@@ -8,18 +8,19 @@ use App\Models\PromotionItem;
 use App\Models\User;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = User::factory()->create(['is_seller' => false]);
+    $unique = uniqid();
     $this->category = Category::create([
-        'name' => 'Elektronik',
-        'slug' => 'elektronik',
+        'name' => 'Elektronik '.$unique,
+        'slug' => 'elektronik-'.$unique,
         'icon' => 'ti-cpu',
     ]);
 
     // Create a product to target
     $this->product = Product::create([
-        'name' => 'Test Product',
-        'slug' => 'test-product',
-        'sku' => 'TEST-SKU-1',
+        'name' => 'Test Product '.$unique,
+        'slug' => 'test-product-'.$unique,
+        'sku' => 'TEST-SKU-'.$unique,
         'category_id' => $this->category->id,
         'summary' => 'Summary',
         'description' => 'Description',

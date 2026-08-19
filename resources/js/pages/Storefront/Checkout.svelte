@@ -1649,7 +1649,7 @@
                                                         class="flex items-center gap-2 mt-1"
                                                     >
                                                         <span
-                                                            class="text-xs line-through text-red-600 font-bold"
+                                                            class="text-sm line-through text-red-600 font-bold"
                                                             >{fmt(
                                                                 gift.product_price ??
                                                                     0,

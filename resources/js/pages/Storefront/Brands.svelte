@@ -812,7 +812,7 @@
                                                     {formatPrice(price)}
                                                 </p>
                                                 {#if isPromo && originalPrice > price}
-                                                    <p class="text-[10px] sm:text-xs text-red-600 line-through font-bold mt-0.5">
+                                                    <p class="text-xs sm:text-sm text-red-600 line-through font-bold mt-0.5">
                                                         {formatPrice(originalPrice)}
                                                     </p>
                                                 {/if}

@@ -5,20 +5,17 @@ use App\Models\ProductAd;
 use App\Models\SellerAdWallet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 test('super admin and admin can view ad index page with wallet and kpis', function () {
-    $role = Role::firstOrCreate(['name' => 'Super Admin']);
-    $seller = User::factory()->create(['is_seller' => true]);
-    $seller->assignRole($role);
+    $admin = User::factory()->create(['is_seller' => false]);
 
-    $wallet = SellerAdWallet::getOrCreateForUser($seller->id);
+    $wallet = SellerAdWallet::getOrCreateForUser($admin->id);
     $wallet->update(['balance' => 100000]);
 
     $product = Product::create([
-        'user_id' => $seller->id,
+        'user_id' => $admin->id,
         'name' => 'Raket Padel Pro',
         'slug' => 'raket-padel-pro',
         'sku' => 'PADEL-001',
@@ -54,21 +51,19 @@ test('regular seller without admin or superadmin role is forbidden from accessin
 });
 
 test('admin can create and update a product ad campaign', function () {
-    $role = Role::firstOrCreate(['name' => 'Super Admin']);
-    $seller = User::factory()->create(['is_seller' => true]);
-    $seller->assignRole($role);
-    $wallet = SellerAdWallet::getOrCreateForUser($seller->id);
+    $admin = User::factory()->create(['is_seller' => false]);
+    $wallet = SellerAdWallet::getOrCreateForUser($admin->id);
     $wallet->update(['balance' => 50000]);
 
     $product = Product::create([
-        'user_id' => $seller->id,
+        'user_id' => $admin->id,
         'name' => 'Bola Padel Tour',
         'slug' => 'bola-padel-tour',
         'sku' => 'BOLA-001',
         'active' => true,
     ]);
 
-    $response = $this->actingAs($seller)->post(route('admin.ads.store'), [
+    $response = $this->actingAs($admin)->post(route('admin.ads.store'), [
         'product_id' => $product->id,
         'ad_type' => 'cpc',
         'bid_per_click' => 400,
@@ -79,7 +74,7 @@ test('admin can create and update a product ad campaign', function () {
 
     $response->assertRedirect();
     $this->assertDatabaseHas('product_ads', [
-        'user_id' => $seller->id,
+        'user_id' => $admin->id,
         'product_id' => $product->id,
         'bid_per_click' => 400,
         'daily_budget' => 15000,
@@ -91,7 +86,7 @@ test('admin can create and update a product ad campaign', function () {
     expect($ad->placements)->toEqual(['home', 'search']);
 
     // Toggle pause status and update placements / show_badge
-    $this->actingAs($seller)->put(route('admin.ads.update', $ad->id), [
+    $this->actingAs($admin)->put(route('admin.ads.update', $ad->id), [
         'status' => 'paused',
         'bid_per_click' => 600,
         'daily_budget' => 25000,
@@ -111,11 +106,9 @@ test('admin can create and update a product ad campaign', function () {
 });
 
 test('admin can request top up and confirm top up status', function () {
-    $role = Role::firstOrCreate(['name' => 'Super Admin']);
-    $seller = User::factory()->create(['is_seller' => true]);
-    $seller->assignRole($role);
+    $admin = User::factory()->create(['is_seller' => false]);
 
-    $response = $this->actingAs($seller)->postJson(route('admin.ads.topup'), [
+    $response = $this->actingAs($admin)->postJson(route('admin.ads.topup'), [
         'amount' => 50000,
     ]);
 

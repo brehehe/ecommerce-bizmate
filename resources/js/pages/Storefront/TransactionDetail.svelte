@@ -2886,7 +2886,7 @@
                                                 <div class="text-right">
                                                     {#if item.diskon_item > 0}
                                                         <p
-                                                            class="text-xs text-red-600 line-through font-bold"
+                                                            class="text-sm text-red-600 line-through font-bold"
                                                         >
                                                             {fmt(
                                                                 item.harga_jual,
