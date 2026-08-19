@@ -260,3 +260,24 @@ test('sets is_seller to true and assigns Seller role when IS_SELLER config is tr
         ->and($user->store_slug)->not->toBeNull()
         ->and($user->hasRole('Seller'))->toBeTrue();
 });
+
+test('redirects to login with error when padelgigs login is disabled', function () {
+    config(['services.padelgigs.enabled' => false]);
+
+    $response = $this->get(route('auth.padelgigs'));
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHasErrors('email');
+});
+
+test('callback redirects to login with error when padelgigs login is disabled', function () {
+    config(['services.padelgigs.enabled' => false]);
+
+    $response = $this->get(route('auth.padelgigs.callback', [
+        'code' => 'any-code',
+        'state' => 'any-state',
+    ]));
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHasErrors('email');
+});

@@ -54,6 +54,11 @@
     const isSellerMode = $derived(
         isSellerEnabled || Boolean((page.props as any).auth?.user?.is_seller),
     );
+    const isPadelgigsLoginEnabled = $derived(
+        (page.props as any).app_config?.padelgigs_login_enabled ??
+            (page.props as any).settings?.padelgigs_login_enabled ??
+            true,
+    );
     const activePath = $derived((page.url || '').split('?')[0] || '/');
 
     const adminWaNumber = $derived(
@@ -3324,41 +3329,43 @@
                             Masuk untuk melanjutkan belanja Anda.
                         </p>
 
-                        <!-- PadelGigs SSO Button -->
-                        <a
-                            href="/auth/padelgigs"
-                            class="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 mb-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.99] group no-underline"
-                        >
-                            <div
-                                class="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform"
+                        {#if isPadelgigsLoginEnabled}
+                            <!-- PadelGigs SSO Button -->
+                            <a
+                                href="/auth/padelgigs"
+                                class="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 mb-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.99] group no-underline"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2.2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="w-3 h-3"
+                                <div
+                                    class="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform"
                                 >
-                                    <circle cx="12" cy="12" r="9" />
-                                    <path d="M12 3a9 9 0 0 1 9 9" />
-                                    <circle cx="12" cy="12" r="1" fill="currentColor" />
-                                </svg>
-                            </div>
-                            <span class="font-outfit text-slate-800"
-                                >Masuk dengan PadelGigs</span
-                            >
-                        </a>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        class="w-3 h-3"
+                                    >
+                                        <circle cx="12" cy="12" r="9" />
+                                        <path d="M12 3a9 9 0 0 1 9 9" />
+                                        <circle cx="12" cy="12" r="1" fill="currentColor" />
+                                    </svg>
+                                </div>
+                                <span class="font-outfit text-slate-800"
+                                    >Masuk dengan PadelGigs</span
+                                >
+                            </a>
 
-                        <div class="relative my-3 flex items-center justify-center">
-                            <div class="border-t border-slate-200 w-full"></div>
-                            <span
-                                class="bg-white px-2.5 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider absolute"
-                                >atau dengan email</span
-                            >
-                        </div>
+                            <div class="relative my-3 flex items-center justify-center">
+                                <div class="border-t border-slate-200 w-full"></div>
+                                <span
+                                    class="bg-white px-2.5 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider absolute"
+                                    >atau dengan email</span
+                                >
+                            </div>
+                        {/if}
 
                         {#if loginError}
                             <div
@@ -3486,41 +3493,43 @@
                             Gratis! Nikmati belanja yang mudah & hemat.
                         </p>
 
-                        <!-- PadelGigs SSO Button -->
-                        <a
-                            href="/auth/padelgigs"
-                            class="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 mb-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.99] group no-underline"
-                        >
-                            <div
-                                class="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform"
+                        {#if isPadelgigsLoginEnabled}
+                            <!-- PadelGigs SSO Button -->
+                            <a
+                                href="/auth/padelgigs"
+                                class="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 mb-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.99] group no-underline"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2.2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    class="w-3 h-3"
+                                <div
+                                    class="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform"
                                 >
-                                    <circle cx="12" cy="12" r="9" />
-                                    <path d="M12 3a9 9 0 0 1 9 9" />
-                                    <circle cx="12" cy="12" r="1" fill="currentColor" />
-                                </svg>
-                            </div>
-                            <span class="font-outfit text-slate-800"
-                                >Daftar dengan PadelGigs</span
-                            >
-                        </a>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        class="w-3 h-3"
+                                    >
+                                        <circle cx="12" cy="12" r="9" />
+                                        <path d="M12 3a9 9 0 0 1 9 9" />
+                                        <circle cx="12" cy="12" r="1" fill="currentColor" />
+                                    </svg>
+                                </div>
+                                <span class="font-outfit text-slate-800"
+                                    >Daftar dengan PadelGigs</span
+                                >
+                            </a>
 
-                        <div class="relative my-3 flex items-center justify-center">
-                            <div class="border-t border-slate-200 w-full"></div>
-                            <span
-                                class="bg-white px-2.5 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider absolute"
-                                >atau daftar dengan email</span
-                            >
-                        </div>
+                            <div class="relative my-3 flex items-center justify-center">
+                                <div class="border-t border-slate-200 w-full"></div>
+                                <span
+                                    class="bg-white px-2.5 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider absolute"
+                                    >atau daftar dengan email</span
+                                >
+                            </div>
+                        {/if}
 
                         {#if registerError}
                             <div

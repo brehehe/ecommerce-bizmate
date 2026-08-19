@@ -18,6 +18,7 @@ return [
     'membership_enabled' => (bool) env('MEMBERSHIP_ENABLED', true),
     'midtrans_enabled' => (bool) env('MIDTRANS_ENABLED', true),
     'logistic_enabled' => (bool) env('LOGISTIC_ENABLED', true),
+    'padelgigs_login' => filter_var(env('PADELGIGS_LOGIN', true), FILTER_VALIDATE_BOOLEAN),
 
     /*
     |--------------------------------------------------------------------------

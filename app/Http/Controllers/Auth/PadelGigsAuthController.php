@@ -21,6 +21,10 @@ class PadelGigsAuthController extends Controller
      */
     public function redirect(): RedirectResponse
     {
+        if (! config('services.padelgigs.enabled', true)) {
+            return redirect()->route('login')->withErrors(['email' => 'Fitur Masuk dengan PadelGigs sedang dinonaktifkan.']);
+        }
+
         $auth = $this->oauthService->getAuthorizationUrl();
 
         return redirect($auth['url']);
@@ -31,6 +35,10 @@ class PadelGigsAuthController extends Controller
      */
     public function callback(Request $request): RedirectResponse
     {
+        if (! config('services.padelgigs.enabled', true)) {
+            return redirect()->route('login')->withErrors(['email' => 'Fitur Masuk dengan PadelGigs sedang dinonaktifkan.']);
+        }
+
         if ($request->has('error')) {
             $errorDesc = $request->input('error_description') ?: 'Otorisasi login PadelGigs dibatalkan.';
 
@@ -78,6 +86,10 @@ class PadelGigsAuthController extends Controller
      */
     public function link(): RedirectResponse
     {
+        if (! config('services.padelgigs.enabled', true)) {
+            return redirect()->back()->with('error', 'Integrasi akun PadelGigs sedang dinonaktifkan.');
+        }
+
         session(['padelgigs_link_user_id' => Auth::id()]);
 
         $auth = $this->oauthService->getAuthorizationUrl();

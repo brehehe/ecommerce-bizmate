@@ -52,6 +52,7 @@ return [
     ],
 
     'padelgigs' => [
+        'enabled' => filter_var(env('PADELGIGS_LOGIN', true), FILTER_VALIDATE_BOOLEAN),
         'url' => rtrim(env('PADELGIGS_OAUTH_URL', 'https://padelgigs.id'), '/'),
         'client_id' => env('PADELGIGS_OAUTH_CLIENT_ID'),
         'client_secret' => env('PADELGIGS_OAUTH_CLIENT_SECRET'),
