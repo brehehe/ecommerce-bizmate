@@ -602,6 +602,13 @@
             });
         }
 
+        // Prioritize sponsored/ad products to the top
+        list.sort((a: any, b: any) => {
+            const aAd = (a.is_promoted || a.is_ad) ? 1 : 0;
+            const bAd = (b.is_promoted || b.is_ad) ? 1 : 0;
+            return bAd - aAd;
+        });
+
         return list;
     });
 
@@ -1347,7 +1354,7 @@
     <!-- ═══════════════════════════════════════════════════
      SECTION 6: PRODUK TERLARIS
 ═══════════════════════════════════════════════════ -->
-    {#if bestSellerProducts && bestSellerProducts.length > 0}
+    {#if !isSellerEnabled && bestSellerProducts && bestSellerProducts.length > 0}
         <section id="bestsellers-section" class="mt-2 px-3 sm:px-5 lg:px-8">
             <div class="max-w-6xl mx-auto bg-white rounded-2xl overflow-hidden">
                 <div
@@ -1440,6 +1447,7 @@
                                     <div
                                         class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
                                     >
+
                                         {#if isSellerEnabled}
                                             <span
                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
@@ -1759,6 +1767,7 @@
                                     <div
                                         class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
                                     >
+
                                         {#if isReal && isSellerEnabled}
                                             <span
                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===

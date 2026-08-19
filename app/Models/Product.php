@@ -269,4 +269,20 @@ class Product extends Model
     {
         return $this->hasMany(ReturnItem::class);
     }
+
+    /**
+     * Ads for this product.
+     */
+    public function ads()
+    {
+        return $this->hasMany(ProductAd::class);
+    }
+
+    /**
+     * Active ad for this product.
+     */
+    public function activeAd()
+    {
+        return $this->hasOne(ProductAd::class)->active();
+    }
 }

@@ -32,7 +32,7 @@
             devices: { mobile: 0, desktop: 0, tablet: 0, mobileCount: 0, desktopCount: 0 },
         },
         topVisitedPages = [],
-        visitorIpLogs = [],
+        visitorIpLogs = { data: [] },
         ipTrafficAnalytics = {
             total_unique_ips: 0,
             top_ips: [],
@@ -76,6 +76,16 @@
 
     // Visitor IP Tracking UI State
     let activeVisitorTab = $state<'recent' | 'top_ips' | 'sources'>('recent');
+
+    const filterLabels: Record<string, string> = {
+        'hari_ini': 'Hari Ini',
+        '7_hari': '7 Hari Terakhir',
+        '1_bulan': '30 Hari Terakhir',
+        '1_tahun': '1 Tahun Terakhir',
+        'tahun_lalu': 'Tahun Lalu',
+    };
+
+    let visitorLogsList = $derived(Array.isArray(visitorIpLogs) ? visitorIpLogs : (visitorIpLogs?.data ?? []));
     let selectedVisitorLog = $state<any | null>(null);
     let isVisitorDetailModalOpen = $state(false);
     let copiedIp = $state<string | null>(null);
@@ -995,10 +1005,10 @@
                 <!-- Tab 1: Real-time Visitor Stream -->
                 {#if activeVisitorTab === 'recent'}
                     <div class="overflow-x-auto custom-scrollbar">
-                        {#if !visitorIpLogs || visitorIpLogs.length === 0}
+                        {#if !visitorLogsList || visitorLogsList.length === 0}
                             <div class="py-12 text-center text-xs text-slate-400">
                                 <i class="ti ti-radar text-3xl mb-1 text-slate-300 block"></i>
-                                Belum ada riwayat aktivitas pengunjung terkini.
+                                Belum ada riwayat aktivitas pengunjung pada periode {filterLabels[selectedFilter] || selectedFilter}.
                             </div>
                         {:else}
                             <table class="w-full text-left text-xs border-collapse min-w-[760px]">
@@ -1014,7 +1024,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100 text-slate-700">
-                                    {#each visitorIpLogs as log (log.id)}
+                                    {#each visitorLogsList as log (log.id)}
                                         <tr class="hover:bg-slate-50/70 transition duration-150">
                                             <!-- IP Address & Online Badge -->
                                             <td class="py-3 px-4">
@@ -1128,6 +1138,16 @@
                                     {/each}
                                 </tbody>
                             </table>
+
+                            {#if visitorIpLogs && visitorIpLogs.links && visitorIpLogs.links.length > 3}
+                                <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col items-center gap-2.5 text-center">
+                                    <Pagination
+                                        data={visitorIpLogs}
+                                        itemLabel="Aktivitas Pengunjung"
+                                        class="flex flex-col items-center gap-2.5 text-center"
+                                    />
+                                </div>
+                            {/if}
                         {/if}
                     </div>
                 {/if}

@@ -72,6 +72,10 @@ class AdminDashboardController extends Controller
         $sellerProductIds = $isSeller ? DB::table('products')->where('user_id', $userId)->pluck('id') : collect([]);
         $sellerTransactionIds = $isSeller ? DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id') : collect([]);
 
+        // Global search & filter variables
+        $search = trim((string) $request->input('search', ''));
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
         // Cache key per filter & user — invalidasi otomatis setiap 5 menit
         $getKpis = function () use (
             $filter,
@@ -258,42 +262,42 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getPipeline = function () use ($filter, $dateFrom, $dateTo, $isSeller, $userId, $sellerTransactionIds) {
-            return Cache::remember("dashboard_pipeline_v4_{$userId}_{$filter}", 3600, function () use ($dateFrom, $dateTo, $isSeller, $sellerTransactionIds) {
-                $opQuery = DB::table('transactions')
-                    ->whereIn('status', ['belum_bayar', 'menunggu', 'diproses', 'dikemas', 'dikirim'])
-                    ->where('created_at', '>=', $dateFrom);
+        $getPipeline = function () use ($isSeller, $userId, $sellerTransactionIds) {
+            return Cache::remember("dashboard_pipeline_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+                $txQuery = DB::table('transactions');
                 if ($isSeller) {
-                    $opQuery->whereIn('id', $sellerTransactionIds);
+                    $txQuery->whereIn('id', $sellerTransactionIds);
                 }
-                $opStats = $opQuery->selectRaw("
-                        COUNT(CASE WHEN status = 'belum_bayar' THEN 1 END) as unpaid_count,
-                        COUNT(CASE WHEN status = 'menunggu' THEN 1 END) as pending_count,
-                        COUNT(CASE WHEN status IN ('belum_bayar', 'menunggu') THEN 1 END) as new_count,
-                        COUNT(CASE WHEN status IN ('diproses', 'dikemas') THEN 1 END) as ready_count,
-                        COUNT(CASE WHEN status = 'dikirim' THEN 1 END) as shipping_count
+                $orderStatusCounts = $txQuery->selectRaw("
+                        COUNT(CASE WHEN status = 'belum_bayar' THEN 1 END) as pending_payment,
+                        COUNT(CASE WHEN status = 'menunggu' THEN 1 END) as waiting_confirm,
+                        COUNT(CASE WHEN status = 'diproses' THEN 1 END) as processing,
+                        COUNT(CASE WHEN status = 'dikemas' THEN 1 END) as packing,
+                        COUNT(CASE WHEN status = 'dikirim' THEN 1 END) as shipping,
+                        COUNT(CASE WHEN status = 'selesai' THEN 1 END) as completed,
+                        COUNT(CASE WHEN status = 'dibatalkan' THEN 1 END) as cancelled
                     ")->first();
 
-                $refundQuery = DB::table('refund_requests')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                $rfQuery = DB::table('refund_requests');
                 if ($isSeller) {
-                    $refundQuery->whereIn('transaction_id', $sellerTransactionIds);
+                    $rfQuery->whereIn('transaction_id', $sellerTransactionIds);
                 }
-                $refundStatusCounts = $refundQuery->selectRaw("
+                $refundStatusCounts = $rfQuery->selectRaw("
                         COUNT(CASE WHEN status = 'menunggu_konfirmasi' THEN 1 END) as pending_count,
                         COUNT(CASE WHEN status = 'disetujui' THEN 1 END) as approved_count,
                         COUNT(CASE WHEN status = 'selesai' THEN 1 END) as completed_count,
                         COUNT(CASE WHEN status = 'ditolak' THEN 1 END) as rejected_count
                     ")->first();
 
-                $returnQuery = DB::table('returns')->whereBetween('created_at', [$dateFrom, $dateTo]);
+                $rtQuery = DB::table('returns');
                 if ($isSeller) {
-                    $returnQuery->whereIn('transaction_id', $sellerTransactionIds);
+                    $rtQuery->whereIn('transaction_id', $sellerTransactionIds);
                 }
-                $returnStatusCounts = $returnQuery->selectRaw("
+                $returnStatusCounts = $rtQuery->selectRaw("
                         COUNT(CASE WHEN status = 'menunggu_review' THEN 1 END) as pending_count,
                         COUNT(CASE WHEN status = 'disetujui' THEN 1 END) as approved_count,
-                        COUNT(CASE WHEN status = 'barang_dikirim_customer' THEN 1 END) as in_transit_count,
-                        COUNT(CASE WHEN status = 'barang_diterima_toko' THEN 1 END) as received_count,
+                        COUNT(CASE WHEN status = 'dikirim' THEN 1 END) as in_transit_count,
+                        COUNT(CASE WHEN status = 'diterima' THEN 1 END) as received_count,
                         COUNT(CASE WHEN status = 'refund_diproses' THEN 1 END) as refunding_count,
                         COUNT(CASE WHEN status = 'selesai' THEN 1 END) as completed_count,
                         COUNT(CASE WHEN status = 'ditolak' THEN 1 END) as rejected_count
@@ -301,11 +305,13 @@ class AdminDashboardController extends Controller
 
                 return [
                     'orderStats' => [
-                        'unpaidCount' => (int) ($opStats->unpaid_count ?? 0),
-                        'pendingCount' => (int) ($opStats->pending_count ?? 0),
-                        'newCount' => (int) ($opStats->new_count ?? 0),
-                        'readyCount' => (int) ($opStats->ready_count ?? 0),
-                        'shippingCount' => (int) ($opStats->shipping_count ?? 0),
+                        'pendingPayment' => (int) ($orderStatusCounts->pending_payment ?? 0),
+                        'waitingConfirm' => (int) ($orderStatusCounts->waiting_confirm ?? 0),
+                        'processing' => (int) ($orderStatusCounts->processing ?? 0),
+                        'packing' => (int) ($orderStatusCounts->packing ?? 0),
+                        'shipping' => (int) ($orderStatusCounts->shipping ?? 0),
+                        'completed' => (int) ($orderStatusCounts->completed ?? 0),
+                        'cancelled' => (int) ($orderStatusCounts->cancelled ?? 0),
                     ],
                     'refundPipeline' => [
                         'pending' => (int) ($refundStatusCounts->pending_count ?? 0),
@@ -326,12 +332,20 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentOrders = function () use ($isSeller, $userId, $sellerTransactionIds) {
-            return Cache::remember("dashboard_recent_orders_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+        $getRecentOrders = function () use ($isSeller, $userId, $sellerTransactionIds, $filter, $dateFrom, $dateTo, $search, $likeOperator) {
+            return Cache::remember("dashboard_recent_orders_v4_{$userId}_{$filter}_".md5((string) $search), 60, function () use ($isSeller, $sellerTransactionIds, $dateFrom, $dateTo, $search, $likeOperator) {
                 $query = DB::table('transactions')
-                    ->leftJoin('users', 'transactions.user_id', '=', 'users.id');
+                    ->leftJoin('users', 'transactions.user_id', '=', 'users.id')
+                    ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $query->whereIn('transactions.id', $sellerTransactionIds);
+                }
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('transactions.transaction_number', $likeOperator, "%{$search}%")
+                            ->orWhere('users.name', $likeOperator, "%{$search}%")
+                            ->orWhere('users.email', $likeOperator, "%{$search}%");
+                    });
                 }
                 $recentTransactions = $query->select([
                     'transactions.id',
@@ -380,13 +394,22 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentRefunds = function () use ($isSeller, $userId, $sellerTransactionIds) {
-            return Cache::remember("dashboard_recent_refunds_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+        $getRecentRefunds = function () use ($isSeller, $userId, $sellerTransactionIds, $filter, $dateFrom, $dateTo, $search, $likeOperator) {
+            return Cache::remember("dashboard_recent_refunds_v4_{$userId}_{$filter}_".md5((string) $search), 60, function () use ($isSeller, $sellerTransactionIds, $dateFrom, $dateTo, $search, $likeOperator) {
                 $query = DB::table('refund_requests')
                     ->leftJoin('users', 'refund_requests.user_id', '=', 'users.id')
-                    ->leftJoin('transactions', 'refund_requests.transaction_id', '=', 'transactions.id');
+                    ->leftJoin('transactions', 'refund_requests.transaction_id', '=', 'transactions.id')
+                    ->whereBetween('refund_requests.created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $query->whereIn('refund_requests.transaction_id', $sellerTransactionIds);
+                }
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('refund_requests.refund_number', $likeOperator, "%{$search}%")
+                            ->orWhere('transactions.transaction_number', $likeOperator, "%{$search}%")
+                            ->orWhere('users.name', $likeOperator, "%{$search}%")
+                            ->orWhere('users.email', $likeOperator, "%{$search}%");
+                    });
                 }
 
                 return $query->select([
@@ -427,13 +450,22 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentReturns = function () use ($isSeller, $userId, $sellerTransactionIds) {
-            return Cache::remember("dashboard_recent_returns_v3_{$userId}", 300, function () use ($isSeller, $sellerTransactionIds) {
+        $getRecentReturns = function () use ($isSeller, $userId, $sellerTransactionIds, $filter, $dateFrom, $dateTo, $search, $likeOperator) {
+            return Cache::remember("dashboard_recent_returns_v4_{$userId}_{$filter}_".md5((string) $search), 60, function () use ($isSeller, $sellerTransactionIds, $dateFrom, $dateTo, $search, $likeOperator) {
                 $query = DB::table('returns')
                     ->leftJoin('users', 'returns.user_id', '=', 'users.id')
-                    ->leftJoin('transactions', 'returns.transaction_id', '=', 'transactions.id');
+                    ->leftJoin('transactions', 'returns.transaction_id', '=', 'transactions.id')
+                    ->whereBetween('returns.created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $query->whereIn('returns.transaction_id', $sellerTransactionIds);
+                }
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('returns.return_number', $likeOperator, "%{$search}%")
+                            ->orWhere('transactions.transaction_number', $likeOperator, "%{$search}%")
+                            ->orWhere('users.name', $likeOperator, "%{$search}%")
+                            ->orWhere('users.email', $likeOperator, "%{$search}%");
+                    });
                 }
 
                 return $query->select([
@@ -474,23 +506,33 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentCustomers = function () use ($isSeller) {
+        $getRecentCustomers = function () use ($isSeller, $filter, $dateFrom, $dateTo, $search, $likeOperator) {
             if ($isSeller) {
                 return [];
             }
 
-            return Cache::remember('dashboard_recent_customers_v3', 300, function () {
-                return DB::table('users')
+            return Cache::remember("dashboard_recent_customers_v4_{$filter}_".md5((string) $search), 300, function () use ($dateFrom, $dateTo, $search, $likeOperator) {
+                $query = DB::table('users')
                     ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
                     ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
                     ->where('roles.name', 'Customer')
-                    ->select([
-                        'users.id',
-                        'users.name',
-                        'users.email',
-                        'users.phone_number',
-                        'users.created_at',
-                    ])
+                    ->whereBetween('users.created_at', [$dateFrom, $dateTo]);
+
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('users.name', $likeOperator, "%{$search}%")
+                            ->orWhere('users.email', $likeOperator, "%{$search}%")
+                            ->orWhere('users.phone_number', $likeOperator, "%{$search}%");
+                    });
+                }
+
+                return $query->select([
+                    'users.id',
+                    'users.name',
+                    'users.email',
+                    'users.phone_number',
+                    'users.created_at',
+                ])
                     ->orderBy('users.created_at', 'desc')
                     ->limit(8)
                     ->get()
@@ -512,14 +554,22 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getRecentStockOut = function () use ($paidStatuses, $isSeller, $userId, $sellerProductIds) {
-            return Cache::remember("dashboard_recent_stockout_v3_{$userId}", 300, function () use ($paidStatuses, $isSeller, $sellerProductIds) {
+        $getRecentStockOut = function () use ($paidStatuses, $isSeller, $userId, $sellerProductIds, $filter, $dateFrom, $dateTo, $search, $likeOperator) {
+            return Cache::remember("dashboard_recent_stockout_v4_{$userId}_{$filter}_".md5((string) $search), 300, function () use ($paidStatuses, $isSeller, $sellerProductIds, $dateFrom, $dateTo, $search, $likeOperator) {
                 $stockQuery = DB::table('stock_movements')
                     ->leftJoin('products', 'stock_movements.product_id', '=', 'products.id')
                     ->leftJoin('product_variants', 'stock_movements.product_variant_id', '=', 'product_variants.id')
-                    ->leftJoin('transactions', 'stock_movements.transaction_id', '=', 'transactions.id');
+                    ->leftJoin('transactions', 'stock_movements.transaction_id', '=', 'transactions.id')
+                    ->whereBetween('stock_movements.created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $stockQuery->whereIn('stock_movements.product_id', $sellerProductIds);
+                }
+                if ($search !== '') {
+                    $stockQuery->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('products.name', $likeOperator, "%{$search}%")
+                            ->orWhere('products.sku', $likeOperator, "%{$search}%")
+                            ->orWhere('transactions.transaction_number', $likeOperator, "%{$search}%");
+                    });
                 }
                 $recentStockOut = $stockQuery->select([
                     'stock_movements.id',
@@ -565,9 +615,17 @@ class AdminDashboardController extends Controller
                 if (empty($recentStockOut)) {
                     $itemQuery = DB::table('transaction_items')
                         ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-                        ->whereIn('transactions.status', $paidStatuses);
+                        ->whereIn('transactions.status', $paidStatuses)
+                        ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
                     if ($isSeller) {
                         $itemQuery->whereIn('transaction_items.product_id', $sellerProductIds);
+                    }
+                    if ($search !== '') {
+                        $itemQuery->where(function ($q) use ($search, $likeOperator) {
+                            $q->where('transaction_items.product_name', $likeOperator, "%{$search}%")
+                                ->orWhere('transaction_items.product_sku', $likeOperator, "%{$search}%")
+                                ->orWhere('transactions.transaction_number', $likeOperator, "%{$search}%");
+                        });
                     }
                     $recentStockOut = $itemQuery->selectRaw('
                             transaction_items.id,
@@ -610,14 +668,17 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getTopProducts = function () use ($filter, $dateFrom, $paidStatuses, $isSeller, $userId, $sellerProductIds) {
-            return Cache::remember("dashboard_top_products_v3_{$userId}_{$filter}", 3600, function () use ($dateFrom, $paidStatuses, $isSeller, $sellerProductIds) {
+        $getTopProducts = function () use ($filter, $dateFrom, $dateTo, $paidStatuses, $isSeller, $userId, $sellerProductIds, $search, $likeOperator) {
+            return Cache::remember("dashboard_top_products_v4_{$userId}_{$filter}_".md5((string) $search), 3600, function () use ($dateFrom, $dateTo, $paidStatuses, $isSeller, $sellerProductIds, $search, $likeOperator) {
                 $query = DB::table('transaction_items')
                     ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
                     ->whereIn('transactions.status', $paidStatuses)
-                    ->where('transactions.created_at', '>=', $dateFrom);
+                    ->whereBetween('transactions.created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $query->whereIn('transaction_items.product_id', $sellerProductIds);
+                }
+                if ($search !== '') {
+                    $query->where('transaction_items.product_name', $likeOperator, "%{$search}%");
                 }
                 $topProductsRaw = $query->selectRaw('
                         transaction_items.product_id,
@@ -743,8 +804,8 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getVisitorStats = function () use ($filter, $dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $isSeller, $userId) {
-            return Cache::remember("dashboard_visitor_stats_v1_{$userId}_{$filter}", 15, function () use ($dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $isSeller, $userId) {
+        $getVisitorStats = function () use ($filter, $dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $isSeller, $userId, $search, $likeOperator) {
+            return Cache::remember("dashboard_visitor_stats_v2_{$userId}_{$filter}_".md5((string) $search), 15, function () use ($dateFrom, $dateTo, $prevDateFrom, $prevDateTo, $isSeller, $userId, $search, $likeOperator) {
                 $fiveMinutesAgo = Carbon::now()->subMinutes(5);
 
                 // 1. Real-time online visitors (last 5 minutes)
@@ -752,12 +813,24 @@ class AdminDashboardController extends Controller
                 if ($isSeller) {
                     $onlineQuery->where('seller_id', $userId);
                 }
+                if ($search !== '') {
+                    $onlineQuery->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('ip_address', $likeOperator, "%{$search}%")
+                            ->orWhere('path', $likeOperator, "%{$search}%");
+                    });
+                }
                 $onlineVisitors = $onlineQuery->distinct('session_id')->count('session_id');
 
                 // 2. Current period pageviews & unique visitors
                 $currentQuery = DB::table('page_views')->whereBetween('created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $currentQuery->where('seller_id', $userId);
+                }
+                if ($search !== '') {
+                    $currentQuery->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('ip_address', $likeOperator, "%{$search}%")
+                            ->orWhere('path', $likeOperator, "%{$search}%");
+                    });
                 }
                 $currentPageviews = $currentQuery->count();
                 $currentUniqueVisitors = $currentQuery->distinct('session_id')->count('session_id');
@@ -767,6 +840,12 @@ class AdminDashboardController extends Controller
                 if ($isSeller) {
                     $prevQuery->where('seller_id', $userId);
                 }
+                if ($search !== '') {
+                    $prevQuery->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('ip_address', $likeOperator, "%{$search}%")
+                            ->orWhere('path', $likeOperator, "%{$search}%");
+                    });
+                }
                 $prevPageviews = $prevQuery->count();
                 $prevUniqueVisitors = $prevQuery->distinct('session_id')->count('session_id');
 
@@ -774,6 +853,12 @@ class AdminDashboardController extends Controller
                 $deviceQuery = DB::table('page_views')->whereBetween('created_at', [$dateFrom, $dateTo]);
                 if ($isSeller) {
                     $deviceQuery->where('seller_id', $userId);
+                }
+                if ($search !== '') {
+                    $deviceQuery->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('ip_address', $likeOperator, "%{$search}%")
+                            ->orWhere('path', $likeOperator, "%{$search}%");
+                    });
                 }
                 $devices = $deviceQuery->select('device', DB::raw('COUNT(*) as total'))
                     ->groupBy('device')
@@ -802,13 +887,20 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getTopVisitedPages = function () use ($filter, $dateFrom, $dateTo, $isSeller, $userId) {
-            return Cache::remember("dashboard_top_visited_pages_v1_{$userId}_{$filter}", 60, function () use ($dateFrom, $dateTo, $isSeller, $userId) {
+        $getTopVisitedPages = function () use ($filter, $dateFrom, $dateTo, $isSeller, $userId, $search, $likeOperator) {
+            return Cache::remember("dashboard_top_visited_pages_v2_{$userId}_{$filter}_".md5((string) $search), 60, function () use ($dateFrom, $dateTo, $isSeller, $userId, $search, $likeOperator) {
                 $query = DB::table('page_views')
                     ->whereBetween('created_at', [$dateFrom, $dateTo]);
 
                 if ($isSeller) {
                     $query->where('seller_id', $userId);
+                }
+
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('path', $likeOperator, "%{$search}%")
+                            ->orWhere('url', $likeOperator, "%{$search}%");
+                    });
                 }
 
                 $topPages = $query->select('path', DB::raw('COUNT(*) as views'), DB::raw('COUNT(DISTINCT session_id) as unique_views'))
@@ -843,89 +935,116 @@ class AdminDashboardController extends Controller
             });
         };
 
-        $getVisitorIpLogs = function () use ($isAdminOrSuperAdmin) {
+        $visitorPage = (int) $request->input('visitor_page', 1);
+
+        $getVisitorIpLogs = function () use ($isAdminOrSuperAdmin, $filter, $dateFrom, $dateTo, $search, $likeOperator, $visitorPage) {
             if (! $isAdminOrSuperAdmin) {
                 return null;
             }
 
-            return Cache::remember('dashboard_visitor_ip_logs_v1', 15, function () {
-                $logs = DB::table('page_views')
+            return Cache::remember("dashboard_visitor_ip_logs_v3_{$filter}_p{$visitorPage}_".md5((string) $search), 15, function () use ($dateFrom, $dateTo, $search, $likeOperator) {
+                $query = DB::table('page_views')
                     ->leftJoin('users', 'page_views.user_id', '=', 'users.id')
-                    ->select([
-                        'page_views.id',
-                        'page_views.session_id',
-                        'page_views.user_id',
-                        'page_views.ip_address',
-                        'page_views.url',
-                        'page_views.path',
-                        'page_views.route_name',
-                        'page_views.device',
-                        'page_views.referer',
-                        'page_views.user_agent',
-                        'page_views.created_at',
-                        'users.name as user_name',
-                        'users.email as user_email',
-                        'users.avatar as user_avatar',
-                    ])
-                    ->orderBy('page_views.created_at', 'desc')
-                    ->limit(20)
-                    ->get();
+                    ->whereBetween('page_views.created_at', [$dateFrom, $dateTo]);
+
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('page_views.ip_address', $likeOperator, "%{$search}%")
+                            ->orWhere('page_views.path', $likeOperator, "%{$search}%")
+                            ->orWhere('page_views.url', $likeOperator, "%{$search}%")
+                            ->orWhere('page_views.user_agent', $likeOperator, "%{$search}%")
+                            ->orWhere('page_views.referer', $likeOperator, "%{$search}%")
+                            ->orWhere('page_views.device', $likeOperator, "%{$search}%")
+                            ->orWhere('users.name', $likeOperator, "%{$search}%")
+                            ->orWhere('users.email', $likeOperator, "%{$search}%");
+                    });
+                }
 
                 $fiveMinutesAgo = Carbon::now()->subMinutes(5);
 
-                return $logs->map(function ($log) use ($fiveMinutesAgo) {
-                    $createdAt = Carbon::parse($log->created_at);
-                    $path = $log->path;
-                    $title = match (true) {
-                        $path === '/' => 'Beranda Utama (Home)',
-                        $path === '/search' => 'Pencarian Produk',
-                        $path === '/flash-sale' => 'Flash Sale',
-                        $path === '/produk-terlaris' => 'Produk Terlaris',
-                        $path === '/cart' => 'Keranjang Belanja',
-                        $path === '/checkout' => 'Halaman Checkout',
-                        str_starts_with($path, '/category') => 'Kategori: '.urldecode(substr($path, 10)),
-                        str_starts_with($path, '/brands') => 'Brand: '.urldecode(substr($path, 8)),
-                        str_starts_with($path, '/products/') => 'Detail Produk: '.urldecode(substr($path, 10)),
-                        default => $path,
-                    };
+                return $query->select([
+                    'page_views.id',
+                    'page_views.session_id',
+                    'page_views.user_id',
+                    'page_views.ip_address',
+                    'page_views.url',
+                    'page_views.path',
+                    'page_views.route_name',
+                    'page_views.device',
+                    'page_views.referer',
+                    'page_views.user_agent',
+                    'page_views.created_at',
+                    'users.name as user_name',
+                    'users.email as user_email',
+                    'users.avatar as user_avatar',
+                ])
+                    ->orderBy('page_views.created_at', 'desc')
+                    ->paginate(15, ['*'], 'visitor_page')
+                    ->withQueryString()
+                    ->through(function ($log) use ($fiveMinutesAgo) {
+                        $createdAt = Carbon::parse($log->created_at);
+                        $path = $log->path;
+                        $title = match (true) {
+                            $path === '/' => 'Beranda Utama (Home)',
+                            $path === '/search' => 'Pencarian Produk',
+                            $path === '/flash-sale' => 'Flash Sale',
+                            $path === '/produk-terlaris' => 'Produk Terlaris',
+                            $path === '/cart' => 'Keranjang Belanja',
+                            $path === '/checkout' => 'Halaman Checkout',
+                            str_starts_with($path, '/category') => 'Kategori: '.urldecode(substr($path, 10)),
+                            str_starts_with($path, '/brands') => 'Brand: '.urldecode(substr($path, 8)),
+                            str_starts_with($path, '/products/') => 'Detail Produk: '.urldecode(substr($path, 10)),
+                            default => $path,
+                        };
 
-                    $browser = $this->parseBrowser($log->user_agent ?? '');
-                    $os = $this->parseOs($log->user_agent ?? '');
-                    $refererSource = $this->parseRefererSource($log->referer);
+                        $browser = $this->parseBrowser($log->user_agent ?? '');
+                        $os = $this->parseOs($log->user_agent ?? '');
+                        $refererSource = $this->parseRefererSource($log->referer);
 
-                    return [
-                        'id' => $log->id,
-                        'ip_address' => $log->ip_address ?: '127.0.0.1',
-                        'session_id' => $log->session_id,
-                        'user_id' => $log->user_id,
-                        'user_name' => $log->user_name,
-                        'user_email' => $log->user_email,
-                        'user_avatar' => $log->user_avatar,
-                        'path' => $log->path,
-                        'title' => $title,
-                        'route_name' => $log->route_name,
-                        'device' => $log->device ?: 'desktop',
-                        'browser' => $browser,
-                        'os' => $os,
-                        'referer' => $log->referer,
-                        'referer_source' => $refererSource,
-                        'user_agent' => $log->user_agent,
-                        'created_at' => $createdAt->toISOString(),
-                        'time_ago' => $createdAt->diffForHumans(),
-                        'formatted_time' => $createdAt->timezone('Asia/Jakarta')->format('d M Y, H:i:s').' WIB',
-                        'is_online' => $createdAt->greaterThanOrEqualTo($fiveMinutesAgo),
-                    ];
-                })->toArray();
+                        return [
+                            'id' => $log->id,
+                            'ip_address' => $log->ip_address ?: '127.0.0.1',
+                            'session_id' => $log->session_id,
+                            'user_id' => $log->user_id,
+                            'user_name' => $log->user_name,
+                            'user_email' => $log->user_email,
+                            'user_avatar' => $log->user_avatar,
+                            'path' => $log->path,
+                            'title' => $title,
+                            'route_name' => $log->route_name,
+                            'device' => $log->device ?: 'desktop',
+                            'browser' => $browser,
+                            'os' => $os,
+                            'referer' => $log->referer,
+                            'referer_source' => $refererSource,
+                            'user_agent' => $log->user_agent,
+                            'created_at' => $createdAt->toISOString(),
+                            'time_ago' => $createdAt->diffForHumans(),
+                            'formatted_time' => $createdAt->timezone('Asia/Jakarta')->format('d M Y, H:i:s').' WIB',
+                            'is_online' => $createdAt->greaterThanOrEqualTo($fiveMinutesAgo),
+                        ];
+                    });
             });
         };
 
-        $getIpTrafficAnalytics = function () use ($isAdminOrSuperAdmin, $filter, $dateFrom, $dateTo) {
+        $getIpTrafficAnalytics = function () use ($isAdminOrSuperAdmin, $filter, $dateFrom, $dateTo, $search, $likeOperator) {
             if (! $isAdminOrSuperAdmin) {
                 return null;
             }
 
-            return Cache::remember("dashboard_ip_analytics_v1_{$filter}", 30, function () use ($dateFrom, $dateTo) {
+            return Cache::remember("dashboard_ip_analytics_v2_{$filter}_".md5((string) $search), 30, function () use ($dateFrom, $dateTo, $search, $likeOperator) {
                 $query = DB::table('page_views')->whereBetween('created_at', [$dateFrom, $dateTo]);
+
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search, $likeOperator) {
+                        $q->where('ip_address', $likeOperator, "%{$search}%")
+                            ->orWhere('path', $likeOperator, "%{$search}%")
+                            ->orWhere('url', $likeOperator, "%{$search}%")
+                            ->orWhere('user_agent', $likeOperator, "%{$search}%")
+                            ->orWhere('referer', $likeOperator, "%{$search}%")
+                            ->orWhere('device', $likeOperator, "%{$search}%");
+                    });
+                }
 
                 $totalUniqueIps = (clone $query)->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address');
 
@@ -1004,9 +1123,6 @@ class AdminDashboardController extends Controller
         };
 
         // Product Stock Overview
-        $search = $request->input('search');
-        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
-
         $stockQuery = DB::table('products')
             ->leftJoin('product_stocks', function ($join) {
                 $join->on('products.id', '=', 'product_stocks.product_id')
@@ -1016,7 +1132,7 @@ class AdminDashboardController extends Controller
             ->when($isSeller, function ($query) use ($userId) {
                 $query->where('products.user_id', $userId);
             })
-            ->when($search, function ($query) use ($search, $likeOperator) {
+            ->when($search !== '', function ($query) use ($search, $likeOperator) {
                 $query->where(function ($q) use ($search, $likeOperator) {
                     $q->where('products.name', $likeOperator, "%{$search}%")
                         ->orWhere('products.sku', $likeOperator, "%{$search}%");

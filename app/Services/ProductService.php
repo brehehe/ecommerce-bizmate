@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductAd;
 use App\Models\Promotion;
 use App\Models\Setting;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ProductService
@@ -221,7 +223,30 @@ class ProductService
         }
 
         // Apply SQL ordering
-        if ($sort === 'price_asc') {
+        // Prioritize sponsored/ad products to the top of catalog and search listings
+        $activeAdProductIds = Cache::remember('active_promoted_ad_ids', 15, function () {
+            return ProductAd::active()
+                ->whereHas('user.adWallet', function ($q) {
+                    $q->where('balance', '>', 0);
+                })
+                ->pluck('product_id')
+                ->toArray();
+        });
+
+        if (! empty($activeAdProductIds)) {
+            $idsList = implode("','", array_map('addslashes', $activeAdProductIds));
+            $query->orderByRaw("CASE WHEN products.id IN ('{$idsList}') THEN 0 ELSE 1 END");
+        }
+
+        if ($sort === 'popular') {
+            $query->join('product_prices', function ($join) {
+                $join->on('products.id', '=', 'product_prices.product_id')
+                    ->whereNull('product_prices.product_variant_id');
+            })->orderBy('product_prices.price', 'asc')
+                ->orderBy('products.order', 'asc')
+                ->orderByDesc('products.id')
+                ->select('products.*');
+        } elseif ($sort === 'price_asc') {
             $query->join('product_prices', function ($join) {
                 $join->on('products.id', '=', 'product_prices.product_id')
                     ->whereNull('product_prices.product_variant_id');
@@ -295,6 +320,26 @@ class ProductService
             $product->is_promo = false;
             $product->promo_price = null;
             $product->discount_percentage = 0;
+        }
+
+        // Apply seller ad / sponsored status
+        $activeAds = Cache::remember('active_promoted_ads_map', 15, function () {
+            return ProductAd::active()
+                ->whereHas('user.adWallet', function ($q) {
+                    $q->where('balance', '>', 0);
+                })
+                ->get()
+                ->keyBy('product_id');
+        });
+
+        if ($ad = $activeAds->get($product->id)) {
+            $product->is_promoted = true;
+            $product->is_ad = true;
+            $product->show_ad_badge = (bool) $ad->show_badge;
+        } else {
+            $product->is_promoted = false;
+            $product->is_ad = false;
+            $product->show_ad_badge = false;
         }
     }
 }

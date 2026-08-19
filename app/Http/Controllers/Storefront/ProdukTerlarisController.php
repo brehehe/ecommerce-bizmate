@@ -92,6 +92,9 @@ class ProdukTerlarisController extends Controller
                     });
                 }
 
+                // Prioritize sponsored/ad products to the top
+                $productsCollection = $productsCollection->sortByDesc(fn ($p) => ($p->is_promoted || $p->is_ad) ? 1 : 0);
+
                 $page = request()->input('page', 1);
                 $perPage = 36;
                 $total = $productsCollection->count();

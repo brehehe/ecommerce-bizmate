@@ -7,14 +7,16 @@ use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Crypt;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date', 'padelgigs_user_id', 'padelgigs_access_token', 'padelgigs_refresh_token', 'padelgigs_token_expires_at'])]
+#[Hidden(['password', 'remember_token', 'padelgigs_access_token', 'padelgigs_refresh_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -32,7 +34,49 @@ class User extends Authenticatable
             'last_active_at' => 'datetime',
             'password' => 'hashed',
             'is_seller' => 'boolean',
+            'padelgigs_token_expires_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Accessor & Mutator for encrypted PadelGigs Access Token.
+     */
+    protected function padelgigsAccessToken(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? Crypt::decryptString($value) : null,
+            set: fn (?string $value) => $value ? Crypt::encryptString($value) : null,
+        );
+    }
+
+    /**
+     * Accessor & Mutator for encrypted PadelGigs Refresh Token.
+     */
+    protected function padelgigsRefreshToken(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? Crypt::decryptString($value) : null,
+            set: fn (?string $value) => $value ? Crypt::encryptString($value) : null,
+        );
+    }
+
+    public function isLinkedToPadelgigs(): bool
+    {
+        return $this->padelgigs_user_id !== null;
+    }
+
+    public function hasLocalPassword(): bool
+    {
+        return $this->password !== null;
+    }
+
+    public function isPadelgigsTokenExpired(): bool
+    {
+        if (! $this->padelgigs_token_expires_at) {
+            return true;
+        }
+
+        return $this->padelgigs_token_expires_at->subMinutes(5)->isPast();
     }
 
     public function products()
@@ -95,6 +139,21 @@ class User extends Authenticatable
     public function activeMembershipVouchers()
     {
         return $this->hasMany(MembershipVoucher::class)->active();
+    }
+
+    public function adWallet()
+    {
+        return $this->hasOne(SellerAdWallet::class);
+    }
+
+    public function adTransactions()
+    {
+        return $this->hasMany(SellerAdTransaction::class)->latest();
+    }
+
+    public function productAds()
+    {
+        return $this->hasMany(ProductAd::class)->latest();
     }
 
     /**

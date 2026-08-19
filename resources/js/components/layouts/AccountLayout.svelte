@@ -299,6 +299,16 @@
                                                 'Toko Saya'}</span
                                         >
                                     </a>
+
+                                    <a
+                                        href="/admin/ads"
+                                        class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-blue-800 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 transition"
+                                    >
+                                        <i
+                                            class="ti ti-speakerphone text-base text-blue-600"
+                                        ></i>
+                                        <span class="truncate">Iklan & Promosi</span>
+                                    </a>
                                 {:else}
                                     <Link
                                         href="/profile"

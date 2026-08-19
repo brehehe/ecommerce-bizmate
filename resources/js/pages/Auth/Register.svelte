@@ -204,9 +204,44 @@
             >
                 Buat Akun Baru
             </h2>
-            <p class="text-sm text-slate-500 font-medium mb-8">
-                Lengkapi data di bawah ini untuk mulai berbelanja.
+            <p class="text-sm text-slate-500 font-medium mb-6">
+                Daftar cepat dengan akun PadelGigs atau lengkapi data di bawah.
             </p>
+
+            <!-- PadelGigs OAuth Button (Google / Gmail Style) -->
+            <a
+                href="/auth/padelgigs"
+                class="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 active:scale-[0.99] text-slate-700 font-bold text-sm rounded-xl shadow-xs transition-all duration-200 group no-underline"
+            >
+                <div
+                    class="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs group-hover:scale-110 transition-transform"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="w-3.5 h-3.5"
+                    >
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 3a9 9 0 0 1 9 9" />
+                        <circle cx="12" cy="12" r="1" fill="currentColor" />
+                    </svg>
+                </div>
+                <span class="font-outfit tracking-wide text-slate-800 text-sm">Daftar dengan PadelGigs</span>
+            </a>
+
+            <!-- Separator -->
+            <div class="relative my-6 flex items-center justify-center">
+                <div class="border-t border-slate-200 w-full"></div>
+                <span
+                    class="bg-white px-3 text-xs font-bold text-slate-400 uppercase tracking-widest absolute"
+                    >atau daftar dengan email</span
+                >
+            </div>
 
             <form
                 class="space-y-4"

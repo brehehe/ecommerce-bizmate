@@ -51,4 +51,11 @@ return [
         'import_auto_fetch_images' => env('IMPORT_AUTO_FETCH_IMAGES', false),
     ],
 
+    'padelgigs' => [
+        'url' => rtrim(env('PADELGIGS_OAUTH_URL', 'https://padelgigs.id'), '/'),
+        'client_id' => env('PADELGIGS_OAUTH_CLIENT_ID'),
+        'client_secret' => env('PADELGIGS_OAUTH_CLIENT_SECRET'),
+        'redirect' => env('PADELGIGS_OAUTH_REDIRECT_URI'),
+    ],
+
 ];

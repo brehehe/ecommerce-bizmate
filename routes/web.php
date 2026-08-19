@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CmsController;
 use App\Http\Controllers\Admin\KomerceShipmentController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\MembershipController;
+use App\Http\Controllers\Admin\ProductAdController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImageSearchController;
 use App\Http\Controllers\Admin\PromotionController;
@@ -19,9 +20,11 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
 use App\Http\Controllers\Admin\UATController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\Api\ProductAdTrackingController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\PadelGigsAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
@@ -57,6 +60,10 @@ Route::get('/brands/{brand?}', [StorefrontBrandController::class, 'index'])->nam
 Route::get('/products/{product}', [StorefrontProductController::class, 'show'])->name('products.show');
 Route::get('/about', [StorefrontController::class, 'about'])->name('about');
 
+// Ads Public Tracking APIs
+Route::post('/api/ads/track-click', [ProductAdTrackingController::class, 'recordClick'])->name('api.ads.track-click');
+Route::post('/api/ads/track-impressions', [ProductAdTrackingController::class, 'recordImpressions'])->name('api.ads.track-impressions');
+
 Route::get('/zozzuehmqewbobfo', [AppConfigController::class, 'show'])->name('app-config.show');
 Route::post('/zozzuehmqewbobfo', [AppConfigController::class, 'update'])->name('app-config.update');
 
@@ -66,6 +73,10 @@ Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisterController::class, 'show'])->name('register');
     Route::post('/register', [RegisterController::class, 'register']);
     Route::post('/email/resend-verification-guest', [EmailVerificationController::class, 'resendGuest'])->name('verification.resend.guest');
+
+    // PadelGigs OAuth SSO Routes
+    Route::get('/auth/padelgigs', [PadelGigsAuthController::class, 'redirect'])->name('auth.padelgigs');
+    Route::get('/auth/padelgigs/callback', [PadelGigsAuthController::class, 'callback'])->name('auth.padelgigs.callback');
 });
 
 // Forgot & Reset Password
@@ -77,6 +88,10 @@ Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'
 Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])->middleware('signed')->name('verification.verify');
 
 Route::middleware('auth')->group(function () {
+    // PadelGigs Account Linking Routes
+    Route::get('/auth/padelgigs/link', [PadelGigsAuthController::class, 'link'])->name('auth.padelgigs.link');
+    Route::get('/auth/padelgigs/link/callback', [PadelGigsAuthController::class, 'linkCallback'])->name('auth.padelgigs.link.callback');
+    Route::delete('/auth/padelgigs/unlink', [PadelGigsAuthController::class, 'unlink'])->name('auth.padelgigs.unlink');
     // Email Verification Routes
     Route::get('/email/verify', [EmailVerificationController::class, 'notice'])->name('verification.notice');
     Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])->middleware('throttle:6,1')->name('verification.send');
@@ -260,6 +275,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     // Promotions
     Route::post('/promotions/{promotion}/toggle-active', [PromotionController::class, 'toggleActive'])->name('promotions.toggle-active');
     Route::resource('promotions', PromotionController::class);
+
+    // Product Ads / Iklan Produk Seller
+    Route::get('/ads', [ProductAdController::class, 'index'])->name('ads.index');
+    Route::post('/ads', [ProductAdController::class, 'store'])->name('ads.store');
+    Route::put('/ads/{ad}', [ProductAdController::class, 'update'])->name('ads.update');
+    Route::delete('/ads/{ad}', [ProductAdController::class, 'destroy'])->name('ads.destroy');
+    Route::post('/ads/topup', [ProductAdController::class, 'topup'])->name('ads.topup');
+    Route::post('/ads/topup/check-status', [ProductAdController::class, 'checkTopupStatus'])->name('ads.topup.check-status');
 
     // Store Management (Bulk Edits)
     Route::get('/store/prices', [ProductController::class, 'managePrices'])->name('store.prices');

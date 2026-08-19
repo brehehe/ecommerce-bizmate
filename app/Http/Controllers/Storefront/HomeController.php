@@ -50,6 +50,9 @@ class HomeController extends Controller
                 ->select('id', 'name', 'slug')
                 ->get()),
             'featuredProducts' => Inertia::defer(function () {
+                $activeAdsMap = $this->getActiveAdsMap('home');
+                $activePromotedIds = array_keys($activeAdsMap);
+
                 $products = Product::with([
                     'category',
                     'brands',
@@ -69,15 +72,48 @@ class HomeController extends Controller
                     ->take(12)
                     ->get();
 
+                // If any promoted product is not in top 12, fetch and prepend it
+                if (! empty($activePromotedIds)) {
+                    $missingIds = array_diff($activePromotedIds, $products->pluck('id')->all());
+                    if (! empty($missingIds)) {
+                        $missingProducts = Product::with([
+                            'category',
+                            'brands',
+                            'seller',
+                            'productPrice',
+                            'productStock',
+                            'images',
+                            'variants.productPrice',
+                            'variants.options',
+                            'variants.productStock',
+                            'variations.options',
+                        ])
+                            ->withAvg('reviews as avg_rating', 'rating')
+                            ->withCount('reviews as review_count')
+                            ->activeAndNotExpired()
+                            ->whereIn('id', $missingIds)
+                            ->get();
+
+                        $products = $missingProducts->merge($products);
+                    }
+                }
+
                 $activePromotions = $this->getActivePromotions();
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
+                    $this->applyAdStatusToProduct($p, $activeAdsMap, 'home');
                 }
+
+                // Prioritize promoted products to the front
+                $products = $products->sortByDesc(fn ($p) => ($p->is_promoted || $p->is_ad) ? 1 : 0)->values();
 
                 return $products;
             }),
             'newProducts' => Inertia::defer(function () {
+                $activeAdsMap = $this->getActiveAdsMap('home');
+                $activePromotedIds = array_keys($activeAdsMap);
+
                 $products = Product::with([
                     'category',
                     'brands',
@@ -96,11 +132,41 @@ class HomeController extends Controller
                     ->orderedLatest()
                     ->get();
 
+                // If any promoted product is missing from active list, fetch and prepend it
+                if (! empty($activePromotedIds)) {
+                    $missingIds = array_diff($activePromotedIds, $products->pluck('id')->all());
+                    if (! empty($missingIds)) {
+                        $missingProducts = Product::with([
+                            'category',
+                            'brands',
+                            'seller',
+                            'productPrice',
+                            'productStock',
+                            'images',
+                            'variants.productPrice',
+                            'variants.options',
+                            'variants.productStock',
+                            'variations.options',
+                        ])
+                            ->withAvg('reviews as avg_rating', 'rating')
+                            ->withCount('reviews as review_count')
+                            ->activeAndNotExpired()
+                            ->whereIn('id', $missingIds)
+                            ->get();
+
+                        $products = $missingProducts->merge($products);
+                    }
+                }
+
                 $activePromotions = $this->getActivePromotions();
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
+                    $this->applyAdStatusToProduct($p, $activeAdsMap, 'home');
                 }
+
+                // Prioritize promoted products to the front
+                $products = $products->sortByDesc(fn ($p) => ($p->is_promoted || $p->is_ad) ? 1 : 0)->values();
 
                 return $products;
             }),
@@ -114,6 +180,10 @@ class HomeController extends Controller
                     ->take(10)
                     ->pluck('product_id')
                     ->all();
+
+                $activeAdsMap = $this->getActiveAdsMap('home');
+                $activePromotedIds = array_keys($activeAdsMap);
+                $combinedIds = array_unique(array_merge($activePromotedIds, $bestSellerIds));
 
                 $products = Product::with([
                     'category',
@@ -129,16 +199,17 @@ class HomeController extends Controller
                     ->withAvg('reviews as avg_rating', 'rating')
                     ->withCount('reviews as review_count')
                     ->activeAndNotExpired()
-                    ->whereIn('id', $bestSellerIds)
-                    ->get()
-                    ->sortBy(fn ($p) => array_search($p->id, $bestSellerIds))
-                    ->values();
+                    ->whereIn('id', $combinedIds)
+                    ->get();
 
                 $activePromotions = $this->getActivePromotions();
 
                 foreach ($products as $p) {
                     $this->applyPromotionsToProduct($p, $activePromotions);
+                    $this->applyAdStatusToProduct($p, $activeAdsMap, 'home');
                 }
+
+                $products = $products->sortByDesc(fn ($p) => ($p->is_promoted || $p->is_ad) ? 1 : 0)->values();
 
                 return $products;
             }),

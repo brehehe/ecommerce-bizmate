@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\Product;
+use App\Models\ProductAd;
 use App\Models\Promotion;
 use App\Models\PromotionItem;
 use App\Models\TransactionItem;
@@ -547,5 +548,72 @@ trait AppliesProductPricing
 
         // Apply membership discount fields (does not override promo)
         $this->applyMembershipToProduct($product);
+
+        // Apply product ad / sponsored badge status
+        $this->applyAdStatusToProduct($product);
+    }
+
+    /**
+     * Get active ads map [product_id => array] with optional placement check.
+     */
+    private function getActiveAdsMap(?string $placement = null): array
+    {
+        $cacheKey = 'storefront_active_ads_map_'.($placement ?? 'all');
+
+        return Cache::remember($cacheKey, 15, function () use ($placement) {
+            $ads = ProductAd::active()
+                ->whereHas('user.adWallet', function ($q) {
+                    $q->where('balance', '>', 0);
+                })
+                ->get();
+
+            $map = [];
+            foreach ($ads as $ad) {
+                $placements = $ad->placements ?? ['home', 'search', 'category', 'brand', 'bestseller', 'detail'];
+                if ($placement && ! in_array($placement, $placements)) {
+                    continue;
+                }
+                $map[$ad->product_id] = [
+                    'id' => $ad->id,
+                    'show_badge' => (bool) $ad->show_badge,
+                    'placements' => $placements,
+                ];
+            }
+
+            return $map;
+        });
+    }
+
+    /**
+     * Get IDs of products that currently have active ad campaigns with sufficient wallet balance.
+     */
+    private function getActivePromotedProductIds(?string $placement = null): array
+    {
+        return array_keys($this->getActiveAdsMap($placement));
+    }
+
+    /**
+     * Attach ad/promoted status to a product.
+     */
+    private function applyAdStatusToProduct(Product $product, ?array $activeAds = null, ?string $placement = null): void
+    {
+        if ($activeAds === null) {
+            $activeAds = $this->getActiveAdsMap($placement);
+        }
+
+        if (isset($activeAds[$product->id])) {
+            $adData = $activeAds[$product->id];
+            $product->is_promoted = true;
+            $product->is_ad = true;
+            $product->show_ad_badge = is_array($adData) ? (bool) ($adData['show_badge'] ?? false) : false;
+        } elseif (in_array($product->id, $activeAds, true)) {
+            $product->is_promoted = true;
+            $product->is_ad = true;
+            $product->show_ad_badge = false;
+        } else {
+            $product->is_promoted = false;
+            $product->is_ad = false;
+            $product->show_ad_badge = false;
+        }
     }
 }

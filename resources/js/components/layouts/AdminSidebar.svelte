@@ -373,6 +373,11 @@
             'ti-building-store',
             'Toko & Stok',
         )}
+        {@render NavItem(
+            '/admin/ads',
+            'ti-speakerphone',
+            'Iklan Produk',
+        )}
         {#if !isSellerEnabled && !isSeller}
             {@render NavItem('/admin/promotions', 'ti-discount', 'Promosi')}
         {/if}

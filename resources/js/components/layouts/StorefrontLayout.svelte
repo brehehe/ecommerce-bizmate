@@ -2262,6 +2262,14 @@
                                                         ></i> Halaman Toko Saya
                                                     </a>
                                                 {/if}
+                                                <a
+                                                    href="/admin/ads"
+                                                    class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                                >
+                                                    <i
+                                                        class="ti ti-speakerphone text-base text-purple-600"
+                                                    ></i> Iklan & Promosi
+                                                </a>
                                             {:else}
                                                 <Link
                                                     href="/profile"
@@ -2862,6 +2870,14 @@
                                 ></i> Halaman Toko Saya
                             </a>
                         {/if}
+                        <a
+                            href="/admin/ads"
+                            class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition mb-1"
+                        >
+                            <i
+                                class="ti ti-speakerphone text-lg text-purple-600"
+                            ></i> Iklan & Promosi
+                        </a>
                     {:else}
                         <Link
                             href="/profile"
@@ -3207,7 +3223,7 @@
 <!-- ====== AUTH MODAL ====== -->
 {#if authModalOpen}
     <div
-        class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+        class="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
         transition:fade={{ duration: 150 }}
     >
         <!-- Backdrop -->
@@ -3292,9 +3308,45 @@
                         >
                             Selamat Datang Kembali!
                         </h2>
-                        <p class="text-xs sm:text-sm text-slate-400 mb-4">
+                        <p class="text-xs sm:text-sm text-slate-400 mb-3">
                             Masuk untuk melanjutkan belanja Anda.
                         </p>
+
+                        <!-- PadelGigs SSO Button -->
+                        <a
+                            href="/auth/padelgigs"
+                            class="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 mb-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.99] group no-underline"
+                        >
+                            <div
+                                class="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="w-3 h-3"
+                                >
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 3a9 9 0 0 1 9 9" />
+                                    <circle cx="12" cy="12" r="1" fill="currentColor" />
+                                </svg>
+                            </div>
+                            <span class="font-outfit text-slate-800"
+                                >Masuk dengan PadelGigs</span
+                            >
+                        </a>
+
+                        <div class="relative my-3 flex items-center justify-center">
+                            <div class="border-t border-slate-200 w-full"></div>
+                            <span
+                                class="bg-white px-2.5 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider absolute"
+                                >atau dengan email</span
+                            >
+                        </div>
 
                         {#if loginError}
                             <div
@@ -3418,9 +3470,45 @@
                         >
                             Buat Akun Baru
                         </h2>
-                        <p class="text-xs sm:text-sm text-slate-400 mb-3 sm:mb-4">
+                        <p class="text-xs sm:text-sm text-slate-400 mb-3">
                             Gratis! Nikmati belanja yang mudah & hemat.
                         </p>
+
+                        <!-- PadelGigs SSO Button -->
+                        <a
+                            href="/auth/padelgigs"
+                            class="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 mb-3 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all active:scale-[0.99] group no-underline"
+                        >
+                            <div
+                                class="w-5 h-5 rounded-md bg-emerald-600 flex items-center justify-center text-white group-hover:scale-110 transition-transform"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="w-3 h-3"
+                                >
+                                    <circle cx="12" cy="12" r="9" />
+                                    <path d="M12 3a9 9 0 0 1 9 9" />
+                                    <circle cx="12" cy="12" r="1" fill="currentColor" />
+                                </svg>
+                            </div>
+                            <span class="font-outfit text-slate-800"
+                                >Daftar dengan PadelGigs</span
+                            >
+                        </a>
+
+                        <div class="relative my-3 flex items-center justify-center">
+                            <div class="border-t border-slate-200 w-full"></div>
+                            <span
+                                class="bg-white px-2.5 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider absolute"
+                                >atau daftar dengan email</span
+                            >
+                        </div>
 
                         {#if registerError}
                             <div

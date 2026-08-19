@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Events\ListingPaymentConfirmed;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductAd;
 use App\Models\ProductListingPayment;
+use App\Models\SellerAdTransaction;
+use App\Models\SellerAdWallet;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\TransactionPayment;
@@ -35,6 +38,11 @@ class MidtransWebhookController extends Controller
                 'status' => 'error',
                 'message' => 'Missing order_id',
             ], 400);
+        }
+
+        // ── AD TOPUP PAYMENT (Seller Ad Wallet) ────────────────────────────
+        if (str_starts_with($orderId, 'AD-')) {
+            return $this->handleAdTopupPayment($request, $orderId, $statusCode, $grossAmount, $signatureKey);
         }
 
         // ── LISTING PAYMENT (Product Listing Fee) ──────────────────────────
@@ -252,5 +260,90 @@ class MidtransWebhookController extends Controller
         }
 
         return response()->json(['status' => 'success', 'message' => 'Listing webhook processed'], 200);
+    }
+
+    /**
+     * Handle incoming webhook for seller ad wallet top up.
+     */
+    private function handleAdTopupPayment(
+        Request $request,
+        string $orderId,
+        ?string $statusCode,
+        ?string $grossAmount,
+        ?string $signatureKey,
+    ): JsonResponse {
+        $tx = SellerAdTransaction::where('order_id', $orderId)->first();
+
+        if (! $tx) {
+            Log::warning('Midtrans Webhook: Ad Topup Not Found', ['order_id' => $orderId]);
+
+            return response()->json(['status' => 'error', 'message' => 'Ad topup transaction not found'], 404);
+        }
+
+        $serverKey = Setting::where('key', 'midtrans_server_key')->value('value')
+            ?: config('app.midtrans.server_key', '');
+
+        if ($signatureKey && $statusCode && $grossAmount && $serverKey) {
+            $expectedSignature = hash('sha512', $orderId.$statusCode.$grossAmount.$serverKey);
+            if ($signatureKey !== $expectedSignature) {
+                Log::warning('Midtrans Webhook: Ad Topup Invalid Signature', ['order_id' => $orderId]);
+
+                return response()->json(['status' => 'error', 'message' => 'Invalid Signature'], 401);
+            }
+        }
+
+        $transactionStatus = $request->input('transaction_status');
+        $fraudStatus = $request->input('fraud_status');
+
+        $isSuccess = ($transactionStatus === 'settlement') ||
+                     ($transactionStatus === 'capture' && $fraudStatus === 'accept');
+
+        $isFailed = in_array($transactionStatus, ['cancel', 'deny', 'expire']);
+
+        if ($tx->status !== 'pending') {
+            return response()->json(['status' => 'success', 'message' => 'Already processed'], 200);
+        }
+
+        if ($isSuccess) {
+            DB::transaction(function () use ($tx, $request) {
+                $wallet = SellerAdWallet::getOrCreateForUser($tx->user_id);
+                $newBalance = $wallet->balance + $tx->amount;
+
+                $wallet->balance = $newBalance;
+                $wallet->total_topup += $tx->amount;
+                $wallet->save();
+
+                $tx->update([
+                    'status' => 'paid',
+                    'balance_after' => $newBalance,
+                    'paid_at' => now(),
+                    'gateway_transaction_id' => $request->input('transaction_id'),
+                    'gateway_response' => $request->all(),
+                ]);
+
+                // Reactivate any depleted ads for this seller
+                ProductAd::where('user_id', $tx->user_id)
+                    ->where('status', 'depleted')
+                    ->update(['status' => 'active']);
+
+                Log::info('Midtrans Webhook: Ad Topup Auto-Confirmed', [
+                    'order_id' => $tx->order_id,
+                    'user_id' => $tx->user_id,
+                    'amount' => $tx->amount,
+                    'new_balance' => $newBalance,
+                ]);
+            });
+        } elseif ($isFailed) {
+            $tx->update([
+                'status' => 'failed',
+                'gateway_response' => $request->all(),
+            ]);
+
+            Log::info('Midtrans Webhook: Ad Topup Failed/Expired', [
+                'order_id' => $orderId,
+            ]);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Ad topup webhook processed'], 200);
     }
 }

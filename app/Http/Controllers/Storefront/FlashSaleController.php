@@ -209,6 +209,7 @@ class FlashSaleController extends Controller
             if ($maxPrice && $price > $maxPrice) {
                 return false;
             }
+            $this->applyAdStatusToProduct($p);
 
             return true;
         });

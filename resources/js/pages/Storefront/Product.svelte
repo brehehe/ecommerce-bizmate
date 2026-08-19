@@ -240,9 +240,21 @@
 
     let activeDesktopSlideIdx = $state(0);
 
+    let adClickTracked = false;
     $effect(() => {
         displayImage;
         mainImageHasError = false;
+        if (!adClickTracked && (product?.is_promoted || product?.is_ad)) {
+            adClickTracked = true;
+            fetch('/api/ads/track-click', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                },
+                body: JSON.stringify({ product_id: product.id }),
+            }).catch(() => {});
+        }
     });
 
     /** The image shown in the main viewer */
@@ -2438,9 +2450,10 @@
                     <div class="pb-4 flex flex-col">
                         <div class="flex items-start justify-between gap-3">
                             <h1
-                                class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight"
+                                class="text-lg sm:text-xl font-semibold text-slate-800 leading-tight flex items-center gap-2 flex-wrap"
                             >
-                                {product.name}
+                                <span>{product.name}</span>
+
                             </h1>
                             <div class="hidden md:flex items-center gap-2 shrink-0">
                                 {#if canEditProduct}
