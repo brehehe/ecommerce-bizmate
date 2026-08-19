@@ -22,10 +22,29 @@ use Inertia\Response;
 class ProductAdController extends Controller
 {
     /**
+     * Ensure only Admin and Super Admin can access product ad features.
+     */
+    protected function authorizeAdminOnly(Request $request): void
+    {
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAdminOrSuperAdmin = $user->hasAnyRole(['Super Admin', 'Admin']) || (! $user->is_seller && $user->roles()->count() === 0);
+
+        if (! $isAdminOrSuperAdmin) {
+            abort(403, 'Akses ini khusus untuk Admin dan Super Admin.');
+        }
+    }
+
+    /**
      * Display seller's advertising dashboard, campaigns, and wallet.
      */
     public function index(Request $request): Response
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
         $isSuperAdmin = $user->hasRole('Super Admin') || $user->hasRole('Admin');
 
@@ -142,6 +161,8 @@ class ProductAdController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
         $isSuperAdmin = $user->hasRole('Super Admin') || $user->hasRole('Admin');
 
@@ -194,6 +215,8 @@ class ProductAdController extends Controller
      */
     public function update(Request $request, ProductAd $ad): RedirectResponse
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
         $isSuperAdmin = $user->hasRole('Super Admin') || $user->hasRole('Admin');
 
@@ -250,6 +273,8 @@ class ProductAdController extends Controller
      */
     public function destroy(Request $request, ProductAd $ad): RedirectResponse
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
         $isSuperAdmin = $user->hasRole('Super Admin') || $user->hasRole('Admin');
 
@@ -267,6 +292,8 @@ class ProductAdController extends Controller
      */
     public function topup(Request $request): JsonResponse
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
 
         $validated = $request->validate([
@@ -342,6 +369,8 @@ class ProductAdController extends Controller
      */
     public function checkTopupStatus(Request $request): JsonResponse
     {
+        $this->authorizeAdminOnly($request);
+
         $user = $request->user();
         $orderId = $request->input('order_id');
         $autoConfirm = $request->boolean('auto_confirm', false);

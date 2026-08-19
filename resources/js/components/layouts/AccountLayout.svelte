@@ -7,6 +7,11 @@
     const primary = $derived(page.props.theme?.primary_color || '#fa7315');
     const secondary = $derived(page.props.theme?.secondary_color || '#0c4cb4');
     const user = $derived(page.props.auth?.user);
+    const isAdmin = $derived(
+        user?.roles?.some(
+            (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+        ) || (!user?.is_seller && user?.roles?.length === 0),
+    );
     const isSellerEnabled = $derived(
         (page.props as any).app_config?.is_seller_enabled ??
             (page.props as any).settings?.is_seller_enabled ??
@@ -300,15 +305,17 @@
                                         >
                                     </a>
 
-                                    <a
-                                        href="/admin/ads"
-                                        class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-blue-800 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 transition"
-                                    >
-                                        <i
-                                            class="ti ti-speakerphone text-base text-blue-600"
-                                        ></i>
-                                        <span class="truncate">Iklan & Promosi</span>
-                                    </a>
+                                    {#if isAdmin}
+                                        <a
+                                            href="/admin/ads"
+                                            class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-blue-800 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 transition"
+                                        >
+                                            <i
+                                                class="ti ti-speakerphone text-base text-blue-600"
+                                            ></i>
+                                            <span class="truncate">Iklan & Promosi</span>
+                                        </a>
+                                    {/if}
                                 {:else}
                                     <Link
                                         href="/profile"

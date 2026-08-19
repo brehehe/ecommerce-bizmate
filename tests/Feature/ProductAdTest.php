@@ -5,11 +5,15 @@ use App\Models\ProductAd;
 use App\Models\SellerAdWallet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-test('seller can view ad index page with wallet and kpis', function () {
+test('super admin and admin can view ad index page with wallet and kpis', function () {
+    $role = Role::firstOrCreate(['name' => 'Super Admin']);
     $seller = User::factory()->create(['is_seller' => true]);
+    $seller->assignRole($role);
+
     $wallet = SellerAdWallet::getOrCreateForUser($seller->id);
     $wallet->update(['balance' => 100000]);
 
@@ -42,8 +46,17 @@ test('seller can view ad index page with wallet and kpis', function () {
     );
 });
 
-test('seller can create and update a product ad campaign', function () {
+test('regular seller without admin or superadmin role is forbidden from accessing ads', function () {
     $seller = User::factory()->create(['is_seller' => true]);
+
+    $response = $this->actingAs($seller)->get(route('admin.ads.index'));
+    $response->assertForbidden();
+});
+
+test('admin can create and update a product ad campaign', function () {
+    $role = Role::firstOrCreate(['name' => 'Super Admin']);
+    $seller = User::factory()->create(['is_seller' => true]);
+    $seller->assignRole($role);
     $wallet = SellerAdWallet::getOrCreateForUser($seller->id);
     $wallet->update(['balance' => 50000]);
 
@@ -97,8 +110,10 @@ test('seller can create and update a product ad campaign', function () {
     expect($ad->fresh()->placements)->toEqual(['search', 'category']);
 });
 
-test('seller can request top up and confirm top up status', function () {
+test('admin can request top up and confirm top up status', function () {
+    $role = Role::firstOrCreate(['name' => 'Super Admin']);
     $seller = User::factory()->create(['is_seller' => true]);
+    $seller->assignRole($role);
 
     $response = $this->actingAs($seller)->postJson(route('admin.ads.topup'), [
         'amount' => 50000,

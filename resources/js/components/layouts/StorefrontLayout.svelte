@@ -131,6 +131,14 @@
         page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin') ||
             false,
     );
+    const isAdminOrSuperAdmin = $derived(
+        page.props.auth?.user?.roles?.some(
+            (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+        ) ||
+            (!page.props.auth?.user?.is_seller &&
+                (page.props.auth?.user?.roles?.length ?? 0) === 0 &&
+                Boolean(page.props.auth?.user)),
+    );
     const storeName = $derived(
         propStoreName ||
             (page.props as any).storeName ||
@@ -2262,14 +2270,16 @@
                                                         ></i> Halaman Toko Saya
                                                     </a>
                                                 {/if}
-                                                <a
-                                                    href="/admin/ads"
-                                                    class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition"
-                                                >
-                                                    <i
-                                                        class="ti ti-speakerphone text-base text-purple-600"
-                                                    ></i> Iklan & Promosi
-                                                </a>
+                                                {#if isAdminOrSuperAdmin}
+                                                    <a
+                                                        href="/admin/ads"
+                                                        class="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                                    >
+                                                        <i
+                                                            class="ti ti-speakerphone text-base text-purple-600"
+                                                        ></i> Iklan & Promosi
+                                                    </a>
+                                                {/if}
                                             {:else}
                                                 <Link
                                                     href="/profile"
@@ -2870,14 +2880,16 @@
                                 ></i> Halaman Toko Saya
                             </a>
                         {/if}
-                        <a
-                            href="/admin/ads"
-                            class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition mb-1"
-                        >
-                            <i
-                                class="ti ti-speakerphone text-lg text-purple-600"
-                            ></i> Iklan & Promosi
-                        </a>
+                        {#if isAdminOrSuperAdmin}
+                            <a
+                                href="/admin/ads"
+                                class="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 rounded-xl transition mb-1"
+                            >
+                                <i
+                                    class="ti ti-speakerphone text-lg text-purple-600"
+                                ></i> Iklan & Promosi
+                            </a>
+                        {/if}
                     {:else}
                         <Link
                             href="/profile"
