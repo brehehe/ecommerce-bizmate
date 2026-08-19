@@ -2,7 +2,9 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductPrice;
 use App\Models\Promotion;
+use App\Models\PromotionItem;
 use App\Models\User;
 
 beforeEach(function () {
@@ -244,7 +246,7 @@ test('admin can create promo_produk with price_type setting', function () {
 
 test('active promo overrides product price_type and falls back to product default when not set', function () {
     $this->product->update(['price_type' => 'net']);
-    \App\Models\ProductPrice::create([
+    ProductPrice::create([
         'product_id' => $this->product->id,
         'price' => 100000,
     ]);
@@ -260,7 +262,7 @@ test('active promo overrides product price_type and falls back to product defaul
         'is_active' => true,
         'settings' => ['price_type' => 'nego', 'min_qty' => 1],
     ]);
-    \App\Models\PromotionItem::create([
+    PromotionItem::create([
         'promotion_id' => $promo->id,
         'product_id' => $this->product->id,
         'discount_type' => 'fixed',

@@ -1176,7 +1176,7 @@
                                                 >
                                                     {#if isItemFlashSale && originalPrice > item.unit_price}
                                                         <span
-                                                            class="text-[9px] text-slate-400 line-through tabular-nums leading-none"
+                                                            class="text-[9px] text-red-600 line-through font-bold tabular-nums leading-none"
                                                         >
                                                             {fmt(originalPrice)}
                                                         </span>
@@ -1500,7 +1500,7 @@
                                                             class="flex items-center flex-wrap gap-2 text-[10.5px]"
                                                         >
                                                             <span
-                                                                class="text-[10px] text-slate-400 line-through font-bold font-mono"
+                                                                class="text-[10px] text-red-600 line-through font-bold font-mono"
                                                                 >{fmt(
                                                                     gift.product_price,
                                                                 )}</span
