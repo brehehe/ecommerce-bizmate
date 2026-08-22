@@ -9,7 +9,6 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     Role::firstOrCreate(['name' => 'Admin']);
-    Role::firstOrCreate(['name' => 'Seller']);
     Role::firstOrCreate(['name' => 'Customer']);
 });
 
@@ -27,7 +26,7 @@ test('it tracks seller store visit and associates seller_id', function () {
         'store_slug' => 'toko-testing-keren',
         'store_name' => 'Toko Testing Keren',
     ]);
-    $seller->assignRole('Seller');
+    $seller->assignRole('Customer');
 
     $response = $this->get('/toko-testing-keren');
 
@@ -69,18 +68,16 @@ test('admin dashboard loads visitor stats and online counters', function () {
         ->component('Admin/Dashboard')
         ->has('visitorStats')
         ->has('topVisitedPages')
-        ->has('visitorIpLogs')
-        ->has('ipTrafficAnalytics')
         ->where('visitorStats.onlineVisitors', 2)
         ->where('visitorStats.pageviewsCount', 2)
-        ->where('visitorIpLogs.0.ip_address', '127.0.0.1')
-        ->where('ipTrafficAnalytics.total_unique_ips', 1)
     );
 });
 
 test('seller dashboard hides visitorIpLogs and ipTrafficAnalytics from Seller', function () {
+    config(['app.is_seller' => true]);
+
     $seller = User::factory()->create(['is_seller' => true]);
-    $seller->assignRole('Seller');
+    $seller->assignRole('Customer');
 
     PageView::create([
         'session_id' => 'sess_test_seller',

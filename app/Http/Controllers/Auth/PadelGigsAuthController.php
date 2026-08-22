@@ -66,7 +66,8 @@ class PadelGigsAuthController extends Controller
             Auth::login($user, true);
             $request->session()->regenerate();
 
-            if (! $user->hasRole('Customer')) {
+            $isSellerMode = (bool) config('app.is_seller', false);
+            if (! $user->hasRole('Customer') || ($isSellerMode && $user->is_seller)) {
                 return redirect()->intended('/admin')->with('success', 'Berhasil masuk dengan PadelGigs.');
             }
 
@@ -205,8 +206,8 @@ class PadelGigsAuthController extends Controller
 
                 $user->update($updates);
 
-                if ($isSellerMode && ! $user->hasAnyRole(['Seller', 'Admin', 'Super Admin'])) {
-                    $user->assignRole('Seller');
+                if ($user->roles()->count() === 0) {
+                    $user->assignRole('Customer');
                 }
 
                 return $user;
@@ -236,8 +237,8 @@ class PadelGigsAuthController extends Controller
 
                 $user->update($updates);
 
-                if ($isSellerMode && ! $user->hasAnyRole(['Seller', 'Admin', 'Super Admin'])) {
-                    $user->assignRole('Seller');
+                if ($user->roles()->count() === 0) {
+                    $user->assignRole('Customer');
                 }
 
                 return $user;
@@ -277,8 +278,8 @@ class PadelGigsAuthController extends Controller
 
                     $user->update($updates);
 
-                    if ($isSellerMode && ! $user->hasAnyRole(['Seller', 'Admin', 'Super Admin'])) {
-                        $user->assignRole('Seller');
+                    if ($user->roles()->count() === 0) {
+                        $user->assignRole('Customer');
                     }
 
                     return $user;
@@ -286,7 +287,7 @@ class PadelGigsAuthController extends Controller
             }
         }
 
-        // 4. If completely new, create User (as Seller if IS_SELLER=true, or Customer if false)
+        // 4. If completely new, create User (Role is always Customer; is_seller=true if IS_SELLER=true)
         $user = User::create([
             'padelgigs_user_id' => $padelgigsId ?: null,
             'name' => $name,
@@ -305,12 +306,9 @@ class PadelGigsAuthController extends Controller
             'last_active_at' => now(),
         ]);
 
-        if ($isSellerMode) {
-            $user->assignRole('Seller');
-        } else {
-            $user->assignRole('Customer');
-        }
+        $user->assignRole('Customer');
 
         return $user;
     }
+}
 }

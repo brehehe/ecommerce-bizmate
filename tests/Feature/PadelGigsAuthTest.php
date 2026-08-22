@@ -6,7 +6,6 @@ use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     Role::firstOrCreate(['name' => 'Customer', 'guard_name' => 'web']);
-    Role::firstOrCreate(['name' => 'Seller', 'guard_name' => 'web']);
     Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
 });
 
@@ -70,6 +69,8 @@ test('can handle oauth callback and create new customer account', function () {
 });
 
 test('can handle oauth callback and unify with existing seller account by email without losing store data', function () {
+    config(['app.is_seller' => true]);
+
     $seller = User::factory()->create([
         'name' => 'Owner Toko Padel',
         'email' => 'seller@example.com',
@@ -80,7 +81,7 @@ test('can handle oauth callback and unify with existing seller account by email 
         'store_description' => 'Toko perlengkapan padel nomor 1',
         'padelgigs_user_id' => null,
     ]);
-    $seller->assignRole('Seller');
+    $seller->assignRole('Customer');
 
     $this->mock(PadelGigsOAuthService::class, function ($mock) {
         $mock->shouldReceive('exchangeCodeForTokens')
@@ -120,10 +121,12 @@ test('can handle oauth callback and unify with existing seller account by email 
         ->and($seller->store_name)->toBe('Toko Padel Pro')
         ->and($seller->store_slug)->toBe('toko-padel-pro')
         ->and($seller->store_description)->toBe('Toko perlengkapan padel nomor 1')
-        ->and($seller->hasRole('Seller'))->toBeTrue();
+        ->and($seller->hasRole('Customer'))->toBeTrue();
 });
 
 test('can handle oauth callback and unify with existing seller account by phone number', function () {
+    config(['app.is_seller' => true]);
+
     $seller = User::factory()->create([
         'name' => 'Phone Match Seller',
         'email' => 'local.seller@domain.com',
@@ -132,7 +135,7 @@ test('can handle oauth callback and unify with existing seller account by phone 
         'store_name' => 'Toko Ponsel Match',
         'padelgigs_user_id' => null,
     ]);
-    $seller->assignRole('Seller');
+    $seller->assignRole('Customer');
 
     $this->mock(PadelGigsOAuthService::class, function ($mock) {
         $mock->shouldReceive('exchangeCodeForTokens')
@@ -218,7 +221,7 @@ test('can link and unlink padelgigs account for authenticated user', function ()
     expect($user->padelgigs_user_id)->toBeNull();
 });
 
-test('sets is_seller to true and assigns Seller role when IS_SELLER config is true', function () {
+test('sets is_seller to true and assigns Customer role when IS_SELLER config is true', function () {
     config(['app.is_seller' => true]);
 
     $this->mock(PadelGigsOAuthService::class, function ($mock) {
@@ -258,7 +261,7 @@ test('sets is_seller to true and assigns Seller role when IS_SELLER config is tr
         ->and($user->is_seller)->toBeTrue()
         ->and($user->store_name)->toContain('Calon Seller Padel')
         ->and($user->store_slug)->not->toBeNull()
-        ->and($user->hasRole('Seller'))->toBeTrue();
+        ->and($user->hasRole('Customer'))->toBeTrue();
 });
 
 test('redirects to login with error when padelgigs login is disabled', function () {
