@@ -311,4 +311,3 @@ class PadelGigsAuthController extends Controller
         return $user;
     }
 }
-}
