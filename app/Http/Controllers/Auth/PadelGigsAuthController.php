@@ -66,11 +66,19 @@ class PadelGigsAuthController extends Controller
             Auth::login($user, true);
             $request->session()->regenerate();
 
-            if (! $user->hasRole('Customer')) {
-                return redirect()->intended('/admin')->with('success', 'Berhasil masuk dengan PadelGigs.');
+            // Clear any lingering intended URL so customer/seller is not sent to /admin
+            session()->forget('url.intended');
+
+            // If user has no roles and is not admin, ensure Customer role
+            if (! $user->hasAnyRole(['Super Admin', 'Admin', 'Admin Toko', 'Admin Penjualan']) && ! $user->hasRole('Customer')) {
+                $user->assignRole('Customer');
             }
 
-            return redirect()->intended('/')->with('success', 'Selamat datang! Berhasil masuk dengan akun PadelGigs.');
+            if ($user->hasAnyRole(['Super Admin', 'Admin', 'Admin Toko', 'Admin Penjualan'])) {
+                return redirect('/admin')->with('success', 'Berhasil masuk dengan PadelGigs.');
+            }
+
+            return redirect('/')->with('success', 'Selamat datang! Berhasil masuk dengan akun PadelGigs.');
 
         } catch (\Throwable $e) {
             report($e);

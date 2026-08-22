@@ -423,7 +423,7 @@
                             <i class="ti ti-loader animate-spin mr-2 text-xl"
                             ></i> Memproses...
                         {:else}
-                            Masuk ke Dashboard <i
+                            Masuk Sekarang <i
                                 class="ti ti-arrow-right ml-2 text-xl"
                             ></i>
                         {/if}

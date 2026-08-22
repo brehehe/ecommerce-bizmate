@@ -56,11 +56,19 @@ class LoginController extends Controller
 
             $request->session()->regenerate();
 
-            if (! $user->hasRole('Customer')) {
-                return redirect()->intended('/admin');
+            // Clear any lingering intended URL so customer/seller is not sent to /admin
+            session()->forget('url.intended');
+
+            // If user has no roles and is not admin, ensure Customer role
+            if (! $user->hasAnyRole(['Super Admin', 'Admin', 'Admin Toko', 'Admin Penjualan']) && ! $user->hasRole('Customer')) {
+                $user->assignRole('Customer');
             }
 
-            return redirect()->intended('/');
+            if ($user->hasAnyRole(['Super Admin', 'Admin', 'Admin Toko', 'Admin Penjualan'])) {
+                return redirect('/admin');
+            }
+
+            return redirect('/');
         }
 
         return back()->withErrors([
