@@ -66,8 +66,7 @@ class PadelGigsAuthController extends Controller
             Auth::login($user, true);
             $request->session()->regenerate();
 
-            $isSellerMode = (bool) config('app.is_seller', false);
-            if (! $user->hasRole('Customer') || ($isSellerMode && $user->is_seller)) {
+            if (! $user->hasRole('Customer')) {
                 return redirect()->intended('/admin')->with('success', 'Berhasil masuk dengan PadelGigs.');
             }
 

@@ -112,7 +112,7 @@ test('can handle oauth callback and unify with existing seller account by email 
         'state' => 'test-state',
     ]));
 
-    $response->assertRedirect('/admin');
+    $response->assertRedirect('/');
     $this->assertAuthenticatedAs($seller);
 
     $seller->refresh();
@@ -166,7 +166,7 @@ test('can handle oauth callback and unify with existing seller account by phone 
         'state' => 'test-state',
     ]));
 
-    $response->assertRedirect('/admin');
+    $response->assertRedirect('/');
     $this->assertAuthenticatedAs($seller);
 
     $seller->refresh();
@@ -253,7 +253,7 @@ test('sets is_seller to true and assigns Customer role when IS_SELLER config is 
         'state' => 'test-state',
     ]));
 
-    $response->assertRedirect('/admin');
+    $response->assertRedirect('/');
     $this->assertAuthenticated();
 
     $user = User::where('padelgigs_user_id', 'padelgigs-new-seller-777')->first();
