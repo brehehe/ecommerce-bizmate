@@ -318,8 +318,8 @@
                                     {/if}
                                 {:else}
                                     <Link
-                                        href="/profile"
-                                        class="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-orange-800 bg-orange-50/80 hover:bg-orange-100 border border-orange-200/60 transition"
+                                        href="/profile?open_seller=1"
+                                        class="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-orange-800 bg-orange-50/80 hover:bg-orange-100 border border-orange-200/60 transition cursor-pointer"
                                     >
                                         <i
                                             class="ti ti-building-store text-base text-orange-600"

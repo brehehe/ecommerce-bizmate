@@ -61,18 +61,74 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'store_name' => 'required|string|max:255',
             'store_description' => 'nullable|string|max:1000',
+            'phone_number' => 'required|string|max:25',
+            'receiver_name' => 'nullable|string|max:255',
+            'full_address' => 'required|string|max:1000',
+            'note' => 'nullable|string|max:255',
+            'province_name' => 'required|string|max:100',
+            'province_id' => 'nullable|string|max:50',
+            'regency_name' => 'required|string|max:100',
+            'regency_id' => 'nullable|string|max:50',
+            'district_name' => 'required|string|max:100',
+            'district_id' => 'nullable|string|max:50',
+            'village_name' => 'nullable|string|max:100',
+            'village_id' => 'nullable|string|max:50',
+            'postal_code' => 'required|string|max:10',
+            'bank_name' => 'nullable|string|max:100',
+            'account_number' => 'nullable|string|max:50',
+            'account_name' => 'nullable|string|max:150',
         ], [
-            'store_name.required' => 'Nama Toko / Penjual wajib diisi.',
+            'store_name.required' => 'Nama Toko wajib diisi.',
+            'phone_number.required' => 'Nomor HP / WhatsApp aktif wajib diisi.',
+            'full_address.required' => 'Alamat lengkap toko / pengiriman wajib diisi.',
+            'province_name.required' => 'Provinsi wajib dipilih.',
+            'regency_name.required' => 'Kota / Kabupaten wajib dipilih.',
+            'district_name.required' => 'Kecamatan wajib dipilih.',
+            'postal_code.required' => 'Kode pos wajib diisi.',
         ]);
 
+        // 1. Update User details & Seller status
         $user->update([
             'is_seller' => true,
             'store_name' => $validated['store_name'],
             'store_slug' => Str::slug($validated['store_name']).'-'.substr($user->id, 0, 5),
             'store_description' => $validated['store_description'] ?? null,
+            'phone_number' => $validated['phone_number'] ?: $user->phone_number,
         ]);
 
-        return redirect()->route('admin.dashboard')->with('success', 'Toko Anda berhasil diaktifkan! Selamat berjualan.');
+        // 2. Create primary store / origin address
+        $user->customerAddresses()->update(['is_primary' => false]);
+
+        $user->customerAddresses()->create([
+            'label' => 'Alamat Toko / Pengiriman',
+            'receiver_name' => $validated['receiver_name'] ?: ($user->name ?: $validated['store_name']),
+            'phone_number' => $validated['phone_number'],
+            'full_address' => $validated['full_address'],
+            'note' => $validated['note'] ?? null,
+            'province_id' => $validated['province_id'] ?? null,
+            'province_name' => $validated['province_name'],
+            'regency_id' => $validated['regency_id'] ?? null,
+            'regency_name' => $validated['regency_name'],
+            'district_id' => $validated['district_id'] ?? null,
+            'district_name' => $validated['district_name'],
+            'village_id' => $validated['village_id'] ?? null,
+            'village_name' => $validated['village_name'] ?? null,
+            'postal_code' => $validated['postal_code'],
+            'is_primary' => true,
+        ]);
+
+        // 3. Create bank account if provided
+        if (! empty($validated['bank_name']) && ! empty($validated['account_number']) && ! empty($validated['account_name'])) {
+            $user->customerBankAccounts()->update(['is_primary' => false]);
+            $user->customerBankAccounts()->create([
+                'bank_name' => $validated['bank_name'],
+                'account_number' => $validated['account_number'],
+                'account_name' => $validated['account_name'],
+                'is_primary' => true,
+            ]);
+        }
+
+        return redirect()->route('admin.dashboard')->with('success', 'Selamat! Toko Anda berhasil diaktifkan dan siap berjualan.');
     }
 
     /**

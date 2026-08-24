@@ -15,8 +15,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Crypt;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date', 'padelgigs_user_id', 'padelgigs_access_token', 'padelgigs_refresh_token', 'padelgigs_token_expires_at'])]
-#[Hidden(['password', 'remember_token', 'padelgigs_access_token', 'padelgigs_refresh_token'])]
+#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date', 'google_id', 'google_token', 'google_refresh_token', 'padelgigs_user_id', 'padelgigs_access_token', 'padelgigs_refresh_token', 'padelgigs_token_expires_at'])]
+#[Hidden(['password', 'remember_token', 'google_token', 'google_refresh_token', 'padelgigs_access_token', 'padelgigs_refresh_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -39,6 +39,28 @@ class User extends Authenticatable
     }
 
     /**
+     * Accessor & Mutator for encrypted Google Token.
+     */
+    protected function googleToken(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? Crypt::decryptString($value) : null,
+            set: fn (?string $value) => $value ? Crypt::encryptString($value) : null,
+        );
+    }
+
+    /**
+     * Accessor & Mutator for encrypted Google Refresh Token.
+     */
+    protected function googleRefreshToken(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $value ? Crypt::decryptString($value) : null,
+            set: fn (?string $value) => $value ? Crypt::encryptString($value) : null,
+        );
+    }
+
+    /**
      * Accessor & Mutator for encrypted PadelGigs Access Token.
      */
     protected function padelgigsAccessToken(): Attribute
@@ -58,6 +80,11 @@ class User extends Authenticatable
             get: fn (?string $value) => $value ? Crypt::decryptString($value) : null,
             set: fn (?string $value) => $value ? Crypt::encryptString($value) : null,
         );
+    }
+
+    public function isLinkedToGoogle(): bool
+    {
+        return $this->google_id !== null;
     }
 
     public function isLinkedToPadelgigs(): bool

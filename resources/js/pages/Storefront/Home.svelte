@@ -912,7 +912,7 @@
      SECTION 3: KATEGORI (Clean, Compact, Real Categories Only)
     ═══════════════════════════════════════════════════ -->
     {#if categories === undefined}
-        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
+        <section id="categories-section" class="px-2 sm:px-4 lg:px-6 py-1.5">
             <div class="max-w-6xl mx-auto">
                 <div class="flex items-center justify-between mb-2">
                     <div
@@ -923,7 +923,7 @@
                     ></div>
                 </div>
                 <div class="overflow-x-auto no-scrollbar py-1">
-                    <div class="flex gap-2.5 sm:gap-4">
+                    <div class="flex gap-2 sm:gap-3.5">
                         {#each Array(6) as _}
                             <div
                                 class="flex flex-col items-center gap-1.5 w-14 sm:w-16 shrink-0 animate-pulse"
@@ -941,10 +941,10 @@
             </div>
         </section>
     {:else if categories && categories.length > 0}
-        <section id="categories-section" class="px-3 sm:px-5 lg:px-8 py-2">
+        <section id="categories-section" class="px-2 sm:px-4 lg:px-6 py-1.5">
             <div class="max-w-6xl mx-auto">
                 <!-- Section Header -->
-                <div class="flex items-center justify-between mb-2.5 px-0.5">
+                <div class="flex items-center justify-between mb-2 px-0.5">
                     <h2
                         class="font-outfit font-black text-sm sm:text-base text-slate-800 tracking-tight"
                     >
@@ -963,39 +963,16 @@
 
                 <!-- Categories Scroll Row (No Card Box, Sleek & Compact) -->
                 <div class="overflow-x-auto no-scrollbar py-1">
-                    <div class="flex gap-3.5 sm:gap-5 w-max sm:w-auto">
-                        <!-- First Item: Lihat Semua -->
-                        <!-- <Link
-                            href="/search"
-                            prefetch
-                            class="flex flex-col items-center gap-1.5 group cursor-pointer w-[68px] sm:w-[76px] shrink-0 text-center"
-                        >
-                            <div
-                                class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-white/20 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden bg-gradient-to-br from-blue-500 via-sky-400 to-teal-400 shadow-xs"
-                            >
-                                <div class="grid grid-cols-2 gap-1 w-6 h-6 p-0.5 bg-white/95 rounded-xl shadow-2xs">
-                                    <div class="rounded-md bg-blue-500"></div>
-                                    <div class="rounded-md bg-orange-400"></div>
-                                    <div class="rounded-md bg-amber-400"></div>
-                                    <div class="rounded-md bg-emerald-500"></div>
-                                </div>
-                            </div>
-                            <span
-                                class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[72px] line-clamp-2 group-hover:text-slate-900 transition"
-                            >
-                                Lihat Semua
-                            </span>
-                        </Link> -->
-
+                    <div class="flex gap-2.5 sm:gap-4 w-max sm:w-auto">
                         <!-- Real Database Categories -->
                         {#each categories as cat, i}
                             <Link
                                 href="/category/{cat.slug || cat.id}"
                                 prefetch
-                                class="flex flex-col items-center gap-1.5 group cursor-pointer w-[68px] sm:w-[76px] shrink-0 text-center"
+                                class="flex flex-col items-center gap-1.5 group cursor-pointer w-[66px] sm:w-[74px] shrink-0 text-center"
                             >
                                 <div
-                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-slate-200/80 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:border-slate-300 bg-white shadow-2xs"
+                                    class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border border-slate-200/80 transition-all duration-200 group-hover:scale-105 group-hover:shadow-md group-hover:border-slate-300 bg-white shadow-2xs p-2"
                                     style="color: {primary};"
                                 >
                                     {#if cat.image}
@@ -1014,7 +991,7 @@
                                     {/if}
                                 </div>
                                 <span
-                                    class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[72px] line-clamp-2 group-hover:text-slate-900 transition"
+                                    class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[70px] line-clamp-2 group-hover:text-slate-900 transition"
                                 >
                                     {cat.name}
                                 </span>

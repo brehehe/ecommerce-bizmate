@@ -23,6 +23,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Api\ProductAdTrackingController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PadelGigsAuthController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -74,6 +75,10 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [RegisterController::class, 'register']);
     Route::post('/email/resend-verification-guest', [EmailVerificationController::class, 'resendGuest'])->name('verification.resend.guest');
 
+    // Google OAuth Routes
+    Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google');
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+
     // PadelGigs OAuth SSO Routes
     Route::get('/auth/padelgigs', [PadelGigsAuthController::class, 'redirect'])->name('auth.padelgigs');
     Route::get('/auth/padelgigs/callback', [PadelGigsAuthController::class, 'callback'])->name('auth.padelgigs.callback');
@@ -88,6 +93,11 @@ Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'
 Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])->middleware('signed')->name('verification.verify');
 
 Route::middleware('auth')->group(function () {
+    // Google Account Linking Routes
+    Route::get('/auth/google/link', [GoogleAuthController::class, 'link'])->name('auth.google.link');
+    Route::get('/auth/google/link/callback', [GoogleAuthController::class, 'linkCallback'])->name('auth.google.link.callback');
+    Route::delete('/auth/google/unlink', [GoogleAuthController::class, 'unlink'])->name('auth.google.unlink');
+
     // PadelGigs Account Linking Routes
     Route::get('/auth/padelgigs/link', [PadelGigsAuthController::class, 'link'])->name('auth.padelgigs.link');
     Route::get('/auth/padelgigs/link/callback', [PadelGigsAuthController::class, 'linkCallback'])->name('auth.padelgigs.link.callback');

@@ -31,19 +31,141 @@
     });
 
     let showSellerModal = $state(false);
+
+    // Regional cascading state for Seller Onboarding
+    let provinces = $state<{ id: string; name: string }[]>([]);
+    let regencies = $state<{ id: string; name: string }[]>([]);
+    let districts = $state<{ id: string; name: string }[]>([]);
+    let villages = $state<{ id: string; name: string }[]>([]);
+    let loadingRegional = $state(false);
+
     const sellerForm = useForm({
         store_name: (page.props.auth as any)?.user?.store_name || ((page.props.auth as any)?.user?.name ? (page.props.auth as any)?.user?.name + ' Store' : ''),
         store_description: '',
+        phone_number: (page.props.auth as any)?.user?.phone_number || '',
+        receiver_name: (page.props.auth as any)?.user?.name || '',
+        full_address: '',
+        note: '',
+        province_id: '',
+        province_name: '',
+        regency_id: '',
+        regency_name: '',
+        district_id: '',
+        district_name: '',
+        village_id: '',
+        village_name: '',
+        postal_code: '',
+        bank_name: 'BCA',
+        account_number: '',
+        account_name: (page.props.auth as any)?.user?.name || '',
     });
+
+    async function loadProvinces() {
+        if (provinces.length > 0) return;
+        loadingRegional = true;
+        try {
+            const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+            provinces = await res.json();
+        } catch (e) {
+            console.error('Failed to load provinces', e);
+        } finally {
+            loadingRegional = false;
+        }
+    }
+
+    async function handleProvinceChange(e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const selectedId = select.value;
+        const selectedObj = provinces.find(p => p.id === selectedId);
+        sellerForm.province_id = selectedId;
+        sellerForm.province_name = selectedObj ? selectedObj.name : '';
+
+        regencies = [];
+        districts = [];
+        villages = [];
+        sellerForm.regency_id = '';
+        sellerForm.regency_name = '';
+        sellerForm.district_id = '';
+        sellerForm.district_name = '';
+        sellerForm.village_id = '';
+        sellerForm.village_name = '';
+
+        if (selectedId) {
+            try {
+                const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${selectedId}.json`);
+                regencies = await res.json();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+
+    async function handleRegencyChange(e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const selectedId = select.value;
+        const selectedObj = regencies.find(r => r.id === selectedId);
+        sellerForm.regency_id = selectedId;
+        sellerForm.regency_name = selectedObj ? selectedObj.name : '';
+
+        districts = [];
+        villages = [];
+        sellerForm.district_id = '';
+        sellerForm.district_name = '';
+        sellerForm.village_id = '';
+        sellerForm.village_name = '';
+
+        if (selectedId) {
+            try {
+                const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${selectedId}.json`);
+                districts = await res.json();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+
+    async function handleDistrictChange(e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const selectedId = select.value;
+        const selectedObj = districts.find(d => d.id === selectedId);
+        sellerForm.district_id = selectedId;
+        sellerForm.district_name = selectedObj ? selectedObj.name : '';
+
+        villages = [];
+        sellerForm.village_id = '';
+        sellerForm.village_name = '';
+
+        if (selectedId) {
+            try {
+                const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${selectedId}.json`);
+                villages = await res.json();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+
+    function handleVillageChange(e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const selectedId = select.value;
+        const selectedObj = villages.find(v => v.id === selectedId);
+        sellerForm.village_id = selectedId;
+        sellerForm.village_name = selectedObj ? selectedObj.name : '';
+    }
+
+    function openSellerOnboarding() {
+        showSellerModal = true;
+        loadProvinces();
+    }
 
     function submitBecomeSeller() {
         sellerForm.post('/profile/become-seller', {
             onSuccess: () => {
                 showSellerModal = false;
-                showToast('Toko berhasil diaktifkan! Mengalihkan ke Dashboard...', 'success', 'top');
+                showToast('Selamat! Toko Anda berhasil diaktifkan.', 'success', 'top');
             },
             onError: (errs) => {
-                const msg = Object.values(errs)[0] || 'Gagal mengaktifkan toko';
+                const msg = Object.values(errs)[0] || 'Gagal mengaktifkan toko. Mohon periksa kembali isian form.';
                 showToast(String(msg), 'error', 'top');
             }
         });
@@ -123,6 +245,10 @@
         } else {
             activeTab = 'profile';
         }
+
+        if (urlStr.includes('open_seller=1') || urlStr.includes('buka_toko=1')) {
+            openSellerOnboarding();
+        }
     });
 
     function sendResetLink() {
@@ -172,6 +298,34 @@
 
     <div class="space-y-6">
         {#if activeTab === 'profile'}
+            <!-- BANNER BUKA TOKO (Jika user belum jadi seller dan seller mode aktif) -->
+            {#if isSellerEnabled && !user?.is_seller}
+                <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/50 border border-orange-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
+                            <i class="ti ti-building-store text-xl sm:text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-outfit font-black text-sm sm:text-base text-slate-800">
+                                Mulai Jual Barang & Buka Toko
+                            </h3>
+                            <p class="text-xs text-slate-600 font-medium mt-0.5">
+                                Lengkapi identitas toko, nomor kontak pengiriman, dan alamat gudang untuk mulai berjualan.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onclick={openSellerOnboarding}
+                        class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-md hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                        style="background-color: {primary};"
+                    >
+                        <i class="ti ti-plus text-sm"></i>
+                        <span>Buka Toko Sekarang</span>
+                    </button>
+                </div>
+            {/if}
+
             <!-- PROFIL SAYA CARD -->
             <div class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs p-4 sm:p-6 md:p-8">
                 <!-- Card Header -->
@@ -628,3 +782,374 @@
         </div>
     </div>
 {/if}
+
+<!-- MODAL SELLER ONBOARDING (LENGKAPI IDENTITAS TOKO, ALAMAT, KONTAK & REKENING) -->
+{#if showSellerModal}
+    <div class="fixed inset-0 z-[999999] flex items-center justify-center p-2.5 sm:p-4 overflow-y-auto">
+        <button
+            type="button"
+            class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs w-full h-full cursor-default border-none p-0 focus:outline-none"
+            onclick={() => (showSellerModal = false)}
+            aria-label="Tutup"
+        ></button>
+
+        <div class="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl relative z-10 max-h-[calc(100dvh-1.5rem)] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-auto border border-slate-100">
+            <!-- Modal Header -->
+            <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/80">
+                <div class="flex items-center gap-2.5 sm:gap-3">
+                    <div
+                        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                        style="background: linear-gradient(135deg, {primary}, {secondary});"
+                    >
+                        <i class="ti ti-building-store text-lg sm:text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-outfit font-black text-sm sm:text-lg text-slate-800 leading-tight">
+                            Buka Toko & Mulai Berjualan
+                        </h2>
+                        <p class="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5 line-clamp-1">
+                            Lengkapi identitas toko, nomor kontak, dan alamat pengiriman Anda
+                        </p>
+                    </div>
+                </div>
+                <button
+                    type="button"
+                    onclick={() => (showSellerModal = false)}
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition cursor-pointer shrink-0 ml-2"
+                    aria-label="Tutup"
+                >
+                    <i class="ti ti-x text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form with Scrollable Body & Sticky Footer -->
+            <form
+                onsubmit={(e) => {
+                    e.preventDefault();
+                    submitBecomeSeller();
+                }}
+                class="flex flex-col flex-1 overflow-hidden min-h-0"
+            >
+                <!-- Modal Body (Scrollable) -->
+                <div class="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 flex-1 overscroll-contain">
+                    <!-- Section 1: Informasi Toko & Penjual -->
+                    <div class="space-y-3 bg-slate-50/80 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-100">
+                        <div class="flex items-center gap-2 pb-2 border-b border-slate-200/60">
+                            <i class="ti ti-id text-sm sm:text-base text-orange-600"></i>
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                1. Informasi Toko & Penjual
+                            </h4>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="sm:col-span-2">
+                                <label for="seller_store_name" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nama Toko <span class="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    id="seller_store_name"
+                                    type="text"
+                                    bind:value={sellerForm.store_name}
+                                    required
+                                    placeholder="Contoh: Toko Raket Padel Maju, Bintang Sport"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition {sellerForm.errors.store_name ? 'border-rose-500' : ''}"
+                                />
+                                {#if sellerForm.errors.store_name}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.store_name}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_phone_number" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nomor HP / WhatsApp Aktif <span class="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    id="seller_phone_number"
+                                    type="text"
+                                    bind:value={sellerForm.phone_number}
+                                    required
+                                    placeholder="08xxxxxxxxxx"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition {sellerForm.errors.phone_number ? 'border-rose-500' : ''}"
+                                />
+                                {#if sellerForm.errors.phone_number}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.phone_number}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_receiver_name" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nama Penanggung Jawab / PIC
+                                </label>
+                                <input
+                                    id="seller_receiver_name"
+                                    type="text"
+                                    bind:value={sellerForm.receiver_name}
+                                    placeholder="Nama PIC Toko"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition"
+                                />
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label for="seller_store_description" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Deskripsi Singkat Toko
+                                </label>
+                                <textarea
+                                    id="seller_store_description"
+                                    bind:value={sellerForm.store_description}
+                                    rows="2"
+                                    placeholder="Jelaskan produk yang Anda jual atau keunggulan toko Anda..."
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition resize-none"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Alamat Toko / Pengiriman (Pickup Address) -->
+                    <div class="space-y-3 bg-slate-50/80 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-100">
+                        <div class="flex items-center gap-2 pb-2 border-b border-slate-200/60">
+                            <i class="ti ti-map-pin text-sm sm:text-base text-blue-600"></i>
+                            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                2. Alamat Toko / Lokasi Pengambilan Kurir
+                            </h4>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="sm:col-span-2">
+                                <label for="seller_full_address" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Alamat Lengkap Toko / Gudang <span class="text-rose-500">*</span>
+                                </label>
+                                <textarea
+                                    id="seller_full_address"
+                                    bind:value={sellerForm.full_address}
+                                    required
+                                    rows="2"
+                                    placeholder="Nama jalan, nomor bangunan, RT/RW, kelurahan..."
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition resize-none {sellerForm.errors.full_address ? 'border-rose-500' : ''}"
+                                ></textarea>
+                                {#if sellerForm.errors.full_address}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.full_address}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_province" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Provinsi <span class="text-rose-500">*</span>
+                                </label>
+                                <select
+                                    id="seller_province"
+                                    required
+                                    onchange={handleProvinceChange}
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition"
+                                >
+                                    <option value="">-- Pilih Provinsi --</option>
+                                    {#each provinces as p}
+                                        <option value={p.id} selected={sellerForm.province_id === p.id}>{p.name}</option>
+                                    {/each}
+                                </select>
+                                {#if sellerForm.errors.province_name}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.province_name}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_regency" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Kota / Kabupaten <span class="text-rose-500">*</span>
+                                </label>
+                                <select
+                                    id="seller_regency"
+                                    required
+                                    disabled={regencies.length === 0}
+                                    onchange={handleRegencyChange}
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition disabled:bg-slate-100 disabled:text-slate-400"
+                                >
+                                    <option value="">-- Pilih Kota / Kabupaten --</option>
+                                    {#each regencies as r}
+                                        <option value={r.id} selected={sellerForm.regency_id === r.id}>{r.name}</option>
+                                    {/each}
+                                </select>
+                                {#if sellerForm.errors.regency_name}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.regency_name}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_district" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Kecamatan <span class="text-rose-500">*</span>
+                                </label>
+                                <select
+                                    id="seller_district"
+                                    required
+                                    disabled={districts.length === 0}
+                                    onchange={handleDistrictChange}
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition disabled:bg-slate-100 disabled:text-slate-400"
+                                >
+                                    <option value="">-- Pilih Kecamatan --</option>
+                                    {#each districts as d}
+                                        <option value={d.id} selected={sellerForm.district_id === d.id}>{d.name}</option>
+                                    {/each}
+                                </select>
+                                {#if sellerForm.errors.district_name}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.district_name}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_village" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Kelurahan / Desa
+                                </label>
+                                <select
+                                    id="seller_village"
+                                    disabled={villages.length === 0}
+                                    onchange={handleVillageChange}
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition disabled:bg-slate-100 disabled:text-slate-400"
+                                >
+                                    <option value="">-- Pilih Kelurahan / Desa --</option>
+                                    {#each villages as v}
+                                        <option value={v.id} selected={sellerForm.village_id === v.id}>{v.name}</option>
+                                    {/each}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="seller_postal_code" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Kode Pos <span class="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    id="seller_postal_code"
+                                    type="text"
+                                    bind:value={sellerForm.postal_code}
+                                    required
+                                    placeholder="Contoh: 60241"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition {sellerForm.errors.postal_code ? 'border-rose-500' : ''}"
+                                />
+                                {#if sellerForm.errors.postal_code}
+                                    <p class="text-[10px] text-rose-500 font-bold mt-1">
+                                        {sellerForm.errors.postal_code}
+                                    </p>
+                                {/if}
+                            </div>
+
+                            <div>
+                                <label for="seller_note" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Patokan / Catatan Lokasi
+                                </label>
+                                <input
+                                    id="seller_note"
+                                    type="text"
+                                    bind:value={sellerForm.note}
+                                    placeholder="Contoh: Ruko seberang minimarket"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Rekening Bank Penarikan Dana (Opsional) -->
+                    <div class="space-y-3 bg-slate-50/80 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-100">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                            <div class="flex items-center gap-2">
+                                <i class="ti ti-credit-card text-sm sm:text-base text-emerald-600"></i>
+                                <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                    3. Rekening Penarikan Dana Penjualan
+                                </h4>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-600">
+                                Opsional
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label for="seller_bank_name" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nama Bank
+                                </label>
+                                <select
+                                    id="seller_bank_name"
+                                    bind:value={sellerForm.bank_name}
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition"
+                                >
+                                    <option value="BCA">BCA (Bank Central Asia)</option>
+                                    <option value="Mandiri">Bank Mandiri</option>
+                                    <option value="BNI">BNI (Bank Negara Indonesia)</option>
+                                    <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                                    <option value="BSI">BSI (Bank Syariah Indonesia)</option>
+                                    <option value="CIMB Niaga">CIMB Niaga</option>
+                                    <option value="Bank Jago">Bank Jago</option>
+                                    <option value="SeaBank">SeaBank</option>
+                                    <option value="BCA Syariah">BCA Syariah</option>
+                                    <option value="Permata">Bank Permata</option>
+                                    <option value="Danamon">Bank Danamon</option>
+                                    <option value="Lainnya">Bank Lainnya</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="seller_account_number" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nomor Rekening
+                                </label>
+                                <input
+                                    id="seller_account_number"
+                                    type="text"
+                                    bind:value={sellerForm.account_number}
+                                    placeholder="Nomor rekening bank"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition"
+                                />
+                            </div>
+
+                            <div>
+                                <label for="seller_account_name" class="block text-xs font-bold text-slate-700 mb-1">
+                                    Nama Pemilik Rekening
+                                </label>
+                                <input
+                                    id="seller_account_name"
+                                    type="text"
+                                    bind:value={sellerForm.account_name}
+                                    placeholder="Nama sesuai buku tabungan"
+                                    class="w-full px-3 py-2 sm:px-3.5 sm:py-2.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 font-medium text-slate-800 transition"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sticky Footer Actions (Always visible on mobile above bottom navigation) -->
+                <div class="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-white flex items-center justify-end gap-2.5 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] z-10">
+                    <button
+                        type="button"
+                        onclick={() => (showSellerModal = false)}
+                        class="w-1/3 sm:w-auto px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer text-center"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={sellerForm.processing}
+                        class="w-2/3 sm:w-auto px-6 py-2.5 text-xs font-bold text-white rounded-xl shadow-md flex items-center justify-center gap-2 disabled:opacity-50 transition hover:shadow-lg cursor-pointer"
+                        style="background-color: {primary};"
+                    >
+                        {#if sellerForm.processing}
+                            <i class="ti ti-loader animate-spin text-sm"></i>
+                            <span>Memproses...</span>
+                        {:else}
+                            <i class="ti ti-check text-sm"></i>
+                            <span>Aktifkan Toko Saya</span>
+                        {/if}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}
+

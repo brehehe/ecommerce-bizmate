@@ -8,7 +8,6 @@ use App\Services\PadelGigsOAuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
 class PadelGigsAuthController extends Controller
 {
@@ -205,12 +204,6 @@ class PadelGigsAuthController extends Controller
                     'last_active_at' => now(),
                 ];
 
-                if ($isSellerMode && ! $user->is_seller) {
-                    $updates['is_seller'] = true;
-                    $updates['store_name'] = $user->store_name ?: ($user->name ? 'Toko '.$user->name : 'Toko Saya');
-                    $updates['store_slug'] = $user->store_slug ?: Str::slug('toko-'.($user->name ?: 'seller').'-'.Str::random(5));
-                }
-
                 $user->update($updates);
 
                 if ($user->roles()->count() === 0) {
@@ -235,12 +228,6 @@ class PadelGigsAuthController extends Controller
                     'avatar' => $user->avatar ?: $avatar,
                     'last_active_at' => now(),
                 ];
-
-                if ($isSellerMode && ! $user->is_seller) {
-                    $updates['is_seller'] = true;
-                    $updates['store_name'] = $user->store_name ?: ($user->name ? 'Toko '.$user->name : 'Toko Saya');
-                    $updates['store_slug'] = $user->store_slug ?: Str::slug('toko-'.($user->name ?: 'seller').'-'.Str::random(5));
-                }
 
                 $user->update($updates);
 
@@ -277,12 +264,6 @@ class PadelGigsAuthController extends Controller
                         'last_active_at' => now(),
                     ];
 
-                    if ($isSellerMode && ! $user->is_seller) {
-                        $updates['is_seller'] = true;
-                        $updates['store_name'] = $user->store_name ?: ($user->name ? 'Toko '.$user->name : 'Toko Saya');
-                        $updates['store_slug'] = $user->store_slug ?: Str::slug('toko-'.($user->name ?: 'seller').'-'.Str::random(5));
-                    }
-
                     $user->update($updates);
 
                     if ($user->roles()->count() === 0) {
@@ -294,7 +275,7 @@ class PadelGigsAuthController extends Controller
             }
         }
 
-        // 4. If completely new, create User (Role is always Customer; is_seller=true if IS_SELLER=true)
+        // 4. If completely new, create User as standard Customer (can become seller later in profile)
         $user = User::create([
             'padelgigs_user_id' => $padelgigsId ?: null,
             'name' => $name,
@@ -303,9 +284,9 @@ class PadelGigsAuthController extends Controller
             'avatar' => $avatar,
             'password' => null,
             'is_active' => true,
-            'is_seller' => $isSellerMode,
-            'store_name' => $isSellerMode ? ($name ? 'Toko '.$name : 'Toko Saya') : null,
-            'store_slug' => $isSellerMode ? Str::slug('toko-'.$name.'-'.Str::random(5)) : null,
+            'is_seller' => false,
+            'store_name' => null,
+            'store_slug' => null,
             'email_verified_at' => now(),
             'padelgigs_access_token' => $tokens['access_token'] ?? null,
             'padelgigs_refresh_token' => $tokens['refresh_token'] ?? null,

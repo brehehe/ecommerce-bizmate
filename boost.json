@@ -15,6 +15,7 @@
     "skills": [
         "infer-conventions",
         "laravel-best-practices",
+        "socialite-development",
         "wayfinder-development",
         "pest-testing",
         "inertia-svelte-development",

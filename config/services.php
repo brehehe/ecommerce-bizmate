@@ -51,6 +51,12 @@ return [
         'import_auto_fetch_images' => env('IMPORT_AUTO_FETCH_IMAGES', false),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
     'padelgigs' => [
         'enabled' => filter_var(env('PADELGIGS_LOGIN', true), FILTER_VALIDATE_BOOLEAN),
         'url' => rtrim(env('PADELGIGS_OAUTH_URL', 'https://padelgigs.id'), '/'),
