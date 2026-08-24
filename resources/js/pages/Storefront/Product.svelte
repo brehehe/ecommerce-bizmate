@@ -3568,11 +3568,11 @@
                             <button
                                 type="button"
                                 onclick={openWhatsApp}
-                                class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                class="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-[0.98]"
                                 title="Tanya via WhatsApp"
                             >
                                 <i
-                                    class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                                    class="ti ti-brand-whatsapp text-sm text-white"
                                 ></i>
                                 <span>WhatsApp</span>
                             </button>
@@ -3605,11 +3605,11 @@
                         <button
                             type="button"
                             onclick={openWhatsApp}
-                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-xl transition cursor-pointer shadow-sm"
+                            class="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 rounded-xl transition cursor-pointer shadow-xs active:scale-[0.98]"
                             title="Tanya via WhatsApp"
                         >
                             <i
-                                class="ti ti-brand-whatsapp text-sm text-emerald-600"
+                                class="ti ti-brand-whatsapp text-sm text-white"
                             ></i>
                             WhatsApp
                         </button>
@@ -4588,11 +4588,11 @@
         {#if !isSellerEnabled}
             <button
                 onclick={openWhatsApp}
-                class="w-11 h-11 flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-600 active:bg-emerald-100 transition shrink-0 cursor-pointer"
+                class="w-11 h-11 flex items-center justify-center rounded-xl border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 transition shrink-0 cursor-pointer shadow-xs active:scale-[0.95]"
                 aria-label="Tanya via WhatsApp"
                 title="Tanya via WhatsApp"
             >
-                <i class="ti ti-brand-whatsapp text-xl"></i>
+                <i class="ti ti-brand-whatsapp text-xl text-white"></i>
             </button>
         {/if}
 
